@@ -7,10 +7,16 @@
 - Initialized the repository documentation and project skeleton.
 - Added the development specification, progress tracker, decision log, and open item tracker.
 - Added pull request workflow and privacy review checklist.
+- Added the stage-01 Rust workspace with `ime_core` and `tools/test_cli`.
+- Added `InputSession`, `KeyEvent`, `ImeOutput`, `Candidate`, basic pinyin parsing, embedded sample lexicon lookup, and simple candidate ranking.
+- Added parser, candidate, ranking, prediction-placeholder, and privacy tests.
+- Added minimal GitHub Actions for Rust formatting, clippy, and tests.
 
 ### Changed
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.
+- Updated README instructions for the Rust workspace and CLI smoke test.
+- Updated the stage delivery workflow to use local review before GitHub push and merge.
 
 ### Fixed
 

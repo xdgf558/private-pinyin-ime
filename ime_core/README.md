@@ -1,13 +1,12 @@
 # ime_core
 
-This directory will contain the Rust core engine starting in stage 01.
+This directory contains the Rust core engine created in stage 01.
 
-Planned responsibilities:
+Current responsibilities:
 
 - Pinyin parsing.
 - Candidate generation.
 - Ranking.
-- Prediction.
-- User lexicon.
 - Settings and privacy enforcement.
-- C ABI integration support.
+
+Later stages will add prediction, user lexicon persistence, and C ABI integration.

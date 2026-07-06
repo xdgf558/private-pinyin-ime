@@ -12,9 +12,9 @@ Consequences: Platform hosts call Rust through a C ABI.
 
 Date: 2026-07-06
 Status: accepted
-Decision: Deliver each development stage through a GitHub pull request before merging to `main`.
-Reason: The project owner wants to review and approve each stage before it enters the main branch.
-Consequences: Codex should create a stage branch, commit scoped changes, push the branch, and open a pull request after each stage.
+Decision: Deliver each development stage through a local review branch before pushing to GitHub and merging to `main`.
+Reason: The project owner wants to inspect and request fixes locally before any stage branch is pushed for final GitHub merge.
+Consequences: Codex should create a stage branch, commit scoped changes locally, provide a local review summary, fix feedback on the same branch, and only push and merge after approval.
 
 ## Decision 003: Rust workspace layout
 
@@ -23,3 +23,11 @@ Status: accepted
 Decision: Use a root Cargo workspace with `ime_core` for the engine and `tools/test_cli` for the CLI package.
 Reason: Keeping the core and CLI in one workspace allows shared validation commands, a committed `Cargo.lock`, and reproducible CLI and release builds.
 Consequences: Stage 1 should create the root `Cargo.toml`, commit `Cargo.lock`, and validate the workspace with fmt, clippy, tests, and the CLI smoke test.
+
+## Decision 004: Stage 1 parser and ranking scope
+
+Date: 2026-07-06
+Status: accepted
+Decision: Use a local dynamic-programming pinyin parser and frequency-first ranking over the embedded sample lexicon for stage 01.
+Reason: Stage 01 needs a deterministic, local-only engine path that can prove `nihao`, `zhongguo`, and continuous pinyin candidates before user learning, prediction, or FFI are introduced.
+Consequences: Stage 02 can add user lexicon and context scoring without changing the platform-facing session contract.
