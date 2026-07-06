@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 21:51
+Last updated: 2026-07-06 21:57
 Current stage: stage-08
 Current status: completed
 
@@ -15,7 +15,7 @@ Current status: completed
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
-| 08 | Platform validation and CI hardening | completed | 2026-07-06 21:51 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
+| 08 | Platform validation and CI hardening | completed | 2026-07-06 21:57 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
 
 ## Completed Work
 
@@ -92,12 +92,13 @@ Current status: completed
 - Added `scripts/check_platform_validation_sources.sh` and wired it into CI.
 - Extended the development specification with release-preparation stages 8 through 12.
 - Linked platform READMEs to the shared smoke-test record template.
+- Fixed CI feedback by pinning the Windows runner, including COM base declarations directly in the Windows class factory header, and adding a non-`rg` fallback to the iOS source scan.
 - Closed `OI-022` for Windows Rust test and TSF compile CI coverage while keeping runtime smoke-test items open.
 
 ## Current Work
 
-- Stage 08 is complete on local branch `codex/stage-08-platform-validation-ci`.
-- Awaiting local review before pushing to GitHub.
+- Stage 08 is open in GitHub PR #7 from `codex/stage-08-platform-validation-ci`.
+- Awaiting GitHub Actions before merging to `main`.
 
 ## Validation Results
 

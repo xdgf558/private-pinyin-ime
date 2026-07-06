@@ -42,12 +42,27 @@ grep -q "crate-type = \\[\"cdylib\", \"staticlib\", \"rlib\"\\]" ffi/ime_ffi/Car
 grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "com.apple.keyboard-service" platform/ios_keyboard/KeyboardExtension/Info.plist
 
-if rg -n "URLSession|NWConnection|Network.framework|http://|https://" \
-  --glob "*.swift" \
-  platform/ios_keyboard/ContainerApp \
-  platform/ios_keyboard/KeyboardExtension; then
-  echo "iOS keyboard sources must not include network APIs or URLs in stage 07." >&2
-  exit 1
+network_pattern="URLSession|NWConnection|Network.framework|http://|https://"
+if command -v rg >/dev/null 2>&1; then
+  if rg -n "$network_pattern" \
+    --glob "*.swift" \
+    platform/ios_keyboard/ContainerApp \
+    platform/ios_keyboard/KeyboardExtension; then
+    echo "iOS keyboard sources must not include network APIs or URLs in stage 07." >&2
+    exit 1
+  fi
+else
+  found_network_api=0
+  while IFS= read -r -d '' swift_file; do
+    if grep -nE "$network_pattern" "$swift_file"; then
+      found_network_api=1
+    fi
+  done < <(find platform/ios_keyboard/ContainerApp platform/ios_keyboard/KeyboardExtension -name "*.swift" -print0)
+
+  if [ "$found_network_api" -eq 1 ]; then
+    echo "iOS keyboard sources must not include network APIs or URLs in stage 07." >&2
+    exit 1
+  fi
 fi
 
 if command -v xcodebuild >/dev/null 2>&1; then
