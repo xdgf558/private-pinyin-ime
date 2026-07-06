@@ -48,7 +48,7 @@ jobs:
         run: bash scripts/check_platform_validation_sources.sh
 
   windows-tsf:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout

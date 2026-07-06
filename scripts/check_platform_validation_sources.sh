@@ -13,7 +13,7 @@ for file in "${required_files[@]}"; do
   test -f "$file"
 done
 
-grep -q "windows-latest" .github/workflows/rust.yml
+grep -q "windows-2022" .github/workflows/rust.yml
 grep -q "Swatinem/rust-cache@v2" .github/workflows/rust.yml
 grep -q "Run Windows Rust tests" .github/workflows/rust.yml
 grep -q "cargo test --workspace" .github/workflows/rust.yml

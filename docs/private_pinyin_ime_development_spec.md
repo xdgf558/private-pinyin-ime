@@ -1198,7 +1198,7 @@ Notes 中可以输入 nihao 并选择 你好
 
 任务：
 
-1. 增加 `windows-latest` CI job，运行 `cargo test --workspace` 并真实编译 Windows TSF C++ DLL。
+1. 增加固定到 `windows-2022` 的 CI job，运行 `cargo test --workspace` 并真实编译 Windows TSF C++ DLL。
 2. 保留 Ubuntu Rust workspace job，继续覆盖 fmt、clippy、tests、C demo 和 source scaffold checks。
 3. 编写跨平台 smoke test record/checklist，覆盖 Windows 11、macOS 和 iOS。
 4. 明确哪些验证可以自动化、哪些必须在真实系统 UI 中手动验证。

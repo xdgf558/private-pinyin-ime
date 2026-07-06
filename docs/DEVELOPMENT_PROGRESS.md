@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 21:23
+Last updated: 2026-07-06 21:51
 Current stage: stage-08
 Current status: completed
 
@@ -15,7 +15,7 @@ Current status: completed
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
-| 08 | Platform validation and CI hardening | completed | 2026-07-06 21:23 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
+| 08 | Platform validation and CI hardening | completed | 2026-07-06 21:51 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
 
 ## Completed Work
 
@@ -86,7 +86,7 @@ Current status: completed
 - Addressed stage-07 review feedback so iOS self-triggered text changes do not reset the Rust session, Chinese-mode Shift+letter inserts uppercase text, and mode-toggle UI state only changes after engine success.
 - Merged stage 07 to `main`.
 - Added stage-08 platform validation and CI hardening work.
-- Added a `windows-latest` GitHub Actions job that runs `cargo test --workspace`, runs `scripts/build_windows_tsf.ps1`, and compiles the Windows TSF DLL with MSVC/CMake.
+- Added a pinned `windows-2022` GitHub Actions job that runs `cargo test --workspace`, runs `scripts/build_windows_tsf.ps1`, and compiles the Windows TSF DLL with MSVC/CMake.
 - Added Rust build caching to CI.
 - Added `docs/platform_smoke_test_plan.md` with manual smoke-test record templates for Windows 11 TSF, macOS InputMethodKit, and iOS Keyboard Extension, including focus/app-switch cleanup and multi-process learning regressions.
 - Added `scripts/check_platform_validation_sources.sh` and wired it into CI.
@@ -149,9 +149,9 @@ Current status: completed
 - Result: passed
 - Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`.
 
-- Command: `windows-latest CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
+- Command: `windows-2022 CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
 - Result: not run locally
-- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the new `windows-latest` CI job and will be verified after the Stage 08 branch is pushed.
+- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the pinned `windows-2022` CI job and will be verified after the Stage 08 branch is pushed.
 
 ## Open Items
 

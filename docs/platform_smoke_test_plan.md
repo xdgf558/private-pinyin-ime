@@ -9,8 +9,8 @@ Record the GitHub Actions run URL for each Stage 08 pull request:
 | Gate | Required result | Evidence |
 |---|---|---|
 | Ubuntu Rust workspace | pass | `cargo fmt`, clippy, tests, C demo, scaffold checks |
-| Windows Rust workspace | pass | `windows-latest` runs `cargo test --workspace` |
-| Windows TSF compile | pass | `windows-latest` builds `PrivatePinyinTsf.dll` with MSVC/CMake |
+| Windows Rust workspace | pass | `windows-2022` runs `cargo test --workspace` |
+| Windows TSF compile | pass | `windows-2022` builds `PrivatePinyinTsf.dll` with MSVC/CMake |
 
 ## Windows 11 TSF Smoke
 

@@ -36,7 +36,7 @@
 - Added iOS C ABI module-map wiring so the keyboard extension can link the Rust core as an iOS static library.
 - Added iOS build and scaffold-check scripts, including plist validation for `RequestsOpenAccess=false` and source scanning for network APIs.
 - Added Stage 08 platform validation planning with Windows, macOS, and iOS smoke-test record templates.
-- Added Windows Rust test and TSF compile coverage to GitHub Actions with a `windows-latest` job.
+- Added Windows Rust test and TSF compile coverage to GitHub Actions with a pinned `windows-2022` job.
 - Added a Stage 08 validation scaffold check script.
 - Added Rust build caching to CI.
 
