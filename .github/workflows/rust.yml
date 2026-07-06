@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on:
   pull_request:
@@ -16,6 +16,9 @@ jobs:
 
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
         run: cargo fmt --check
@@ -40,3 +43,29 @@ jobs:
 
       - name: Check iOS keyboard source scaffold
         run: bash scripts/check_ios_keyboard_sources.sh
+
+      - name: Check platform validation scaffold
+        run: bash scripts/check_platform_validation_sources.sh
+
+  windows-tsf:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run Windows Rust tests
+        shell: pwsh
+        run: cargo test --workspace
+
+      - name: Build Windows TSF host
+        shell: pwsh
+        run: .\scripts\build_windows_tsf.ps1

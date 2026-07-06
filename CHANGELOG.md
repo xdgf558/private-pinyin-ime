@@ -35,6 +35,10 @@
 - Added the stage-07 iOS Keyboard Extension prototype with a SwiftUI container app, `UIInputViewController` keyboard extension, candidate bar, QWERTY layout, Globe key, symbols toggle, and Chinese/English toggle.
 - Added iOS C ABI module-map wiring so the keyboard extension can link the Rust core as an iOS static library.
 - Added iOS build and scaffold-check scripts, including plist validation for `RequestsOpenAccess=false` and source scanning for network APIs.
+- Added Stage 08 platform validation planning with Windows, macOS, and iOS smoke-test record templates.
+- Added Windows Rust test and TSF compile coverage to GitHub Actions with a pinned `windows-2022` job.
+- Added a Stage 08 validation scaffold check script.
+- Added Rust build caching to CI.
 
 ### Changed
 
@@ -54,6 +58,7 @@
 - Documented Stage 6 installer packaging and settings workflows for Windows and macOS.
 - Changed desktop hosts to pass settings paths into the shared C ABI instead of using only built-in defaults.
 - Documented iOS build, simulator smoke-test, and privacy-default workflows.
+- Extended the development specification with release-preparation stages 8 through 12.
 
 ### Fixed
 
@@ -64,6 +69,7 @@
 - Fixed the prototype Windows MSI template so TSF registration runs as a per-user install instead of writing HKCU registration under the SYSTEM account.
 - Fixed SQLite user lexicon connections to use WAL and a busy timeout for multi-process desktop host writes.
 - Fixed user lexicon export so engines without a configured user lexicon still write an empty TSV with headers.
+- Fixed Stage 08 CI issues by pinning the Windows runner, making Windows COM declarations and exports explicit, and allowing iOS source checks to run without `rg`.
 - Fixed invalid numeric settings so zero values clamp to defaults without discarding the rest of the settings snapshot.
 - Fixed iOS symbol-key handling so active composition state stays synchronized with the shared Rust engine.
 - Fixed iOS self-triggered text-change handling so candidate commits can keep prediction candidates and engine context.

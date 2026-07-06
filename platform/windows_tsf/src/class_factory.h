@@ -3,6 +3,7 @@
 #include <atomic>
 
 #include <windows.h>
+#include <unknwn.h>
 
 namespace private_pinyin {
 

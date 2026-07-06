@@ -14,6 +14,7 @@ Current scripts:
 - `check_installers_settings_sources.sh`: verifies Stage 6 installer and settings scaffold files.
 - `build_ios_keyboard.sh`: builds the Rust iOS static library and the iOS container app/keyboard extension.
 - `check_ios_keyboard_sources.sh`: verifies the iOS keyboard source scaffold, plist privacy defaults, and Xcode project wiring.
+- `check_platform_validation_sources.sh`: verifies Stage 8 platform smoke-test documentation and Windows TSF CI wiring.
 
 Planned scripts:
 

@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 required_files=(
   "platform/windows_tsf/CMakeLists.txt"
+  "platform/windows_tsf/PrivatePinyinTsf.def"
   "platform/windows_tsf/src/dllmain.cpp"
   "platform/windows_tsf/src/text_service.cpp"
   "platform/windows_tsf/src/text_service.h"
@@ -30,6 +31,8 @@ grep -q "ITfCompositionSink" platform/windows_tsf/src/text_service.h
 grep -q "AdviseKeyEventSink" platform/windows_tsf/src/text_service.cpp
 grep -q "DllRegisterServer" platform/windows_tsf/src/dllmain.cpp
 grep -q "DllUnregisterServer" platform/windows_tsf/src/dllmain.cpp
+grep -q "DllGetClassObject" platform/windows_tsf/PrivatePinyinTsf.def
+grep -q "DllCanUnloadNow" platform/windows_tsf/PrivatePinyinTsf.def
 grep -q "ime_session_feed_key" platform/windows_tsf/src/core_bridge.cpp
 grep -q "ime_session_reset" platform/windows_tsf/src/core_bridge.cpp
 grep -q "ime_engine_clear_user_lexicon" platform/windows_tsf/src/core_bridge.cpp

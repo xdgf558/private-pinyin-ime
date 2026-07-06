@@ -1194,6 +1194,76 @@ Notes 中可以输入 nihao 并选择 你好
 3. 在 `docs/OPEN_ITEMS.md` 写入 App Store、App Group、iOS 权限说明待办。
 4. 如果是 Git 仓库，提交 `stage-07: add iOS keyboard extension`。
 
+### 阶段 8：平台验证与 CI 补强
+
+任务：
+
+1. 增加固定到 `windows-2022` 的 CI job，运行 `cargo test --workspace` 并真实编译 Windows TSF C++ DLL。
+2. 保留 Ubuntu Rust workspace job，继续覆盖 fmt、clippy、tests、C demo 和 source scaffold checks。
+3. 编写跨平台 smoke test record/checklist，覆盖 Windows 11、macOS 和 iOS。
+4. 明确哪些验证可以自动化、哪些必须在真实系统 UI 中手动验证。
+5. 增加 Rust 缓存，避免 Windows job 重复从头编译 SQLite 等依赖。
+6. 增加脚本检查 Stage 8 验证文档和 CI wiring，防止后续漂移。
+7. 更新 `docs/OPEN_ITEMS.md`：自动编译类待办可关闭；真实系统冒烟待办必须保留到完成验证。
+
+验收：
+
+```text
+GitHub Actions 包含 Ubuntu Rust job
+GitHub Actions 在 Windows 上运行 cargo test --workspace
+GitHub Actions 包含 Windows TSF compile job
+bash scripts/check_platform_validation_sources.sh 通过
+Windows smoke checklist 覆盖 Notepad、设置 UI、安装/卸载、快捷键透传、焦点切换清理、多进程学习
+macOS smoke checklist 覆盖 TextEdit、候选窗、数字选词、Shift 行为、切应用清理、菜单设置
+iOS smoke checklist 覆盖 Notes、预测候选保留、Full Access off、密码/电话字段 fallback
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-08 标记为 completed。
+2. 在 `CHANGELOG.md` 写入平台验证和 CI 补强变更。
+3. 在 `docs/OPEN_ITEMS.md` 关闭已自动化验证的 CI 待办，保留未跑过的真实系统冒烟待办。
+4. 如果是 Git 仓库，提交 `stage-08: add platform validation and CI hardening`。
+
+### 阶段 9：核心引擎生产化
+
+任务方向：
+
+1. 替换或接入授权清晰的生产词库。
+2. 增加索引化词库查询。
+3. 实现候选翻页。
+4. 改进标点上屏行为。
+5. 融合用户词库和基础词库排序。
+6. 接线结构化、脱敏错误日志。
+
+### 阶段 10：平台宿主体验打磨
+
+任务方向：
+
+1. 打磨 Windows 候选窗、光标定位、高 DPI、暗色模式、preedit 显示属性。
+2. 打磨 macOS 候选窗定位、菜单图标和偏好设置窗口。
+3. 修复平台宿主在真实应用中的输入边界问题。
+
+### 阶段 11：设置、隐私与 iOS 存储闭环
+
+任务方向：
+
+1. 统一默认设置模板。
+2. 强化设置和导出文件的原子写入。
+3. 实现或隐藏 CapsLock toggle。
+4. 设计 iOS App Group 存储和用户学习 opt-in。
+5. 完善 iOS 权限说明、模式状态和 Globe key 行为。
+
+### 阶段 12：发布打包与分发
+
+任务方向：
+
+1. 选择最终 License。
+2. Windows 签名、安装器和卸载流程发布化。
+3. macOS Developer ID 签名、notarization 和 pkg 发布化。
+4. iOS provisioning、App Store metadata 和 TestFlight/App Store 流程。
+5. 决定自动更新策略。
+
 ---
 
 ## 11. Codex 首次开发提示词

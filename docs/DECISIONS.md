@@ -79,3 +79,11 @@ Status: accepted
 Decision: Implement iOS as a Swift container app plus `UIInputViewController` keyboard extension that links the existing Rust C ABI as a static library.
 Reason: iOS custom keyboards must be packaged as an app extension, while the shared Rust core should continue to own pinyin parsing, ranking, prediction, and privacy-sensitive learning behavior.
 Consequences: iOS-specific code lives under `platform/ios_keyboard`; `RequestsOpenAccess` stays false by default, the keyboard includes a Globe key, and release readiness still requires App Store signing, App Group design, and simulator/device smoke testing.
+
+## Decision 011: Stage 8 validation split
+
+Date: 2026-07-06
+Status: accepted
+Decision: Treat Stage 8 as validation and CI hardening: automate Rust/shared-code checks on Ubuntu and Windows plus Windows TSF compilation in GitHub Actions, while recording Windows/macOS/iOS runtime IME behavior through manual platform smoke-test records.
+Reason: CI can reliably catch Rust, C ABI, source scaffold, and Windows C++ compile regressions, but TSF activation, IMK candidate routing, iOS keyboard enablement, password-field fallback, and prediction retention after UIKit callbacks require real platform hosts.
+Consequences: `OI-022` can close once the Windows compile job lands and passes; runtime smoke items such as `OI-018`, `OI-029`, `OI-031`, and `OI-038` remain open until evidence is recorded from the target systems.

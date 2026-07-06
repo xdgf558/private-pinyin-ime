@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(PrivatePinyinTsf SHARED
+  PrivatePinyinTsf.def
   src/candidate_window.cpp
   src/class_factory.cpp
   src/core_bridge.cpp
@@ -41,7 +42,6 @@ endif()
 target_link_libraries(PrivatePinyinTsf PRIVATE
   advapi32
   gdi32
-  msctf
   ole32
   user32
   uuid

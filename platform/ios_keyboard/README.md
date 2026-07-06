@@ -28,11 +28,14 @@ The script builds `private_pinyin_ime_ffi` as a static library and then runs `xc
 
 ## Local Smoke Test
 
+Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
+
 1. Install and run the container app on an iOS simulator.
 2. Open Settings > General > Keyboard > Keyboards.
 3. Add PrivatePinyin.
 4. Open Notes, switch to PrivatePinyin with the Globe key, type `nihao`, and tap `你好` in the candidate bar.
-5. Confirm Full Access remains off.
+5. Type `jintian`, tap `今天`, and confirm prediction candidates such as `天气` remain visible after commit.
+6. Confirm Full Access remains off.
 
 Password and phone-number fields are expected to fall back to the system keyboard by iOS policy.
 
