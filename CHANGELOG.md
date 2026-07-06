@@ -17,6 +17,10 @@
 - Added local bigram prediction after candidate commits.
 - Added learning controls for `enable_user_learning` and `strict_privacy_mode`.
 - Added tests for prediction, user lexicon persistence, disabled learning, and strict privacy mode.
+- Added the stage-03 C ABI crate, public `ffi/c_api.h`, C demo, and Swift/C++ integration notes.
+- Added FFI tests for engine/session creation, key input, candidate reading, commit output, null-handle behavior, and output freeing.
+- Added Rust and C layout assertions to catch C ABI/header drift.
+- Added CI coverage for building and running the C ABI demo.
 
 ### Changed
 
@@ -27,6 +31,7 @@
 - Merged user lexicon candidates ahead of base lexicon duplicates.
 - Reused one SQLite connection per user lexicon instead of reopening the database on every lookup or learning write.
 - Deduplicated compact pinyin normalization across base and user lexicon lookup.
+- Documented Stage 03 C ABI null-return, memory ownership, and non-thread-safe handle contracts.
 
 ### Fixed
 
