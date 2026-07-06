@@ -25,9 +25,14 @@ KeyMessage map_windows_key(WPARAM key, LPARAM flags) {
   message.is_repeat = (flags & (1LL << 30)) != 0;
   message.timestamp_ms = static_cast<long long>(GetTickCount64());
 
-  if (message.ctrl && key == VK_SPACE) {
+  if (message.ctrl && key == VK_SPACE && !message.alt && !message.meta) {
     message.key_code = IME_KEY_CTRL_SPACE;
     message.handled_by_ime = true;
+    return message;
+  }
+
+  if (message.ctrl || message.alt || message.meta) {
+    message.handled_by_ime = false;
     return message;
   }
 
@@ -65,8 +70,8 @@ KeyMessage map_windows_key(WPARAM key, LPARAM flags) {
       message.handled_by_ime = true;
       break;
     case VK_SHIFT:
-      message.key_code = IME_KEY_SHIFT;
-      message.handled_by_ime = true;
+      message.key_code = IME_KEY_UNKNOWN;
+      message.handled_by_ime = false;
       break;
     case VK_OEM_COMMA:
       message.key_code = IME_KEY_COMMA;

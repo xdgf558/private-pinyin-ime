@@ -11,6 +11,38 @@ namespace private_pinyin {
 
 namespace {
 
+bool is_composition_scoped_key(int key_code) {
+  switch (key_code) {
+    case IME_KEY_ENTER:
+    case IME_KEY_BACKSPACE:
+    case IME_KEY_ESCAPE:
+    case IME_KEY_PAGE_UP:
+    case IME_KEY_PAGE_DOWN:
+    case IME_KEY_ARROW_UP:
+    case IME_KEY_ARROW_DOWN:
+    case IME_KEY_DIGIT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool is_shift_passthrough_key(int key_code) {
+  switch (key_code) {
+    case IME_KEY_CHARACTER:
+    case IME_KEY_DIGIT:
+    case IME_KEY_COMMA:
+    case IME_KEY_PERIOD:
+    case IME_KEY_MINUS:
+    case IME_KEY_EQUAL:
+    case IME_KEY_APOSTROPHE:
+    case IME_KEY_SEMICOLON:
+      return true;
+    default:
+      return false;
+  }
+}
+
 class EditSession final : public ITfEditSession {
  public:
   EditSession(TextService* service, ITfContext* context, OutputSnapshot output)
@@ -134,6 +166,7 @@ HRESULT TextService::Deactivate() {
   unadvise_key_sink();
   candidate_window_.hide();
   release_composition();
+  has_active_input_ = false;
   core_.reset();
 
   if (thread_mgr_ != nullptr) {
@@ -153,7 +186,8 @@ HRESULT TextService::OnTestKeyDown(ITfContext* /*context*/, WPARAM key, LPARAM f
   if (eaten == nullptr) {
     return E_POINTER;
   }
-  *eaten = map_windows_key(key, flags).handled_by_ime ? TRUE : FALSE;
+  const KeyMessage message = map_windows_key(key, flags);
+  *eaten = should_handle_key(message) ? TRUE : FALSE;
   return S_OK;
 }
 
@@ -164,7 +198,7 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   *eaten = FALSE;
 
   KeyMessage message = map_windows_key(key, flags);
-  if (!message.handled_by_ime) {
+  if (!should_handle_key(message)) {
     return S_OK;
   }
 
@@ -177,6 +211,8 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   if (context != nullptr) {
     request_edit_session(context, *output);
   }
+
+  update_input_state(*output);
 
   if (output->should_show_candidates) {
     candidate_window_.show(output->candidates);
@@ -218,6 +254,8 @@ HRESULT TextService::OnCompositionTerminated(TfEditCookie /*cookie*/,
                                              ITfComposition* composition) {
   if (composition_ == composition) {
     release_composition();
+    candidate_window_.hide();
+    has_active_input_ = false;
   }
   return S_OK;
 }
@@ -364,6 +402,35 @@ void TextService::release_composition() {
     composition_->Release();
     composition_ = nullptr;
   }
+}
+
+bool TextService::should_handle_key(const KeyMessage& message) const {
+  if (!message.handled_by_ime) {
+    return false;
+  }
+
+  if (message.key_code == IME_KEY_CTRL_SPACE) {
+    return true;
+  }
+
+  if (message.ctrl || message.alt || message.meta) {
+    return false;
+  }
+
+  if (message.shift && is_shift_passthrough_key(message.key_code)) {
+    return false;
+  }
+
+  if (is_composition_scoped_key(message.key_code)) {
+    return has_active_input_;
+  }
+
+  return true;
+}
+
+void TextService::update_input_state(const OutputSnapshot& output) {
+  has_active_input_ =
+      !output.preedit.empty() || output.should_show_candidates || !output.candidates.empty();
 }
 
 }  // namespace private_pinyin

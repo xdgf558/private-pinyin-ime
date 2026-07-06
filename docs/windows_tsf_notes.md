@@ -32,6 +32,7 @@ Stage 4 implements the Windows Text Services Framework host prototype.
 - TSF edit sessions for composition text and committed text.
 - Candidate popup that shows numbered candidates without taking focus.
 - HKCU COM registration and TSF profile registration hooks.
+- Host-side key gating so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys remain available to applications.
 
 ## Manual Windows Smoke Test
 
@@ -39,5 +40,6 @@ Stage 4 implements the Windows Text Services Framework host prototype.
 2. Register with `.\platform\windows_tsf\installer\register-ime.ps1`.
 3. Enable the input method in Windows input settings.
 4. In Notepad, type `nihao`, press `Space`, and confirm `你好` commits.
-5. Press `Shift` to toggle Chinese/English.
-6. Type `nihao`, press `Esc`, and confirm composition clears.
+5. Press `Ctrl+Space` to toggle Chinese/English.
+6. Press `Shift+A` and confirm the host receives uppercase `A`.
+7. Type `nihao`, press `Esc`, and confirm composition clears.

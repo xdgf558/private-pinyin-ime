@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 16:06
+Last updated: 2026-07-06 16:25
 Current stage: stage-04
 Current status: completed
 
@@ -11,7 +11,7 @@ Current status: completed
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
 | 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
-| 04 | Windows TSF prototype | completed | 2026-07-06 16:06 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
+| 04 | Windows TSF prototype | completed | 2026-07-06 16:25 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
 | 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
@@ -49,6 +49,8 @@ Current status: completed
 - Added `ITfTextInputProcessorEx`, `ITfKeyEventSink`, and `ITfCompositionSink` host wiring for activation, key handling, composition updates, candidate display, and commit output.
 - Added a thin C ABI bridge from Windows key events to the Rust core and a simple non-activating candidate popup.
 - Added Windows build instructions, manual Notepad smoke-test steps, and a CI source scaffold check for TSF files.
+- Addressed stage-04 review feedback so Windows TSF passes through Ctrl/Alt/Win shortcuts, avoids eating idle editing keys, and leaves Shift-modified text keys to the host.
+- Recorded follow-up open items for TSF text-extent candidate positioning, window class unload cleanup, display attributes, and Windows CI compile coverage.
 
 ## Current Work
 
@@ -59,15 +61,15 @@ Current status: completed
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean.
+- Notes: Formatting is clean after the stage-04 key handling review fix.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings.
+- Notes: No clippy warnings after the stage-04 key handling review fix.
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 31 integration tests passed across parser, candidates, ranking, prediction, privacy logging, SQLite user lexicon behavior, C ABI behavior, and ABI layout checks.
+- Notes: 31 integration tests passed after the stage-04 key handling review fix.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -82,8 +84,8 @@ Current status: completed
 - Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, and registration scripts.
 
 - Command: `leaks --atExit -- target/debug/ime_c_demo`
-- Result: passed
-- Notes: macOS `leaks` reported `0 leaks for 0 total leaked bytes`.
+- Result: not completed
+- Notes: macOS `leaks` could not get the child process task port in the current sandbox; this was not rerun as part of the review fix.
 
 - Command: `git diff --check`
 - Result: passed
@@ -107,6 +109,10 @@ Current status: completed
 - Build production Windows installer and uninstaller.
 - Polish Windows candidate window for high DPI, dark mode, and paging.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
+- Position the Windows candidate popup with `ITfContextView::GetTextExt`.
+- Unregister the Windows candidate window class on DLL unload.
+- Add TSF display attributes for preedit text.
+- Add Windows CI compile coverage for the TSF host.
 
 ## Files Changed In Latest Stage
 

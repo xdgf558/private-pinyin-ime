@@ -20,3 +20,7 @@
 | OI-016 | 04 | Build production Windows installer and uninstaller | High | Codex | open | Stage 04 only includes local `regsvr32` scripts; Stage 06 should provide packaged install/uninstall flow |
 | OI-017 | 04 | Polish Windows candidate window for high DPI and dark mode | Medium | Codex | open | Stage 04 uses a simple non-activating candidate popup; production UI needs DPI-aware sizing, theming, and paging polish |
 | OI-018 | 04 | Add Windows CI or manual validation record for TSF DLL loading | Medium | Codex | open | macOS local validation cannot load TSF; verify Notepad smoke test on Windows 11 before treating the host as user-ready |
+| OI-019 | 04 | Position Windows candidate popup with TSF text extents | Medium | Codex | open | Replace the prototype `GetFocus`/`GetCaretPos` fallback with `ITfContextView::GetTextExt` for browser, Electron, and UWP hosts |
+| OI-020 | 04 | Unregister the Windows candidate window class on unload | Medium | Codex | open | Avoid stale class procedures after DLL unload and handle repeated `RegisterClassW` calls safely |
+| OI-021 | 04 | Add TSF display attributes for preedit text | Medium | Codex | open | Implement `ITfDisplayAttributeProvider` so composition text is visually distinct from committed text |
+| OI-022 | 04 | Add Windows CI compile coverage for the TSF host | Medium | Codex | open | Add a `windows-latest` job that builds the CMake/MSVC TSF DLL; runtime smoke testing can remain manual |

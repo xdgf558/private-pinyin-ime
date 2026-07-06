@@ -10,6 +10,8 @@
 
 namespace private_pinyin {
 
+struct KeyMessage;
+
 class TextService final : public ITfTextInputProcessorEx,
                           public ITfKeyEventSink,
                           public ITfCompositionSink {
@@ -54,6 +56,8 @@ class TextService final : public ITfTextInputProcessorEx,
   HRESULT commit_text(TfEditCookie cookie, ITfContext* context, const std::wstring& text);
   HRESULT clear_composition(TfEditCookie cookie);
   void release_composition();
+  bool should_handle_key(const KeyMessage& message) const;
+  void update_input_state(const OutputSnapshot& output);
 
   std::atomic<ULONG> ref_count_{1};
   ITfThreadMgr* thread_mgr_ = nullptr;
@@ -61,6 +65,7 @@ class TextService final : public ITfTextInputProcessorEx,
   ITfComposition* composition_ = nullptr;
   CoreBridge core_;
   CandidateWindow candidate_window_;
+  bool has_active_input_ = false;
 };
 
 }  // namespace private_pinyin
