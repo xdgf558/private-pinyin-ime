@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 15:32
-Current stage: stage-03
+Last updated: 2026-07-06 16:06
+Current stage: stage-04
 Current status: completed
 
 ## Stage Status
@@ -10,8 +10,8 @@ Current status: completed
 |---|---|---|---|---|
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
-| 03 | C ABI and CLI integration | completed | 2026-07-06 15:32 | C ABI crate, header, C demo, ownership docs, layout checks, and tests are ready for local review |
-| 04 | Windows TSF prototype | not_started | | Depends on stable C ABI |
+| 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
+| 04 | Windows TSF prototype | completed | 2026-07-06 16:06 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
 | 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
@@ -43,10 +43,16 @@ Current status: completed
 - Addressed stage-03 review feedback by documenting NULL-return, non-thread-safe handle, and output ownership contracts in the C ABI.
 - Added Rust layout assertions and C `_Static_assert` checks to catch header/ABI drift in CI.
 - Recorded a follow-up open item for exposing user lexicon path, learning controls, and strict privacy mode through C ABI settings loading.
+- Merged stage 03 to `main` through GitHub PR #4.
+- Implemented the stage-04 Windows TSF C++ DLL prototype under `platform/windows_tsf`.
+- Added COM class factory, `DllRegisterServer`/`DllUnregisterServer`, TSF profile registration hooks, and local `regsvr32` scripts.
+- Added `ITfTextInputProcessorEx`, `ITfKeyEventSink`, and `ITfCompositionSink` host wiring for activation, key handling, composition updates, candidate display, and commit output.
+- Added a thin C ABI bridge from Windows key events to the Rust core and a simple non-activating candidate popup.
+- Added Windows build instructions, manual Notepad smoke-test steps, and a CI source scaffold check for TSF files.
 
 ## Current Work
 
-- Stage 03 is complete on local branch `codex/stage-03-c-abi`.
+- Stage 04 is complete on local branch `codex/stage-04-windows-tsf`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -71,6 +77,10 @@ Current status: completed
 - Result: passed
 - Notes: C layout assertions compiled and ran; C demo created an engine, fed `nihao`, read first candidate `你好`, and committed `你好`.
 
+- Command: `bash scripts/check_windows_tsf_sources.sh`
+- Result: passed
+- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, and registration scripts.
+
 - Command: `leaks --atExit -- target/debug/ime_c_demo`
 - Result: passed
 - Notes: macOS `leaks` reported `0 leaks for 0 total leaked bytes`.
@@ -93,6 +103,10 @@ Current status: completed
 - Fuse user and base ranking instead of unconditional user-first ordering.
 - Wire sanitized user lexicon database failures into logging.
 - Expose user lexicon path, learning controls, and strict privacy mode through the C ABI settings loader.
+- Add Windows code signing for TSF DLL and installer.
+- Build production Windows installer and uninstaller.
+- Polish Windows candidate window for high DPI, dark mode, and paging.
+- Validate TSF DLL loading and Notepad smoke test on Windows 11.
 
 ## Files Changed In Latest Stage
 
@@ -103,10 +117,12 @@ Current status: completed
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `ffi/`
-- `scripts/run_c_demo.sh`
-- `Cargo.toml`
+- `docs/windows_tsf_notes.md`
+- `platform/windows_tsf/`
+- `scripts/README.md`
+- `scripts/build_windows_tsf.ps1`
+- `scripts/check_windows_tsf_sources.sh`
 
 ## Next Step
 
-- Review stage-03 locally; after approval, push and merge through GitHub.
+- Review stage-04 locally; after approval, push and merge through GitHub.

@@ -28,3 +28,6 @@ jobs:
 
       - name: Build and run C ABI demo
         run: bash scripts/run_c_demo.sh
+
+      - name: Check Windows TSF source scaffold
+        run: bash scripts/check_windows_tsf_sources.sh

@@ -16,3 +16,7 @@
 | OI-012 | 02 | Fuse user and base ranking instead of unconditional user-first ordering | Medium | Codex | open | Stage 02 intentionally favors user entries; later ranking should prevent weak user prefix matches from outranking strong base exact matches |
 | OI-013 | 02 | Wire sanitized user lexicon database failures into logging | Medium | Codex | open | DB failures must not interrupt input, but should emit structured error codes without raw user input, pinyin, or candidate text |
 | OI-014 | 03 | Add C ABI settings loader for host-provided configuration | High | Codex | open | Stage 03 reserves `config_json_path`; later stages must expose user lexicon path, learning controls, and strict privacy mode through the C ABI |
+| OI-015 | 04 | Add Windows code signing for TSF DLL and installer | High | Codex | open | Production Windows text service binaries must be signed before release |
+| OI-016 | 04 | Build production Windows installer and uninstaller | High | Codex | open | Stage 04 only includes local `regsvr32` scripts; Stage 06 should provide packaged install/uninstall flow |
+| OI-017 | 04 | Polish Windows candidate window for high DPI and dark mode | Medium | Codex | open | Stage 04 uses a simple non-activating candidate popup; production UI needs DPI-aware sizing, theming, and paging polish |
+| OI-018 | 04 | Add Windows CI or manual validation record for TSF DLL loading | Medium | Codex | open | macOS local validation cannot load TSF; verify Notepad smoke test on Windows 11 before treating the host as user-ready |
