@@ -36,6 +36,7 @@
 - Documented Stage 03 C ABI null-return, memory ownership, and non-thread-safe handle contracts.
 - Documented Windows TSF build, registration, and manual Notepad smoke-test workflow.
 - Changed Windows TSF key handling so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys stay with the host.
+- Changed Windows TSF focus handling to hide prediction candidates and clear host input state when focus leaves the text service.
 
 ### Fixed
 

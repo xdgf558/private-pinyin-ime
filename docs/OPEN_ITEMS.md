@@ -24,3 +24,4 @@
 | OI-020 | 04 | Unregister the Windows candidate window class on unload | Medium | Codex | open | Avoid stale class procedures after DLL unload and handle repeated `RegisterClassW` calls safely |
 | OI-021 | 04 | Add TSF display attributes for preedit text | Medium | Codex | open | Implement `ITfDisplayAttributeProvider` so composition text is visually distinct from committed text |
 | OI-022 | 04 | Add Windows CI compile coverage for the TSF host | Medium | Codex | open | Add a `windows-latest` job that builds the CMake/MSVC TSF DLL; runtime smoke testing can remain manual |
+| OI-023 | 04 | Clear Windows prediction candidate state on focus loss | Medium | Codex | closed | Completed in stage-04 local review fix by hiding the candidate window and resetting host active-input state in `OnSetFocus(false)` |

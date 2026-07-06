@@ -33,6 +33,7 @@ Stage 4 implements the Windows Text Services Framework host prototype.
 - Candidate popup that shows numbered candidates without taking focus.
 - HKCU COM registration and TSF profile registration hooks.
 - Host-side key gating so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys remain available to applications.
+- Focus-loss cleanup for prediction candidates and host-side active input state.
 
 ## Manual Windows Smoke Test
 

@@ -177,7 +177,11 @@ HRESULT TextService::Deactivate() {
   return S_OK;
 }
 
-HRESULT TextService::OnSetFocus(BOOL /*foreground*/) {
+HRESULT TextService::OnSetFocus(BOOL foreground) {
+  if (!foreground) {
+    candidate_window_.hide();
+    has_active_input_ = false;
+  }
   return S_OK;
 }
 
