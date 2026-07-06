@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 22:53
-Current stage: stage-09
+Last updated: 2026-07-06 23:14
+Current stage: stage-10
 Current status: completed
 
 ## Stage Status
@@ -16,7 +16,8 @@ Current status: completed
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 | 08 | Platform validation and CI hardening | completed | 2026-07-06 21:57 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
-| 09 | Core production hardening | completed | 2026-07-06 22:53 | Indexed lookup, range user-lexicon queries, ranking fusion, paging, punctuation commits, sanitized logging, review fixes, and lexicon data policy are ready for local review |
+| 09 | Core production hardening | completed | 2026-07-06 23:04 | Merged to `main` through PR #8 |
+| 10 | Platform host polish | completed | 2026-07-06 23:14 | Windows candidate popup text-extent anchoring, DPI/theme polish, window-class cleanup, macOS preferences window, and Stage 10 source checks are ready for local review |
 
 ## Completed Work
 
@@ -106,17 +107,25 @@ Current status: completed
 - Added `scripts/check_stage09_core_sources.sh` and wired it into CI.
 - Addressed stage-09 review feedback by constraining numeric selection to the visible candidate page, adding a SQLite `pinyin` index for exact user-lexicon lookup, documenting the compact-prefix upper-bound assumption, and recording host log callback work as `OI-041`.
 - Closed `OI-006`, `OI-008`, `OI-009`, `OI-010`, `OI-011`, `OI-012`, and `OI-013`; kept `OI-001` open for licensed production data selection.
+- Merged stage 09 to `main` through GitHub PR #8.
+- Implemented stage-10 platform host polish.
+- Changed Windows TSF candidate popup positioning to use `ITfContextView::GetTextExt` inside the edit session, with a caret fallback when text extents are unavailable.
+- Added DPI-aware sizing, Windows app light/dark theme colors, monitor work-area clamping, and one-time window-class registration/unregistration for the Windows candidate popup.
+- Added a macOS InputMethodKit Preferences window for strict privacy, prediction, and user learning toggles, with input-engine reload after settings changes.
+- Addressed stage-10 review feedback by making the macOS preferences window a shared process-wide controller and broadcasting settings changes to all active input controllers.
+- Added `scripts/check_stage10_platform_host_sources.sh` and wired it into CI.
+- Closed `OI-017`, `OI-019`, and `OI-020`; kept TSF display attributes, custom macOS menu icon assets, and real platform smoke validation open.
 
 ## Current Work
 
-- Stage 09 is complete on local branch `codex/stage-09-core-production-hardening`.
+- Stage 10 is complete on local branch `codex/stage-10-platform-host-polish`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-09 core hardening changes.
+- Notes: Formatting is clean after the stage-10 host polish changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -136,11 +145,11 @@ Current status: completed
 
 - Command: `bash scripts/check_windows_tsf_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, settings path setup, registration scripts, settings UI script, and WiX source.
+- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, settings path setup, registration scripts, settings UI script, WiX source, TSF text-extent popup anchoring, DPI/theme handling, and candidate window-class cleanup.
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, settings store, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install/package scripts.
+- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, settings store, preferences window, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install/package scripts.
 
 - Command: `bash scripts/check_installers_settings_sources.sh`
 - Result: passed
@@ -158,9 +167,13 @@ Current status: completed
 - Result: passed
 - Notes: Stage 9 core hardening scaffold includes indexed lookup, pinyin and compact-pinyin user-lexicon indexes, range user-lexicon queries, ranking fusion, paging, punctuation behavior, sanitized logging, and lexicon data policy.
 
+- Command: `bash scripts/check_stage10_platform_host_sources.sh`
+- Result: passed
+- Notes: Stage 10 host polish scaffold includes Windows TSF text-extent anchoring, DPI/theme-aware candidate popup rendering, window-class unregistering, and the shared macOS preferences window.
+
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded Rust FFI dylib and ad-hoc signing.
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with the preferences window, embedded Rust FFI dylib, and ad-hoc signing.
 
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed
@@ -178,15 +191,12 @@ Current status: completed
 - Refine Shift toggle semantics in platform hosts.
 - Add Windows code signing for TSF DLL and installer.
 - Build production Windows installer and uninstaller.
-- Polish Windows candidate window for high DPI, dark mode, and paging.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
-- Position the Windows candidate popup with `ITfContextView::GetTextExt`.
-- Unregister the Windows candidate window class on DLL unload.
 - Add TSF display attributes for preedit text.
 - Add macOS code signing and notarization.
 - Build production macOS installer and uninstaller package.
 - Polish macOS candidate positioning and appearance.
-- Add macOS menu icon assets and a polished preferences window.
+- Add custom macOS menu icon assets.
 - Verify IMK candidate panel number-key routing on macOS.
 - Add automatic update strategy.
 - Validate Windows installer and settings UI on Windows 11.
@@ -209,22 +219,23 @@ Current status: completed
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/lexicon_data_policy.md`
 - `docs/private_pinyin_ime_development_spec.md`
-- `ime_core/src/api.rs`
-- `ime_core/src/lexicon.rs`
-- `ime_core/src/logger.rs`
-- `ime_core/src/pinyin_parser.rs`
-- `ime_core/src/ranker.rs`
-- `ime_core/src/session.rs`
-- `ime_core/src/user_lexicon.rs`
-- `ime_core/tests/candidate_tests.rs`
-- `ime_core/tests/privacy_tests.rs`
-- `ime_core/tests/ranking_tests.rs`
-- `ime_core/tests/user_lexicon_tests.rs`
+- `platform/windows_tsf/src/candidate_window.cpp`
+- `platform/windows_tsf/src/candidate_window.h`
+- `platform/windows_tsf/src/dllmain.cpp`
+- `platform/windows_tsf/src/text_service.cpp`
+- `platform/windows_tsf/src/text_service.h`
+- `platform/windows_tsf/README.md`
+- `platform/macos_imk/Sources/PrivatePinyinInputController.swift`
+- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
+- `platform/macos_imk/Sources/SettingsStore.swift`
+- `platform/macos_imk/README.md`
+- `scripts/build_macos_imk.sh`
+- `scripts/check_macos_imk_sources.sh`
+- `scripts/check_windows_tsf_sources.sh`
+- `scripts/check_stage10_platform_host_sources.sh`
 - `scripts/README.md`
-- `scripts/check_stage09_core_sources.sh`
 
 ## Next Step
 
-- Review stage-09 locally; after approval, push and merge through GitHub.
+- Review stage-10 locally; after approval, push and merge through GitHub.

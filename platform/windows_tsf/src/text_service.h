@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <optional>
 
 #include <msctf.h>
 #include <windows.h>
@@ -56,6 +57,9 @@ class TextService final : public ITfTextInputProcessorEx,
   HRESULT commit_text(TfEditCookie cookie, ITfContext* context, const std::wstring& text);
   HRESULT clear_composition(TfEditCookie cookie);
   void release_composition();
+  std::optional<RECT> candidate_anchor_rect(TfEditCookie cookie, ITfContext* context) const;
+  void update_candidate_window(TfEditCookie cookie, ITfContext* context,
+                               const OutputSnapshot& output);
   bool should_handle_key(const KeyMessage& message) const;
   void update_input_state(const OutputSnapshot& output);
 

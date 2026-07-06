@@ -17,6 +17,16 @@ final class PrivatePinyinInputController: IMKInputController {
             panelType: kIMKSingleColumnScrollingCandidatePanel
         )
         candidatePanel?.setDismissesAutomatically(true)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(settingsChanged(_:)),
+            name: .privatePinyinSettingsChanged,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @objc(handleEvent:client:)
@@ -51,6 +61,16 @@ final class PrivatePinyinInputController: IMKInputController {
 
     override func menu() -> NSMenu! {
         let menu = NSMenu(title: "PrivatePinyin")
+
+        let preferencesItem = NSMenuItem(
+            title: "Preferences...",
+            action: #selector(openPreferences(_:)),
+            keyEquivalent: ""
+        )
+        preferencesItem.target = self
+        menu.addItem(preferencesItem)
+
+        menu.addItem(NSMenuItem.separator())
 
         let privacyItem = NSMenuItem(
             title: "Strict Privacy Mode",
@@ -264,6 +284,15 @@ final class PrivatePinyinInputController: IMKInputController {
             return
         }
         showSettingsAlert(enabled ? "Strict privacy mode is on." : "Strict privacy mode is off.")
+    }
+
+    @objc private func openPreferences(_ sender: Any?) {
+        PrivatePinyinPreferencesWindowController.shared.showPreferences()
+    }
+
+    @objc private func settingsChanged(_ notification: Notification) {
+        resetComposition()
+        _ = core?.reload()
     }
 
     @objc private func clearUserLexicon(_ sender: Any?) {

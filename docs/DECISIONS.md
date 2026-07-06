@@ -95,3 +95,11 @@ Status: accepted
 Decision: Harden the shared Rust engine by adding indexed compact-pinyin lookup, SQLite range-prefix lookup, exact-before-prefix ranking tiers, candidate paging, top-candidate punctuation commits, and sanitized error-code logging, while keeping production lexicon replacement gated on an explicit data-license decision.
 Reason: Platform hosts should consume a stable paged candidate surface from the C ABI while the Rust core owns lookup, ranking, privacy, and learning semantics. The project cannot import third-party dictionary data safely until source, license, version, and transformation steps are documented.
 Consequences: Core open items for indexing, paging, punctuation, range queries, exact preservation, ranking fusion, and sanitized user-lexicon error logs can close. `OI-001` remains open until the owner selects and approves a compatible production lexicon source.
+
+## Decision 013: Stage 10 platform polish boundary
+
+Date: 2026-07-06
+Status: accepted
+Decision: Polish the existing thin platform hosts without expanding the C ABI: Windows TSF improves candidate popup anchoring, DPI/dark-mode rendering, and window-class lifecycle; macOS IMK adds a lightweight preferences window for common settings.
+Reason: Stage 10 should reduce real-application rough edges while preserving the shared Rust engine contract and avoiding high-risk TSF display-attribute provider work until it can be validated on Windows.
+Consequences: Windows candidate-positioning and popup lifecycle open items can close once Windows CI compiles. Full TSF display attributes, custom macOS menu icon assets, and app-by-app runtime smoke validation remain tracked separately.

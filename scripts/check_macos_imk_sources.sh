@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 required_files=(
   "platform/macos_imk/Sources/SettingsStore.swift"
+  "platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift"
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
@@ -34,6 +35,9 @@ grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_session_reset" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
+grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "Preferences..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "NSWindow" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "updateComposition" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "InputMethodConnectionName" platform/macos_imk/Resources/Info.plist

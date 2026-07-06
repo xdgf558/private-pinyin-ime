@@ -1,6 +1,7 @@
 #include "text_service.h"
 
 #include <new>
+#include <optional>
 #include <utility>
 
 #include "com_ptr.h"
@@ -214,16 +215,21 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   }
 
   if (context != nullptr) {
-    request_edit_session(context, *output);
-  }
-
-  update_input_state(*output);
-
-  if (output->should_show_candidates) {
+    const HRESULT edit_result = request_edit_session(context, *output);
+    if (FAILED(edit_result)) {
+      if (output->should_show_candidates) {
+        candidate_window_.show(output->candidates);
+      } else {
+        candidate_window_.hide();
+      }
+    }
+  } else if (output->should_show_candidates) {
     candidate_window_.show(output->candidates);
   } else {
     candidate_window_.hide();
   }
+
+  update_input_state(*output);
 
   *eaten = TRUE;
   return S_OK;
@@ -268,18 +274,25 @@ HRESULT TextService::OnCompositionTerminated(TfEditCookie /*cookie*/,
 
 HRESULT TextService::apply_output_in_edit_session(TfEditCookie cookie, ITfContext* context,
                                                   const OutputSnapshot& output) {
+  HRESULT hr = S_OK;
+
   if (output.should_commit && !output.commit_text.empty()) {
-    return commit_text(cookie, context, output.commit_text);
+    hr = commit_text(cookie, context, output.commit_text);
   }
 
-  if (output.should_update_preedit) {
+  if (SUCCEEDED(hr) && output.should_update_preedit) {
     if (output.preedit.empty()) {
-      return clear_composition(cookie);
+      hr = clear_composition(cookie);
+    } else {
+      hr = update_composition(cookie, context, output.preedit);
     }
-    return update_composition(cookie, context, output.preedit);
   }
 
-  return S_OK;
+  if (SUCCEEDED(hr)) {
+    update_candidate_window(cookie, context, output);
+  }
+
+  return hr;
 }
 
 HRESULT TextService::advise_key_sink() {
@@ -408,6 +421,54 @@ void TextService::release_composition() {
     composition_->Release();
     composition_ = nullptr;
   }
+}
+
+std::optional<RECT> TextService::candidate_anchor_rect(TfEditCookie cookie,
+                                                       ITfContext* context) const {
+  if (context == nullptr) {
+    return std::nullopt;
+  }
+
+  ComPtr<ITfContextView> context_view;
+  HRESULT hr = context->GetActiveView(context_view.put());
+  if (FAILED(hr)) {
+    return std::nullopt;
+  }
+
+  ComPtr<ITfRange> range;
+  if (composition_ != nullptr) {
+    hr = composition_->GetRange(range.put());
+    if (FAILED(hr)) {
+      return std::nullopt;
+    }
+  } else {
+    TF_SELECTION selection{};
+    ULONG fetched = 0;
+    hr = context->GetSelection(cookie, TF_DEFAULT_SELECTION, 1, &selection, &fetched);
+    if (FAILED(hr) || fetched == 0 || selection.range == nullptr) {
+      return std::nullopt;
+    }
+    range.reset(selection.range);
+  }
+
+  RECT rect{};
+  BOOL clipped = FALSE;
+  hr = context_view->GetTextExt(cookie, range.get(), &rect, &clipped);
+  if (FAILED(hr)) {
+    return std::nullopt;
+  }
+  return rect;
+}
+
+void TextService::update_candidate_window(TfEditCookie cookie, ITfContext* context,
+                                          const OutputSnapshot& output) {
+  if (!output.should_show_candidates || output.candidates.empty()) {
+    candidate_window_.hide();
+    return;
+  }
+
+  std::optional<RECT> anchor = candidate_anchor_rect(cookie, context);
+  candidate_window_.show(output.candidates, anchor.has_value() ? &anchor.value() : nullptr);
 }
 
 bool TextService::should_handle_key(const KeyMessage& message) const {

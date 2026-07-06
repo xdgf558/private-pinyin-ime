@@ -74,11 +74,12 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 4. Type `nihao`, confirm candidates appear near the insertion point, and select one with a number key.
 5. Press standalone `Shift` to toggle mode; `Shift+A` should pass through as uppercase input.
 6. Open the input method menu and toggle Strict Privacy Mode.
-7. Use the input method menu to export and clear the user lexicon.
+7. Open Preferences from the input method menu and toggle prediction or learning.
+8. Use the input method menu to export and clear the user lexicon.
 
 ## Known Gaps
 
 - Local builds are ad-hoc signed only.
 - The package is unsigned; Developer ID signing and notarization are still required for release.
 - Candidate panel appearance and positioning need app-by-app validation.
-- Custom menu icon and a polished preferences window are not included yet.
+- A lightweight preferences window is included; custom menu icon assets remain.
