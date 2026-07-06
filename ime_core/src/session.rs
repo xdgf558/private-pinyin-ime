@@ -3,9 +3,11 @@ use std::sync::Arc;
 use crate::api::ImeOutput;
 use crate::candidate::Candidate;
 use crate::key_event::{KeyCode, KeyEvent};
-use crate::lexicon::Lexicon;
+use crate::lexicon::{merge_user_and_base_candidates, Lexicon};
 use crate::pinyin_parser::PinyinParser;
+use crate::predictor::Predictor;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
+use crate::user_lexicon::UserLexicon;
 
 pub const MAX_RAW_INPUT_CHARS: usize = 64;
 
@@ -21,10 +23,17 @@ pub struct InputSession {
     pub settings_snapshot: ImeSettings,
     pub privacy_mode: bool,
     lexicon: Arc<Lexicon>,
+    predictor: Arc<Predictor>,
+    user_lexicon: Option<Arc<UserLexicon>>,
 }
 
 impl InputSession {
-    pub fn new(lexicon: Arc<Lexicon>, settings_snapshot: ImeSettings) -> Self {
+    pub fn new(
+        lexicon: Arc<Lexicon>,
+        predictor: Arc<Predictor>,
+        user_lexicon: Option<Arc<UserLexicon>>,
+        settings_snapshot: ImeSettings,
+    ) -> Self {
         let privacy_mode = settings_snapshot.strict_privacy_mode;
         Self {
             mode: settings_snapshot.default_mode,
@@ -37,6 +46,8 @@ impl InputSession {
             settings_snapshot,
             privacy_mode,
             lexicon,
+            predictor,
+            user_lexicon,
         }
     }
 
@@ -78,7 +89,11 @@ impl InputSession {
             }
             KeyCode::Space => {
                 if self.raw_input.is_empty() {
-                    ImeOutput::idle(self.mode)
+                    if self.candidates.is_empty() {
+                        ImeOutput::idle(self.mode)
+                    } else {
+                        self.commit_candidate(0)
+                    }
                 } else if self.candidates.is_empty() {
                     self.commit_raw_input()
                 } else {
@@ -87,7 +102,11 @@ impl InputSession {
             }
             KeyCode::Digit(index @ 1..=9) => {
                 if self.raw_input.is_empty() {
-                    ImeOutput::idle(self.mode)
+                    if self.candidates.is_empty() {
+                        ImeOutput::idle(self.mode)
+                    } else {
+                        self.commit_candidate(usize::from(index - 1))
+                    }
                 } else {
                     self.commit_candidate(usize::from(index - 1))
                 }
@@ -118,8 +137,10 @@ impl InputSession {
             return self.current_output(false, false, String::new());
         };
 
+        self.learn_candidate(&candidate);
         self.context_tokens.push(candidate.text.clone());
         self.clear_composition();
+        self.candidates = self.predict_next();
 
         ImeOutput {
             preedit: String::new(),
@@ -127,8 +148,8 @@ impl InputSession {
             mode: self.mode,
             should_update_preedit: true,
             should_commit: true,
-            should_show_candidates: false,
-            candidates: Vec::new(),
+            should_show_candidates: !self.candidates.is_empty(),
+            candidates: self.candidates.clone(),
         }
     }
 
@@ -185,7 +206,14 @@ impl InputSession {
     }
 
     pub fn predict_next(&self) -> Vec<Candidate> {
-        Vec::new()
+        if self.raw_input.is_empty()
+            && self.mode == ImeMode::Chinese
+            && self.settings_snapshot.enable_prediction
+        {
+            self.predictor.predict_next(&self.context_tokens)
+        } else {
+            Vec::new()
+        }
     }
 
     fn refresh_composition(&mut self) -> ImeOutput {
@@ -200,7 +228,17 @@ impl InputSession {
             .first()
             .map(|parse| parse.syllable_texts())
             .unwrap_or_default();
-        self.candidates = self.lexicon.lookup(&self.raw_input, &parses);
+        let base_candidates = self.lexicon.lookup(&self.raw_input, &parses);
+        let user_candidates = self
+            .user_lexicon
+            .as_ref()
+            .map(|user_lexicon| {
+                user_lexicon
+                    .lookup(&self.raw_input, &parses)
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default();
+        self.candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
         self.preedit_text = self.raw_input.clone();
         self.current_output(true, false, String::new())
     }
@@ -259,6 +297,16 @@ impl InputSession {
         self.preedit_text.clear();
         self.candidates.clear();
         self.candidate_page = 0;
+    }
+
+    fn learn_candidate(&self, candidate: &Candidate) {
+        if self.privacy_mode || !self.settings_snapshot.enable_user_learning {
+            return;
+        }
+
+        if let Some(user_lexicon) = &self.user_lexicon {
+            let _ = user_lexicon.record_selection(&candidate.text, &candidate.pinyin);
+        }
     }
 }
 

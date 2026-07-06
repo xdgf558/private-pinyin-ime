@@ -7,6 +7,7 @@ pub enum ImeError {
     InvalidLexiconFormat,
     InvalidLexiconFrequency,
     MissingLexiconField,
+    UserLexiconDatabase,
 }
 
 impl ImeError {
@@ -15,6 +16,7 @@ impl ImeError {
             Self::InvalidLexiconFormat => "INVALID_LEXICON_FORMAT",
             Self::InvalidLexiconFrequency => "INVALID_LEXICON_FREQUENCY",
             Self::MissingLexiconField => "MISSING_LEXICON_FIELD",
+            Self::UserLexiconDatabase => "USER_LEXICON_DATABASE",
         }
     }
 }

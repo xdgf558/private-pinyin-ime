@@ -31,3 +31,11 @@ Status: accepted
 Decision: Use a local dynamic-programming pinyin parser and frequency-first ranking over the embedded sample lexicon for stage 01.
 Reason: Stage 01 needs a deterministic, local-only engine path that can prove `nihao`, `zhongguo`, and continuous pinyin candidates before user learning, prediction, or FFI are introduced.
 Consequences: Stage 02 can add user lexicon and context scoring without changing the platform-facing session contract.
+
+## Decision 005: User lexicon SQLite schema
+
+Date: 2026-07-06
+Status: accepted
+Decision: Store user-learned phrases in SQLite table `user_phrases(phrase, pinyin, compact_pinyin, frequency, updated_at_ms)` with primary key `(phrase, pinyin)`.
+Reason: Stage 02 needs durable local learning while avoiding full sentence storage and keeping lookup deterministic for tests.
+Consequences: User learning writes only selected phrase and pinyin frequency data; strict privacy mode and disabled learning skip these writes.

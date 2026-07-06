@@ -113,6 +113,23 @@ impl Lexicon {
     }
 }
 
+pub fn merge_user_and_base_candidates(
+    user_candidates: Vec<Candidate>,
+    base_candidates: Vec<Candidate>,
+) -> Vec<Candidate> {
+    let mut merged = Vec::new();
+    let mut seen = HashSet::new();
+
+    for candidate in user_candidates.into_iter().chain(base_candidates) {
+        if seen.insert(candidate.text.clone()) {
+            merged.push(candidate);
+        }
+    }
+
+    merged.truncate(50);
+    merged
+}
+
 fn is_header_line(line: &str) -> bool {
     line == "phrase\tpinyin\tfrequency"
 }
