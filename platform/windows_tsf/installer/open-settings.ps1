@@ -11,29 +11,31 @@ $dataDir = Join-Path $env:LOCALAPPDATA "PrivatePinyin"
 $settingsPath = Join-Path $dataDir "settings.json"
 $userLexiconPath = Join-Path $dataDir "user_lexicon.sqlite"
 
+function Get-DefaultSettingsTemplatePath {
+    $candidates = @(
+        (Join-Path $PSScriptRoot "default_settings.json"),
+        (Join-Path $PSScriptRoot "..\..\..\config\default_settings.json")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    throw "Missing default_settings.json template."
+}
+
+function Get-DefaultSettings {
+    $settings = Get-Content -Raw -Path (Get-DefaultSettingsTemplatePath) | ConvertFrom-Json
+    $settings.user_lexicon_path = $userLexiconPath.Replace("\", "/")
+    return $settings
+}
+
 function Ensure-SettingsFile {
     New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
     if (-not (Test-Path $settingsPath)) {
-        $settings = [ordered]@{
-            default_mode = "Chinese"
-            toggle_key = "Shift"
-            candidate_page_size = 5
-            enable_prediction = $true
-            enable_user_learning = $true
-            strict_privacy_mode = $false
-            user_lexicon_path = $userLexiconPath.Replace("\", "/")
-            fuzzy_pinyin = [ordered]@{
-                zh_z = $false
-                ch_c = $false
-                sh_s = $false
-                n_l = $false
-                an_ang = $false
-                en_eng = $false
-                in_ing = $false
-            }
-            theme = "system"
-            candidate_font_size = 14
-        }
+        $settings = Get-DefaultSettings
         $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
     }
 }

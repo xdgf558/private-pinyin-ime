@@ -27,6 +27,7 @@ struct IosPinyinCandidate {
 struct IosPinyinOutput {
     let preedit: String
     let commitText: String
+    let isEnglishMode: Bool
     let shouldUpdatePreedit: Bool
     let shouldCommit: Bool
     let shouldShowCandidates: Bool
@@ -38,7 +39,17 @@ final class IosPinyinCoreBridge {
     private var session: OpaquePointer?
 
     init?() {
-        guard let engine = ime_engine_new(nil) else {
+        let settingsPath = IosSettingsStore.usesAppGroupStorage
+            ? IosSettingsStore.ensureSettingsFile()
+            : nil
+        let configuredEngine = settingsPath.flatMap { path in
+            path.withCString { pathPointer in
+                ime_engine_new(pathPointer)
+            }
+        }
+        let enginePointer = configuredEngine ?? ime_engine_new(nil)
+
+        guard let engine = enginePointer else {
             return nil
         }
         guard let session = ime_session_new(engine) else {
@@ -133,6 +144,7 @@ final class IosPinyinCoreBridge {
         return IosPinyinOutput(
             preedit: string(from: output.preedit),
             commitText: string(from: output.commit_text),
+            isEnglishMode: output.mode == IME_MODE_ENGLISH,
             shouldUpdatePreedit: output.should_update_preedit != 0,
             shouldCommit: output.should_commit != 0,
             shouldShowCandidates: output.should_show_candidates != 0,

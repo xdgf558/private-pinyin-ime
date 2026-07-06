@@ -17,6 +17,7 @@ Current scripts:
 - `check_platform_validation_sources.sh`: verifies Stage 8 platform smoke-test documentation and Windows TSF CI wiring.
 - `check_stage09_core_sources.sh`: verifies Stage 9 core hardening for indexed lookup, paging, ranking, logging, and lexicon data policy.
 - `check_stage10_platform_host_sources.sh`: verifies Stage 10 Windows/macOS host polish sources.
+- `check_stage11_settings_privacy_sources.sh`: verifies Stage 11 default-template, privacy, iOS App Group, mode-state, and Globe-key wiring.
 
 Planned scripts:
 

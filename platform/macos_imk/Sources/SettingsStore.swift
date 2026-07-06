@@ -62,26 +62,13 @@ enum PrivatePinyinSettingsStore {
     }
 
     private static func defaultSettings() -> [String: Any] {
-        [
-            "default_mode": "Chinese",
-            "toggle_key": "Shift",
-            "candidate_page_size": 5,
+        var settings = bundledDefaultSettings() ?? [
             "enable_prediction": true,
             "enable_user_learning": true,
             "strict_privacy_mode": false,
-            "user_lexicon_path": userLexiconURL.path,
-            "fuzzy_pinyin": [
-                "zh_z": false,
-                "ch_c": false,
-                "sh_s": false,
-                "n_l": false,
-                "an_ang": false,
-                "en_eng": false,
-                "in_ing": false,
-            ],
-            "theme": "system",
-            "candidate_font_size": 14,
         ]
+        settings["user_lexicon_path"] = userLexiconURL.path
+        return settings
     }
 
     private static func readSettings() -> [String: Any] {
@@ -118,5 +105,36 @@ enum PrivatePinyinSettingsStore {
         } else {
             try FileManager.default.moveItem(at: tempURL, to: settingsURL)
         }
+    }
+
+    private static func bundledDefaultSettings() -> [String: Any]? {
+        for url in defaultSettingsTemplateURLs() {
+            guard
+                let data = try? Data(contentsOf: url),
+                let object = try? JSONSerialization.jsonObject(with: data),
+                let settings = object as? [String: Any]
+            else {
+                continue
+            }
+            return settings
+        }
+        return nil
+    }
+
+    private static func defaultSettingsTemplateURLs() -> [URL] {
+        var urls: [URL] = []
+        if let bundled = Bundle.main.url(forResource: "default_settings", withExtension: "json") {
+            urls.append(bundled)
+        }
+
+        let sourceTreeURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("config", isDirectory: true)
+            .appendingPathComponent("default_settings.json", isDirectory: false)
+        urls.append(sourceTreeURL)
+        return urls
     }
 }

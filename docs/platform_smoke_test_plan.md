@@ -93,10 +93,12 @@ Checklist:
 | Install | Container app installs on simulator/device | | |
 | Enable keyboard | PrivatePinyin can be added from Settings > General > Keyboard | | |
 | Full Access | Full Access remains off by default | | |
+| Learning opt-in | Container app shows learning disabled by default; the toggle enables only when App Group storage is available | | |
+| App Group storage | With Full Access off, verify whether the keyboard extension can read/write the shared App Group settings and SQLite path; if denied, typing still works through built-in defaults and learning remains disabled | | |
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
 | Self-change callback | If prediction disappears, reset self-text-operation state from `textDidChange` instead of synchronous `defer` | | |
-| Globe key | Globe switches to the next input mode | | |
+| Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |
 | Password fallback | Password fields force the system keyboard | | |
 | Phone fallback | Phone-number fields force the system keyboard | | |
 | No network | With Full Access off, there is no network API usage or network prompt | | |

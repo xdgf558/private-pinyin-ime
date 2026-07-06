@@ -103,3 +103,11 @@ Status: accepted
 Decision: Polish the existing thin platform hosts without expanding the C ABI: Windows TSF improves candidate popup anchoring, DPI/dark-mode rendering, and window-class lifecycle; macOS IMK adds a lightweight preferences window for common settings.
 Reason: Stage 10 should reduce real-application rough edges while preserving the shared Rust engine contract and avoiding high-risk TSF display-attribute provider work until it can be validated on Windows.
 Consequences: Windows candidate-positioning and popup lifecycle open items can close once Windows CI compiles. Full TSF display attributes, custom macOS menu icon assets, and app-by-app runtime smoke validation remain tracked separately.
+
+## Decision 014: Stage 11 settings and iOS privacy boundary
+
+Date: 2026-07-07
+Status: accepted
+Decision: Use `config/default_settings.json` as the packaged default template for platform hosts, keep CapsLock hidden from settings UI until host semantics are implemented, and make iOS learning an explicit opt-in backed by App Group storage while `RequestsOpenAccess` remains false.
+Reason: Settings drift and implicit iOS persistence are both privacy and support risks. Stage 11 should close those gaps without changing the C ABI shape or pretending release provisioning has been completed.
+Consequences: Desktop and iOS hosts patch only platform-local paths into the shared template, iOS can pass a real settings path to the Rust engine, and remaining iOS validation stays tracked as manual smoke/provisioning work.

@@ -1292,13 +1292,39 @@ Windows TSF compile CI 通过
 
 ### 阶段 11：设置、隐私与 iOS 存储闭环
 
-任务方向：
+任务：
 
-1. 统一默认设置模板。
-2. 强化设置和导出文件的原子写入。
-3. 实现或隐藏 CapsLock toggle。
-4. 设计 iOS App Group 存储和用户学习 opt-in。
-5. 完善 iOS 权限说明、模式状态和 Globe key 行为。
+1. 将 `config/default_settings.json` 作为平台宿主的默认设置模板来源；Windows、macOS、iOS 只在运行时补平台本地 `user_lexicon_path`。
+2. 强化 Rust settings JSON 和用户词库 TSV 导出的写入路径，使用同目录临时文件和替换/回滚清理，避免直接 remove+rename。
+3. 在平台设置 UI 中继续隐藏 CapsLock toggle，直到 Windows/macOS/iOS 宿主具备明确的 CapsLock 语义支持。
+4. 为 iOS 容器 App 和 Keyboard Extension 增加 App Group entitlement、共享 settings 文件、共享用户词库路径，并保持用户学习默认关闭，只有用户在容器 App 明确开启后才写入学习数据。
+5. 完善 iOS 容器 App 的 Full Access、无网络、App Group、本地学习说明，并支持清理共享 SQLite/WAL/SHM 文件。
+6. iOS 键盘模式 UI 必须从 C ABI `ImeOutput.mode` 推导，不再用本地布尔值猜测。
+7. iOS Globe key 必须尊重 `needsInputModeSwitchKey`，系统不要求时隐藏该键。
+8. 增加 Stage 11 source scaffold 检查并纳入 CI。
+
+验收：
+
+```text
+config/default_settings.json parses and matches Rust ImeSettings::default
+desktop hosts reference packaged default_settings.json
+settings JSON and user lexicon TSV exports use shared AtomicFile helper
+platform settings UI does not expose CapsLock toggle
+iOS App Group entitlements exist for app and extension
+iOS learning is opt-in and disabled by default
+iOS bridge passes settings path into ime_engine_new
+iOS mode UI derives from ImeOutput.mode
+iOS Globe key respects needsInputModeSwitchKey
+bash scripts/check_stage11_settings_privacy_sources.sh 通过
+cargo test --workspace 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-11 标记为 completed。
+2. 在 `CHANGELOG.md` 写入设置、隐私和 iOS 存储闭环变更。
+3. 在 `docs/OPEN_ITEMS.md` 关闭已完成的 settings/privacy/iOS open items，并保留需要真实 iOS 烟测或发布签名的事项。
+4. 如果是 Git 仓库，提交 `stage-11: close settings privacy and ios storage gaps`。
 
 ### 阶段 12：发布打包与分发
 

@@ -13,6 +13,9 @@
 		8A0001010000000000000004 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000004 /* KeyboardViewController.swift */; };
 		8A0001010000000000000005 /* IosPinyinCoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000005 /* IosPinyinCoreBridge.swift */; };
 		8A0001010000000000000006 /* PrivatePinyinKeyboard.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0003010000000000000002 /* PrivatePinyinKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A0001010000000000000007 /* IosSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000003 /* IosSettingsStore.swift */; };
+		8A0001010000000000000008 /* default_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000009 /* default_settings.json */; };
+		8A0001010000000000000009 /* default_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000009 /* default_settings.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +51,9 @@
 		8A0002010000000000000006 /* ContainerApp Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8A0002010000000000000007 /* KeyboardExtension Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8A0002010000000000000008 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
+		8A0002010000000000000009 /* default_settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ../../config/default_settings.json; sourceTree = "<group>"; };
+		8A000201000000000000000A /* PrivatePinyin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivatePinyin.entitlements; sourceTree = "<group>"; };
+		8A000201000000000000000B /* PrivatePinyinKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivatePinyinKeyboard.entitlements; sourceTree = "<group>"; };
 		8A0003010000000000000001 /* PrivatePinyin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivatePinyin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0003010000000000000002 /* PrivatePinyinKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrivatePinyinKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -76,6 +82,7 @@
 				8A0008010000000000000002 /* ContainerApp */,
 				8A0008010000000000000003 /* KeyboardExtension */,
 				8A0008010000000000000004 /* PrivatePinyinC */,
+				8A0002010000000000000009 /* default_settings.json */,
 				8A0008010000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -87,6 +94,7 @@
 				8A0002010000000000000002 /* ContentView.swift */,
 				8A0002010000000000000003 /* IosSettingsStore.swift */,
 				8A0002010000000000000006 /* ContainerApp Info.plist */,
+				8A000201000000000000000A /* PrivatePinyin.entitlements */,
 			);
 			path = ContainerApp;
 			sourceTree = "<group>";
@@ -97,6 +105,7 @@
 				8A0002010000000000000004 /* KeyboardViewController.swift */,
 				8A0002010000000000000005 /* IosPinyinCoreBridge.swift */,
 				8A0002010000000000000007 /* KeyboardExtension Info.plist */,
+				8A000201000000000000000B /* PrivatePinyinKeyboard.entitlements */,
 			);
 			path = KeyboardExtension;
 			sourceTree = "<group>";
@@ -199,6 +208,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A0001010000000000000008 /* default_settings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -206,6 +216,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A0001010000000000000009 /* default_settings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,6 +239,7 @@
 			files = (
 				8A0001010000000000000004 /* KeyboardViewController.swift in Sources */,
 				8A0001010000000000000005 /* IosPinyinCoreBridge.swift in Sources */,
+				8A0001010000000000000007 /* IosSettingsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -357,6 +369,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = ContainerApp/PrivatePinyin.entitlements;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ContainerApp/Info.plist;
@@ -374,6 +387,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = ContainerApp/PrivatePinyin.entitlements;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ContainerApp/Info.plist;
@@ -392,6 +406,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/PrivatePinyinKeyboard.entitlements;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
@@ -424,6 +439,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/PrivatePinyinKeyboard.entitlements;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
