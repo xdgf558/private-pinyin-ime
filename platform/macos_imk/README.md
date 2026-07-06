@@ -66,6 +66,8 @@ platform/macos_imk/installer/uninstall-local.sh
 
 ## Manual Smoke Test
 
+Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
+
 1. Open TextEdit.
 2. Switch to PrivatePinyin.
 3. Type `zhongguo`, press `Space`, and confirm `中国` commits.

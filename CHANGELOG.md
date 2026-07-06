@@ -35,6 +35,10 @@
 - Added the stage-07 iOS Keyboard Extension prototype with a SwiftUI container app, `UIInputViewController` keyboard extension, candidate bar, QWERTY layout, Globe key, symbols toggle, and Chinese/English toggle.
 - Added iOS C ABI module-map wiring so the keyboard extension can link the Rust core as an iOS static library.
 - Added iOS build and scaffold-check scripts, including plist validation for `RequestsOpenAccess=false` and source scanning for network APIs.
+- Added Stage 08 platform validation planning with Windows, macOS, and iOS smoke-test record templates.
+- Added Windows Rust test and TSF compile coverage to GitHub Actions with a `windows-latest` job.
+- Added a Stage 08 validation scaffold check script.
+- Added Rust build caching to CI.
 
 ### Changed
 
@@ -54,6 +58,7 @@
 - Documented Stage 6 installer packaging and settings workflows for Windows and macOS.
 - Changed desktop hosts to pass settings paths into the shared C ABI instead of using only built-in defaults.
 - Documented iOS build, simulator smoke-test, and privacy-default workflows.
+- Extended the development specification with release-preparation stages 8 through 12.
 
 ### Fixed
 

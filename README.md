@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 7 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, JSON settings loading, prototype installer packaging scripts, iOS container app and keyboard extension scaffold, tests, and Rust CI workflow are in place.
+Stage 8 is complete locally and awaiting review: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, JSON settings loading, prototype installer packaging scripts, iOS container app and keyboard extension scaffold, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, and platform smoke-test plan are in place.
 
 ## Development Workflow
 
@@ -54,6 +54,7 @@ bash scripts/check_windows_tsf_sources.sh
 bash scripts/check_macos_imk_sources.sh
 bash scripts/check_installers_settings_sources.sh
 bash scripts/check_ios_keyboard_sources.sh
+bash scripts/check_platform_validation_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh
@@ -61,4 +62,4 @@ bash scripts/build_ios_keyboard.sh
 
 ## Next Stage
 
-The staged desktop and iOS MVP scaffolds are now in place. Next work should burn down release-readiness open items such as licensed dictionaries, platform signing, App Groups, and production packaging.
+Stage 9 should start the production-hardening pass for the core engine, especially licensed production lexicon ingestion, indexed lookup, ranking fusion, paging, punctuation behavior, and sanitized diagnostics.

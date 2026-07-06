@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 20:44
-Current stage: stage-07
+Last updated: 2026-07-06 21:23
+Current stage: stage-08
 Current status: completed
 
 ## Stage Status
@@ -15,6 +15,7 @@ Current status: completed
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
+| 08 | Platform validation and CI hardening | completed | 2026-07-06 21:23 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
 
 ## Completed Work
 
@@ -83,21 +84,30 @@ Current status: completed
 - Added `RequestsOpenAccess=false` in the keyboard extension plist and CI scaffold checks for iOS privacy defaults and network API absence.
 - Recorded follow-up open items for iOS App Store signing, App Group storage, user-facing permission explanation, simulator/device smoke tests, mode-state derivation, and Globe key visibility.
 - Addressed stage-07 review feedback so iOS self-triggered text changes do not reset the Rust session, Chinese-mode Shift+letter inserts uppercase text, and mode-toggle UI state only changes after engine success.
+- Merged stage 07 to `main`.
+- Added stage-08 platform validation and CI hardening work.
+- Added a `windows-latest` GitHub Actions job that runs `cargo test --workspace`, runs `scripts/build_windows_tsf.ps1`, and compiles the Windows TSF DLL with MSVC/CMake.
+- Added Rust build caching to CI.
+- Added `docs/platform_smoke_test_plan.md` with manual smoke-test record templates for Windows 11 TSF, macOS InputMethodKit, and iOS Keyboard Extension, including focus/app-switch cleanup and multi-process learning regressions.
+- Added `scripts/check_platform_validation_sources.sh` and wired it into CI.
+- Extended the development specification with release-preparation stages 8 through 12.
+- Linked platform READMEs to the shared smoke-test record template.
+- Closed `OI-022` for Windows Rust test and TSF compile CI coverage while keeping runtime smoke-test items open.
 
 ## Current Work
 
-- Stage 07 is complete on local branch `codex/stage-07-ios-keyboard-extension`.
+- Stage 08 is complete on local branch `codex/stage-08-platform-validation-ci`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-07 iOS keyboard extension work.
+- Notes: Formatting is clean after the stage-08 CI and validation documentation changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings in the Rust workspace after adding the iOS build scaffold.
+- Notes: No clippy warnings in the Rust workspace.
 
 - Command: `cargo test --workspace`
 - Result: passed
@@ -127,9 +137,21 @@ Current status: completed
 - Result: passed
 - Notes: iOS scaffold includes the Xcode project, SwiftUI container app, Keyboard Extension plist, `RequestsOpenAccess=false`, Globe key handling, candidate bar wiring, C ABI bridge, static-library build script, and no Swift network API usage.
 
+- Command: `bash scripts/check_platform_validation_sources.sh`
+- Result: passed
+- Notes: Stage 8 validation scaffold includes Windows Rust test CI, Windows TSF compile CI wiring, Rust caching, and Windows/macOS/iOS smoke-test record templates.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded Rust FFI dylib and ad-hoc signing.
+
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed
 - Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`.
+
+- Command: `windows-latest CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
+- Result: not run locally
+- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the new `windows-latest` CI job and will be verified after the Stage 08 branch is pushed.
 
 ## Open Items
 
@@ -151,7 +173,6 @@ Current status: completed
 - Position the Windows candidate popup with `ITfContextView::GetTextExt`.
 - Unregister the Windows candidate window class on DLL unload.
 - Add TSF display attributes for preedit text.
-- Add Windows CI compile coverage for the TSF host.
 - Add macOS code signing and notarization.
 - Build production macOS installer and uninstaller package.
 - Polish macOS candidate positioning and appearance.
@@ -177,12 +198,15 @@ Current status: completed
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/ios_keyboard_extension_notes.md`
-- `platform/ios_keyboard/`
+- `docs/platform_smoke_test_plan.md`
+- `docs/private_pinyin_ime_development_spec.md`
+- `platform/windows_tsf/README.md`
+- `platform/macos_imk/README.md`
+- `platform/ios_keyboard/README.md`
 - `scripts/README.md`
-- `scripts/build_ios_keyboard.sh`
-- `scripts/check_ios_keyboard_sources.sh`
+- `scripts/build_windows_tsf.ps1`
+- `scripts/check_platform_validation_sources.sh`
 
 ## Next Step
 
-- Review stage-07 locally; after approval, push and merge through GitHub.
+- Review stage-08 locally; after approval, push and merge through GitHub.

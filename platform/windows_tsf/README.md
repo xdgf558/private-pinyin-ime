@@ -74,6 +74,8 @@ The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/ex
 
 ## Manual Smoke Test
 
+Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
+
 1. Open Notepad.
 2. Switch to PrivatePinyin IME.
 3. Type `nihao`.
@@ -87,3 +89,4 @@ The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/ex
 - Candidate UI is intentionally simple and non-activating.
 - High DPI polishing, code signing, production per-machine registration, and production installer validation are tracked as open items.
 - This prototype should be validated on Windows 11; macOS/Linux CI cannot load TSF DLLs.
+- GitHub Actions runs Rust workspace tests and compiles the TSF DLL on `windows-latest`, but runtime activation and Notepad behavior still require manual validation.

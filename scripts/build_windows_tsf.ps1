@@ -26,4 +26,11 @@ cmake -S platform/windows_tsf -B $buildDir -G $Generator -A $Architecture `
     -DPRIVATE_PINYIN_IME_LIB="$coreLib"
 cmake --build $buildDir --config $Configuration
 
-Write-Host "Built Windows TSF DLL under $buildDir"
+$tsfDll = Get-ChildItem -Path $buildDir -Filter "PrivatePinyinTsf.dll" -Recurse |
+    Where-Object { $_.FullName -like "*\$Configuration\*" } |
+    Select-Object -First 1
+if (-not $tsfDll) {
+    throw "Could not find PrivatePinyinTsf.dll under $buildDir after build."
+}
+
+Write-Host "Built Windows TSF DLL: $($tsfDll.FullName)"
