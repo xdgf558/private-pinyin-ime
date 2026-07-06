@@ -71,3 +71,11 @@ Status: accepted
 Decision: Load desktop settings through JSON snapshots passed into the C ABI, keep settings and user lexicon data in platform application-data directories, and deliver Stage 6 installers as unsigned prototype packages.
 Reason: The shared Rust engine should own settings validation, strict privacy behavior, and user lexicon clear/export semantics while platform hosts stay thin. Stage 6 also needs repeatable installer artifacts without blocking on release signing infrastructure.
 Consequences: Windows and macOS hosts create or pass platform-local `settings.json` paths at engine startup; settings changes require an engine/session reload to take effect. Release readiness still requires signed Windows and macOS installers, notarization on macOS, and automatic-update planning.
+
+## Decision 010: iOS keyboard architecture
+
+Date: 2026-07-06
+Status: accepted
+Decision: Implement iOS as a Swift container app plus `UIInputViewController` keyboard extension that links the existing Rust C ABI as a static library.
+Reason: iOS custom keyboards must be packaged as an app extension, while the shared Rust core should continue to own pinyin parsing, ranking, prediction, and privacy-sensitive learning behavior.
+Consequences: iOS-specific code lives under `platform/ios_keyboard`; `RequestsOpenAccess` stays false by default, the keyboard includes a Globe key, and release readiness still requires App Store signing, App Group design, and simulator/device smoke testing.

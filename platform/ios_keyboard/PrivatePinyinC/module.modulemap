@@ -1,0 +1,4 @@
+module PrivatePinyinC [system] {
+  header "../../../ffi/c_api.h"
+  export *
+}

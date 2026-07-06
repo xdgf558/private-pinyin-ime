@@ -1,6 +1,6 @@
 # PrivatePinyin IME
 
-PrivatePinyin IME is a privacy-first Chinese pinyin input method project targeting Windows, macOS, and later iOS.
+PrivatePinyin IME is a privacy-first Chinese pinyin input method project targeting Windows, macOS, and iOS.
 
 The project follows the staged development plan in `docs/private_pinyin_ime_development_spec.md`. The core architecture is a Rust input engine exposed through a C ABI, with thin platform hosts for Windows TSF, macOS InputMethodKit, and iOS Keyboard Extension.
 
@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 6 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, JSON settings loading, user lexicon clear/export actions, prototype installer packaging scripts, tests, and Rust CI workflow are in place.
+Stage 7 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, JSON settings loading, prototype installer packaging scripts, iOS container app and keyboard extension scaffold, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -53,10 +53,12 @@ bash scripts/run_c_demo.sh
 bash scripts/check_windows_tsf_sources.sh
 bash scripts/check_macos_imk_sources.sh
 bash scripts/check_installers_settings_sources.sh
+bash scripts/check_ios_keyboard_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
+bash scripts/build_ios_keyboard.sh
 ```
 
 ## Next Stage
 
-Stage 7 will add the iOS Keyboard Extension prototype.
+The staged desktop and iOS MVP scaffolds are now in place. Next work should burn down release-readiness open items such as licensed dictionaries, platform signing, App Groups, and production packaging.
