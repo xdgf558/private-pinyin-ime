@@ -10,6 +10,7 @@ final class KeyboardViewController: UIInputViewController {
     private var shifted = false
     private var symbolsVisible = false
     private var englishMode = false
+    private var isPerformingTextOperation = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +20,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     override func textWillChange(_ textInput: UITextInput?) {
+        if isPerformingTextOperation {
+            return
+        }
+
         _ = core?.reset()
         currentPreedit = ""
         currentCandidates = []
@@ -170,8 +175,8 @@ final class KeyboardViewController: UIInputViewController {
             symbolsVisible = false
             rebuildKeyboard()
         case .modeToggle:
-            englishMode.toggle()
             if let output = core?.toggleMode() {
+                englishMode.toggle()
                 apply(output)
             }
             rebuildKeyboard()
@@ -181,15 +186,24 @@ final class KeyboardViewController: UIInputViewController {
 
 private extension KeyboardViewController {
     func feedCharacter(_ value: String) {
+        defer {
+            shifted = false
+            rebuildKeyboard()
+        }
+
+        if shifted && !englishMode {
+            endActiveInputIfNeeded()
+            insertDocumentText(value.uppercased())
+            return
+        }
+
         let text = shifted ? value.uppercased() : value
         let output = core?.feed(
             keyCode: IosKeyCodeValue.character,
             text: text,
             shift: shifted
         )
-        shifted = false
         apply(output)
-        rebuildKeyboard()
     }
 
     func handleTextKey(_ value: String) {
@@ -199,14 +213,14 @@ private extension KeyboardViewController {
         }
 
         endActiveInputIfNeeded()
-        textDocumentProxy.insertText(value)
+        insertDocumentText(value)
     }
 
     func handleBackspace() {
         if hasActiveInput {
             apply(core?.feed(keyCode: IosKeyCodeValue.backspace))
         } else {
-            textDocumentProxy.deleteBackward()
+            deleteDocumentBackward()
         }
     }
 
@@ -218,7 +232,7 @@ private extension KeyboardViewController {
         let previousActiveInput = hasActiveInput
         apply(output)
         if !previousActiveInput && output?.shouldCommit != true {
-            textDocumentProxy.insertText(fallback)
+            insertDocumentText(fallback)
         }
     }
 
@@ -234,7 +248,7 @@ private extension KeyboardViewController {
         }
 
         if output.shouldCommit, !output.commitText.isEmpty {
-            textDocumentProxy.insertText(output.commitText)
+            insertDocumentText(output.commitText)
         }
 
         currentPreedit = output.preedit
@@ -244,6 +258,26 @@ private extension KeyboardViewController {
 
     var hasActiveInput: Bool {
         !currentPreedit.isEmpty || !currentCandidates.isEmpty
+    }
+
+    func insertDocumentText(_ text: String) {
+        performTextOperation {
+            textDocumentProxy.insertText(text)
+        }
+    }
+
+    func deleteDocumentBackward() {
+        performTextOperation {
+            textDocumentProxy.deleteBackward()
+        }
+    }
+
+    func performTextOperation(_ operation: () -> Void) {
+        isPerformingTextOperation = true
+        defer {
+            isPerformingTextOperation = false
+        }
+        operation()
     }
 
     func coreKeyCode(for value: String) -> Int32? {

@@ -40,3 +40,5 @@
 | OI-036 | 07 | Design App Group storage and explicit learning opt-in for iOS | High | Codex | open | `RequestsOpenAccess=false` stays default; shared lexicon storage needs App Group entitlements and clear user consent before enabling persistence |
 | OI-037 | 07 | Write user-facing iOS keyboard permission explanation | Medium | Owner | open | Container app should explain Full Access, App Group storage, privacy defaults, and password-field fallback before public release |
 | OI-038 | 07 | Run iOS simulator smoke tests in Notes, Safari, and password fields | High | Codex | open | Stage 07 source scaffold is in place; validate `nihao -> 你好`, Globe switching, no Full Access, and system-keyboard fallback on simulator/device |
+| OI-039 | 07 | Derive iOS mode UI from C ABI output mode | Medium | Codex | open | Stage 07 now updates local mode only after toggle success; later Swift bridge should expose `ImeOutput.mode` and derive UI state from the engine output |
+| OI-040 | 07 | Respect `needsInputModeSwitchKey` for the iOS Globe key | Medium | Codex | open | Hide or collapse the Globe key where iOS does not require an input-mode switch key |

@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 20:22
+Last updated: 2026-07-06 20:34
 Current stage: stage-07
 Current status: completed
 
@@ -14,7 +14,7 @@ Current status: completed
 | 04 | Windows TSF prototype | completed | 2026-07-06 17:00 | Merged to `main`; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
-| 07 | iOS keyboard extension | completed | 2026-07-06 20:22 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
+| 07 | iOS keyboard extension | completed | 2026-07-06 20:34 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 
 ## Completed Work
 
@@ -81,7 +81,8 @@ Current status: completed
 - Added an iOS C ABI bridge that creates the Rust engine/session, feeds key events, commits candidates, toggles mode, and frees outputs.
 - Added `PrivatePinyinC/module.modulemap` and `scripts/build_ios_keyboard.sh` to link the Rust C ABI as an iOS static library.
 - Added `RequestsOpenAccess=false` in the keyboard extension plist and CI scaffold checks for iOS privacy defaults and network API absence.
-- Recorded follow-up open items for iOS App Store signing, App Group storage, user-facing permission explanation, and simulator/device smoke tests.
+- Recorded follow-up open items for iOS App Store signing, App Group storage, user-facing permission explanation, simulator/device smoke tests, mode-state derivation, and Globe key visibility.
+- Addressed stage-07 review feedback so iOS self-triggered text changes do not reset the Rust session, Chinese-mode Shift+letter inserts uppercase text, and mode-toggle UI state only changes after engine success.
 
 ## Current Work
 
@@ -165,6 +166,8 @@ Current status: completed
 - Design App Group storage and explicit learning opt-in for iOS.
 - Write user-facing iOS keyboard permission explanation.
 - Run iOS simulator smoke tests in Notes, Safari, and password fields.
+- Derive iOS mode UI from C ABI output mode.
+- Respect `needsInputModeSwitchKey` for the iOS Globe key.
 
 ## Files Changed In Latest Stage
 

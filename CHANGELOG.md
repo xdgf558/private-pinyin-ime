@@ -66,6 +66,8 @@
 - Fixed user lexicon export so engines without a configured user lexicon still write an empty TSV with headers.
 - Fixed invalid numeric settings so zero values clamp to defaults without discarding the rest of the settings snapshot.
 - Fixed iOS symbol-key handling so active composition state stays synchronized with the shared Rust engine.
+- Fixed iOS self-triggered text-change handling so candidate commits can keep prediction candidates and engine context.
+- Fixed iOS Chinese-mode Shift+letter handling so shifted letters insert uppercase text instead of entering pinyin composition.
 
 ### Security and Privacy
 

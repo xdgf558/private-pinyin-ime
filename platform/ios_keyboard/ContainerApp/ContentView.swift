@@ -12,6 +12,7 @@ struct ContentView: View {
                 }
 
                 Section("Privacy") {
+                    Text("This iOS prototype does not store learned words yet.")
                     Button("Clear Local Lexicon") {
                         clearLocalLexicon()
                     }
