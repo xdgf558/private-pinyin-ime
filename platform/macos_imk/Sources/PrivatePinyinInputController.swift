@@ -49,6 +49,47 @@ final class PrivatePinyinInputController: IMKInputController {
         currentCandidates.map(\.text)
     }
 
+    override func menu() -> NSMenu! {
+        let menu = NSMenu(title: "PrivatePinyin")
+
+        let privacyItem = NSMenuItem(
+            title: "Strict Privacy Mode",
+            action: #selector(toggleStrictPrivacyMode(_:)),
+            keyEquivalent: ""
+        )
+        privacyItem.target = self
+        privacyItem.state = PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled() ? .on : .off
+        menu.addItem(privacyItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let clearItem = NSMenuItem(
+            title: "Clear User Lexicon",
+            action: #selector(clearUserLexicon(_:)),
+            keyEquivalent: ""
+        )
+        clearItem.target = self
+        menu.addItem(clearItem)
+
+        let exportItem = NSMenuItem(
+            title: "Export User Lexicon...",
+            action: #selector(exportUserLexicon(_:)),
+            keyEquivalent: ""
+        )
+        exportItem.target = self
+        menu.addItem(exportItem)
+
+        let openSettingsItem = NSMenuItem(
+            title: "Open Settings File",
+            action: #selector(openSettingsFile(_:)),
+            keyEquivalent: ""
+        )
+        openSettingsItem.target = self
+        menu.addItem(openSettingsItem)
+
+        return menu
+    }
+
     @objc(candidateSelected:)
     override func candidateSelected(_ candidateString: NSAttributedString!) {
         let selected = candidateString?.string ?? ""
@@ -209,5 +250,62 @@ final class PrivatePinyinInputController: IMKInputController {
         pendingShiftToggle = false
         candidatePanel?.hide()
         clearMarkedText()
+    }
+
+    @objc private func toggleStrictPrivacyMode(_ sender: Any?) {
+        let enabled = !PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled()
+        guard PrivatePinyinSettingsStore.setStrictPrivacyMode(enabled) else {
+            showSettingsAlert("Could not update settings.")
+            return
+        }
+        resetComposition()
+        guard core?.reload() == true else {
+            showSettingsAlert("Could not reload PrivatePinyin.")
+            return
+        }
+        showSettingsAlert(enabled ? "Strict privacy mode is on." : "Strict privacy mode is off.")
+    }
+
+    @objc private func clearUserLexicon(_ sender: Any?) {
+        resetComposition()
+        if core?.clearUserLexicon() == true {
+            showSettingsAlert("User lexicon cleared.")
+        } else {
+            showSettingsAlert("Could not clear user lexicon.")
+        }
+    }
+
+    @objc private func exportUserLexicon(_ sender: Any?) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "private-pinyin-user-lexicon.tsv"
+        panel.begin { [weak self] response in
+            guard
+                response == .OK,
+                let url = panel.url,
+                let self
+            else {
+                return
+            }
+
+            if self.core?.exportUserLexicon(to: url.path) == true {
+                self.showSettingsAlert("User lexicon exported.")
+            } else {
+                self.showSettingsAlert("Could not export user lexicon.")
+            }
+        }
+    }
+
+    @objc private func openSettingsFile(_ sender: Any?) {
+        guard PrivatePinyinSettingsStore.ensureSettingsFile() != nil else {
+            showSettingsAlert("Could not create settings file.")
+            return
+        }
+        NSWorkspace.shared.open(PrivatePinyinSettingsStore.settingsURL)
+    }
+
+    private func showSettingsAlert(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.runModal()
     }
 }

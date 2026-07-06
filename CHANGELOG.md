@@ -25,6 +25,13 @@
 - Added a Windows TSF source scaffold check to CI.
 - Added the stage-05 macOS InputMethodKit prototype with Swift host code, IMKServer, IMKInputController, C ABI bridge, marked-text updates, candidate panel wiring, local build script, and install/uninstall scripts.
 - Added a macOS IMK source scaffold check to CI.
+- Added JSON settings loading and atomic settings writing for `ImeSettings`.
+- Added C ABI support for host-provided settings paths, clearing the user lexicon, and exporting the user lexicon.
+- Added `tools/settings_cli` for installer scripts to write settings, toggle strict privacy mode, clear the user lexicon, and export the user lexicon.
+- Added a macOS input method menu settings entry for strict privacy mode, clearing/exporting the user lexicon, and opening the settings file.
+- Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
+- Added prototype installer packaging scripts for Windows and macOS, including an unsigned macOS `.pkg`, Windows zip staging, and WiX MSI source.
+- Added a Stage 6 installer/settings scaffold check to CI.
 
 ### Changed
 
@@ -41,15 +48,19 @@
 - Changed Windows TSF focus handling to hide prediction candidates and clear host input state when focus leaves the text service.
 - Changed Windows TSF composition cleanup to reset the Rust session when focus loss or external composition termination clears host-side state.
 - Documented macOS IMK local build, install, uninstall, and manual TextEdit smoke-test workflow.
+- Documented Stage 6 installer packaging and settings workflows for Windows and macOS.
+- Changed desktop hosts to pass settings paths into the shared C ABI instead of using only built-in defaults.
 
 ### Fixed
 
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
 - Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
 - Fixed macOS Shift+digit handling so shifted number keys pass through to the host instead of selecting candidates.
+- Fixed the stage-03 reserved `config_json_path` so non-null paths now load settings snapshots.
 
 ### Security and Privacy
 
 - Documented the default no-network, no-telemetry, no-account, no-cloud-sync privacy posture.
 - Clarified that error logs must not embed user input, pinyin input, candidates, or committed text.
 - Ensured strict privacy mode and disabled learning skip SQLite learning writes.
+- Ensured strict privacy mode disables user learning when settings snapshots are loaded or written.

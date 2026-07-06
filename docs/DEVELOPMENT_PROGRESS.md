@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 18:22
-Current stage: stage-05
+Last updated: 2026-07-06 19:19
+Current stage: stage-06
 Current status: completed
 
 ## Stage Status
@@ -12,8 +12,8 @@ Current status: completed
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
 | 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
 | 04 | Windows TSF prototype | completed | 2026-07-06 17:00 | Merged to `main`; Windows smoke test still required |
-| 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Swift IMK app bundle prototype, C ABI bridge, marked text, candidate panel, and local build/install scripts are ready for local review |
-| 06 | Installers and settings | not_started | | Depends on desktop prototypes |
+| 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
+| 06 | Installers and settings | completed | 2026-07-06 19:19 | JSON settings, C ABI settings path, clear/export lexicon actions, settings entry points, and prototype installer scripts are ready for local review |
 | 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
 
 ## Completed Work
@@ -62,29 +62,53 @@ Current status: completed
 - Recorded follow-up open items for macOS signing/notarization, packaged installer, candidate UI polish, and menu icon/settings UI.
 - Addressed stage-05 review feedback so unhandled keys during active composition preserve current preedit/candidates instead of clearing host state.
 - Addressed stage-05 review feedback so macOS Shift+digit passes through consistently with Windows, and recorded a follow-up for IMK candidate panel number-key routing validation.
+- Implemented stage-06 JSON settings loading and atomic settings writing for `ImeSettings`.
+- Wired `config_json_path` through the C ABI so desktop hosts can pass a settings snapshot path at engine creation.
+- Added C ABI and Rust core APIs for clearing and exporting the user lexicon.
+- Added `tools/settings_cli` for installer scripts to write defaults, toggle strict privacy mode, clear the user lexicon, and export the user lexicon.
+- Added macOS settings menu actions for strict privacy mode, clearing/exporting the user lexicon, and opening the settings file.
+- Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
+- Added prototype packaging scripts for macOS `.pkg`, Windows installer staging zip, and optional WiX MSI generation.
+- Added CI scaffold coverage for installer/settings files.
 
 ## Current Work
 
-- Stage 05 is complete on local branch `codex/stage-05-macos-imk`.
+- Stage 06 is complete on local branch `codex/stage-06-installers-settings`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-05 macOS IMK prototype.
+- Notes: Formatting is clean after the stage-06 settings and installer work.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings after the stage-05 macOS IMK prototype.
+- Notes: No clippy warnings after adding settings JSON, FFI management APIs, and the settings CLI.
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 32 integration tests passed after the stage-05 review fixes.
+- Notes: 38 integration and ABI layout tests passed, including settings loading, strict privacy normalization, C ABI settings path use, and user lexicon clear/export coverage.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
 - Notes: Output includes `你好`.
+
+- Command: `cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_stage6_settings.json --user-lexicon /tmp/private_pinyin_stage6_user.sqlite`
+- Result: passed
+- Notes: Wrote a settings snapshot with a user lexicon path.
+
+- Command: `cargo run -p private_pinyin_settings -- set-strict-privacy --settings /tmp/private_pinyin_stage6_settings.json --enabled true`
+- Result: passed
+- Notes: Updated the settings snapshot and disabled learning under strict privacy mode.
+
+- Command: `cargo run -p private_pinyin_settings -- clear-user-lexicon --settings /tmp/private_pinyin_stage6_settings.json`
+- Result: passed
+- Notes: Cleared the configured user lexicon without errors.
+
+- Command: `cargo run -p private_pinyin_settings -- export-user-lexicon --settings /tmp/private_pinyin_stage6_settings.json --output /tmp/private_pinyin_stage6_export.tsv`
+- Result: passed
+- Notes: Exported an empty TSV from the configured user lexicon.
 
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
@@ -92,15 +116,23 @@ Current status: completed
 
 - Command: `bash scripts/check_windows_tsf_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, and registration scripts.
+- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, settings path setup, registration scripts, settings UI script, and WiX source.
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install scripts.
+- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, settings store, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install/package scripts.
+
+- Command: `bash scripts/check_installers_settings_sources.sh`
+- Result: passed
+- Notes: Stage 6 installer/settings scaffold files and JSON template are present and parseable.
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded `libprivate_pinyin_ime.dylib` and ad-hoc signing.
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded `libprivate_pinyin_ime.dylib`, settings menu code, and ad-hoc signing.
+
+- Command: `bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Built unsigned `dist/macos_imk/PrivatePinyin-0.1.0.pkg`; the first sandboxed run could not write the pkg, then the same command passed with sandbox escalation.
 
 - Command: `codesign --verify --deep --strict --verbose=2 dist/macos_imk/PrivatePinyin.app`
 - Result: passed
@@ -110,13 +142,9 @@ Current status: completed
 - Result: passed
 - Notes: The executable loads the Rust FFI dylib through `@rpath/libprivate_pinyin_ime.dylib`.
 
-- Command: `leaks --atExit -- target/debug/ime_c_demo`
-- Result: not completed
-- Notes: macOS `leaks` could not get the child process task port in the current sandbox; this was not rerun as part of the review fix.
-
-- Command: `git diff --check`
+- Command: `ls -lh dist/macos_imk/PrivatePinyin-0.1.0.pkg`
 - Result: passed
-- Notes: No whitespace errors.
+- Notes: The generated package exists locally and is ignored from git.
 
 ## Open Items
 
@@ -131,7 +159,6 @@ Current status: completed
 - Preserve exact user lexicon matches before applying query limits.
 - Fuse user and base ranking instead of unconditional user-first ordering.
 - Wire sanitized user lexicon database failures into logging.
-- Expose user lexicon path, learning controls, and strict privacy mode through the C ABI settings loader.
 - Add Windows code signing for TSF DLL and installer.
 - Build production Windows installer and uninstaller.
 - Polish Windows candidate window for high DPI, dark mode, and paging.
@@ -143,23 +170,37 @@ Current status: completed
 - Add macOS code signing and notarization.
 - Build production macOS installer and uninstaller package.
 - Polish macOS candidate positioning and appearance.
-- Add macOS settings entry and menu icon assets.
+- Add macOS menu icon assets and a polished preferences window.
 - Verify IMK candidate panel number-key routing on macOS.
+- Add automatic update strategy.
+- Validate Windows installer and settings UI on Windows 11.
 
 ## Files Changed In Latest Stage
 
 - `README.md`
 - `CHANGELOG.md`
 - `.github/workflows/rust.yml`
+- `Cargo.toml`
+- `Cargo.lock`
+- `config/default_settings.json`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/macos_inputmethodkit_notes.md`
+- `ffi/c_api.h`
+- `ffi/ime_ffi/`
+- `ime_core/`
 - `platform/macos_imk/`
+- `platform/windows_tsf/`
 - `scripts/README.md`
 - `scripts/build_macos_imk.sh`
 - `scripts/check_macos_imk_sources.sh`
+- `scripts/check_installers_settings_sources.sh`
+- `scripts/check_windows_tsf_sources.sh`
+- `scripts/package_macos_pkg.sh`
+- `scripts/package_windows_tsf.ps1`
+- `tools/README.md`
+- `tools/settings_cli/`
 
 ## Next Step
 
-- Review stage-05 locally; after approval, push and merge through GitHub.
+- Review stage-06 locally; after approval, push and merge through GitHub.

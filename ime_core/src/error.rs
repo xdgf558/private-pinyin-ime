@@ -6,7 +6,10 @@ pub type ImeResult<T> = Result<T, ImeError>;
 pub enum ImeError {
     InvalidLexiconFormat,
     InvalidLexiconFrequency,
+    InvalidSettingsValue,
     MissingLexiconField,
+    SettingsIo,
+    SettingsParse,
     UserLexiconDatabase,
 }
 
@@ -15,7 +18,10 @@ impl ImeError {
         match self {
             Self::InvalidLexiconFormat => "INVALID_LEXICON_FORMAT",
             Self::InvalidLexiconFrequency => "INVALID_LEXICON_FREQUENCY",
+            Self::InvalidSettingsValue => "INVALID_SETTINGS_VALUE",
             Self::MissingLexiconField => "MISSING_LEXICON_FIELD",
+            Self::SettingsIo => "SETTINGS_IO",
+            Self::SettingsParse => "SETTINGS_PARSE",
             Self::UserLexiconDatabase => "USER_LEXICON_DATABASE",
         }
     }

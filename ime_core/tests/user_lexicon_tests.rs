@@ -30,6 +30,32 @@ impl Drop for TempDb {
     }
 }
 
+struct TempFile {
+    path: PathBuf,
+}
+
+impl TempFile {
+    fn new(name: &str, extension: &str) -> Self {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let path = std::env::temp_dir().join(format!(
+            "private_pinyin_{name}_{}_{}.{extension}",
+            std::process::id(),
+            unique
+        ));
+        let _ = std::fs::remove_file(&path);
+        Self { path }
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
 fn settings_with_user_lexicon(path: PathBuf) -> ImeSettings {
     ImeSettings {
         user_lexicon_path: Some(path),
@@ -96,6 +122,30 @@ fn strict_privacy_mode_does_not_write_user_lexicon() {
 
     commit_first_candidate(&engine, "nihao");
 
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
+    assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
+}
+
+#[test]
+fn user_lexicon_can_be_exported_and_cleared() {
+    let temp_db = TempDb::new("export_clear");
+    let temp_export = TempFile::new("export_clear", "tsv");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings).expect("engine opens user lexicon");
+
+    commit_first_candidate(&engine, "nihao");
+
+    assert_eq!(
+        engine
+            .export_user_lexicon(&temp_export.path)
+            .expect("export lexicon"),
+        1
+    );
+    let exported = std::fs::read_to_string(&temp_export.path).expect("read export");
+    assert!(exported.contains("phrase\tpinyin\tfrequency\tupdated_at_ms"));
+    assert!(exported.contains("你好\tni hao\t1\t"));
+
+    engine.clear_user_lexicon().expect("clear lexicon");
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
 }

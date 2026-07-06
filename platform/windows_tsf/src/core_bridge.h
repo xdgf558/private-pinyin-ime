@@ -34,6 +34,8 @@ class CoreBridge {
   bool initialize();
   void reset();
   void reset_session();
+  bool clear_user_lexicon();
+  bool export_user_lexicon(const std::wstring& export_path);
 
   std::optional<OutputSnapshot> feed_key(const ImeKeyEvent& event);
   std::optional<OutputSnapshot> commit_candidate(int index);
@@ -44,6 +46,7 @@ class CoreBridge {
 
   ImeEngine* engine_ = nullptr;
   ImeSession* session_ = nullptr;
+  std::string settings_path_;
 };
 
 std::wstring utf8_to_wide(const char* value);

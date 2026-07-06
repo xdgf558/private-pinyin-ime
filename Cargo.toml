@@ -2,6 +2,7 @@
 members = [
     "ffi/ime_ffi",
     "ime_core",
+    "tools/settings_cli",
     "tools/test_cli",
 ]
 resolver = "2"

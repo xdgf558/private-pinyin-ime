@@ -84,9 +84,13 @@ typedef struct {
   ImeCandidate* candidates;
 } ImeOutput;
 
-// Pass NULL for config_json_path in stage 03. Non-NULL config paths are reserved
-// for a later settings loader and are currently ignored.
+// Pass NULL for default settings. Non-NULL config_json_path must point to a
+// UTF-8 JSON settings file. Missing, malformed, or invalid settings files fall
+// back to built-in defaults; user lexicon database failures may still return
+// NULL. The engine snapshots settings at creation time.
 ImeEngine* ime_engine_new(const char* config_json_path);
+int ime_engine_clear_user_lexicon(ImeEngine* engine);
+int ime_engine_export_user_lexicon(ImeEngine* engine, const char* export_tsv_path);
 void ime_engine_free(ImeEngine* engine);
 
 ImeSession* ime_session_new(ImeEngine* engine);

@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::candidate::Candidate;
@@ -48,6 +49,10 @@ impl ImeEngine {
         Self::with_settings(ImeSettings::default())
     }
 
+    pub fn from_settings_path(path: impl AsRef<Path>) -> ImeResult<Self> {
+        Self::with_settings(ImeSettings::from_json_file_or_default(path))
+    }
+
     pub fn with_settings(settings: ImeSettings) -> ImeResult<Self> {
         let user_lexicon = settings
             .user_lexicon_path
@@ -71,6 +76,24 @@ impl ImeEngine {
             self.user_lexicon.clone(),
             self.settings.clone(),
         )
+    }
+
+    pub fn settings(&self) -> &ImeSettings {
+        &self.settings
+    }
+
+    pub fn clear_user_lexicon(&self) -> ImeResult<()> {
+        if let Some(user_lexicon) = &self.user_lexicon {
+            user_lexicon.clear()?;
+        }
+        Ok(())
+    }
+
+    pub fn export_user_lexicon(&self, path: impl AsRef<Path>) -> ImeResult<usize> {
+        self.user_lexicon
+            .as_ref()
+            .map(|user_lexicon| user_lexicon.export_tsv(path))
+            .unwrap_or(Ok(0))
     }
 
     pub fn candidates_for_raw(&self, raw_input: &str) -> Vec<Candidate> {

@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -114,6 +115,63 @@ impl UserLexicon {
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         Ok(())
+    }
+
+    pub fn clear(&self) -> ImeResult<()> {
+        let connection = self.connection()?;
+        connection
+            .execute("DELETE FROM user_phrases", [])
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        Ok(())
+    }
+
+    pub fn export_tsv(&self, path: impl AsRef<Path>) -> ImeResult<usize> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
+        }
+
+        let temp_path = path.with_extension("tmp");
+        let mut file =
+            std::fs::File::create(&temp_path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        file.write_all(b"phrase\tpinyin\tfrequency\tupdated_at_ms\n")
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let connection = self.connection()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT phrase, pinyin, frequency, updated_at_ms
+                 FROM user_phrases
+                 ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let mut count = 0;
+        for row in rows {
+            let (phrase, pinyin, frequency, updated_at_ms) =
+                row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            writeln!(file, "{phrase}\t{pinyin}\t{frequency}\t{updated_at_ms}")
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            count += 1;
+        }
+
+        file.sync_all().map_err(|_| ImeError::UserLexiconDatabase)?;
+        drop(file);
+        if path.exists() {
+            std::fs::remove_file(path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        }
+        std::fs::rename(&temp_path, path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        Ok(count)
     }
 
     pub fn entry_count(&self) -> ImeResult<usize> {

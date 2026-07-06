@@ -1,0 +1,13 @@
+[package]
+name = "private_pinyin_settings"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "private-pinyin-settings"
+path = "src/main.rs"
+
+[dependencies]
+ime_core = { path = "../../ime_core" }

@@ -96,12 +96,41 @@ struct OwnedImeOutput {
 #[no_mangle]
 pub extern "C" fn ime_engine_new(config_json_path: *const c_char) -> *mut ImeEngine {
     catch_ptr(|| {
-        let _reserved_config_path = read_c_string(config_json_path);
-        let inner = CoreImeEngine::new().ok()?;
+        let config_json_path = read_c_string(config_json_path);
+        let inner = if config_json_path.is_empty() {
+            CoreImeEngine::new().ok()?
+        } else {
+            CoreImeEngine::from_settings_path(config_json_path).ok()?
+        };
         Some(Box::into_raw(Box::new(ImeEngine {
             inner,
             _not_thread_safe: PhantomData,
         })))
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn ime_engine_clear_user_lexicon(engine: *mut ImeEngine) -> c_int {
+    catch_status(|| {
+        let engine = unsafe { engine.as_ref()? };
+        engine.inner.clear_user_lexicon().ok()?;
+        Some(())
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn ime_engine_export_user_lexicon(
+    engine: *mut ImeEngine,
+    export_tsv_path: *const c_char,
+) -> c_int {
+    catch_status(|| {
+        let engine = unsafe { engine.as_ref()? };
+        let export_tsv_path = read_c_string(export_tsv_path);
+        if export_tsv_path.is_empty() {
+            return None;
+        }
+        engine.inner.export_user_lexicon(export_tsv_path).ok()?;
+        Some(())
     })
 }
 
@@ -200,6 +229,10 @@ fn catch_ptr<T>(f: impl FnOnce() -> Option<*mut T>) -> *mut T {
         .ok()
         .flatten()
         .unwrap_or(ptr::null_mut())
+}
+
+fn catch_status(f: impl FnOnce() -> Option<()>) -> c_int {
+    c_int::from(catch_unwind(AssertUnwindSafe(f)).ok().flatten().is_some())
 }
 
 fn catch_unit(f: impl FnOnce()) {
