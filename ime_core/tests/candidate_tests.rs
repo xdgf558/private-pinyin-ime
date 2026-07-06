@@ -102,6 +102,28 @@ fn system_modifier_key_does_not_enter_composition() {
 }
 
 #[test]
+fn unhandled_key_preserves_active_composition_output() {
+    let engine = ImeEngine::new().expect("engine loads sample lexicon");
+    let mut session = engine.create_session();
+
+    for ch in "nihao".chars() {
+        session.feed_key(KeyEvent::from_char(ch));
+    }
+
+    let output = session.feed_key(KeyEvent::new(KeyCode::ArrowDown));
+
+    assert_eq!(session.raw_input, "nihao");
+    assert_eq!(output.preedit, "nihao");
+    assert!(!output.should_update_preedit);
+    assert!(!output.should_commit);
+    assert!(output.should_show_candidates);
+    assert!(output
+        .candidates
+        .iter()
+        .any(|candidate| candidate.text == "你好"));
+}
+
+#[test]
 fn punctuation_commits_in_chinese_mode() {
     let engine = ImeEngine::new().expect("engine loads sample lexicon");
     let mut session = engine.create_session();

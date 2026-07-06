@@ -134,6 +134,9 @@ enum MacKeyMapper {
         }
 
         if character.isASCII && character.isNumber {
+            guard !base.shift else {
+                return nil
+            }
             return base.make(code: ImeKeyCodeValue.digit, text: String(character))
         }
 

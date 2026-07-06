@@ -60,6 +60,8 @@ Current status: completed
 - Added `IMKCandidates` candidate panel wiring and local install/uninstall scripts for `~/Library/Input Methods`.
 - Added `scripts/build_macos_imk.sh` to build an ad-hoc signed local `PrivatePinyin.app` bundle and `scripts/check_macos_imk_sources.sh` for CI scaffold checks.
 - Recorded follow-up open items for macOS signing/notarization, packaged installer, candidate UI polish, and menu icon/settings UI.
+- Addressed stage-05 review feedback so unhandled keys during active composition preserve current preedit/candidates instead of clearing host state.
+- Addressed stage-05 review feedback so macOS Shift+digit passes through consistently with Windows, and recorded a follow-up for IMK candidate panel number-key routing validation.
 
 ## Current Work
 
@@ -78,7 +80,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 31 integration tests passed after the stage-05 macOS IMK prototype.
+- Notes: 32 integration tests passed after the stage-05 review fixes.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -142,6 +144,7 @@ Current status: completed
 - Build production macOS installer and uninstaller package.
 - Polish macOS candidate positioning and appearance.
 - Add macOS settings entry and menu icon assets.
+- Verify IMK candidate panel number-key routing on macOS.
 
 ## Files Changed In Latest Stage
 

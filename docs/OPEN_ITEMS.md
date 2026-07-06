@@ -30,3 +30,4 @@
 | OI-026 | 05 | Build production macOS installer and uninstaller package | High | Codex | open | Stage 05 includes local copy/remove scripts; Stage 06 should produce a signed `.pkg` installer |
 | OI-027 | 05 | Polish macOS candidate positioning and appearance | Medium | Codex | open | Stage 05 uses the system `IMKCandidates` panel with below-caret hint; verify behavior in TextEdit, Safari, Chrome, and VS Code |
 | OI-028 | 05 | Add macOS settings entry and menu icon assets | Medium | Codex | open | Stage 05 has bundle metadata but no custom preferences UI or icon asset yet |
+| OI-029 | 05 | Verify IMK candidate panel number-key routing | Medium | Codex | open | The Rust core consumes digit keys for candidate selection while `IMKCandidates` also has built-in selection key handling; validate on macOS that the two paths do not double-select or conflict |
