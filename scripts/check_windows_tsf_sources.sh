@@ -39,6 +39,10 @@ grep -q "ime_engine_clear_user_lexicon" platform/windows_tsf/src/core_bridge.cpp
 grep -q "settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "IME_KEY_SPACE" platform/windows_tsf/src/key_map.cpp
 grep -q "SWP_NOACTIVATE" platform/windows_tsf/src/candidate_window.cpp
+grep -q "GetTextExt" platform/windows_tsf/src/text_service.cpp
+grep -q "UnregisterClassW" platform/windows_tsf/src/candidate_window.cpp
+grep -q "GetDpiForWindow" platform/windows_tsf/src/candidate_window.cpp
+grep -q "AppsUseLightTheme" platform/windows_tsf/src/candidate_window.cpp
 grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs

@@ -43,6 +43,8 @@
 - Added sanitized log sink support for structured engine error events.
 - Added a SQLite `pinyin` index for exact user-lexicon lookups.
 - Added an open item to expose sanitized core logging through host ABI callbacks.
+- Added a Stage 10 platform-host polish scaffold check to CI.
+- Added a macOS InputMethodKit preferences window for strict privacy, prediction, and user learning settings.
 
 ### Changed
 
@@ -67,6 +69,9 @@
 - Changed user lexicon lookup to use indexed compact-pinyin range queries and preserve exact matches before prefix limits.
 - Changed candidate ranking to fuse user and base candidates by exact/prefix match tier, source boost, and frequency instead of unconditional user-first ordering.
 - Changed candidate output to page results according to `candidate_page_size`.
+- Changed the Windows candidate popup to anchor through TSF text extents when available, scale for monitor DPI, follow the Windows app light/dark preference, and clamp to the monitor work area.
+- Changed the macOS input method menu to expose a Preferences entry instead of relying only on direct JSON editing for common settings.
+- Changed the macOS preferences window to a shared process-wide controller that broadcasts settings reloads to active input controllers.
 
 ### Fixed
 
@@ -86,6 +91,7 @@
 - Fixed PageUp/PageDown and arrow paging so candidate selection applies to the visible page.
 - Fixed numeric candidate selection so digits outside the visible candidate page do not commit hidden candidates.
 - Fixed swallowed user lexicon database failures so they emit sanitized error-code log events.
+- Fixed the Windows candidate popup class lifecycle so the window class is registered once and unregistered on DLL unload.
 
 ### Security and Privacy
 

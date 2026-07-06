@@ -1261,11 +1261,34 @@ cargo test --workspace 通过
 
 ### 阶段 10：平台宿主体验打磨
 
-任务方向：
+任务：
 
-1. 打磨 Windows 候选窗、光标定位、高 DPI、暗色模式、preedit 显示属性。
-2. 打磨 macOS 候选窗定位、菜单图标和偏好设置窗口。
-3. 修复平台宿主在真实应用中的输入边界问题。
+1. Windows 候选窗优先使用 `ITfContextView::GetTextExt` 定位，拿不到 text extent 时才回退旧 caret 位置。
+2. Windows 候选窗增加高 DPI 缩放、系统明暗主题适配、屏幕工作区裁剪和窗口类反注册。
+3. macOS 输入法菜单增加偏好设置窗口，支持常用设置开关并在保存后重载输入引擎。
+4. 增加 Stage 10 source scaffold 检查并纳入 CI。
+5. 保留需要真实 Windows/macOS 应用验证的体验项，不把未验证项标为完成。
+
+验收：
+
+```text
+Windows candidate popup uses ITfContextView::GetTextExt when available
+Windows candidate popup uses DPI-aware sizing
+Windows candidate popup follows Windows app light/dark preference
+Windows candidate popup class unregisters on DLL unload
+macOS IMK menu exposes Preferences...
+macOS preferences window edits strict privacy, prediction, and user learning settings
+bash scripts/check_stage10_platform_host_sources.sh 通过
+bash scripts/build_macos_imk.sh 通过
+Windows TSF compile CI 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-10 标记为 completed。
+2. 在 `CHANGELOG.md` 写入平台宿主体验打磨变更。
+3. 在 `docs/OPEN_ITEMS.md` 关闭已完成的 host polish open items，并保留真实平台验证和 TSF display attribute 待办。
+4. 如果是 Git 仓库，提交 `stage-10: polish platform host experience`。
 
 ### 阶段 11：设置、隐私与 iOS 存储闭环
 

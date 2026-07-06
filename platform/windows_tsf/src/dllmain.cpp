@@ -1,5 +1,6 @@
 #include <windows.h>
 
+#include "candidate_window.h"
 #include "class_factory.h"
 #include "globals.h"
 #include "guids.h"
@@ -17,6 +18,8 @@ BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reason, LPVOID /*reserved*/) {
   if (reason == DLL_PROCESS_ATTACH) {
     private_pinyin::g_module = instance;
     DisableThreadLibraryCalls(instance);
+  } else if (reason == DLL_PROCESS_DETACH) {
+    private_pinyin::CandidateWindow::unregister_window_class();
   }
   return TRUE;
 }

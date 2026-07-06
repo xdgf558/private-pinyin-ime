@@ -50,6 +50,9 @@ jobs:
       - name: Check Stage 09 core hardening scaffold
         run: bash scripts/check_stage09_core_sources.sh
 
+      - name: Check Stage 10 platform host polish scaffold
+        run: bash scripts/check_stage10_platform_host_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

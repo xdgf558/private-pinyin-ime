@@ -16,15 +16,21 @@ class CandidateWindow {
   CandidateWindow& operator=(const CandidateWindow&) = delete;
   ~CandidateWindow();
 
-  void show(const std::vector<CandidateSnapshot>& candidates);
+  void show(const std::vector<CandidateSnapshot>& candidates, const RECT* anchor_rect = nullptr);
   void hide();
+  static void unregister_window_class();
+  static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
  private:
   bool ensure_window();
+  POINT anchor_point(const RECT* anchor_rect) const;
+  void clamp_to_work_area(POINT* point, int width, int height) const;
+  int scale(int value) const;
   void paint();
-  static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
   HWND hwnd_ = nullptr;
+  UINT dpi_ = USER_DEFAULT_SCREEN_DPI;
+  bool dark_mode_ = false;
   std::vector<CandidateSnapshot> candidates_;
 };
 

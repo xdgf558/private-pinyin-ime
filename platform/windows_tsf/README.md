@@ -86,7 +86,7 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 
 ## Known Gaps
 
-- Candidate UI is intentionally simple and non-activating.
-- High DPI polishing, code signing, production per-machine registration, and production installer validation are tracked as open items.
+- Candidate UI is non-activating and now DPI/theme aware, but visual styling should still be smoke-tested in target applications.
+- TSF display attributes, code signing, production per-machine registration, and production installer validation are tracked as open items.
 - This prototype should be validated on Windows 11; macOS/Linux CI cannot load TSF DLLs.
 - GitHub Actions runs Rust workspace tests and compiles the TSF DLL on `windows-2022`, but runtime activation and Notepad behavior still require manual validation.

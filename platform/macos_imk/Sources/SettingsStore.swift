@@ -37,13 +37,22 @@ enum PrivatePinyinSettingsStore {
         readSettings()["strict_privacy_mode"] as? Bool ?? false
     }
 
-    static func setStrictPrivacyMode(_ enabled: Bool) -> Bool {
-        var settings = readSettings()
-        settings["strict_privacy_mode"] = enabled
-        if enabled {
-            settings["enable_user_learning"] = false
-        }
+    static func settingsSnapshot() -> [String: Any] {
+        readSettings()
+    }
 
+    static func setStrictPrivacyMode(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            settings["strict_privacy_mode"] = enabled
+            if enabled {
+                settings["enable_user_learning"] = false
+            }
+        }
+    }
+
+    static func updateSettings(_ update: (inout [String: Any]) -> Void) -> Bool {
+        var settings = readSettings()
+        update(&settings)
         do {
             try write(settings: settings)
             return true
