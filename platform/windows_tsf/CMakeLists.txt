@@ -42,7 +42,6 @@ endif()
 target_link_libraries(PrivatePinyinTsf PRIVATE
   advapi32
   gdi32
-  msctf
   ole32
   user32
   uuid
