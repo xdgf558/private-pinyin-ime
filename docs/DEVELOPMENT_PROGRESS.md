@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 20:34
+Last updated: 2026-07-06 20:44
 Current stage: stage-07
 Current status: completed
 
@@ -14,7 +14,7 @@ Current status: completed
 | 04 | Windows TSF prototype | completed | 2026-07-06 17:00 | Merged to `main`; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
-| 07 | iOS keyboard extension | completed | 2026-07-06 20:34 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
+| 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 
 ## Completed Work
 
@@ -165,7 +165,7 @@ Current status: completed
 - Configure iOS App Store signing and provisioning.
 - Design App Group storage and explicit learning opt-in for iOS.
 - Write user-facing iOS keyboard permission explanation.
-- Run iOS simulator smoke tests in Notes, Safari, and password fields.
+- Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit.
 - Derive iOS mode UI from C ABI output mode.
 - Respect `needsInputModeSwitchKey` for the iOS Globe key.
 
