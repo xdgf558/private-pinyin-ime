@@ -27,8 +27,12 @@ impl Lexicon {
     pub fn from_tsv(tsv: &str) -> ImeResult<Self> {
         let mut entries = Vec::new();
 
-        for line in tsv.lines().skip(1) {
+        for (line_index, line) in tsv.lines().enumerate() {
             if line.trim().is_empty() {
+                continue;
+            }
+
+            if line_index == 0 && is_header_line(line) {
                 continue;
             }
 
@@ -78,27 +82,39 @@ impl Lexicon {
             .collect::<HashSet<_>>();
 
         let mut candidates = Vec::new();
-        let mut seen = HashSet::new();
+        let mut exact_candidates = Vec::new();
+        let mut prefix_candidates = Vec::new();
+        let mut seen = HashSet::<&str>::new();
 
         for entry in &self.entries {
             let exact_match = exact_pinyins.contains(&entry.pinyin);
             let prefix_match = compact_pinyin(&entry.pinyin).starts_with(&normalized_input);
 
-            if !(exact_match || prefix_match) || !seen.insert(entry.phrase.clone()) {
+            if !(exact_match || prefix_match) || !seen.insert(entry.phrase.as_str()) {
                 continue;
             }
 
-            let score = Ranker::score(entry.frequency, exact_match);
-            candidates.push(
-                Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
-                    .with_score(score),
-            );
+            let candidate = Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                .with_score(Ranker::score(entry.frequency));
+
+            if exact_match {
+                exact_candidates.push(candidate);
+            } else {
+                prefix_candidates.push(candidate);
+            }
         }
 
-        Ranker::sort_candidates(&mut candidates);
+        Ranker::sort_candidates(&mut exact_candidates);
+        Ranker::sort_candidates(&mut prefix_candidates);
+        candidates.extend(exact_candidates);
+        candidates.extend(prefix_candidates);
         candidates.truncate(50);
         candidates
     }
+}
+
+fn is_header_line(line: &str) -> bool {
+    line == "phrase\tpinyin\tfrequency"
 }
 
 fn compact_pinyin(pinyin: &str) -> String {

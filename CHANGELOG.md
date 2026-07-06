@@ -11,12 +11,14 @@
 - Added `InputSession`, `KeyEvent`, `ImeOutput`, `Candidate`, basic pinyin parsing, embedded sample lexicon lookup, and simple candidate ranking.
 - Added parser, candidate, ranking, prediction-placeholder, and privacy tests.
 - Added minimal GitHub Actions for Rust formatting, clippy, and tests.
+- Added input guardrails for maximum raw pinyin length, system-modifier passthrough, punctuation commits, and no-candidate space fallback.
 
 ### Changed
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.
 - Updated README instructions for the Rust workspace and CLI smoke test.
 - Updated the stage delivery workflow to use local review before GitHub push and merge.
+- Changed candidate ordering to rank exact matches before prefix matches, then sort within each group by frequency.
 
 ### Fixed
 

@@ -3,10 +3,8 @@ use crate::candidate::Candidate;
 pub struct Ranker;
 
 impl Ranker {
-    pub fn score(base_frequency: u32, exact_match: bool) -> f64 {
-        let exact_bonus = if exact_match { 1_000_000.0 } else { 0.0 };
-        let prefix_penalty = if exact_match { 0.0 } else { 100_000.0 };
-        base_frequency as f64 + exact_bonus - prefix_penalty
+    pub fn score(base_frequency: u32) -> f64 {
+        base_frequency as f64
     }
 
     pub fn sort_candidates(candidates: &mut [Candidate]) {

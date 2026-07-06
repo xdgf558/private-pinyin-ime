@@ -1,4 +1,5 @@
-use ime_core::ImeEngine;
+use ime_core::lexicon::Lexicon;
+use ime_core::{ImeEngine, PinyinParser};
 
 #[test]
 fn higher_frequency_exact_match_ranks_first() {
@@ -12,20 +13,14 @@ fn higher_frequency_exact_match_ranks_first() {
 }
 
 #[test]
-fn prefix_match_has_lower_score_than_exact_match() {
-    let engine = ImeEngine::new().expect("engine loads sample lexicon");
-    let exact_score = engine
-        .candidates_for_raw("zhongguo")
-        .into_iter()
-        .find(|candidate| candidate.text == "中国")
-        .expect("exact candidate exists")
-        .score;
-    let prefix_score = engine
-        .candidates_for_raw("zhongg")
-        .into_iter()
-        .find(|candidate| candidate.text == "中国")
-        .expect("prefix candidate exists")
-        .score;
+fn exact_matches_rank_before_higher_frequency_prefix_matches() {
+    let lexicon = Lexicon::from_tsv("rare exact\tni\t1\nvery common prefix\tnian\t4294967295\n")
+        .expect("headerless lexicon loads");
+    let parses = PinyinParser.parse("ni");
+    let candidates = lexicon.lookup("ni", &parses);
 
-    assert!(exact_score > prefix_score);
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("rare exact")
+    );
 }

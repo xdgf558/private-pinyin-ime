@@ -7,6 +7,8 @@ use crate::lexicon::Lexicon;
 use crate::pinyin_parser::PinyinParser;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
 
+pub const MAX_RAW_INPUT_CHARS: usize = 64;
+
 #[derive(Debug, Clone)]
 pub struct InputSession {
     mode: ImeMode,
@@ -47,22 +49,38 @@ impl InputSession {
             return self.toggle_mode();
         }
 
+        if has_passthrough_modifier(&event) {
+            return ImeOutput::idle(self.mode);
+        }
+
         if self.mode == ImeMode::English {
             return self.feed_english_key(event);
         }
 
         match event.key_code {
             KeyCode::Character(ch) if ch.is_ascii_alphabetic() => {
+                if self.raw_input.chars().count() >= MAX_RAW_INPUT_CHARS {
+                    return self.current_output(false, false, String::new());
+                }
+
                 self.raw_input.push(ch.to_ascii_lowercase());
                 self.refresh_composition()
             }
             KeyCode::Apostrophe => {
-                self.raw_input.push('\'');
-                self.refresh_composition()
+                if self.raw_input.is_empty() {
+                    self.commit_text("'")
+                } else if self.raw_input.chars().count() >= MAX_RAW_INPUT_CHARS {
+                    self.current_output(false, false, String::new())
+                } else {
+                    self.raw_input.push('\'');
+                    self.refresh_composition()
+                }
             }
             KeyCode::Space => {
                 if self.raw_input.is_empty() {
                     ImeOutput::idle(self.mode)
+                } else if self.candidates.is_empty() {
+                    self.commit_raw_input()
                 } else {
                     self.commit_candidate(0)
                 }
@@ -80,6 +98,11 @@ impl InputSession {
                 self.raw_input.pop();
                 self.refresh_composition()
             }
+            KeyCode::Comma => self.commit_punctuation(","),
+            KeyCode::Period => self.commit_punctuation("."),
+            KeyCode::Minus => self.commit_punctuation("-"),
+            KeyCode::Equal => self.commit_punctuation("="),
+            KeyCode::Semicolon => self.commit_punctuation(";"),
             _ => ImeOutput::idle(self.mode),
         }
     }
@@ -106,6 +129,24 @@ impl InputSession {
     pub fn commit_raw_input(&mut self) -> ImeOutput {
         let commit_text = self.raw_input.clone();
         self.clear_composition();
+        self.committed_output(commit_text)
+    }
+
+    fn commit_punctuation(&mut self, punctuation: &str) -> ImeOutput {
+        if self.raw_input.is_empty() {
+            self.commit_text(punctuation)
+        } else {
+            let commit_text = format!("{}{}", self.raw_input, punctuation);
+            self.clear_composition();
+            self.committed_output(commit_text)
+        }
+    }
+
+    fn commit_text(&self, text: &str) -> ImeOutput {
+        self.committed_output(text.to_owned())
+    }
+
+    fn committed_output(&self, commit_text: String) -> ImeOutput {
         ImeOutput {
             preedit: String::new(),
             commit_text,
@@ -213,4 +254,8 @@ impl InputSession {
         self.candidates.clear();
         self.candidate_page = 0;
     }
+}
+
+fn has_passthrough_modifier(event: &KeyEvent) -> bool {
+    event.modifiers.ctrl || event.modifiers.alt || event.modifiers.meta
 }

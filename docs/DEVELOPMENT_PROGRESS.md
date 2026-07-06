@@ -27,6 +27,7 @@ Current status: completed
 - Implemented the stage-01 Rust workspace and `ime_core` crate.
 - Implemented `InputSession`, `KeyEvent`, `ImeOutput`, `Candidate`, basic pinyin parsing, embedded sample lexicon lookup, and simple ranking.
 - Added `tools/test_cli` and minimal GitHub Actions for Rust validation.
+- Addressed local review feedback for raw input limits, modifier-key passthrough, punctuation commits, no-candidate space fallback, and exact-before-prefix ranking.
 
 ## Current Work
 
@@ -45,7 +46,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 15 integration tests passed across parser, candidates, ranking, prediction placeholder, and privacy logging.
+- Notes: 19 integration tests passed across parser, candidates, ranking, prediction placeholder, and privacy logging.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -56,6 +57,9 @@ Current status: completed
 - Select the final project license before external reuse or release.
 - Replace sample lexicon data with licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
+- Add indexed lexicon lookup before production dictionary scale.
+- Refine Shift toggle semantics in platform hosts.
+- Implement candidate paging in a later stage.
 
 ## Files Changed In Latest Stage
 

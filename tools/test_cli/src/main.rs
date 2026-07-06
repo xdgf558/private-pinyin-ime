@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn read_raw_input() -> io::Result<String> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     if !args.is_empty() {
+        // Pinyin smoke input is intentionally compact: `test_cli xi an` means `xian`.
         return Ok(args.join(""));
     }
 
