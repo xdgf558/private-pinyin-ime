@@ -1,0 +1,37 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Rust
+target/
+Cargo.lock
+
+# Native build outputs
+build/
+dist/
+release/
+*.dll
+*.dylib
+*.so
+*.a
+*.lib
+*.exe
+*.msi
+*.pkg
+
+# Xcode
+DerivedData/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+
+# Local runtime data
+settings.json
+user_lexicon.sqlite
+user_stats.sqlite
+debug.log
