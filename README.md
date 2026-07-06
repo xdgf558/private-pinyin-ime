@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 4 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, C ABI crate, C demo, Windows TSF prototype, tests, and Rust CI workflow are in place.
+Stage 5 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -49,8 +49,10 @@ cargo test --workspace
 cargo run -p test_cli -- nihao
 bash scripts/run_c_demo.sh
 bash scripts/check_windows_tsf_sources.sh
+bash scripts/check_macos_imk_sources.sh
+bash scripts/build_macos_imk.sh
 ```
 
 ## Next Stage
 
-Stage 5 will add the macOS InputMethodKit prototype.
+Stage 6 will package installers and settings flows for the desktop prototypes.

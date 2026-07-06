@@ -55,3 +55,11 @@ Status: accepted
 Decision: Implement the Windows host as a thin C++ 20 TSF in-process DLL that maps TSF key events into the shared C ABI and keeps pinyin parsing, ranking, learning, and prediction in Rust.
 Reason: The platform host should own only COM/TSF integration, composition updates, candidate UI, and text commits while preserving one cross-platform engine implementation.
 Consequences: Windows-specific code lives under `platform/windows_tsf`; production readiness still requires Windows signing, installer packaging, high-DPI candidate UI polish, and Windows 11 smoke validation.
+
+## Decision 008: macOS IMK host architecture
+
+Date: 2026-07-06
+Status: accepted
+Decision: Implement the macOS host as a thin Swift InputMethodKit app bundle that maps IMK events into the shared C ABI and builds through a lightweight shell script rather than a generated Xcode project.
+Reason: Stage 05 needs an auditable, local POC that can create an installable `.app` input method bundle while preserving one Rust engine implementation.
+Consequences: macOS-specific code lives under `platform/macos_imk`; release readiness still requires Developer ID signing, notarization, packaged install/uninstall, icon assets, settings UI, and manual app compatibility validation.
