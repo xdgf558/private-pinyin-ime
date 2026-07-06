@@ -57,6 +57,10 @@
 - Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
 - Fixed macOS Shift+digit handling so shifted number keys pass through to the host instead of selecting candidates.
 - Fixed the stage-03 reserved `config_json_path` so non-null paths now load settings snapshots.
+- Fixed the prototype Windows MSI template so TSF registration runs as a per-user install instead of writing HKCU registration under the SYSTEM account.
+- Fixed SQLite user lexicon connections to use WAL and a busy timeout for multi-process desktop host writes.
+- Fixed user lexicon export so engines without a configured user lexicon still write an empty TSV with headers.
+- Fixed invalid numeric settings so zero values clamp to defaults without discarding the rest of the settings snapshot.
 
 ### Security and Privacy
 

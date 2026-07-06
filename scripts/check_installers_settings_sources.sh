@@ -31,4 +31,6 @@ grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/PrivatePinyinInp
 grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "PrivatePinyinTsf.wxs" scripts/package_windows_tsf.ps1
+grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "pkgbuild" scripts/package_macos_pkg.sh

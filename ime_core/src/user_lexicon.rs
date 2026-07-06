@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection};
 
@@ -10,6 +10,8 @@ use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
 use crate::ranker::Ranker;
+
+const EXPORT_HEADER: &[u8] = b"phrase\tpinyin\tfrequency\tupdated_at_ms\n";
 
 pub struct UserLexicon {
     db_path: PathBuf,
@@ -33,6 +35,7 @@ impl UserLexicon {
         }
 
         let connection = Connection::open(&db_path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        configure_connection(&connection)?;
         let lexicon = Self {
             db_path,
             connection: Mutex::new(connection),
@@ -127,15 +130,7 @@ impl UserLexicon {
 
     pub fn export_tsv(&self, path: impl AsRef<Path>) -> ImeResult<usize> {
         let path = path.as_ref();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
-        }
-
-        let temp_path = path.with_extension("tmp");
-        let mut file =
-            std::fs::File::create(&temp_path).map_err(|_| ImeError::UserLexiconDatabase)?;
-        file.write_all(b"phrase\tpinyin\tfrequency\tupdated_at_ms\n")
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let mut file = create_export_file(path)?;
 
         let connection = self.connection()?;
         let mut statement = connection
@@ -165,13 +160,15 @@ impl UserLexicon {
             count += 1;
         }
 
-        file.sync_all().map_err(|_| ImeError::UserLexiconDatabase)?;
-        drop(file);
-        if path.exists() {
-            std::fs::remove_file(path).map_err(|_| ImeError::UserLexiconDatabase)?;
-        }
-        std::fs::rename(&temp_path, path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        finish_export_file(path, file)?;
         Ok(count)
+    }
+
+    pub fn export_empty_tsv(path: impl AsRef<Path>) -> ImeResult<usize> {
+        let path = path.as_ref();
+        let file = create_export_file(path)?;
+        finish_export_file(path, file)?;
+        Ok(0)
     }
 
     pub fn entry_count(&self) -> ImeResult<usize> {
@@ -207,6 +204,41 @@ impl UserLexicon {
             .lock()
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
+}
+
+fn create_export_file(path: &Path) -> ImeResult<std::fs::File> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+
+    let temp_path = path.with_extension("tmp");
+    let mut file = std::fs::File::create(&temp_path).map_err(|_| ImeError::UserLexiconDatabase)?;
+    file.write_all(EXPORT_HEADER)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    Ok(file)
+}
+
+fn finish_export_file(path: &Path, file: std::fs::File) -> ImeResult<()> {
+    file.sync_all().map_err(|_| ImeError::UserLexiconDatabase)?;
+    drop(file);
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+    std::fs::rename(path.with_extension("tmp"), path).map_err(|_| ImeError::UserLexiconDatabase)?;
+    Ok(())
+}
+
+fn configure_connection(connection: &Connection) -> ImeResult<()> {
+    connection
+        .busy_timeout(Duration::from_millis(250))
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    connection
+        .execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA busy_timeout=250;",
+        )
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    Ok(())
 }
 
 fn now_ms() -> i64 {

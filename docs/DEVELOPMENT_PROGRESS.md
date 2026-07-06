@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 19:19
+Last updated: 2026-07-06 19:40
 Current stage: stage-06
 Current status: completed
 
@@ -70,6 +70,10 @@ Current status: completed
 - Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
 - Added prototype packaging scripts for macOS `.pkg`, Windows installer staging zip, and optional WiX MSI generation.
 - Added CI scaffold coverage for installer/settings files.
+- Addressed stage-06 review feedback by changing the WiX MSI template to per-user install and user-context TSF registration.
+- Addressed stage-06 review feedback by enabling SQLite WAL and a busy timeout for multi-process user lexicon writes.
+- Addressed stage-06 review feedback so invalid numeric settings clamp to defaults without discarding other settings, and export without a configured user lexicon writes an empty TSV.
+- Recorded follow-up open items for default settings drift, stronger Rust atomic file replacement, and CapsLock toggle support.
 
 ## Current Work
 
@@ -88,7 +92,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 38 integration and ABI layout tests passed, including settings loading, strict privacy normalization, C ABI settings path use, and user lexicon clear/export coverage.
+- Notes: 40 integration and ABI layout tests passed, including settings loading, strict privacy normalization, C ABI settings path use, user lexicon clear/export coverage, and export-without-lexicon behavior.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -174,6 +178,9 @@ Current status: completed
 - Verify IMK candidate panel number-key routing on macOS.
 - Add automatic update strategy.
 - Validate Windows installer and settings UI on Windows 11.
+- Use one packaged default settings template across hosts.
+- Harden Rust settings/export atomic file replacement on Windows.
+- Implement or hide CapsLock toggle in platform settings.
 
 ## Files Changed In Latest Stage
 

@@ -48,7 +48,7 @@ dist\windows_tsf\PrivatePinyin-0.1.0.zip
 dist\windows_tsf\PrivatePinyin-0.1.0.msi
 ```
 
-The `.msi` is generated only when `wix` is available. The installer is unsigned and intended for prototype validation.
+The `.msi` is generated only when `wix` is available. The installer is unsigned, per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
 
 ## Local Registration
 
@@ -85,5 +85,5 @@ The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/ex
 ## Known Gaps
 
 - Candidate UI is intentionally simple and non-activating.
-- High DPI polishing, code signing, and production installer validation are tracked as open items.
+- High DPI polishing, code signing, production per-machine registration, and production installer validation are tracked as open items.
 - This prototype should be validated on Windows 11; macOS/Linux CI cannot load TSF DLLs.

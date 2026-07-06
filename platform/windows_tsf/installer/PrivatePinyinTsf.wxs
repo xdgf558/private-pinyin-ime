@@ -10,7 +10,7 @@
     <Package
       InstallerVersion="500"
       Compressed="yes"
-      InstallScope="perMachine"
+      InstallScope="perUser"
       Description="PrivatePinyin Windows TSF input method" />
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of PrivatePinyin IME is already installed." />
@@ -25,14 +25,14 @@
       Directory="INSTALLFOLDER"
       ExeCommand="regsvr32.exe /s &quot;[#PrivatePinyinTsfDll]&quot;"
       Execute="deferred"
-      Impersonate="no"
+      Impersonate="yes"
       Return="check" />
     <CustomAction
       Id="UnregisterTsf"
       Directory="INSTALLFOLDER"
       ExeCommand="regsvr32.exe /u /s &quot;[#PrivatePinyinTsfDll]&quot;"
       Execute="deferred"
-      Impersonate="no"
+      Impersonate="yes"
       Return="ignore" />
 
     <InstallExecuteSequence>
@@ -43,7 +43,7 @@
 
   <Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="ProgramFiles64Folder">
+      <Directory Id="LocalAppDataFolder">
         <Directory Id="INSTALLFOLDER" Name="PrivatePinyin" />
       </Directory>
     </Directory>

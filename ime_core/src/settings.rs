@@ -99,12 +99,16 @@ impl ImeSettings {
     }
 
     fn normalize(&mut self) -> ImeResult<()> {
-        if self.candidate_page_size == 0 || self.candidate_font_size == 0 {
-            return Err(ImeError::InvalidSettingsValue);
+        let defaults = Self::default();
+        if self.candidate_page_size == 0 {
+            self.candidate_page_size = defaults.candidate_page_size;
+        }
+        if self.candidate_font_size == 0 {
+            self.candidate_font_size = defaults.candidate_font_size;
         }
 
         if self.theme.trim().is_empty() {
-            self.theme = Self::default().theme;
+            self.theme = defaults.theme;
         }
 
         if self.strict_privacy_mode {

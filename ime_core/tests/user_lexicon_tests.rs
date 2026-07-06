@@ -149,3 +149,20 @@ fn user_lexicon_can_be_exported_and_cleared() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
 }
+
+#[test]
+fn export_without_user_lexicon_writes_empty_tsv() {
+    let temp_export = TempFile::new("export_without_user_lexicon", "tsv");
+    let engine = ImeEngine::new().expect("engine opens without user lexicon");
+
+    assert_eq!(
+        engine
+            .export_user_lexicon(&temp_export.path)
+            .expect("export empty lexicon"),
+        0
+    );
+    assert_eq!(
+        std::fs::read_to_string(&temp_export.path).expect("read empty export"),
+        "phrase\tpinyin\tfrequency\tupdated_at_ms\n"
+    );
+}

@@ -46,6 +46,27 @@ fn malformed_settings_file_can_fallback_to_default() {
 }
 
 #[test]
+fn invalid_numeric_settings_are_clamped_without_losing_other_fields() {
+    let settings = ImeSettings::from_json_str(
+        r#"{
+  "candidate_page_size": 0,
+  "candidate_font_size": 0,
+  "strict_privacy_mode": true,
+  "enable_prediction": false,
+  "theme": ""
+}"#,
+    )
+    .expect("settings normalize");
+
+    assert_eq!(settings.candidate_page_size, 5);
+    assert_eq!(settings.candidate_font_size, 14);
+    assert!(settings.strict_privacy_mode);
+    assert!(!settings.enable_user_learning);
+    assert!(!settings.enable_prediction);
+    assert_eq!(settings.theme, "system");
+}
+
+#[test]
 fn settings_write_uses_atomic_target_file() {
     let path = temp_path("settings_write", "json");
     let settings = ImeSettings {

@@ -90,10 +90,11 @@ impl ImeEngine {
     }
 
     pub fn export_user_lexicon(&self, path: impl AsRef<Path>) -> ImeResult<usize> {
-        self.user_lexicon
-            .as_ref()
-            .map(|user_lexicon| user_lexicon.export_tsv(path))
-            .unwrap_or(Ok(0))
+        if let Some(user_lexicon) = &self.user_lexicon {
+            user_lexicon.export_tsv(path)
+        } else {
+            UserLexicon::export_empty_tsv(path)
+        }
     }
 
     pub fn candidates_for_raw(&self, raw_input: &str) -> Vec<Candidate> {

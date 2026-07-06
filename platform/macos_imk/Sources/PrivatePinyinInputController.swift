@@ -276,6 +276,7 @@ final class PrivatePinyinInputController: IMKInputController {
     }
 
     @objc private func exportUserLexicon(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "private-pinyin-user-lexicon.tsv"
         panel.begin { [weak self] response in
@@ -304,6 +305,7 @@ final class PrivatePinyinInputController: IMKInputController {
     }
 
     private func showSettingsAlert(_ message: String) {
+        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = message
         alert.runModal()
