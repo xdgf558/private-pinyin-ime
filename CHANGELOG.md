@@ -21,6 +21,8 @@
 - Added FFI tests for engine/session creation, key input, candidate reading, commit output, null-handle behavior, and output freeing.
 - Added Rust and C layout assertions to catch C ABI/header drift.
 - Added CI coverage for building and running the C ABI demo.
+- Added the stage-04 Windows TSF prototype with C++ 20 DLL project, COM class factory, registration hooks, key-event bridge, composition updates, candidate popup, and local registration scripts.
+- Added a Windows TSF source scaffold check to CI.
 
 ### Changed
 
@@ -32,6 +34,10 @@
 - Reused one SQLite connection per user lexicon instead of reopening the database on every lookup or learning write.
 - Deduplicated compact pinyin normalization across base and user lexicon lookup.
 - Documented Stage 03 C ABI null-return, memory ownership, and non-thread-safe handle contracts.
+- Documented Windows TSF build, registration, and manual Notepad smoke-test workflow.
+- Changed Windows TSF key handling so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys stay with the host.
+- Changed Windows TSF focus handling to hide prediction candidates and clear host input state when focus leaves the text service.
+- Changed Windows TSF composition cleanup to reset the Rust session when focus loss or external composition termination clears host-side state.
 
 ### Fixed
 
