@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 2 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, tests, and Rust CI workflow are in place.
+Stage 3 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, C ABI crate, C demo, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -36,6 +36,7 @@ All stage work should use this review flow:
 The root `Cargo.toml` defines a workspace with:
 
 - `ime_core` is the core engine crate.
+- `ffi/ime_ffi` exposes the C ABI as `libprivate_pinyin_ime`.
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
@@ -46,8 +47,9 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p test_cli -- nihao
+bash scripts/run_c_demo.sh
 ```
 
 ## Next Stage
 
-Stage 3 will add the C ABI and native integration examples.
+Stage 4 will add the Windows TSF prototype.

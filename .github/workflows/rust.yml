@@ -25,3 +25,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+
+      - name: Build and run C ABI demo
+        run: bash scripts/run_c_demo.sh

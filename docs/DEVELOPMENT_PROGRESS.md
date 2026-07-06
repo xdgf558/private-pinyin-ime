@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 14:43
-Current stage: stage-02
+Last updated: 2026-07-06 15:15
+Current stage: stage-03
 Current status: completed
 
 ## Stage Status
@@ -9,8 +9,8 @@ Current status: completed
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
-| 02 | User lexicon and prediction | completed | 2026-07-06 14:43 | SQLite user lexicon, learning controls, local prediction, and review fixes are ready for local review |
-| 03 | C ABI and CLI integration | not_started | | Depends on stage 01 and stage 02 |
+| 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
+| 03 | C ABI and CLI integration | completed | 2026-07-06 15:15 | C ABI crate, header, C demo, ownership docs, and tests are ready for local review |
 | 04 | Windows TSF prototype | not_started | | Depends on stable C ABI |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
@@ -36,10 +36,14 @@ Current status: completed
 - Reused one mutex-protected SQLite connection per user lexicon instance instead of reopening the database for each lookup or learning write.
 - Recorded follow-up open items for SQLite prefix range queries, exact-match preservation before query limits, user/base ranking fusion, and sanitized DB error logging.
 - Deduplicated compact pinyin normalization across base and user lexicon lookup.
+- Merged stage 02 to `main` through GitHub PR #3.
+- Implemented the stage-03 `ffi/ime_ffi` crate that exposes `libprivate_pinyin_ime`.
+- Added `ffi/c_api.h`, output ownership rules, C demo, Swift/C++ integration notes, and C ABI CI coverage.
+- Added FFI tests for engine/session creation, `nihao` input, candidate reading, commit output, null-handle behavior, and output freeing.
 
 ## Current Work
 
-- Stage 02 review feedback has been addressed on local branch `codex/stage-02-user-lexicon-prediction`.
+- Stage 03 is complete on local branch `codex/stage-03-c-abi`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -54,11 +58,19 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 27 integration tests passed across parser, candidates, ranking, prediction, privacy logging, and SQLite user lexicon behavior.
+- Notes: 29 integration tests passed across parser, candidates, ranking, prediction, privacy logging, SQLite user lexicon behavior, and C ABI behavior.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
 - Notes: Output includes `你好`.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: C demo created an engine, fed `nihao`, read first candidate `你好`, and committed `你好`.
+
+- Command: `leaks --atExit -- target/debug/ime_c_demo`
+- Result: passed
+- Notes: macOS `leaks` reported `0 leaks for 0 total leaked bytes`.
 
 - Command: `git diff --check`
 - Result: passed
@@ -83,13 +95,13 @@ Current status: completed
 - `Cargo.lock`
 - `README.md`
 - `CHANGELOG.md`
+- `.github/workflows/rust.yml`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
-- `docs/OPEN_ITEMS.md`
-- `ime_core/Cargo.toml`
-- `ime_core/src/`
-- `ime_core/tests/`
+- `ffi/`
+- `scripts/run_c_demo.sh`
+- `Cargo.toml`
 
 ## Next Step
 
-- Review stage-02 locally; after approval, push and merge through GitHub.
+- Review stage-03 locally; after approval, push and merge through GitHub.

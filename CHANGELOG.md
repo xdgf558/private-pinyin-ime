@@ -17,6 +17,9 @@
 - Added local bigram prediction after candidate commits.
 - Added learning controls for `enable_user_learning` and `strict_privacy_mode`.
 - Added tests for prediction, user lexicon persistence, disabled learning, and strict privacy mode.
+- Added the stage-03 C ABI crate, public `ffi/c_api.h`, C demo, and Swift/C++ integration notes.
+- Added FFI tests for engine/session creation, key input, candidate reading, commit output, null-handle behavior, and output freeing.
+- Added CI coverage for building and running the C ABI demo.
 
 ### Changed
 

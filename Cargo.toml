@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ffi/ime_ffi",
     "ime_core",
     "tools/test_cli",
 ]
