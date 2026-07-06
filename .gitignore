@@ -1,0 +1,33 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Rust
+target/
+
+# Native build outputs
+build/
+dist/
+release/
+*.dll
+*.dylib
+*.so
+*.a
+*.lib
+*.exe
+*.msi
+*.pkg
+
+# Xcode
+DerivedData/
+xcuserdata/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+
+# Local runtime data for development-only sandbox runs.
+# Production code should use platform-standard application data directories.
+local/

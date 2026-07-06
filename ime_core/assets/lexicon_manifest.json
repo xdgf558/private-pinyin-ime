@@ -1,0 +1,18 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2026-07-06T11:07:00+08:00",
+  "entries": [
+    {
+      "file": "base_lexicon_sample.tsv",
+      "source": "handwritten by project maintainers for development; not derived from third-party lexicons",
+      "license": "project-internal sample data",
+      "entry_count": 8
+    },
+    {
+      "file": "bigram_sample.tsv",
+      "source": "handwritten by project maintainers for development; not derived from third-party lexicons",
+      "license": "project-internal sample data",
+      "entry_count": 7
+    }
+  ]
+}
