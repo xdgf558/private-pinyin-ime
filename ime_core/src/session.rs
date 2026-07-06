@@ -124,7 +124,13 @@ impl InputSession {
             KeyCode::Minus => self.commit_punctuation("-"),
             KeyCode::Equal => self.commit_punctuation("="),
             KeyCode::Semicolon => self.commit_punctuation(";"),
-            _ => ImeOutput::idle(self.mode),
+            _ => {
+                if self.has_active_input() {
+                    self.current_output(false, false, String::new())
+                } else {
+                    ImeOutput::idle(self.mode)
+                }
+            }
         }
     }
 
@@ -294,6 +300,10 @@ impl InputSession {
         self.preedit_text.clear();
         self.candidates.clear();
         self.candidate_page = 0;
+    }
+
+    fn has_active_input(&self) -> bool {
+        !self.raw_input.is_empty() || !self.candidates.is_empty()
     }
 
     fn learn_candidate(&self, candidate: &Candidate) {

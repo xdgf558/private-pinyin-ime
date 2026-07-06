@@ -23,6 +23,8 @@
 - Added CI coverage for building and running the C ABI demo.
 - Added the stage-04 Windows TSF prototype with C++ 20 DLL project, COM class factory, registration hooks, key-event bridge, composition updates, candidate popup, and local registration scripts.
 - Added a Windows TSF source scaffold check to CI.
+- Added the stage-05 macOS InputMethodKit prototype with Swift host code, IMKServer, IMKInputController, C ABI bridge, marked-text updates, candidate panel wiring, local build script, and install/uninstall scripts.
+- Added a macOS IMK source scaffold check to CI.
 
 ### Changed
 
@@ -38,10 +40,13 @@
 - Changed Windows TSF key handling so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys stay with the host.
 - Changed Windows TSF focus handling to hide prediction candidates and clear host input state when focus leaves the text service.
 - Changed Windows TSF composition cleanup to reset the Rust session when focus loss or external composition termination clears host-side state.
+- Documented macOS IMK local build, install, uninstall, and manual TextEdit smoke-test workflow.
 
 ### Fixed
 
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
+- Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
+- Fixed macOS Shift+digit handling so shifted number keys pass through to the host instead of selecting candidates.
 
 ### Security and Privacy
 

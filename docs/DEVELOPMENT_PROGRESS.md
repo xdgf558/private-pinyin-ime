@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 16:45
-Current stage: stage-04
+Last updated: 2026-07-06 18:22
+Current stage: stage-05
 Current status: completed
 
 ## Stage Status
@@ -11,8 +11,8 @@ Current status: completed
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
 | 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
-| 04 | Windows TSF prototype | completed | 2026-07-06 16:45 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
-| 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
+| 04 | Windows TSF prototype | completed | 2026-07-06 17:00 | Merged to `main`; Windows smoke test still required |
+| 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Swift IMK app bundle prototype, C ABI bridge, marked text, candidate panel, and local build/install scripts are ready for local review |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
 | 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
 
@@ -53,25 +53,34 @@ Current status: completed
 - Recorded follow-up open items for TSF text-extent candidate positioning, window class unload cleanup, display attributes, and Windows CI compile coverage.
 - Addressed stage-04 review feedback so Windows TSF hides prediction candidates and clears host active-input state on focus loss.
 - Addressed stage-04 review feedback so Windows TSF resets the Rust session when focus loss or external composition termination invalidates host-side composition.
+- Merged stage 04 to `main`.
+- Implemented the stage-05 macOS InputMethodKit prototype under `platform/macos_imk`.
+- Added Swift `IMKServer` startup and a `PrivatePinyinInputController` subclass for key handling, standalone Shift toggle, marked text, candidate selection, commit output, and cleanup.
+- Added a Swift C ABI bridge around `ime_engine_new`, `ime_session_feed_key`, `ime_session_commit_candidate`, and `ime_session_reset`.
+- Added `IMKCandidates` candidate panel wiring and local install/uninstall scripts for `~/Library/Input Methods`.
+- Added `scripts/build_macos_imk.sh` to build an ad-hoc signed local `PrivatePinyin.app` bundle and `scripts/check_macos_imk_sources.sh` for CI scaffold checks.
+- Recorded follow-up open items for macOS signing/notarization, packaged installer, candidate UI polish, and menu icon/settings UI.
+- Addressed stage-05 review feedback so unhandled keys during active composition preserve current preedit/candidates instead of clearing host state.
+- Addressed stage-05 review feedback so macOS Shift+digit passes through consistently with Windows, and recorded a follow-up for IMK candidate panel number-key routing validation.
 
 ## Current Work
 
-- Stage 04 is complete on local branch `codex/stage-04-windows-tsf`.
+- Stage 05 is complete on local branch `codex/stage-05-macos-imk`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the latest stage-04 review fixes.
+- Notes: Formatting is clean after the stage-05 macOS IMK prototype.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings after the latest stage-04 review fixes.
+- Notes: No clippy warnings after the stage-05 macOS IMK prototype.
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 31 integration tests passed after the latest stage-04 review fixes.
+- Notes: 32 integration tests passed after the stage-05 review fixes.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -84,6 +93,22 @@ Current status: completed
 - Command: `bash scripts/check_windows_tsf_sources.sh`
 - Result: passed
 - Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, candidate window, and registration scripts.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install scripts.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded `libprivate_pinyin_ime.dylib` and ad-hoc signing.
+
+- Command: `codesign --verify --deep --strict --verbose=2 dist/macos_imk/PrivatePinyin.app`
+- Result: passed
+- Notes: The local macOS app bundle is valid on disk with ad-hoc signing.
+
+- Command: `otool -L dist/macos_imk/PrivatePinyin.app/Contents/MacOS/PrivatePinyin`
+- Result: passed
+- Notes: The executable loads the Rust FFI dylib through `@rpath/libprivate_pinyin_ime.dylib`.
 
 - Command: `leaks --atExit -- target/debug/ime_c_demo`
 - Result: not completed
@@ -115,22 +140,26 @@ Current status: completed
 - Unregister the Windows candidate window class on DLL unload.
 - Add TSF display attributes for preedit text.
 - Add Windows CI compile coverage for the TSF host.
+- Add macOS code signing and notarization.
+- Build production macOS installer and uninstaller package.
+- Polish macOS candidate positioning and appearance.
+- Add macOS settings entry and menu icon assets.
+- Verify IMK candidate panel number-key routing on macOS.
 
 ## Files Changed In Latest Stage
 
-- `Cargo.lock`
 - `README.md`
 - `CHANGELOG.md`
 - `.github/workflows/rust.yml`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/windows_tsf_notes.md`
-- `platform/windows_tsf/`
+- `docs/macos_inputmethodkit_notes.md`
+- `platform/macos_imk/`
 - `scripts/README.md`
-- `scripts/build_windows_tsf.ps1`
-- `scripts/check_windows_tsf_sources.sh`
+- `scripts/build_macos_imk.sh`
+- `scripts/check_macos_imk_sources.sh`
 
 ## Next Step
 
-- Review stage-04 locally; after approval, push and merge through GitHub.
+- Review stage-05 locally; after approval, push and merge through GitHub.
