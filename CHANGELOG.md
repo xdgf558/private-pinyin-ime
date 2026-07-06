@@ -69,7 +69,7 @@
 - Fixed the prototype Windows MSI template so TSF registration runs as a per-user install instead of writing HKCU registration under the SYSTEM account.
 - Fixed SQLite user lexicon connections to use WAL and a busy timeout for multi-process desktop host writes.
 - Fixed user lexicon export so engines without a configured user lexicon still write an empty TSV with headers.
-- Fixed Stage 08 CI issues by pinning the Windows runner, making Windows COM headers explicit, and allowing iOS source checks to run without `rg`.
+- Fixed Stage 08 CI issues by pinning the Windows runner, making Windows COM declarations and exports explicit, and allowing iOS source checks to run without `rg`.
 - Fixed invalid numeric settings so zero values clamp to defaults without discarding the rest of the settings snapshot.
 - Fixed iOS symbol-key handling so active composition state stays synchronized with the shared Rust engine.
 - Fixed iOS self-triggered text-change handling so candidate commits can keep prediction candidates and engine context.

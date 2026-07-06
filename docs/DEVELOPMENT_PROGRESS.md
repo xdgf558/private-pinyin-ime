@@ -92,7 +92,7 @@ Current status: completed
 - Added `scripts/check_platform_validation_sources.sh` and wired it into CI.
 - Extended the development specification with release-preparation stages 8 through 12.
 - Linked platform READMEs to the shared smoke-test record template.
-- Fixed CI feedback by pinning the Windows runner, including COM base declarations directly in the Windows class factory header, and adding a non-`rg` fallback to the iOS source scan.
+- Fixed CI feedback by pinning the Windows runner, making Windows COM declarations and DLL exports explicit, and adding a non-`rg` fallback to the iOS source scan.
 - Closed `OI-022` for Windows Rust test and TSF compile CI coverage while keeping runtime smoke-test items open.
 
 ## Current Work

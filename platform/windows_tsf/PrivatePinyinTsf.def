@@ -1,0 +1,6 @@
+LIBRARY "PrivatePinyinTsf"
+EXPORTS
+  DllCanUnloadNow
+  DllGetClassObject
+  DllRegisterServer
+  DllUnregisterServer

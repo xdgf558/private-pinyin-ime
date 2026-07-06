@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(PrivatePinyinTsf SHARED
+  PrivatePinyinTsf.def
   src/candidate_window.cpp
   src/class_factory.cpp
   src/core_bridge.cpp

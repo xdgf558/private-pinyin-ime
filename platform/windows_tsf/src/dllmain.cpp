@@ -21,16 +21,14 @@ BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reason, LPVOID /*reserved*/) {
   return TRUE;
 }
 
-extern "C" __declspec(dllexport) HRESULT STDMETHODCALLTYPE DllCanUnloadNow() {
+STDAPI DllCanUnloadNow() {
   return private_pinyin::g_object_count.load() == 0 &&
                  private_pinyin::g_lock_count.load() == 0
              ? S_OK
              : S_FALSE;
 }
 
-extern "C" __declspec(dllexport) HRESULT STDMETHODCALLTYPE DllGetClassObject(REFCLSID clsid,
-                                                                              REFIID iid,
-                                                                              void** object) {
+STDAPI DllGetClassObject(REFCLSID clsid, REFIID iid, void** object) {
   if (object == nullptr) {
     return E_POINTER;
   }
@@ -50,10 +48,10 @@ extern "C" __declspec(dllexport) HRESULT STDMETHODCALLTYPE DllGetClassObject(REF
   return hr;
 }
 
-extern "C" __declspec(dllexport) HRESULT STDMETHODCALLTYPE DllRegisterServer() {
+STDAPI DllRegisterServer() {
   return private_pinyin::register_server(private_pinyin::g_module);
 }
 
-extern "C" __declspec(dllexport) HRESULT STDMETHODCALLTYPE DllUnregisterServer() {
+STDAPI DllUnregisterServer() {
   return private_pinyin::unregister_server();
 }
