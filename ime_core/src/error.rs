@@ -1,0 +1,28 @@
+use std::fmt;
+
+pub type ImeResult<T> = Result<T, ImeError>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImeError {
+    InvalidLexiconFormat,
+    InvalidLexiconFrequency,
+    MissingLexiconField,
+}
+
+impl ImeError {
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidLexiconFormat => "INVALID_LEXICON_FORMAT",
+            Self::InvalidLexiconFrequency => "INVALID_LEXICON_FREQUENCY",
+            Self::MissingLexiconField => "MISSING_LEXICON_FIELD",
+        }
+    }
+}
+
+impl fmt::Display for ImeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.code())
+    }
+}
+
+impl std::error::Error for ImeError {}

@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "ime_core",
+    "tools/test_cli",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["PrivatePinyin IME contributors"]
+license = "LicenseRef-All-Rights-Reserved"

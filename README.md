@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Project initialization is complete. Stage 1, the Rust core engine, has not started yet.
+Stage 1 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, CLI smoke tool, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -26,21 +26,20 @@ All stage work should use this review flow:
 2. Implement only the current stage scope from the development spec.
 3. Update progress, changelog, decisions, and open items as required.
 4. Run the relevant validation commands.
-5. Push the branch and open a pull request.
-6. Wait for human review and approval before merging.
+5. Commit the completed stage locally and share the local review summary, diff scope, and validation results.
+6. Fix review feedback on the same local branch until approved.
+7. Push the approved branch to GitHub.
+8. Merge to `main` only after approval, then sync local `main`.
 
-## Next Stage
+## Rust Workspace
 
-Stage 1 will create the Rust core engine and CLI test tool.
+The root `Cargo.toml` defines a workspace with:
 
-Planned Rust workspace layout:
-
-- Root `Cargo.toml` defines the workspace.
 - `ime_core` is the core engine crate.
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
-Expected validation for Stage 1:
+Validation:
 
 ```bash
 cargo fmt --check
@@ -48,3 +47,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p test_cli -- nihao
 ```
+
+## Next Stage
+
+Stage 2 will add the local user lexicon, prediction, and strict privacy learning behavior.
