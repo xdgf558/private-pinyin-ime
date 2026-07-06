@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 19:40
-Current stage: stage-06
+Last updated: 2026-07-06 20:22
+Current stage: stage-07
 Current status: completed
 
 ## Stage Status
@@ -13,8 +13,8 @@ Current status: completed
 | 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
 | 04 | Windows TSF prototype | completed | 2026-07-06 17:00 | Merged to `main`; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | completed | 2026-07-06 18:22 | Merged to `main` after local review |
-| 06 | Installers and settings | completed | 2026-07-06 19:19 | JSON settings, C ABI settings path, clear/export lexicon actions, settings entry points, and prototype installer scripts are ready for local review |
-| 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
+| 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
+| 07 | iOS keyboard extension | completed | 2026-07-06 20:22 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 
 ## Completed Work
 
@@ -74,45 +74,37 @@ Current status: completed
 - Addressed stage-06 review feedback by enabling SQLite WAL and a busy timeout for multi-process user lexicon writes.
 - Addressed stage-06 review feedback so invalid numeric settings clamp to defaults without discarding other settings, and export without a configured user lexicon writes an empty TSV.
 - Recorded follow-up open items for default settings drift, stronger Rust atomic file replacement, and CapsLock toggle support.
+- Merged stage 06 to `main`.
+- Implemented the stage-07 iOS container app and Keyboard Extension prototype under `platform/ios_keyboard`.
+- Added a SwiftUI container app with a clear-local-lexicon action for app-container artifacts.
+- Added a `UIInputViewController` keyboard extension with QWERTY rows, candidate bar, Globe key, symbols toggle, Chinese/English toggle, Space, Delete, and Return.
+- Added an iOS C ABI bridge that creates the Rust engine/session, feeds key events, commits candidates, toggles mode, and frees outputs.
+- Added `PrivatePinyinC/module.modulemap` and `scripts/build_ios_keyboard.sh` to link the Rust C ABI as an iOS static library.
+- Added `RequestsOpenAccess=false` in the keyboard extension plist and CI scaffold checks for iOS privacy defaults and network API absence.
+- Recorded follow-up open items for iOS App Store signing, App Group storage, user-facing permission explanation, and simulator/device smoke tests.
 
 ## Current Work
 
-- Stage 06 is complete on local branch `codex/stage-06-installers-settings`.
+- Stage 07 is complete on local branch `codex/stage-07-ios-keyboard-extension`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-06 settings and installer work.
+- Notes: Formatting is clean after the stage-07 iOS keyboard extension work.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings after adding settings JSON, FFI management APIs, and the settings CLI.
+- Notes: No clippy warnings in the Rust workspace after adding the iOS build scaffold.
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 40 integration and ABI layout tests passed, including settings loading, strict privacy normalization, C ABI settings path use, user lexicon clear/export coverage, and export-without-lexicon behavior.
+- Notes: 40 integration and ABI layout tests passed, covering parser/candidate behavior, prediction, privacy, settings, user lexicon, and C ABI layout.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
 - Notes: Output includes `你好`.
-
-- Command: `cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_stage6_settings.json --user-lexicon /tmp/private_pinyin_stage6_user.sqlite`
-- Result: passed
-- Notes: Wrote a settings snapshot with a user lexicon path.
-
-- Command: `cargo run -p private_pinyin_settings -- set-strict-privacy --settings /tmp/private_pinyin_stage6_settings.json --enabled true`
-- Result: passed
-- Notes: Updated the settings snapshot and disabled learning under strict privacy mode.
-
-- Command: `cargo run -p private_pinyin_settings -- clear-user-lexicon --settings /tmp/private_pinyin_stage6_settings.json`
-- Result: passed
-- Notes: Cleared the configured user lexicon without errors.
-
-- Command: `cargo run -p private_pinyin_settings -- export-user-lexicon --settings /tmp/private_pinyin_stage6_settings.json --output /tmp/private_pinyin_stage6_export.tsv`
-- Result: passed
-- Notes: Exported an empty TSV from the configured user lexicon.
 
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
@@ -130,25 +122,13 @@ Current status: completed
 - Result: passed
 - Notes: Stage 6 installer/settings scaffold files and JSON template are present and parseable.
 
-- Command: `bash scripts/build_macos_imk.sh`
+- Command: `bash scripts/check_ios_keyboard_sources.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded `libprivate_pinyin_ime.dylib`, settings menu code, and ad-hoc signing.
+- Notes: iOS scaffold includes the Xcode project, SwiftUI container app, Keyboard Extension plist, `RequestsOpenAccess=false`, Globe key handling, candidate bar wiring, C ABI bridge, static-library build script, and no Swift network API usage.
 
-- Command: `bash scripts/package_macos_pkg.sh`
+- Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed
-- Notes: Built unsigned `dist/macos_imk/PrivatePinyin-0.1.0.pkg`; the first sandboxed run could not write the pkg, then the same command passed with sandbox escalation.
-
-- Command: `codesign --verify --deep --strict --verbose=2 dist/macos_imk/PrivatePinyin.app`
-- Result: passed
-- Notes: The local macOS app bundle is valid on disk with ad-hoc signing.
-
-- Command: `otool -L dist/macos_imk/PrivatePinyin.app/Contents/MacOS/PrivatePinyin`
-- Result: passed
-- Notes: The executable loads the Rust FFI dylib through `@rpath/libprivate_pinyin_ime.dylib`.
-
-- Command: `ls -lh dist/macos_imk/PrivatePinyin-0.1.0.pkg`
-- Result: passed
-- Notes: The generated package exists locally and is ignored from git.
+- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`.
 
 ## Open Items
 
@@ -181,33 +161,25 @@ Current status: completed
 - Use one packaged default settings template across hosts.
 - Harden Rust settings/export atomic file replacement on Windows.
 - Implement or hide CapsLock toggle in platform settings.
+- Configure iOS App Store signing and provisioning.
+- Design App Group storage and explicit learning opt-in for iOS.
+- Write user-facing iOS keyboard permission explanation.
+- Run iOS simulator smoke tests in Notes, Safari, and password fields.
 
 ## Files Changed In Latest Stage
 
 - `README.md`
 - `CHANGELOG.md`
 - `.github/workflows/rust.yml`
-- `Cargo.toml`
-- `Cargo.lock`
-- `config/default_settings.json`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `ffi/c_api.h`
-- `ffi/ime_ffi/`
-- `ime_core/`
-- `platform/macos_imk/`
-- `platform/windows_tsf/`
+- `docs/ios_keyboard_extension_notes.md`
+- `platform/ios_keyboard/`
 - `scripts/README.md`
-- `scripts/build_macos_imk.sh`
-- `scripts/check_macos_imk_sources.sh`
-- `scripts/check_installers_settings_sources.sh`
-- `scripts/check_windows_tsf_sources.sh`
-- `scripts/package_macos_pkg.sh`
-- `scripts/package_windows_tsf.ps1`
-- `tools/README.md`
-- `tools/settings_cli/`
+- `scripts/build_ios_keyboard.sh`
+- `scripts/check_ios_keyboard_sources.sh`
 
 ## Next Step
 
-- Review stage-06 locally; after approval, push and merge through GitHub.
+- Review stage-07 locally; after approval, push and merge through GitHub.

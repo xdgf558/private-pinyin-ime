@@ -37,3 +37,6 @@ jobs:
 
       - name: Check installer and settings scaffold
         run: bash scripts/check_installers_settings_sources.sh
+
+      - name: Check iOS keyboard source scaffold
+        run: bash scripts/check_ios_keyboard_sources.sh

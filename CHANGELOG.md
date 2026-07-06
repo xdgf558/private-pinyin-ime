@@ -32,6 +32,9 @@
 - Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
 - Added prototype installer packaging scripts for Windows and macOS, including an unsigned macOS `.pkg`, Windows zip staging, and WiX MSI source.
 - Added a Stage 6 installer/settings scaffold check to CI.
+- Added the stage-07 iOS Keyboard Extension prototype with a SwiftUI container app, `UIInputViewController` keyboard extension, candidate bar, QWERTY layout, Globe key, symbols toggle, and Chinese/English toggle.
+- Added iOS C ABI module-map wiring so the keyboard extension can link the Rust core as an iOS static library.
+- Added iOS build and scaffold-check scripts, including plist validation for `RequestsOpenAccess=false` and source scanning for network APIs.
 
 ### Changed
 
@@ -50,6 +53,7 @@
 - Documented macOS IMK local build, install, uninstall, and manual TextEdit smoke-test workflow.
 - Documented Stage 6 installer packaging and settings workflows for Windows and macOS.
 - Changed desktop hosts to pass settings paths into the shared C ABI instead of using only built-in defaults.
+- Documented iOS build, simulator smoke-test, and privacy-default workflows.
 
 ### Fixed
 
@@ -61,6 +65,7 @@
 - Fixed SQLite user lexicon connections to use WAL and a busy timeout for multi-process desktop host writes.
 - Fixed user lexicon export so engines without a configured user lexicon still write an empty TSV with headers.
 - Fixed invalid numeric settings so zero values clamp to defaults without discarding the rest of the settings snapshot.
+- Fixed iOS symbol-key handling so active composition state stays synchronized with the shared Rust engine.
 
 ### Security and Privacy
 
