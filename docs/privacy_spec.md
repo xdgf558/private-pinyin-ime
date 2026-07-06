@@ -41,3 +41,9 @@ Rust code should avoid `unwrap`, `expect`, and debug-format panic messages on pa
 ## Strict Privacy Mode
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.
+
+## User Lexicon Storage
+
+The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, and update time. It must not store complete sentences, raw key streams, surrounding document text, clipboard content, or account identifiers.
+
+When `enable_user_learning` is disabled or strict privacy mode is enabled, candidate commits must not create or update user lexicon rows.

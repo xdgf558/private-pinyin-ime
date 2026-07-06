@@ -39,6 +39,10 @@ impl PinyinParse {
     }
 }
 
+pub fn compact_pinyin(pinyin: &str) -> String {
+    pinyin.split_whitespace().collect::<String>()
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct PinyinParser;
 

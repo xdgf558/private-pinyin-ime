@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
-use crate::pinyin_parser::{PinyinParse, PinyinParser};
+use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
 use crate::ranker::Ranker;
 
 const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon_sample.tsv");
@@ -113,10 +113,23 @@ impl Lexicon {
     }
 }
 
-fn is_header_line(line: &str) -> bool {
-    line == "phrase\tpinyin\tfrequency"
+pub fn merge_user_and_base_candidates(
+    user_candidates: Vec<Candidate>,
+    base_candidates: Vec<Candidate>,
+) -> Vec<Candidate> {
+    let mut merged = Vec::new();
+    let mut seen = HashSet::new();
+
+    for candidate in user_candidates.into_iter().chain(base_candidates) {
+        if seen.insert(candidate.text.clone()) {
+            merged.push(candidate);
+        }
+    }
+
+    merged.truncate(50);
+    merged
 }
 
-fn compact_pinyin(pinyin: &str) -> String {
-    pinyin.split_whitespace().collect::<String>()
+fn is_header_line(line: &str) -> bool {
+    line == "phrase\tpinyin\tfrequency"
 }

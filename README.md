@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 1 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, CLI smoke tool, tests, and Rust CI workflow are in place.
+Stage 2 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -50,4 +50,4 @@ cargo run -p test_cli -- nihao
 
 ## Next Stage
 
-Stage 2 will add the local user lexicon, prediction, and strict privacy learning behavior.
+Stage 3 will add the C ABI and native integration examples.

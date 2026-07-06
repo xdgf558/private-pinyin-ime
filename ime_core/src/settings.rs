@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImeMode {
     Chinese,
@@ -30,6 +32,7 @@ pub struct ImeSettings {
     pub enable_prediction: bool,
     pub enable_user_learning: bool,
     pub strict_privacy_mode: bool,
+    pub user_lexicon_path: Option<PathBuf>,
     pub fuzzy_pinyin: FuzzyPinyinSettings,
     pub theme: String,
     pub candidate_font_size: u16,
@@ -44,6 +47,7 @@ impl Default for ImeSettings {
             enable_prediction: true,
             enable_user_learning: true,
             strict_privacy_mode: false,
+            user_lexicon_path: None,
             fuzzy_pinyin: FuzzyPinyinSettings::default(),
             theme: "system".to_owned(),
             candidate_font_size: 14,

@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 12:12
-Current stage: stage-01
+Last updated: 2026-07-06 14:43
+Current stage: stage-02
 Current status: completed
 
 ## Stage Status
@@ -9,7 +9,7 @@ Current status: completed
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
-| 02 | User lexicon and prediction | not_started | | Depends on stage 01 |
+| 02 | User lexicon and prediction | completed | 2026-07-06 14:43 | SQLite user lexicon, learning controls, local prediction, and review fixes are ready for local review |
 | 03 | C ABI and CLI integration | not_started | | Depends on stage 01 and stage 02 |
 | 04 | Windows TSF prototype | not_started | | Depends on stable C ABI |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
@@ -29,10 +29,17 @@ Current status: completed
 - Added `tools/test_cli` and minimal GitHub Actions for Rust validation.
 - Addressed local review feedback for raw input limits, modifier-key passthrough, punctuation commits, no-candidate space fallback, and exact-before-prefix ranking.
 - Addressed local review feedback so idle Enter does not commit an empty string.
+- Implemented the stage-02 SQLite user lexicon and local bigram prediction.
+- Added commit learning for selected candidates, plus `enable_user_learning` and `strict_privacy_mode` write guards.
+- Added tests for `jintian -> 今天 -> 天气`, user lexicon persistence, disabled learning, and strict privacy mode.
+- Addressed stage-02 review feedback so idle Space commits a normal space while digit keys select prediction candidates.
+- Reused one mutex-protected SQLite connection per user lexicon instance instead of reopening the database for each lookup or learning write.
+- Recorded follow-up open items for SQLite prefix range queries, exact-match preservation before query limits, user/base ranking fusion, and sanitized DB error logging.
+- Deduplicated compact pinyin normalization across base and user lexicon lookup.
 
 ## Current Work
 
-- Stage 01 is complete on local branch `codex/stage-01-core-engine`.
+- Stage 02 review feedback has been addressed on local branch `codex/stage-02-user-lexicon-prediction`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -47,11 +54,15 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 20 integration tests passed across parser, candidates, ranking, prediction placeholder, and privacy logging.
+- Notes: 27 integration tests passed across parser, candidates, ranking, prediction, privacy logging, and SQLite user lexicon behavior.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
 - Notes: Output includes `你好`.
+
+- Command: `git diff --check`
+- Result: passed
+- Notes: No whitespace errors.
 
 ## Open Items
 
@@ -62,24 +73,23 @@ Current status: completed
 - Refine Shift toggle semantics in platform hosts.
 - Implement candidate paging in a later stage.
 - Commit first candidate before punctuation during composition.
+- Use range-prefix SQLite queries for indexed user lexicon prefix lookup.
+- Preserve exact user lexicon matches before applying query limits.
+- Fuse user and base ranking instead of unconditional user-first ordering.
+- Wire sanitized user lexicon database failures into logging.
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
+- `Cargo.lock`
 - `README.md`
 - `CHANGELOG.md`
-- `Cargo.toml`
-- `Cargo.lock`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
 - `ime_core/Cargo.toml`
-- `ime_core/README.md`
 - `ime_core/src/`
 - `ime_core/tests/`
-- `tools/README.md`
-- `tools/test_cli/`
 
 ## Next Step
 
-- Review stage-01 locally; after approval, push and merge through GitHub.
+- Review stage-02 locally; after approval, push and merge through GitHub.
