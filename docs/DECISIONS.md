@@ -87,3 +87,11 @@ Status: accepted
 Decision: Treat Stage 8 as validation and CI hardening: automate Rust/shared-code checks on Ubuntu and Windows plus Windows TSF compilation in GitHub Actions, while recording Windows/macOS/iOS runtime IME behavior through manual platform smoke-test records.
 Reason: CI can reliably catch Rust, C ABI, source scaffold, and Windows C++ compile regressions, but TSF activation, IMK candidate routing, iOS keyboard enablement, password-field fallback, and prediction retention after UIKit callbacks require real platform hosts.
 Consequences: `OI-022` can close once the Windows compile job lands and passes; runtime smoke items such as `OI-018`, `OI-029`, `OI-031`, and `OI-038` remain open until evidence is recorded from the target systems.
+
+## Decision 012: Stage 9 core hardening boundary
+
+Date: 2026-07-06
+Status: accepted
+Decision: Harden the shared Rust engine by adding indexed compact-pinyin lookup, SQLite range-prefix lookup, exact-before-prefix ranking tiers, candidate paging, top-candidate punctuation commits, and sanitized error-code logging, while keeping production lexicon replacement gated on an explicit data-license decision.
+Reason: Platform hosts should consume a stable paged candidate surface from the C ABI while the Rust core owns lookup, ranking, privacy, and learning semantics. The project cannot import third-party dictionary data safely until source, license, version, and transformation steps are documented.
+Consequences: Core open items for indexing, paging, punctuation, range queries, exact preservation, ranking fusion, and sanitized user-lexicon error logs can close. `OI-001` remains open until the owner selects and approves a compatible production lexicon source.

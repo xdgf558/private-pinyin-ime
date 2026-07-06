@@ -2,10 +2,11 @@ use std::collections::HashSet;
 
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
-use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
-use crate::ranker::Ranker;
+use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
+use crate::ranker::{CandidateMatchKind, Ranker};
 
 const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon_sample.tsv");
+pub const MAX_LOOKUP_CANDIDATES: usize = 50;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LexiconEntry {
@@ -17,6 +18,13 @@ pub struct LexiconEntry {
 #[derive(Debug, Clone, Default)]
 pub struct Lexicon {
     entries: Vec<LexiconEntry>,
+    compact_index: Vec<CompactLexiconIndexEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CompactLexiconIndexEntry {
+    compact_pinyin: String,
+    entry_index: usize,
 }
 
 impl Lexicon {
@@ -62,7 +70,12 @@ impl Lexicon {
             });
         }
 
-        Ok(Self { entries })
+        let compact_index = build_compact_index(&entries);
+
+        Ok(Self {
+            entries,
+            compact_index,
+        })
     }
 
     pub fn entries(&self) -> &[LexiconEntry] {
@@ -86,16 +99,28 @@ impl Lexicon {
         let mut prefix_candidates = Vec::new();
         let mut seen = HashSet::<&str>::new();
 
-        for entry in &self.entries {
+        let range = self.compact_prefix_range(&normalized_input);
+        for indexed_entry in &self.compact_index[range] {
+            let entry = &self.entries[indexed_entry.entry_index];
             let exact_match = exact_pinyins.contains(&entry.pinyin);
-            let prefix_match = compact_pinyin(&entry.pinyin).starts_with(&normalized_input);
+            let prefix_match = indexed_entry.compact_pinyin.starts_with(&normalized_input);
 
             if !(exact_match || prefix_match) || !seen.insert(entry.phrase.as_str()) {
                 continue;
             }
 
+            let match_kind = if exact_match {
+                CandidateMatchKind::Exact
+            } else {
+                CandidateMatchKind::Prefix
+            };
             let candidate = Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
-                .with_score(Ranker::score(entry.frequency));
+                .with_score(Ranker::score(entry.frequency))
+                .with_rank_score(Ranker::score_match(
+                    entry.frequency,
+                    match_kind,
+                    CandidateSource::Base,
+                ));
 
             if exact_match {
                 exact_candidates.push(candidate);
@@ -108,8 +133,19 @@ impl Lexicon {
         Ranker::sort_candidates(&mut prefix_candidates);
         candidates.extend(exact_candidates);
         candidates.extend(prefix_candidates);
-        candidates.truncate(50);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
         candidates
+    }
+
+    fn compact_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
+        let upper_bound = compact_prefix_upper_bound(prefix);
+        let start = self
+            .compact_index
+            .partition_point(|entry| entry.compact_pinyin.as_str() < prefix);
+        let end = self
+            .compact_index
+            .partition_point(|entry| entry.compact_pinyin.as_str() < upper_bound.as_str());
+        start..end
     }
 }
 
@@ -117,19 +153,42 @@ pub fn merge_user_and_base_candidates(
     user_candidates: Vec<Candidate>,
     base_candidates: Vec<Candidate>,
 ) -> Vec<Candidate> {
+    let mut combined = user_candidates
+        .into_iter()
+        .chain(base_candidates)
+        .collect::<Vec<_>>();
+    Ranker::sort_candidates(&mut combined);
+
     let mut merged = Vec::new();
     let mut seen = HashSet::new();
 
-    for candidate in user_candidates.into_iter().chain(base_candidates) {
+    for candidate in combined {
         if seen.insert(candidate.text.clone()) {
             merged.push(candidate);
         }
     }
 
-    merged.truncate(50);
+    merged.truncate(MAX_LOOKUP_CANDIDATES);
     merged
 }
 
 fn is_header_line(line: &str) -> bool {
     line == "phrase\tpinyin\tfrequency"
+}
+
+fn build_compact_index(entries: &[LexiconEntry]) -> Vec<CompactLexiconIndexEntry> {
+    let mut index = entries
+        .iter()
+        .enumerate()
+        .map(|(entry_index, entry)| CompactLexiconIndexEntry {
+            compact_pinyin: compact_pinyin(&entry.pinyin),
+            entry_index,
+        })
+        .collect::<Vec<_>>();
+    index.sort_by(|left, right| {
+        left.compact_pinyin
+            .cmp(&right.compact_pinyin)
+            .then_with(|| left.entry_index.cmp(&right.entry_index))
+    });
+    index
 }

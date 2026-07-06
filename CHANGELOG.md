@@ -39,6 +39,10 @@
 - Added Windows Rust test and TSF compile coverage to GitHub Actions with a pinned `windows-2022` job.
 - Added a Stage 08 validation scaffold check script.
 - Added Rust build caching to CI.
+- Added Stage 09 core hardening checks and a lexicon data policy for license-clear production dictionary ingestion.
+- Added sanitized log sink support for structured engine error events.
+- Added a SQLite `pinyin` index for exact user-lexicon lookups.
+- Added an open item to expose sanitized core logging through host ABI callbacks.
 
 ### Changed
 
@@ -59,6 +63,10 @@
 - Changed desktop hosts to pass settings paths into the shared C ABI instead of using only built-in defaults.
 - Documented iOS build, simulator smoke-test, and privacy-default workflows.
 - Extended the development specification with release-preparation stages 8 through 12.
+- Changed base lexicon lookup to use a compact-pinyin prefix index instead of scanning every entry.
+- Changed user lexicon lookup to use indexed compact-pinyin range queries and preserve exact matches before prefix limits.
+- Changed candidate ranking to fuse user and base candidates by exact/prefix match tier, source boost, and frequency instead of unconditional user-first ordering.
+- Changed candidate output to page results according to `candidate_page_size`.
 
 ### Fixed
 
@@ -74,6 +82,10 @@
 - Fixed iOS symbol-key handling so active composition state stays synchronized with the shared Rust engine.
 - Fixed iOS self-triggered text-change handling so candidate commits can keep prediction candidates and engine context.
 - Fixed iOS Chinese-mode Shift+letter handling so shifted letters insert uppercase text instead of entering pinyin composition.
+- Fixed composition punctuation so `nihao,` commits the top candidate plus punctuation, such as `你好,`.
+- Fixed PageUp/PageDown and arrow paging so candidate selection applies to the visible page.
+- Fixed numeric candidate selection so digits outside the visible candidate page do not commit hidden candidates.
+- Fixed swallowed user lexicon database failures so they emit sanitized error-code log events.
 
 ### Security and Privacy
 

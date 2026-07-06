@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 21:57
-Current stage: stage-08
+Last updated: 2026-07-06 22:53
+Current stage: stage-09
 Current status: completed
 
 ## Stage Status
@@ -16,6 +16,7 @@ Current status: completed
 | 06 | Installers and settings | completed | 2026-07-06 19:40 | Merged to `main` after local review |
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 | 08 | Platform validation and CI hardening | completed | 2026-07-06 21:57 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
+| 09 | Core production hardening | completed | 2026-07-06 22:53 | Indexed lookup, range user-lexicon queries, ranking fusion, paging, punctuation commits, sanitized logging, review fixes, and lexicon data policy are ready for local review |
 
 ## Completed Work
 
@@ -94,17 +95,28 @@ Current status: completed
 - Linked platform READMEs to the shared smoke-test record template.
 - Fixed CI feedback by pinning the Windows runner, making Windows COM declarations and DLL exports explicit, and adding a non-`rg` fallback to the iOS source scan.
 - Closed `OI-022` for Windows Rust test and TSF compile CI coverage while keeping runtime smoke-test items open.
+- Implemented stage-09 core production hardening.
+- Changed base lexicon lookup to build a compact-pinyin sorted index and use binary prefix ranges.
+- Changed SQLite user lexicon lookup to use compact-pinyin range queries and exact-row preservation before prefix limits.
+- Added exact/prefix-aware user/base ranking fusion before deduplication.
+- Implemented candidate paging by `candidate_page_size`, with PageUp/PageDown and ArrowUp/ArrowDown page movement.
+- Changed composition punctuation to commit the first visible candidate plus punctuation, such as `你好,` for `nihao,`.
+- Added sanitized log sink support and wired user lexicon lookup/learning failures to `error code=...` events.
+- Added `docs/lexicon_data_policy.md` to keep production lexicon replacement gated on source/license approval.
+- Added `scripts/check_stage09_core_sources.sh` and wired it into CI.
+- Addressed stage-09 review feedback by constraining numeric selection to the visible candidate page, adding a SQLite `pinyin` index for exact user-lexicon lookup, documenting the compact-prefix upper-bound assumption, and recording host log callback work as `OI-041`.
+- Closed `OI-006`, `OI-008`, `OI-009`, `OI-010`, `OI-011`, `OI-012`, and `OI-013`; kept `OI-001` open for licensed production data selection.
 
 ## Current Work
 
-- Stage 08 is open in GitHub PR #7 from `codex/stage-08-platform-validation-ci`.
-- Awaiting GitHub Actions before merging to `main`.
+- Stage 09 is complete on local branch `codex/stage-09-core-production-hardening`.
+- Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-08 CI and validation documentation changes.
+- Notes: Formatting is clean after the stage-09 core hardening changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -112,7 +124,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 40 integration and ABI layout tests passed, covering parser/candidate behavior, prediction, privacy, settings, user lexicon, and C ABI layout.
+- Notes: 47 integration and ABI layout tests passed, covering indexed lookup, visible-page digit selection, paging, punctuation commits, ranking fusion, SQLite exact preservation, user-lexicon pinyin indexing, sanitized logging, parser/candidate behavior, prediction, privacy, settings, user lexicon, and C ABI layout.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -142,31 +154,28 @@ Current status: completed
 - Result: passed
 - Notes: Stage 8 validation scaffold includes Windows Rust test CI, Windows TSF compile CI wiring, Rust caching, and Windows/macOS/iOS smoke-test record templates.
 
+- Command: `bash scripts/check_stage09_core_sources.sh`
+- Result: passed
+- Notes: Stage 9 core hardening scaffold includes indexed lookup, pinyin and compact-pinyin user-lexicon indexes, range user-lexicon queries, ranking fusion, paging, punctuation behavior, sanitized logging, and lexicon data policy.
+
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
 - Notes: Built `dist/macos_imk/PrivatePinyin.app` with embedded Rust FFI dylib and ad-hoc signing.
 
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed
-- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`.
+- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`; sandboxed first run could not reach Xcode/CoreSimulator services, and the authorized rerun passed.
 
 - Command: `windows-2022 CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
 - Result: not run locally
-- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the pinned `windows-2022` CI job and will be verified after the Stage 08 branch is pushed.
+- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the pinned `windows-2022` CI job and will be verified by GitHub Actions after the stage branch is pushed.
 
 ## Open Items
 
 - Select the final project license before external reuse or release.
 - Replace sample lexicon data with licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
-- Add indexed lexicon lookup before production dictionary scale.
 - Refine Shift toggle semantics in platform hosts.
-- Implement candidate paging in a later stage.
-- Commit first candidate before punctuation during composition.
-- Use range-prefix SQLite queries for indexed user lexicon prefix lookup.
-- Preserve exact user lexicon matches before applying query limits.
-- Fuse user and base ranking instead of unconditional user-first ordering.
-- Wire sanitized user lexicon database failures into logging.
 - Add Windows code signing for TSF DLL and installer.
 - Build production Windows installer and uninstaller.
 - Polish Windows candidate window for high DPI, dark mode, and paging.
@@ -190,6 +199,7 @@ Current status: completed
 - Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit.
 - Derive iOS mode UI from C ABI output mode.
 - Respect `needsInputModeSwitchKey` for the iOS Globe key.
+- Expose sanitized core logging through host ABI callbacks.
 
 ## Files Changed In Latest Stage
 
@@ -199,15 +209,22 @@ Current status: completed
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/platform_smoke_test_plan.md`
+- `docs/lexicon_data_policy.md`
 - `docs/private_pinyin_ime_development_spec.md`
-- `platform/windows_tsf/README.md`
-- `platform/macos_imk/README.md`
-- `platform/ios_keyboard/README.md`
+- `ime_core/src/api.rs`
+- `ime_core/src/lexicon.rs`
+- `ime_core/src/logger.rs`
+- `ime_core/src/pinyin_parser.rs`
+- `ime_core/src/ranker.rs`
+- `ime_core/src/session.rs`
+- `ime_core/src/user_lexicon.rs`
+- `ime_core/tests/candidate_tests.rs`
+- `ime_core/tests/privacy_tests.rs`
+- `ime_core/tests/ranking_tests.rs`
+- `ime_core/tests/user_lexicon_tests.rs`
 - `scripts/README.md`
-- `scripts/build_windows_tsf.ps1`
-- `scripts/check_platform_validation_sources.sh`
+- `scripts/check_stage09_core_sources.sh`
 
 ## Next Step
 
-- Review stage-08 locally; after approval, push and merge through GitHub.
+- Review stage-09 locally; after approval, push and merge through GitHub.

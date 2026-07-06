@@ -4,6 +4,7 @@ use crate::api::ImeOutput;
 use crate::candidate::Candidate;
 use crate::key_event::{KeyCode, KeyEvent};
 use crate::lexicon::{merge_user_and_base_candidates, Lexicon};
+use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
@@ -119,6 +120,8 @@ impl InputSession {
                 self.raw_input.pop();
                 self.refresh_composition()
             }
+            KeyCode::PageDown | KeyCode::ArrowDown => self.turn_candidate_page(1),
+            KeyCode::PageUp | KeyCode::ArrowUp => self.turn_candidate_page(-1),
             KeyCode::Comma => self.commit_punctuation(","),
             KeyCode::Period => self.commit_punctuation("."),
             KeyCode::Minus => self.commit_punctuation("-"),
@@ -135,7 +138,10 @@ impl InputSession {
     }
 
     pub fn commit_candidate(&mut self, index: usize) -> ImeOutput {
-        let Some(candidate) = self.candidates.get(index).cloned() else {
+        let Some(actual_index) = self.actual_candidate_index(index) else {
+            return self.current_output(false, false, String::new());
+        };
+        let Some(candidate) = self.candidates.get(actual_index).cloned() else {
             return self.current_output(false, false, String::new());
         };
 
@@ -143,6 +149,7 @@ impl InputSession {
         self.context_tokens.push(candidate.text.clone());
         self.clear_composition();
         self.candidates = self.predict_next();
+        let candidates = self.current_page_candidates();
 
         ImeOutput {
             preedit: String::new(),
@@ -150,8 +157,8 @@ impl InputSession {
             mode: self.mode,
             should_update_preedit: true,
             should_commit: true,
-            should_show_candidates: !self.candidates.is_empty(),
-            candidates: self.candidates.clone(),
+            should_show_candidates: !candidates.is_empty(),
+            candidates,
         }
     }
 
@@ -164,10 +171,18 @@ impl InputSession {
     fn commit_punctuation(&mut self, punctuation: &str) -> ImeOutput {
         if self.raw_input.is_empty() {
             self.commit_text(punctuation)
+        } else if let Some(actual_index) = self.actual_candidate_index(0) {
+            if let Some(candidate) = self.candidates.get(actual_index).cloned() {
+                self.learn_candidate(&candidate);
+                self.context_tokens.push(candidate.text.clone());
+                let commit_text = format!("{}{}", candidate.text, punctuation);
+                self.clear_composition();
+                self.committed_output(commit_text)
+            } else {
+                self.commit_raw_input_with_suffix(punctuation)
+            }
         } else {
-            let commit_text = format!("{}{}", self.raw_input, punctuation);
-            self.clear_composition();
-            self.committed_output(commit_text)
+            self.commit_raw_input_with_suffix(punctuation)
         }
     }
 
@@ -235,13 +250,18 @@ impl InputSession {
         let user_candidates = self
             .user_lexicon
             .as_ref()
-            .map(|user_lexicon| {
-                user_lexicon
-                    .lookup(&self.raw_input, &parses)
-                    .unwrap_or_default()
-            })
+            .map(
+                |user_lexicon| match user_lexicon.lookup(&self.raw_input, &parses) {
+                    Ok(candidates) => candidates,
+                    Err(error) => {
+                        logger::emit_error(error);
+                        Vec::new()
+                    }
+                },
+            )
             .unwrap_or_default();
         self.candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        self.candidate_page = 0;
         self.preedit_text = self.raw_input.clone();
         self.current_output(true, false, String::new())
     }
@@ -274,14 +294,15 @@ impl InputSession {
         should_commit: bool,
         commit_text: String,
     ) -> ImeOutput {
+        let candidates = self.current_page_candidates();
         ImeOutput {
             preedit: self.preedit_text.clone(),
             commit_text,
             mode: self.mode,
             should_update_preedit,
             should_commit,
-            should_show_candidates: !self.candidates.is_empty(),
-            candidates: self.candidates.clone(),
+            should_show_candidates: !candidates.is_empty(),
+            candidates,
         }
     }
 
@@ -306,13 +327,67 @@ impl InputSession {
         !self.raw_input.is_empty() || !self.candidates.is_empty()
     }
 
+    fn commit_raw_input_with_suffix(&mut self, suffix: &str) -> ImeOutput {
+        let commit_text = format!("{}{}", self.raw_input, suffix);
+        self.clear_composition();
+        self.committed_output(commit_text)
+    }
+
+    fn turn_candidate_page(&mut self, delta: isize) -> ImeOutput {
+        if self.candidates.is_empty() {
+            return if self.raw_input.is_empty() {
+                ImeOutput::idle(self.mode)
+            } else {
+                self.current_output(false, false, String::new())
+            };
+        }
+
+        let page_count = self.page_count();
+        if delta > 0 {
+            self.candidate_page = (self.candidate_page + 1).min(page_count.saturating_sub(1));
+        } else if delta < 0 {
+            self.candidate_page = self.candidate_page.saturating_sub(1);
+        }
+        self.current_output(false, false, String::new())
+    }
+
+    fn page_size(&self) -> usize {
+        self.settings_snapshot.candidate_page_size.max(1)
+    }
+
+    fn page_count(&self) -> usize {
+        self.candidates.len().div_ceil(self.page_size()).max(1)
+    }
+
+    fn page_start(&self) -> usize {
+        self.candidate_page * self.page_size()
+    }
+
+    fn actual_candidate_index(&self, page_index: usize) -> Option<usize> {
+        if page_index >= self.page_size() {
+            return None;
+        }
+
+        let actual_index = self.page_start().checked_add(page_index)?;
+        (actual_index < self.candidates.len()).then_some(actual_index)
+    }
+
+    fn current_page_candidates(&self) -> Vec<Candidate> {
+        let page_size = self.page_size();
+        let start = self.page_start().min(self.candidates.len());
+        let end = (start + page_size).min(self.candidates.len());
+        self.candidates[start..end].to_vec()
+    }
+
     fn learn_candidate(&self, candidate: &Candidate) {
         if self.privacy_mode || !self.settings_snapshot.enable_user_learning {
             return;
         }
 
         if let Some(user_lexicon) = &self.user_lexicon {
-            let _ = user_lexicon.record_selection(&candidate.text, &candidate.pinyin);
+            if let Err(error) = user_lexicon.record_selection(&candidate.text, &candidate.pinyin) {
+                logger::emit_error(error);
+            }
         }
     }
 }

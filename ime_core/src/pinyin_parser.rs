@@ -43,6 +43,15 @@ pub fn compact_pinyin(pinyin: &str) -> String {
     pinyin.split_whitespace().collect::<String>()
 }
 
+pub fn compact_prefix_upper_bound(prefix: &str) -> String {
+    // Safe for normalized pinyin keys; `char::MAX` must remain outside the indexed alphabet.
+    debug_assert!(!prefix.contains(char::MAX));
+    let mut upper_bound = String::with_capacity(prefix.len() + 4);
+    upper_bound.push_str(prefix);
+    upper_bound.push(char::MAX);
+    upper_bound
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct PinyinParser;
 

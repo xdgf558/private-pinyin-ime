@@ -1227,14 +1227,37 @@ iOS smoke checklist 覆盖 Notes、预测候选保留、Full Access off、密码
 
 ### 阶段 9：核心引擎生产化
 
-任务方向：
+任务：
 
-1. 替换或接入授权清晰的生产词库。
-2. 增加索引化词库查询。
-3. 实现候选翻页。
-4. 改进标点上屏行为。
-5. 融合用户词库和基础词库排序。
-6. 接线结构化、脱敏错误日志。
+1. 建立生产词库数据政策，要求 manifest 记录文件、来源、许可证和条目数量；在没有 owner 批准许可证前不得导入第三方词库。
+2. 把基础词库查询改为 compact pinyin 索引化前缀查询，避免生产词库规模下全表扫描。
+3. 把用户词库查询改为 SQLite 范围前缀查询，并保证低频精确匹配不会被高频前缀词挤出。
+4. 实现候选分页，使用 `candidate_page_size`、PageUp/PageDown 和方向键翻页，数字键选择当前页候选。
+5. 改进标点上屏行为：组合中输入标点时提交当前页首选候选加标点，无候选时才回退提交原始输入加标点。
+6. 融合用户词库和基础词库排序，按 exact/prefix 层级、用户词加成、频率和稳定 tie-break 排序，而不是把用户词整体置顶。
+7. 接线结构化、脱敏错误日志；数据库失败只能记录错误码，不能记录 raw input、拼音、候选词或上下文。
+8. 增加 Stage 9 source scaffold 检查并纳入 CI。
+
+验收：
+
+```text
+base lexicon lookup uses compact-pinyin prefix index
+user lexicon lookup uses compact_pinyin range query instead of LIKE
+exact user matches survive prefix query limits
+PageUp/PageDown changes visible candidate page
+digit selection applies to current visible page
+nihao, commits 你好,
+user lexicon failures emit sanitized error-code log events
+bash scripts/check_stage09_core_sources.sh 通过
+cargo test --workspace 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-09 标记为 completed。
+2. 在 `CHANGELOG.md` 写入核心引擎生产化变更。
+3. 在 `docs/OPEN_ITEMS.md` 关闭已完成的 core open items，并保留生产词库许可证待办。
+4. 如果是 Git 仓库，提交 `stage-09: harden core engine for production dictionaries`。
 
 ### 阶段 10：平台宿主体验打磨
 

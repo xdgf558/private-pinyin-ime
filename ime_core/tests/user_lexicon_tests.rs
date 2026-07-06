@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ime_core::pinyin_parser::compact_pinyin;
 use ime_core::user_lexicon::UserLexicon;
-use ime_core::{CandidateSource, ImeEngine, ImeSettings, KeyEvent};
+use ime_core::{CandidateSource, ImeEngine, ImeSettings, KeyEvent, PinyinParser};
+use rusqlite::{params, Connection};
 
 struct TempDb {
     path: PathBuf,
@@ -164,5 +166,69 @@ fn export_without_user_lexicon_writes_empty_tsv() {
     assert_eq!(
         std::fs::read_to_string(&temp_export.path).expect("read empty export"),
         "phrase\tpinyin\tfrequency\tupdated_at_ms\n"
+    );
+}
+
+#[test]
+fn user_lexicon_schema_indexes_pinyin_for_exact_lookup() {
+    let temp_db = TempDb::new("pinyin_index");
+    let _user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+
+    let index_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*)
+               FROM sqlite_master
+              WHERE type = 'index'
+                AND name = 'idx_user_phrases_pinyin'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("query index");
+
+    assert_eq!(index_count, 1);
+}
+
+#[test]
+fn user_lexicon_lookup_preserves_exact_matches_before_prefix_limit() {
+    let temp_db = TempDb::new("exact_before_prefix_limit");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+
+    connection
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, frequency, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params!["zz rare exact", "ni", compact_pinyin("ni"), 1_i64, 1_i64],
+        )
+        .expect("insert exact row");
+
+    for index in 0..60 {
+        let phrase = format!("aa high prefix {index:02}");
+        connection
+            .execute(
+                "INSERT INTO user_phrases
+                   (phrase, pinyin, compact_pinyin, frequency, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![
+                    phrase,
+                    "nian",
+                    compact_pinyin("nian"),
+                    1_000_000_i64 - i64::from(index),
+                    i64::from(index)
+                ],
+            )
+            .expect("insert prefix row");
+    }
+
+    let parses = PinyinParser.parse("ni");
+    let candidates = user_lexicon
+        .lookup("ni", &parses)
+        .expect("lookup user candidates");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("zz rare exact")
     );
 }

@@ -28,6 +28,7 @@ pub struct Candidate {
     pub text: String,
     pub pinyin: String,
     pub score: f64,
+    pub rank_score: f64,
     pub source: CandidateSource,
     pub comment: Option<String>,
 }
@@ -45,6 +46,7 @@ impl Candidate {
             text,
             pinyin,
             score: 0.0,
+            rank_score: 0.0,
             source,
             comment: None,
         }
@@ -52,6 +54,12 @@ impl Candidate {
 
     pub fn with_score(mut self, score: f64) -> Self {
         self.score = score;
+        self.rank_score = score;
+        self
+    }
+
+    pub fn with_rank_score(mut self, rank_score: f64) -> Self {
+        self.rank_score = rank_score;
         self
     }
 }

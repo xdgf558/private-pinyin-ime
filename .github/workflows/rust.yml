@@ -47,6 +47,9 @@ jobs:
       - name: Check platform validation scaffold
         run: bash scripts/check_platform_validation_sources.sh
 
+      - name: Check Stage 09 core hardening scaffold
+        run: bash scripts/check_stage09_core_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 
