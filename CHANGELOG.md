@@ -12,6 +12,7 @@
 - Added parser, candidate, ranking, prediction-placeholder, and privacy tests.
 - Added minimal GitHub Actions for Rust formatting, clippy, and tests.
 - Added input guardrails for maximum raw pinyin length, system-modifier passthrough, punctuation commits, and no-candidate space fallback.
+- Added a guard so Enter without active raw input remains idle instead of committing an empty string.
 
 ### Changed
 

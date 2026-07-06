@@ -10,3 +10,4 @@
 | OI-006 | 02 | Add indexed lexicon lookup before production dictionary scale | High | Codex | open | Current stage-01 lookup is linear over the sample lexicon; use trie or sorted-prefix index before large dictionaries |
 | OI-007 | 04 | Refine Shift toggle to key-up-only semantics in platform hosts | Medium | Codex | open | Stage 01 toggles on a synthetic Shift key event; real hosts should distinguish standalone Shift release from Shift+letter |
 | OI-008 | 03 | Implement candidate paging for page up/down and page-size settings | Medium | Codex | open | `candidate_page`, `candidate_page_size`, PageUp, and PageDown are intentionally staged beyond stage 01 |
+| OI-009 | 02 | Commit first candidate before punctuation during composition | Medium | Codex | open | Stage 01 preserves input by committing raw pinyin plus punctuation; mature IME behavior should commit the top candidate plus punctuation, such as `你好,` for `nihao,` |

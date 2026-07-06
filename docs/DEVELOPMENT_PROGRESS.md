@@ -28,6 +28,7 @@ Current status: completed
 - Implemented `InputSession`, `KeyEvent`, `ImeOutput`, `Candidate`, basic pinyin parsing, embedded sample lexicon lookup, and simple ranking.
 - Added `tools/test_cli` and minimal GitHub Actions for Rust validation.
 - Addressed local review feedback for raw input limits, modifier-key passthrough, punctuation commits, no-candidate space fallback, and exact-before-prefix ranking.
+- Addressed local review feedback so idle Enter does not commit an empty string.
 
 ## Current Work
 
@@ -46,7 +47,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 19 integration tests passed across parser, candidates, ranking, prediction placeholder, and privacy logging.
+- Notes: 20 integration tests passed across parser, candidates, ranking, prediction placeholder, and privacy logging.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -60,6 +61,7 @@ Current status: completed
 - Add indexed lexicon lookup before production dictionary scale.
 - Refine Shift toggle semantics in platform hosts.
 - Implement candidate paging in a later stage.
+- Commit first candidate before punctuation during composition.
 
 ## Files Changed In Latest Stage
 

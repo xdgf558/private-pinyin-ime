@@ -57,6 +57,17 @@ fn enter_commits_raw_input() {
 }
 
 #[test]
+fn enter_is_idle_without_raw_input() {
+    let engine = ImeEngine::new().expect("engine loads sample lexicon");
+    let mut session = engine.create_session();
+
+    let output = session.feed_key(KeyEvent::from_char('\n'));
+
+    assert!(!output.should_commit);
+    assert_eq!(output.commit_text, "");
+}
+
+#[test]
 fn raw_input_is_capped() {
     let engine = ImeEngine::new().expect("engine loads sample lexicon");
     let mut session = engine.create_session();

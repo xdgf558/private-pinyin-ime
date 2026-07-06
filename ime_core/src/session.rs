@@ -92,7 +92,13 @@ impl InputSession {
                     self.commit_candidate(usize::from(index - 1))
                 }
             }
-            KeyCode::Enter => self.commit_raw_input(),
+            KeyCode::Enter => {
+                if self.raw_input.is_empty() {
+                    ImeOutput::idle(self.mode)
+                } else {
+                    self.commit_raw_input()
+                }
+            }
             KeyCode::Escape => self.cancel_composition(),
             KeyCode::Backspace => {
                 self.raw_input.pop();
