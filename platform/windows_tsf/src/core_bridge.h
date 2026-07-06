@@ -33,6 +33,7 @@ class CoreBridge {
 
   bool initialize();
   void reset();
+  void reset_session();
 
   std::optional<OutputSnapshot> feed_key(const ImeKeyEvent& event);
   std::optional<OutputSnapshot> commit_candidate(int index);

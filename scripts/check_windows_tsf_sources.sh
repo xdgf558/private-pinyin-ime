@@ -28,5 +28,6 @@ grep -q "AdviseKeyEventSink" platform/windows_tsf/src/text_service.cpp
 grep -q "DllRegisterServer" platform/windows_tsf/src/dllmain.cpp
 grep -q "DllUnregisterServer" platform/windows_tsf/src/dllmain.cpp
 grep -q "ime_session_feed_key" platform/windows_tsf/src/core_bridge.cpp
+grep -q "ime_session_reset" platform/windows_tsf/src/core_bridge.cpp
 grep -q "IME_KEY_SPACE" platform/windows_tsf/src/key_map.cpp
 grep -q "SWP_NOACTIVATE" platform/windows_tsf/src/candidate_window.cpp

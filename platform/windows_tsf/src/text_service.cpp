@@ -181,6 +181,7 @@ HRESULT TextService::OnSetFocus(BOOL foreground) {
   if (!foreground) {
     candidate_window_.hide();
     has_active_input_ = false;
+    core_.reset_session();
   }
   return S_OK;
 }
@@ -260,6 +261,7 @@ HRESULT TextService::OnCompositionTerminated(TfEditCookie /*cookie*/,
     release_composition();
     candidate_window_.hide();
     has_active_input_ = false;
+    core_.reset_session();
   }
   return S_OK;
 }

@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 16:39
+Last updated: 2026-07-06 16:45
 Current stage: stage-04
 Current status: completed
 
@@ -11,7 +11,7 @@ Current status: completed
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
 | 03 | C ABI and CLI integration | completed | 2026-07-06 15:53 | Merged to `main` through PR #4 |
-| 04 | Windows TSF prototype | completed | 2026-07-06 16:39 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
+| 04 | Windows TSF prototype | completed | 2026-07-06 16:45 | C++ TSF DLL prototype, COM registration, key bridge, composition, candidate popup, and scripts are ready for local review; Windows smoke test still required |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
 | 07 | iOS keyboard extension | not_started | | Planned after desktop MVP |
@@ -52,6 +52,7 @@ Current status: completed
 - Addressed stage-04 review feedback so Windows TSF passes through Ctrl/Alt/Win shortcuts, avoids eating idle editing keys, and leaves Shift-modified text keys to the host.
 - Recorded follow-up open items for TSF text-extent candidate positioning, window class unload cleanup, display attributes, and Windows CI compile coverage.
 - Addressed stage-04 review feedback so Windows TSF hides prediction candidates and clears host active-input state on focus loss.
+- Addressed stage-04 review feedback so Windows TSF resets the Rust session when focus loss or external composition termination invalidates host-side composition.
 
 ## Current Work
 

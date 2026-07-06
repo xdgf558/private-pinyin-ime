@@ -35,6 +35,13 @@ void CoreBridge::reset() {
   }
 }
 
+void CoreBridge::reset_session() {
+  if (session_ == nullptr) {
+    return;
+  }
+  (void)take_output(ime_session_reset(session_));
+}
+
 std::optional<OutputSnapshot> CoreBridge::feed_key(const ImeKeyEvent& event) {
   if (session_ == nullptr) {
     return std::nullopt;

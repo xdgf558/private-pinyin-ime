@@ -37,6 +37,7 @@
 - Documented Windows TSF build, registration, and manual Notepad smoke-test workflow.
 - Changed Windows TSF key handling so Ctrl/Alt/Win shortcuts pass through, idle editing keys are not swallowed, and Shift-modified text keys stay with the host.
 - Changed Windows TSF focus handling to hide prediction candidates and clear host input state when focus leaves the text service.
+- Changed Windows TSF composition cleanup to reset the Rust session when focus loss or external composition termination clears host-side state.
 
 ### Fixed
 
