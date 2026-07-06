@@ -12,6 +12,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 - No cloud sync.
 - No clipboard access unless a future product spec explicitly adds an opt-in feature.
 - Logs must not contain raw keys, pinyin input, candidates, committed text, or user context.
+- Error logs must use structured error codes and must not embed the input string that caused the error.
 
 ## Current Status
 
@@ -32,9 +33,18 @@ All stage work should use this review flow:
 
 Stage 1 will create the Rust core engine and CLI test tool.
 
+Planned Rust workspace layout:
+
+- Root `Cargo.toml` defines the workspace.
+- `ime_core` is the core engine crate.
+- `tools/test_cli` is a CLI package that depends on `ime_core`.
+- `Cargo.lock` must be committed to keep CLI and release builds reproducible.
+
 Expected validation for Stage 1:
 
 ```bash
-cargo test
-cargo run --bin test_cli
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo run -p test_cli -- nihao
 ```

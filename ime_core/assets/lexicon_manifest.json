@@ -4,13 +4,13 @@
   "entries": [
     {
       "file": "base_lexicon_sample.tsv",
-      "source": "handwritten sample data for development",
+      "source": "handwritten by project maintainers for development; not derived from third-party lexicons",
       "license": "project-internal sample data",
       "entry_count": 8
     },
     {
       "file": "bigram_sample.tsv",
-      "source": "handwritten sample data for development",
+      "source": "handwritten by project maintainers for development; not derived from third-party lexicons",
       "license": "project-internal sample data",
       "entry_count": 7
     }

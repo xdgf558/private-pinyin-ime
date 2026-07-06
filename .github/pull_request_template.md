@@ -11,7 +11,9 @@
 - [ ] Reviewed `docs/private_pinyin_ime_development_spec.md`
 - [ ] Updated `docs/DEVELOPMENT_PROGRESS.md`
 - [ ] Updated `CHANGELOG.md`
-- [ ] Ran relevant checks:
+- [ ] Ran relevant checks
+  - Command:
+  - Result:
 
 ## Privacy Checklist
 

@@ -4,7 +4,6 @@
 
 # Rust
 target/
-Cargo.lock
 
 # Native build outputs
 build/
@@ -21,8 +20,7 @@ release/
 
 # Xcode
 DerivedData/
-*.xcuserdata/
-*.xcworkspace/xcuserdata/
+xcuserdata/
 
 # Visual Studio
 .vs/
@@ -30,8 +28,6 @@ DerivedData/
 *.suo
 *.VC.db
 
-# Local runtime data
-settings.json
-user_lexicon.sqlite
-user_stats.sqlite
-debug.log
+# Local runtime data for development-only sandbox runs.
+# Production code should use platform-standard application data directories.
+local/
