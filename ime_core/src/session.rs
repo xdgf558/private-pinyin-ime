@@ -89,11 +89,7 @@ impl InputSession {
             }
             KeyCode::Space => {
                 if self.raw_input.is_empty() {
-                    if self.candidates.is_empty() {
-                        ImeOutput::idle(self.mode)
-                    } else {
-                        self.commit_candidate(0)
-                    }
+                    self.commit_text(" ")
                 } else if self.candidates.is_empty() {
                     self.commit_raw_input()
                 } else {
@@ -169,7 +165,8 @@ impl InputSession {
         }
     }
 
-    fn commit_text(&self, text: &str) -> ImeOutput {
+    fn commit_text(&mut self, text: &str) -> ImeOutput {
+        self.clear_composition();
         self.committed_output(text.to_owned())
     }
 

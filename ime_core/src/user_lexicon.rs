@@ -1,4 +1,6 @@
+use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection};
@@ -8,9 +10,18 @@ use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{PinyinParse, PinyinParser};
 use crate::ranker::Ranker;
 
-#[derive(Debug, Clone)]
 pub struct UserLexicon {
     db_path: PathBuf,
+    connection: Mutex<Connection>,
+}
+
+impl fmt::Debug for UserLexicon {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("UserLexicon")
+            .field("db_path", &self.db_path)
+            .finish_non_exhaustive()
+    }
 }
 
 impl UserLexicon {
@@ -20,7 +31,11 @@ impl UserLexicon {
             std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
         }
 
-        let lexicon = Self { db_path };
+        let connection = Connection::open(&db_path).map_err(|_| ImeError::UserLexiconDatabase)?;
+        let lexicon = Self {
+            db_path,
+            connection: Mutex::new(connection),
+        };
         lexicon.ensure_schema()?;
         Ok(lexicon)
     }
@@ -129,8 +144,10 @@ impl UserLexicon {
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
 
-    fn connection(&self) -> ImeResult<Connection> {
-        Connection::open(&self.db_path).map_err(|_| ImeError::UserLexiconDatabase)
+    fn connection(&self) -> ImeResult<MutexGuard<'_, Connection>> {
+        self.connection
+            .lock()
+            .map_err(|_| ImeError::UserLexiconDatabase)
     }
 }
 
