@@ -26,6 +26,7 @@
 - Changed candidate ordering to rank exact matches before prefix matches, then sort within each group by frequency.
 - Merged user lexicon candidates ahead of base lexicon duplicates.
 - Reused one SQLite connection per user lexicon instead of reopening the database on every lookup or learning write.
+- Deduplicated compact pinyin normalization across base and user lexicon lookup.
 
 ### Fixed
 

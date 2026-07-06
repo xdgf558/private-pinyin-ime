@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 14:27
+Last updated: 2026-07-06 14:43
 Current stage: stage-02
 Current status: completed
 
@@ -9,7 +9,7 @@ Current status: completed
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
-| 02 | User lexicon and prediction | completed | 2026-07-06 14:27 | SQLite user lexicon, learning controls, local prediction, and review fixes are ready for local review |
+| 02 | User lexicon and prediction | completed | 2026-07-06 14:43 | SQLite user lexicon, learning controls, local prediction, and review fixes are ready for local review |
 | 03 | C ABI and CLI integration | not_started | | Depends on stage 01 and stage 02 |
 | 04 | Windows TSF prototype | not_started | | Depends on stable C ABI |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
@@ -35,6 +35,7 @@ Current status: completed
 - Addressed stage-02 review feedback so idle Space commits a normal space while digit keys select prediction candidates.
 - Reused one mutex-protected SQLite connection per user lexicon instance instead of reopening the database for each lookup or learning write.
 - Recorded follow-up open items for SQLite prefix range queries, exact-match preservation before query limits, user/base ranking fusion, and sanitized DB error logging.
+- Deduplicated compact pinyin normalization across base and user lexicon lookup.
 
 ## Current Work
 

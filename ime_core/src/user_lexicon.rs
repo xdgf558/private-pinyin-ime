@@ -7,7 +7,7 @@ use rusqlite::{params, Connection};
 
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
-use crate::pinyin_parser::{PinyinParse, PinyinParser};
+use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
 use crate::ranker::Ranker;
 
 pub struct UserLexicon {
@@ -149,10 +149,6 @@ impl UserLexicon {
             .lock()
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
-}
-
-fn compact_pinyin(pinyin: &str) -> String {
-    pinyin.split_whitespace().collect::<String>()
 }
 
 fn now_ms() -> i64 {
