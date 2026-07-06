@@ -1,6 +1,6 @@
 # Windows TSF Host
 
-This directory contains the Windows Text Services Framework prototype for stage 04.
+This directory contains the Windows Text Services Framework prototype.
 
 The Windows host remains thin:
 
@@ -8,6 +8,7 @@ The Windows host remains thin:
 - Update composition text from core output.
 - Render candidates without taking focus.
 - Commit selected text through TSF APIs.
+- Load a settings snapshot from `%LOCALAPPDATA%\PrivatePinyin\settings.json`.
 
 ## Contents
 
@@ -15,7 +16,10 @@ The Windows host remains thin:
 - `src/`: COM class factory, TSF text service, key mapping, candidate window, registration, and Rust C ABI bridge.
 - `installer/register-ime.ps1`: calls `regsvr32` for local registration.
 - `installer/unregister-ime.ps1`: unregisters the DLL.
+- `installer/open-settings.ps1`: opens a local settings window for privacy mode, user learning, prediction, lexicon clear, and lexicon export.
+- `installer/PrivatePinyinTsf.wxs`: WiX source for an unsigned prototype MSI.
 - `../../scripts/build_windows_tsf.ps1`: builds the Rust FFI library and the TSF DLL on Windows.
+- `../../scripts/package_windows_tsf.ps1`: stages installer files and builds a zip bundle; builds an MSI when WiX is installed.
 
 ## Build
 
@@ -28,6 +32,23 @@ Run from a Windows Developer PowerShell with Rust, CMake, and Visual Studio 2022
 The script builds `private_pinyin_ime_ffi` first, then configures and builds the TSF DLL.
 If the build links against `private_pinyin_ime.dll.lib`, copy `target\release\private_pinyin_ime.dll`
 next to `PrivatePinyinTsf.dll` before registration.
+
+## Package
+
+Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, and optional WiX installed:
+
+```powershell
+.\scripts\package_windows_tsf.ps1
+```
+
+The script writes:
+
+```text
+dist\windows_tsf\PrivatePinyin-0.1.0.zip
+dist\windows_tsf\PrivatePinyin-0.1.0.msi
+```
+
+The `.msi` is generated only when `wix` is available. The installer is unsigned, per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
 
 ## Local Registration
 
@@ -43,6 +64,14 @@ Unregister:
 .\platform\windows_tsf\installer\unregister-ime.ps1 -DllPath .\build\windows_tsf\Release\PrivatePinyinTsf.dll
 ```
 
+## Settings
+
+```powershell
+.\platform\windows_tsf\installer\open-settings.ps1
+```
+
+The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/export operations call `private-pinyin-settings.exe`, which is included in packaged builds.
+
 ## Manual Smoke Test
 
 1. Open Notepad.
@@ -53,8 +82,8 @@ Unregister:
 6. Press `Shift` to toggle Chinese/English mode.
 7. Type `nihao`, press `Esc`, and confirm composition is cancelled.
 
-## Stage 04 Limits
+## Known Gaps
 
 - Candidate UI is intentionally simple and non-activating.
-- High DPI polishing, installer packaging, code signing, and production registration flow are tracked as open items.
+- High DPI polishing, code signing, production per-machine registration, and production installer validation are tracked as open items.
 - This prototype should be validated on Windows 11; macOS/Linux CI cannot load TSF DLLs.

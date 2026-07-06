@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product
+    Id="*"
+    Name="PrivatePinyin IME"
+    Language="1033"
+    Version="$(var.ProductVersion)"
+    Manufacturer="PrivatePinyin"
+    UpgradeCode="2B3455F6-25ED-4BCB-8871-BE5B63C3875F">
+    <Package
+      InstallerVersion="500"
+      Compressed="yes"
+      InstallScope="perUser"
+      Description="PrivatePinyin Windows TSF input method" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of PrivatePinyin IME is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="MainFeature" Title="PrivatePinyin IME" Level="1">
+      <ComponentGroupRef Id="PrivatePinyinComponents" />
+    </Feature>
+
+    <CustomAction
+      Id="RegisterTsf"
+      Directory="INSTALLFOLDER"
+      ExeCommand="regsvr32.exe /s &quot;[#PrivatePinyinTsfDll]&quot;"
+      Execute="deferred"
+      Impersonate="yes"
+      Return="check" />
+    <CustomAction
+      Id="UnregisterTsf"
+      Directory="INSTALLFOLDER"
+      ExeCommand="regsvr32.exe /u /s &quot;[#PrivatePinyinTsfDll]&quot;"
+      Execute="deferred"
+      Impersonate="yes"
+      Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="UnregisterTsf" Before="RemoveFiles">REMOVE="ALL"</Custom>
+      <Custom Action="RegisterTsf" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="PrivatePinyin" />
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="PrivatePinyinComponents" Directory="INSTALLFOLDER">
+      <Component Id="PrivatePinyinTsfDllComponent" Guid="D09204C6-B49B-4ACD-9C85-A3250408D944">
+        <File Id="PrivatePinyinTsfDll" Source="$(var.PackageSource)\PrivatePinyinTsf.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="PrivatePinyinFfiDllComponent" Guid="25D234A5-7805-4651-B804-D2F652753E43">
+        <File Id="PrivatePinyinFfiDll" Source="$(var.PackageSource)\private_pinyin_ime.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="PrivatePinyinSettingsToolComponent" Guid="050BB8F6-A41F-44D7-BA89-497D94425CCE">
+        <File Id="PrivatePinyinSettingsTool" Source="$(var.PackageSource)\private-pinyin-settings.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="PrivatePinyinInstallerScriptsComponent" Guid="F6453682-606E-4937-88FF-B006577798FB">
+        <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" KeyPath="yes" />
+        <File Id="UnregisterImeScript" Source="$(var.PackageSource)\unregister-ime.ps1" />
+        <File Id="OpenSettingsScript" Source="$(var.PackageSource)\open-settings.ps1" />
+        <File Id="DefaultSettingsJson" Source="$(var.PackageSource)\default_settings.json" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

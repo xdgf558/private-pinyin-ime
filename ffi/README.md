@@ -1,6 +1,7 @@
 # ffi
 
 This directory contains the stable C ABI surface starting in stage 03.
+Stage 6 adds settings-path loading plus user lexicon clear/export actions for desktop settings UI.
 
 Files:
 

@@ -2,7 +2,131 @@
 
 #include <windows.h>
 
+#include <algorithm>
+#include <string>
+
 namespace private_pinyin {
+namespace {
+
+bool file_exists(const std::wstring& path) {
+  const DWORD attributes = GetFileAttributesW(path.c_str());
+  return attributes != INVALID_FILE_ATTRIBUTES &&
+         (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+bool ensure_directory(const std::wstring& path) {
+  if (CreateDirectoryW(path.c_str(), nullptr) != FALSE) {
+    return true;
+  }
+  return GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
+std::string wide_to_utf8(const std::wstring& value) {
+  if (value.empty()) {
+    return {};
+  }
+
+  const int length = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, nullptr, 0, nullptr, nullptr);
+  if (length <= 1) {
+    return {};
+  }
+
+  std::string result(static_cast<size_t>(length), '\0');
+  WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, result.data(), length, nullptr, nullptr);
+  result.resize(static_cast<size_t>(length - 1));
+  return result;
+}
+
+std::string json_escape(std::string value) {
+  std::string escaped;
+  escaped.reserve(value.size());
+  for (char ch : value) {
+    if (ch == '"' || ch == '\\') {
+      escaped.push_back('\\');
+    }
+    escaped.push_back(ch);
+  }
+  return escaped;
+}
+
+bool write_utf8_file(const std::wstring& path, const std::string& contents) {
+  const HANDLE file = CreateFileW(
+      path.c_str(),
+      GENERIC_WRITE,
+      0,
+      nullptr,
+      CREATE_ALWAYS,
+      FILE_ATTRIBUTE_NORMAL,
+      nullptr);
+  if (file == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  DWORD written = 0;
+  const BOOL ok = WriteFile(
+      file,
+      contents.data(),
+      static_cast<DWORD>(contents.size()),
+      &written,
+      nullptr);
+  FlushFileBuffers(file);
+  CloseHandle(file);
+  return ok != FALSE && written == contents.size();
+}
+
+std::string ensure_settings_file() {
+  wchar_t local_app_data_buffer[MAX_PATH] = {};
+  const DWORD local_app_data_length = GetEnvironmentVariableW(
+      L"LOCALAPPDATA",
+      local_app_data_buffer,
+      static_cast<DWORD>(MAX_PATH));
+  if (local_app_data_length == 0 || local_app_data_length >= MAX_PATH) {
+    return {};
+  }
+
+  const std::wstring support_dir =
+      std::wstring(local_app_data_buffer) + L"\\PrivatePinyin";
+  if (!ensure_directory(support_dir)) {
+    return {};
+  }
+
+  const std::wstring settings_path = support_dir + L"\\settings.json";
+  const std::wstring user_lexicon_path = support_dir + L"\\user_lexicon.sqlite";
+  if (!file_exists(settings_path)) {
+    std::string user_lexicon_utf8 = wide_to_utf8(user_lexicon_path);
+    std::replace(user_lexicon_utf8.begin(), user_lexicon_utf8.end(), '\\', '/');
+    const std::string contents =
+        "{\n"
+        "  \"default_mode\": \"Chinese\",\n"
+        "  \"toggle_key\": \"Shift\",\n"
+        "  \"candidate_page_size\": 5,\n"
+        "  \"enable_prediction\": true,\n"
+        "  \"enable_user_learning\": true,\n"
+        "  \"strict_privacy_mode\": false,\n"
+        "  \"user_lexicon_path\": \"" +
+        json_escape(user_lexicon_utf8) +
+        "\",\n"
+        "  \"fuzzy_pinyin\": {\n"
+        "    \"zh_z\": false,\n"
+        "    \"ch_c\": false,\n"
+        "    \"sh_s\": false,\n"
+        "    \"n_l\": false,\n"
+        "    \"an_ang\": false,\n"
+        "    \"en_eng\": false,\n"
+        "    \"in_ing\": false\n"
+        "  },\n"
+        "  \"theme\": \"system\",\n"
+        "  \"candidate_font_size\": 14\n"
+        "}\n";
+    if (!write_utf8_file(settings_path, contents)) {
+      return {};
+    }
+  }
+
+  return wide_to_utf8(settings_path);
+}
+
+}  // namespace
 
 CoreBridge::~CoreBridge() {
   reset();
@@ -10,7 +134,8 @@ CoreBridge::~CoreBridge() {
 
 bool CoreBridge::initialize() {
   reset();
-  engine_ = ime_engine_new(nullptr);
+  settings_path_ = ensure_settings_file();
+  engine_ = settings_path_.empty() ? ime_engine_new(nullptr) : ime_engine_new(settings_path_.c_str());
   if (engine_ == nullptr) {
     return false;
   }
@@ -33,6 +158,7 @@ void CoreBridge::reset() {
     ime_engine_free(engine_);
     engine_ = nullptr;
   }
+  settings_path_.clear();
 }
 
 void CoreBridge::reset_session() {
@@ -40,6 +166,22 @@ void CoreBridge::reset_session() {
     return;
   }
   (void)take_output(ime_session_reset(session_));
+}
+
+bool CoreBridge::clear_user_lexicon() {
+  if (engine_ == nullptr) {
+    return false;
+  }
+  return ime_engine_clear_user_lexicon(engine_) != 0;
+}
+
+bool CoreBridge::export_user_lexicon(const std::wstring& export_path) {
+  if (engine_ == nullptr || export_path.empty()) {
+    return false;
+  }
+  const std::string export_path_utf8 = wide_to_utf8(export_path);
+  return !export_path_utf8.empty() &&
+         ime_engine_export_user_lexicon(engine_, export_path_utf8.c_str()) != 0;
 }
 
 std::optional<OutputSnapshot> CoreBridge::feed_key(const ImeKeyEvent& event) {

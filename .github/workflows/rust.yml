@@ -34,3 +34,6 @@ jobs:
 
       - name: Check macOS IMK source scaffold
         run: bash scripts/check_macos_imk_sources.sh
+
+      - name: Check installer and settings scaffold
+        run: bash scripts/check_installers_settings_sources.sh

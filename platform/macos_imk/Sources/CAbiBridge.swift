@@ -20,13 +20,11 @@ struct PinyinOutput {
 final class PinyinCoreBridge {
     private var engine: OpaquePointer?
     private var session: OpaquePointer?
+    private let settingsPath: String?
 
     init?() {
-        guard let engine = ime_engine_new(nil) else {
-            return nil
-        }
-        guard let session = ime_session_new(engine) else {
-            ime_engine_free(engine)
+        settingsPath = PrivatePinyinSettingsStore.ensureSettingsFile()
+        guard let (engine, session) = Self.openEngine(settingsPath: settingsPath) else {
             return nil
         }
         self.engine = engine
@@ -34,12 +32,17 @@ final class PinyinCoreBridge {
     }
 
     deinit {
-        if let session {
-            ime_session_free(session)
+        close()
+    }
+
+    func reload() -> Bool {
+        close()
+        guard let (engine, session) = Self.openEngine(settingsPath: settingsPath) else {
+            return false
         }
-        if let engine {
-            ime_engine_free(engine)
-        }
+        self.engine = engine
+        self.session = session
+        return true
     }
 
     func feed(_ mappedKey: MappedKey) -> PinyinOutput? {
@@ -74,6 +77,53 @@ final class PinyinCoreBridge {
             return nil
         }
         return takeOutput(ime_session_reset(session))
+    }
+
+    func clearUserLexicon() -> Bool {
+        guard let engine else {
+            return false
+        }
+        return ime_engine_clear_user_lexicon(engine) != 0
+    }
+
+    func exportUserLexicon(to path: String) -> Bool {
+        guard let engine else {
+            return false
+        }
+        return path.withCString { pathPointer in
+            ime_engine_export_user_lexicon(engine, pathPointer) != 0
+        }
+    }
+
+    private static func openEngine(settingsPath: String?) -> (OpaquePointer, OpaquePointer)? {
+        let engine: OpaquePointer?
+        if let settingsPath {
+            engine = settingsPath.withCString { pathPointer in
+                ime_engine_new(pathPointer)
+            }
+        } else {
+            engine = ime_engine_new(nil)
+        }
+
+        guard let engine else {
+            return nil
+        }
+        guard let session = ime_session_new(engine) else {
+            ime_engine_free(engine)
+            return nil
+        }
+        return (engine, session)
+    }
+
+    private func close() {
+        if let session {
+            ime_session_free(session)
+            self.session = nil
+        }
+        if let engine {
+            ime_engine_free(engine)
+            self.engine = nil
+        }
     }
 
     private func takeOutput(_ outputPointer: UnsafeMutablePointer<ImeOutput>?) -> PinyinOutput? {

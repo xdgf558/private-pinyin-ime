@@ -6,7 +6,8 @@ access Rust internals directly.
 
 ## Ownership Rules
 
-- Create one `ImeEngine` with `ime_engine_new(NULL)` and free it with
+- Create one `ImeEngine` with `ime_engine_new(NULL)` for built-in defaults, or
+  pass a UTF-8 JSON settings file path to load a settings snapshot. Free it with
   `ime_engine_free`.
 - Create sessions with `ime_session_new(engine)` and free each session with
   `ime_session_free`.
@@ -19,8 +20,9 @@ access Rust internals directly.
 - All strings are UTF-8.
 - `ImeEngine` and `ImeSession` are not thread-safe. Do not call into the same
   engine or session concurrently from multiple host threads.
-- The `config_json_path` parameter is reserved in stage 03. Settings loading,
-  including user lexicon path and privacy flags, is tracked for a later stage.
+- Use `ime_engine_clear_user_lexicon(engine)` and
+  `ime_engine_export_user_lexicon(engine, path)` for settings UI actions. Both
+  return `1` on success and `0` on invalid handles or internal errors.
 
 ## C++ Sketch
 

@@ -1,12 +1,14 @@
 # ime_core
 
-This directory contains the Rust core engine created in stage 01.
+This directory contains the shared Rust core engine.
 
 Current responsibilities:
 
 - Pinyin parsing.
 - Candidate generation.
 - Ranking.
+- SQLite user lexicon persistence.
+- Local bigram prediction.
 - Settings and privacy enforcement.
-
-Later stages will add prediction, user lexicon persistence, and C ABI integration.
+- JSON settings snapshots.
+- User lexicon clear/export actions.

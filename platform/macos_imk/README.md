@@ -1,6 +1,6 @@
 # macOS InputMethodKit Host
 
-This directory contains the stage-05 macOS InputMethodKit prototype.
+This directory contains the macOS InputMethodKit prototype.
 
 The macOS host remains thin:
 
@@ -9,6 +9,8 @@ The macOS host remains thin:
 - Render candidates through the system `IMKCandidates` panel.
 - Commit selected text through the active `IMKTextInput` client.
 - Reset Rust session state when focus, deactivation, or external composition termination invalidates host state.
+- Load a settings snapshot from `~/Library/Application Support/PrivatePinyin/settings.json`.
+- Expose a menu settings entry for strict privacy mode, clearing the user lexicon, exporting the user lexicon, and opening the JSON settings file.
 
 ## Layout
 
@@ -16,6 +18,7 @@ The macOS host remains thin:
 - `Resources/Info.plist`: input method app bundle metadata.
 - `installer/install-local.sh`: copies the built app into `~/Library/Input Methods`.
 - `installer/uninstall-local.sh`: removes the local input method app.
+- `../../scripts/package_macos_pkg.sh`: creates an unsigned local `.pkg` installer.
 
 ## Build
 
@@ -37,6 +40,24 @@ platform/macos_imk/installer/install-local.sh
 
 Then open System Settings > Keyboard > Input Sources and add PrivatePinyin.
 
+## Build Package
+
+```bash
+bash scripts/package_macos_pkg.sh
+```
+
+The package is written to:
+
+```text
+dist/macos_imk/PrivatePinyin-0.1.0.pkg
+```
+
+Install with:
+
+```bash
+sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.0.pkg -target /
+```
+
 ## Uninstall Locally
 
 ```bash
@@ -50,10 +71,12 @@ platform/macos_imk/installer/uninstall-local.sh
 3. Type `zhongguo`, press `Space`, and confirm `中国` commits.
 4. Type `nihao`, confirm candidates appear near the insertion point, and select one with a number key.
 5. Press standalone `Shift` to toggle mode; `Shift+A` should pass through as uppercase input.
+6. Open the input method menu and toggle Strict Privacy Mode.
+7. Use the input method menu to export and clear the user lexicon.
 
 ## Known Gaps
 
 - Local builds are ad-hoc signed only.
-- Release packaging, Developer ID signing, and notarization are tracked for later stages.
+- The package is unsigned; Developer ID signing and notarization are still required for release.
 - Candidate panel appearance and positioning need app-by-app validation.
-- Custom menu icon and preferences UI are not included yet.
+- Custom menu icon and a polished preferences window are not included yet.

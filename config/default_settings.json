@@ -1,0 +1,20 @@
+{
+  "default_mode": "Chinese",
+  "toggle_key": "Shift",
+  "candidate_page_size": 5,
+  "enable_prediction": true,
+  "enable_user_learning": true,
+  "strict_privacy_mode": false,
+  "user_lexicon_path": null,
+  "fuzzy_pinyin": {
+    "zh_z": false,
+    "ch_c": false,
+    "sh_s": false,
+    "n_l": false,
+    "an_ang": false,
+    "en_eng": false,
+    "in_ing": false
+  },
+  "theme": "system",
+  "candidate_font_size": 14
+}

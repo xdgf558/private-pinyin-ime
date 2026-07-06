@@ -63,3 +63,11 @@ Status: accepted
 Decision: Implement the macOS host as a thin Swift InputMethodKit app bundle that maps IMK events into the shared C ABI and builds through a lightweight shell script rather than a generated Xcode project.
 Reason: Stage 05 needs an auditable, local POC that can create an installable `.app` input method bundle while preserving one Rust engine implementation.
 Consequences: macOS-specific code lives under `platform/macos_imk`; release readiness still requires Developer ID signing, notarization, packaged install/uninstall, icon assets, settings UI, and manual app compatibility validation.
+
+## Decision 009: Settings and installer stage scope
+
+Date: 2026-07-06
+Status: accepted
+Decision: Load desktop settings through JSON snapshots passed into the C ABI, keep settings and user lexicon data in platform application-data directories, and deliver Stage 6 installers as unsigned prototype packages.
+Reason: The shared Rust engine should own settings validation, strict privacy behavior, and user lexicon clear/export semantics while platform hosts stay thin. Stage 6 also needs repeatable installer artifacts without blocking on release signing infrastructure.
+Consequences: Windows and macOS hosts create or pass platform-local `settings.json` paths at engine startup; settings changes require an engine/session reload to take effect. Release readiness still requires signed Windows and macOS installers, notarization on macOS, and automatic-update planning.

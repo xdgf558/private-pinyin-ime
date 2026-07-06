@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 5 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tool, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, tests, and Rust CI workflow are in place.
+Stage 6 is implemented locally: the Rust workspace, core engine crate, sample lexicon lookup, SQLite user lexicon, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype, macOS InputMethodKit prototype, JSON settings loading, user lexicon clear/export actions, prototype installer packaging scripts, tests, and Rust CI workflow are in place.
 
 ## Development Workflow
 
@@ -38,6 +38,7 @@ The root `Cargo.toml` defines a workspace with:
 - `ime_core` is the core engine crate.
 - `ffi/ime_ffi` exposes the C ABI as `libprivate_pinyin_ime`.
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
+- `tools/settings_cli` manages settings snapshots and user lexicon clear/export actions for installer scripts.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -47,12 +48,15 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p test_cli -- nihao
+cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_settings.json
 bash scripts/run_c_demo.sh
 bash scripts/check_windows_tsf_sources.sh
 bash scripts/check_macos_imk_sources.sh
+bash scripts/check_installers_settings_sources.sh
 bash scripts/build_macos_imk.sh
+bash scripts/package_macos_pkg.sh
 ```
 
 ## Next Stage
 
-Stage 6 will package installers and settings flows for the desktop prototypes.
+Stage 7 will add the iOS Keyboard Extension prototype.
