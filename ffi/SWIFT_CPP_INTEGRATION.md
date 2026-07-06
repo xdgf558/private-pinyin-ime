@@ -12,10 +12,15 @@ access Rust internals directly.
   `ime_session_free`.
 - Every non-null `ImeOutput*` returned by the API must be released exactly once
   with `ime_output_free`.
+- Every pointer-returning API may return `NULL` for invalid handles, internal
+  errors, or caught Rust panics. Host code must check for null before reading.
 - Strings and candidate pointers inside `ImeOutput` are valid only until
   `ime_output_free` is called for that output.
 - All strings are UTF-8.
-- FFI calls catch Rust panics and return `NULL` for pointer-returning functions.
+- `ImeEngine` and `ImeSession` are not thread-safe. Do not call into the same
+  engine or session concurrently from multiple host threads.
+- The `config_json_path` parameter is reserved in stage 03. Settings loading,
+  including user lexicon path and privacy flags, is tracked for a later stage.
 
 ## C++ Sketch
 
@@ -46,8 +51,17 @@ ImeKeyEvent textEvent(const char* text) {
 
 void example() {
   EnginePtr engine(ime_engine_new(nullptr));
+  if (!engine) {
+    return;
+  }
   SessionPtr session(ime_session_new(engine.get()));
+  if (!session) {
+    return;
+  }
   OutputPtr output(ime_session_feed_key(session.get(), textEvent("n")));
+  if (!output) {
+    return;
+  }
 }
 ```
 

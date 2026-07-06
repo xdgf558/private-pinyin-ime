@@ -2,9 +2,11 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::ffi::{CStr, CString};
+use std::marker::PhantomData;
 use std::os::raw::{c_char, c_double, c_int};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
+use std::rc::Rc;
 
 use ime_core::{
     ImeEngine as CoreImeEngine, ImeMode as CoreImeMode, ImeOutput as CoreImeOutput, InputSession,
@@ -34,10 +36,12 @@ const IME_KEY_DIGIT: c_int = 101;
 
 pub struct ImeEngine {
     inner: CoreImeEngine,
+    _not_thread_safe: PhantomData<Rc<()>>,
 }
 
 pub struct ImeSession {
     inner: InputSession,
+    _not_thread_safe: PhantomData<Rc<()>>,
 }
 
 #[repr(C)]
@@ -94,7 +98,10 @@ pub extern "C" fn ime_engine_new(config_json_path: *const c_char) -> *mut ImeEng
     catch_ptr(|| {
         let _reserved_config_path = read_c_string(config_json_path);
         let inner = CoreImeEngine::new().ok()?;
-        Some(Box::into_raw(Box::new(ImeEngine { inner })))
+        Some(Box::into_raw(Box::new(ImeEngine {
+            inner,
+            _not_thread_safe: PhantomData,
+        })))
     })
 }
 
@@ -114,7 +121,10 @@ pub extern "C" fn ime_session_new(engine: *mut ImeEngine) -> *mut ImeSession {
     catch_ptr(|| {
         let engine = unsafe { engine.as_ref()? };
         let inner = engine.inner.create_session();
-        Some(Box::into_raw(Box::new(ImeSession { inner })))
+        Some(Box::into_raw(Box::new(ImeSession {
+            inner,
+            _not_thread_safe: PhantomData,
+        })))
     })
 }
 

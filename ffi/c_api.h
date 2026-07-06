@@ -10,6 +10,23 @@ extern "C" {
 typedef struct ImeEngine ImeEngine;
 typedef struct ImeSession ImeSession;
 
+// Threading:
+// - ImeEngine and ImeSession handles are not thread-safe.
+// - Do not call any function concurrently with the same engine or session.
+// - Create and use a session on one host thread at a time. Concurrent access to
+//   the same handle is outside the ABI contract.
+//
+// Errors:
+// - Pointer-returning functions return NULL for invalid handles, internal
+//   errors, or caught Rust panics.
+// - Hosts must check every returned pointer before reading it.
+// - Free functions accept NULL and do nothing.
+//
+// Memory:
+// - All strings are UTF-8 and owned by their containing ImeOutput.
+// - Platform code must not mutate or free strings/candidate arrays directly.
+// - Platform code must not cache pointers from ImeOutput after ime_output_free.
+
 typedef enum {
   IME_MODE_CHINESE = 0,
   IME_MODE_ENGLISH = 1

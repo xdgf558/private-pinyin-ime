@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-06 15:15
+Last updated: 2026-07-06 15:32
 Current stage: stage-03
 Current status: completed
 
@@ -10,7 +10,7 @@ Current status: completed
 |---|---|---|---|---|
 | 01 | Rust core engine | completed | 2026-07-06 12:12 | Core engine, CLI, tests, and CI are ready for local review |
 | 02 | User lexicon and prediction | completed | 2026-07-06 15:01 | Merged to `main` through PR #3 |
-| 03 | C ABI and CLI integration | completed | 2026-07-06 15:15 | C ABI crate, header, C demo, ownership docs, and tests are ready for local review |
+| 03 | C ABI and CLI integration | completed | 2026-07-06 15:32 | C ABI crate, header, C demo, ownership docs, layout checks, and tests are ready for local review |
 | 04 | Windows TSF prototype | not_started | | Depends on stable C ABI |
 | 05 | macOS InputMethodKit prototype | not_started | | Depends on stable C ABI |
 | 06 | Installers and settings | not_started | | Depends on desktop prototypes |
@@ -40,6 +40,9 @@ Current status: completed
 - Implemented the stage-03 `ffi/ime_ffi` crate that exposes `libprivate_pinyin_ime`.
 - Added `ffi/c_api.h`, output ownership rules, C demo, Swift/C++ integration notes, and C ABI CI coverage.
 - Added FFI tests for engine/session creation, `nihao` input, candidate reading, commit output, null-handle behavior, and output freeing.
+- Addressed stage-03 review feedback by documenting NULL-return, non-thread-safe handle, and output ownership contracts in the C ABI.
+- Added Rust layout assertions and C `_Static_assert` checks to catch header/ABI drift in CI.
+- Recorded a follow-up open item for exposing user lexicon path, learning controls, and strict privacy mode through C ABI settings loading.
 
 ## Current Work
 
@@ -58,7 +61,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 29 integration tests passed across parser, candidates, ranking, prediction, privacy logging, SQLite user lexicon behavior, and C ABI behavior.
+- Notes: 31 integration tests passed across parser, candidates, ranking, prediction, privacy logging, SQLite user lexicon behavior, C ABI behavior, and ABI layout checks.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -66,7 +69,7 @@ Current status: completed
 
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
-- Notes: C demo created an engine, fed `nihao`, read first candidate `你好`, and committed `你好`.
+- Notes: C layout assertions compiled and ran; C demo created an engine, fed `nihao`, read first candidate `你好`, and committed `你好`.
 
 - Command: `leaks --atExit -- target/debug/ime_c_demo`
 - Result: passed
@@ -89,6 +92,7 @@ Current status: completed
 - Preserve exact user lexicon matches before applying query limits.
 - Fuse user and base ranking instead of unconditional user-first ordering.
 - Wire sanitized user lexicon database failures into logging.
+- Expose user lexicon path, learning controls, and strict privacy mode through the C ABI settings loader.
 
 ## Files Changed In Latest Stage
 
@@ -98,6 +102,7 @@ Current status: completed
 - `.github/workflows/rust.yml`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
+- `docs/OPEN_ITEMS.md`
 - `ffi/`
 - `scripts/run_c_demo.sh`
 - `Cargo.toml`
