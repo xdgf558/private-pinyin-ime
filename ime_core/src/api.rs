@@ -5,6 +5,7 @@ use crate::candidate::Candidate;
 use crate::error::ImeResult;
 use crate::key_event::KeyEvent;
 use crate::lexicon::Lexicon;
+use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
 use crate::session::InputSession;
@@ -104,7 +105,15 @@ impl ImeEngine {
         let user_candidates = self
             .user_lexicon
             .as_ref()
-            .map(|user_lexicon| user_lexicon.lookup(raw_input, &parses).unwrap_or_default())
+            .map(
+                |user_lexicon| match user_lexicon.lookup(raw_input, &parses) {
+                    Ok(candidates) => candidates,
+                    Err(error) => {
+                        logger::emit_error(error);
+                        Vec::new()
+                    }
+                },
+            )
             .unwrap_or_default();
         crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates)
     }

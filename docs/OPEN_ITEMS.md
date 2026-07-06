@@ -2,19 +2,19 @@
 
 | ID | Stage | Item | Priority | Owner | Status | Notes |
 |---|---|---|---|---|---|---|
-| OI-001 | 01 | Replace sample lexicon with licensed production lexicon | High | TBD | open | Must verify license before release |
+| OI-001 | 01 | Replace sample lexicon with licensed production lexicon | High | TBD | open | Stage 09 adds `docs/lexicon_data_policy.md` and keeps the sample manifest explicit, but production replacement still requires owner-approved source and license |
 | OI-002 | 00 | Select final project license | Medium | Owner | open | Repository currently uses all-rights-reserved text |
 | OI-003 | 01 | Implement Rust core engine crate | High | Codex | closed | Completed in stage 01 local branch |
 | OI-004 | 01 | Add minimal GitHub Actions for Rust validation | High | Codex | closed | Completed in stage 01 local branch |
 | OI-005 | 01 | Keep runtime data outside source directories | Medium | Codex | open | Development-only sandbox data may use ignored `local/`; production code should use platform data directories |
-| OI-006 | 02 | Add indexed lexicon lookup before production dictionary scale | High | Codex | open | Current stage-01 lookup is linear over the sample lexicon; use trie or sorted-prefix index before large dictionaries |
+| OI-006 | 02 | Add indexed lexicon lookup before production dictionary scale | High | Codex | closed | Stage 09 builds a compact-pinyin sorted index and uses binary prefix ranges for base lexicon lookup |
 | OI-007 | 04 | Refine Shift toggle to key-up-only semantics in platform hosts | Medium | Codex | open | Stage 01 toggles on a synthetic Shift key event; real hosts should distinguish standalone Shift release from Shift+letter |
-| OI-008 | 03 | Implement candidate paging for page up/down and page-size settings | Medium | Codex | open | `candidate_page`, `candidate_page_size`, PageUp, and PageDown are intentionally staged beyond stage 01 |
-| OI-009 | 02 | Commit first candidate before punctuation during composition | Medium | Codex | open | Stage 01 preserves input by committing raw pinyin plus punctuation; mature IME behavior should commit the top candidate plus punctuation, such as `你好,` for `nihao,` |
-| OI-010 | 02 | Use range-prefix queries for SQLite user lexicon lookup | Medium | Codex | open | Replace `LIKE 'abc%'` with a bounded `compact_pinyin >= lower AND compact_pinyin < upper` query before large user lexicons |
-| OI-011 | 02 | Preserve exact user lexicon matches before applying query limits | Medium | Codex | open | Current lookup limits SQL rows before in-memory exact/prefix partitioning, so high-frequency prefixes could crowd out lower-frequency exact matches |
-| OI-012 | 02 | Fuse user and base ranking instead of unconditional user-first ordering | Medium | Codex | open | Stage 02 intentionally favors user entries; later ranking should prevent weak user prefix matches from outranking strong base exact matches |
-| OI-013 | 02 | Wire sanitized user lexicon database failures into logging | Medium | Codex | open | DB failures must not interrupt input, but should emit structured error codes without raw user input, pinyin, or candidate text |
+| OI-008 | 03 | Implement candidate paging for page up/down and page-size settings | Medium | Codex | closed | Stage 09 pages candidate output by `candidate_page_size`; PageUp/PageDown and ArrowUp/ArrowDown move between pages and digit selection applies to the visible page |
+| OI-009 | 02 | Commit first candidate before punctuation during composition | Medium | Codex | closed | Stage 09 commits the first visible candidate plus punctuation, such as `你好,` for `nihao,`, and falls back to raw input only when no candidate exists |
+| OI-010 | 02 | Use range-prefix queries for SQLite user lexicon lookup | Medium | Codex | closed | Stage 09 replaces `LIKE` with `compact_pinyin >= ? AND compact_pinyin < ?` range queries |
+| OI-011 | 02 | Preserve exact user lexicon matches before applying query limits | Medium | Codex | closed | Stage 09 queries exact user pinyin rows separately before prefix-limited rows |
+| OI-012 | 02 | Fuse user and base ranking instead of unconditional user-first ordering | Medium | Codex | closed | Stage 09 sorts merged candidates by exact/prefix tier, source boost, frequency, and stable text/pinyin tie-breaks before deduplication |
+| OI-013 | 02 | Wire sanitized user lexicon database failures into logging | Medium | Codex | closed | Stage 09 emits structured `error code=...` log events for user lexicon lookup/learning failures without raw input, pinyin, candidate text, or context |
 | OI-014 | 03 | Add C ABI settings loader for host-provided configuration | High | Codex | closed | Completed in stage 06; `ime_engine_new(config_json_path)` loads JSON settings and the C ABI exposes user lexicon clear/export actions |
 | OI-015 | 04 | Add Windows code signing for TSF DLL and installer | High | Codex | open | Production Windows text service binaries must be signed before release |
 | OI-016 | 04 | Build production Windows installer and uninstaller | High | Codex | open | Stage 06 adds a Windows installer bundle script, settings UI script, and WiX MSI source; production still needs signed MSI validation on Windows |
@@ -42,3 +42,4 @@
 | OI-038 | 07 | Run iOS simulator smoke tests in Notes, Safari, and password fields | High | Codex | open | Stage 07 source scaffold is in place; validate `nihao -> 你好`, `jintian -> 今天` keeps prediction candidates such as `天气` after commit, Globe switching, no Full Access, and system-keyboard fallback on simulator/device; if prediction candidates disappear, reset the self-text-operation flag from `textDidChange` instead of synchronous `defer` |
 | OI-039 | 07 | Derive iOS mode UI from C ABI output mode | Medium | Codex | open | Stage 07 now updates local mode only after toggle success; later Swift bridge should expose `ImeOutput.mode` and derive UI state from the engine output |
 | OI-040 | 07 | Respect `needsInputModeSwitchKey` for the iOS Globe key | Medium | Codex | open | Hide or collapse the Globe key where iOS does not require an input-mode switch key |
+| OI-041 | 09 | Expose sanitized core logging through host ABI callbacks | Medium | Codex | open | Stage 09 adds core `set_log_sink` support, but Windows/macOS/iOS cannot connect it yet; add an `ime_set_log_callback`-style ABI with explicit callback lifetime and thread-safety contract before release diagnostics |

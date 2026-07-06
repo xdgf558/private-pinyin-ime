@@ -8,8 +8,9 @@ use rusqlite::{params, Connection};
 
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
-use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
-use crate::ranker::Ranker;
+use crate::lexicon::MAX_LOOKUP_CANDIDATES;
+use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
+use crate::ranker::{CandidateMatchKind, Ranker};
 
 const EXPORT_HEADER: &[u8] = b"phrase\tpinyin\tfrequency\tupdated_at_ms\n";
 
@@ -56,46 +57,85 @@ impl UserLexicon {
             .map(PinyinParse::pinyin_string)
             .collect::<std::collections::HashSet<_>>();
 
-        let connection = self.connection()?;
-        let mut statement = connection
-            .prepare(
-                "SELECT phrase, pinyin, frequency
-                 FROM user_phrases
-                 WHERE compact_pinyin LIKE ?1
-                 ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
-                 LIMIT 50",
-            )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
-        let like_pattern = format!("{normalized_input}%");
-        let rows = statement
-            .query_map(params![like_pattern], |row| {
-                let phrase: String = row.get(0)?;
-                let pinyin: String = row.get(1)?;
-                let frequency: i64 = row.get(2)?;
-                Ok((phrase, pinyin, frequency))
-            })
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
-
         let mut exact_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
+        let mut seen_phrases = std::collections::HashSet::new();
 
-        for row in rows {
-            let (phrase, pinyin, frequency) = row.map_err(|_| ImeError::UserLexiconDatabase)?;
-            let exact_match = exact_pinyins.contains(&pinyin);
-            let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
-            let candidate = Candidate::new(phrase, pinyin, CandidateSource::User)
-                .with_score(Ranker::score(frequency));
+        let connection = self.connection()?;
+        for exact_pinyin in &exact_pinyins {
+            let rows = {
+                let mut statement = connection
+                    .prepare(
+                        "SELECT phrase, pinyin, frequency
+                         FROM user_phrases
+                         WHERE pinyin = ?1
+                         ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
+                         LIMIT ?2",
+                    )
+                    .map_err(|_| ImeError::UserLexiconDatabase)?;
+                let mapped_rows = statement
+                    .query_map(params![exact_pinyin, MAX_LOOKUP_CANDIDATES as i64], |row| {
+                        let phrase: String = row.get(0)?;
+                        let pinyin: String = row.get(1)?;
+                        let frequency: i64 = row.get(2)?;
+                        Ok((phrase, pinyin, frequency))
+                    })
+                    .map_err(|_| ImeError::UserLexiconDatabase)?;
+                collect_user_rows(mapped_rows)?
+            };
 
-            if exact_match {
-                exact_candidates.push(candidate);
-            } else {
-                prefix_candidates.push(candidate);
+            for (phrase, pinyin, frequency) in rows {
+                if seen_phrases.insert(phrase.clone()) {
+                    exact_candidates.push(user_candidate(
+                        phrase,
+                        pinyin,
+                        frequency,
+                        CandidateMatchKind::Exact,
+                    ));
+                }
+            }
+        }
+
+        let upper_bound = compact_prefix_upper_bound(&normalized_input);
+        let rows = {
+            let mut statement = connection
+                .prepare(
+                    "SELECT phrase, pinyin, frequency
+                     FROM user_phrases
+                     WHERE compact_pinyin >= ?1 AND compact_pinyin < ?2
+                     ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
+                     LIMIT ?3",
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            let mapped_rows = statement
+                .query_map(
+                    params![normalized_input, upper_bound, MAX_LOOKUP_CANDIDATES as i64],
+                    |row| {
+                        let phrase: String = row.get(0)?;
+                        let pinyin: String = row.get(1)?;
+                        let frequency: i64 = row.get(2)?;
+                        Ok((phrase, pinyin, frequency))
+                    },
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            collect_user_rows(mapped_rows)?
+        };
+
+        for (phrase, pinyin, frequency) in rows {
+            if !exact_pinyins.contains(&pinyin) && seen_phrases.insert(phrase.clone()) {
+                prefix_candidates.push(user_candidate(
+                    phrase,
+                    pinyin,
+                    frequency,
+                    CandidateMatchKind::Prefix,
+                ));
             }
         }
 
         Ranker::sort_candidates(&mut exact_candidates);
         Ranker::sort_candidates(&mut prefix_candidates);
         exact_candidates.extend(prefix_candidates);
+        exact_candidates.truncate(MAX_LOOKUP_CANDIDATES);
         Ok(exact_candidates)
     }
 
@@ -193,6 +233,8 @@ impl UserLexicon {
                    updated_at_ms INTEGER NOT NULL,
                    PRIMARY KEY (phrase, pinyin)
                  );
+                 CREATE INDEX IF NOT EXISTS idx_user_phrases_pinyin
+                   ON user_phrases(pinyin);
                  CREATE INDEX IF NOT EXISTS idx_user_phrases_compact_pinyin
                    ON user_phrases(compact_pinyin);",
             )
@@ -246,4 +288,33 @@ fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
         .unwrap_or_default()
+}
+
+fn user_candidate(
+    phrase: String,
+    pinyin: String,
+    frequency: i64,
+    match_kind: CandidateMatchKind,
+) -> Candidate {
+    let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
+    Candidate::new(phrase, pinyin, CandidateSource::User)
+        .with_score(Ranker::score(frequency))
+        .with_rank_score(Ranker::score_match(
+            frequency,
+            match_kind,
+            CandidateSource::User,
+        ))
+}
+
+fn collect_user_rows(
+    rows: rusqlite::MappedRows<
+        '_,
+        impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<(String, String, i64)>,
+    >,
+) -> ImeResult<Vec<(String, String, i64)>> {
+    let mut collected = Vec::new();
+    for row in rows {
+        collected.push(row.map_err(|_| ImeError::UserLexiconDatabase)?);
+    }
+    Ok(collected)
 }
