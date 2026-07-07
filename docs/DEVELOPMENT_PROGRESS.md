@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-07 07:45
-Current stage: stage-11
+Last updated: 2026-07-07 08:35
+Current stage: stage-12
 Current status: completed
 
 ## Stage Status
@@ -19,6 +19,7 @@ Current status: completed
 | 09 | Core production hardening | completed | 2026-07-06 23:04 | Merged to `main` through PR #8 |
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
+| 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
 
 ## Completed Work
 
@@ -128,17 +129,26 @@ Current status: completed
 - Closed `OI-032`, `OI-033`, `OI-034`, `OI-036`, `OI-037`, `OI-039`, and `OI-040`; kept iOS simulator/device smoke validation open as `OI-038`.
 - Addressed stage-11 review feedback so the iOS keyboard falls back to the built-in engine if shared settings or App Group storage cannot be opened, and expanded `OI-038` to explicitly verify `RequestsOpenAccess=false` App Group behavior on device/simulator.
 - Addressed stage-11 review feedback by pinning the `"user_lexicon_path": null` default-template format in the Stage 11 source check so Windows template patching cannot silently lose learning after JSON reformatting.
+- Implemented stage-12 release packaging and distribution preparation.
+- Added `docs/release_distribution_plan.md` with public release gates for final license, production lexicon data, signing, notarization, iOS provisioning, platform smoke-test evidence, privacy posture, and version consistency.
+- Extended Windows packaging with SignTool support for staged DLL/EXE artifacts and MSI output, plus a `-RequireSigning` gate for release candidates.
+- Extended macOS app and pkg scripts with Developer ID app signing, hardened runtime, installer signing, notarytool submission, and stapling hooks while keeping ad-hoc/unsigned local builds available by default.
+- Added an iOS App Store archive/export script that requires owner-provided team ID and export options.
+- Added iOS App Store metadata and export-options templates under `platform/ios_keyboard/AppStoreMetadata`.
+- Recorded the initial automatic update strategy: signed MSI/zip, signed/notarized pkg, and TestFlight/App Store updates first; defer Sparkle, MSIX, and App Installer.
+- Added `scripts/check_stage12_release_sources.sh` and wired it into CI.
+- Updated platform READMEs, script docs, changelog, decisions, open items, and development spec for Stage 12 release gates.
 
 ## Current Work
 
-- Stage 11 is complete on local branch `codex/stage-11-settings-privacy-ios-storage`.
+- Stage 12 is complete on local branch `codex/stage-12-release-packaging-distribution`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-11 settings/privacy changes.
+- Notes: Formatting is clean after the Stage 12 release-packaging changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -146,63 +156,83 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 49 integration and ABI layout tests passed, including the new packaged default-settings template alignment check and settings overwrite check.
+- Notes: 49 workspace tests passed.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
 - Notes: Output includes `你好`.
 
+- Command: `cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_stage12_settings.json`
+- Result: passed
+- Notes: Settings CLI still writes a default settings snapshot.
+
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
-- Notes: C layout assertions compiled and ran; C demo created an engine, fed `nihao`, read first candidate `你好`, and committed `你好`.
+- Notes: C layout assertions compiled and ran; C demo fed `nihao`, read first candidate `你好`, and committed `你好`.
 
 - Command: `bash scripts/check_windows_tsf_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes the CMake project, COM DLL exports, TSF key sink, C ABI bridge, settings path setup, registration scripts, settings UI script, WiX source, TSF text-extent popup anchoring, DPI/theme handling, and candidate window-class cleanup.
+- Notes: Existing Windows TSF scaffold check remains green.
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: Source scaffold includes Swift IMK source files, C ABI bridge, settings store, preferences window, `IMKServer`, `IMKInputController`, `IMKCandidates`, bundle plist, and install/package scripts.
+- Notes: Existing macOS IMK scaffold check remains green.
 
 - Command: `bash scripts/check_installers_settings_sources.sh`
 - Result: passed
-- Notes: Installer/settings scaffold files are present, parseable, and desktop hosts reference packaged `default_settings.json`.
+- Notes: Existing installer/settings scaffold check remains green.
 
 - Command: `bash scripts/check_ios_keyboard_sources.sh`
 - Result: passed
-- Notes: iOS scaffold includes App Group entitlements, shared settings store, template resources, `RequestsOpenAccess=false`, C ABI settings-path wiring, mode derivation, Globe visibility handling, and no Swift network API usage.
+- Notes: Existing iOS scaffold check remains green.
 
 - Command: `bash scripts/check_platform_validation_sources.sh`
 - Result: passed
-- Notes: Stage 8 validation scaffold includes Windows Rust test CI, Windows TSF compile CI wiring, Rust caching, and Windows/macOS/iOS smoke-test record templates.
+- Notes: Existing Stage 8 platform validation scaffold check remains green.
 
 - Command: `bash scripts/check_stage09_core_sources.sh`
 - Result: passed
-- Notes: Stage 9 core hardening scaffold includes indexed lookup, pinyin and compact-pinyin user-lexicon indexes, range user-lexicon queries, ranking fusion, paging, punctuation behavior, sanitized logging, and lexicon data policy.
+- Notes: Existing Stage 9 core hardening scaffold check remains green.
 
 - Command: `bash scripts/check_stage10_platform_host_sources.sh`
 - Result: passed
-- Notes: Stage 10 host polish scaffold includes Windows TSF text-extent anchoring, DPI/theme-aware candidate popup rendering, window-class unregistering, and the shared macOS preferences window.
+- Notes: Existing Stage 10 host polish scaffold check remains green.
 
 - Command: `bash scripts/check_stage11_settings_privacy_sources.sh`
 - Result: passed
-- Notes: Stage 11 scaffold includes default-template alignment and format pinning, shared AtomicFile writes, hidden CapsLock platform UI, iOS App Group entitlements, settings fallback, learning opt-in, mode derivation, and Globe-key checks.
+- Notes: Existing Stage 11 settings/privacy scaffold check remains green.
+
+- Command: `bash scripts/check_stage12_release_sources.sh`
+- Result: passed
+- Notes: Stage 12 release packaging scaffold includes release gates, Windows signing hooks, macOS signing/notarization hooks, iOS archive/export hooks, App Store metadata templates, and update strategy.
+
+- Command: `bash -n scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: macOS app build script syntax is valid.
+
+- Command: `bash -n scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: macOS pkg script syntax is valid.
+
+- Command: `bash -n scripts/package_ios_app_store.sh`
+- Result: passed
+- Notes: iOS App Store archive/export script syntax is valid.
+
+- Command: `plutil -lint platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template`
+- Result: passed
+- Notes: Export options template is a valid plist.
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with the preferences window, bundled `default_settings.json`, embedded Rust FFI dylib, and ad-hoc signing.
+- Notes: Built `dist/macos_imk/PrivatePinyin.app`; default path remains ad-hoc signed.
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.0.pkg`; the sandboxed first run could not write the pkg artifact, and the authorized rerun passed.
+- Notes: Sandboxed first run could not write the pkg artifact; authorized rerun built `dist/macos_imk/PrivatePinyin-0.1.0.pkg` as an unsigned local package.
 
-- Command: `bash scripts/build_ios_keyboard.sh`
-- Result: passed
-- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`, App Group entitlements, settings fallback, and `default_settings.json` resources; sandboxed first run could not reach Xcode/CoreSimulator services, and the authorized rerun passed.
-
-- Command: `windows-2022 CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
+- Command: `pwsh` syntax check for `scripts/package_windows_tsf.ps1`
 - Result: not run locally
-- Notes: Windows-only Rust tests plus MSVC/CMake TSF build are wired into the pinned `windows-2022` CI job and will be verified by GitHub Actions after the stage branch is pushed.
+- Notes: PowerShell is not installed in this macOS environment; Windows packaging remains covered by source checks and the pinned Windows CI build after push.
 
 ## Open Items
 
@@ -210,18 +240,17 @@ Current status: completed
 - Replace sample lexicon data with licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
 - Refine Shift toggle semantics in platform hosts.
-- Add Windows code signing for TSF DLL and installer.
-- Build production Windows installer and uninstaller.
+- Provide Windows code-signing certificate and signed-artifact evidence.
+- Validate signed Windows MSI install/uninstall on Windows 11.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
 - Add TSF display attributes for preedit text.
-- Add macOS code signing and notarization.
-- Build production macOS installer and uninstaller package.
+- Provide macOS Developer ID credentials and notarization evidence.
+- Validate signed/notarized macOS pkg install/uninstall and release uninstall guidance.
 - Polish macOS candidate positioning and appearance.
 - Add custom macOS menu icon assets.
 - Verify IMK candidate panel number-key routing on macOS.
-- Add automatic update strategy.
 - Validate Windows installer and settings UI on Windows 11.
-- Configure iOS App Store signing and provisioning.
+- Configure iOS App Store signing, provisioning, App Store metadata, and TestFlight evidence.
 - Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit and whether learning opt-in/App Group storage work under provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 
@@ -233,30 +262,20 @@ Current status: completed
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/platform_smoke_test_plan.md`
 - `docs/private_pinyin_ime_development_spec.md`
-- `ime_core/src/atomic_file.rs`
-- `ime_core/src/lib.rs`
-- `ime_core/src/settings.rs`
-- `ime_core/src/user_lexicon.rs`
-- `ime_core/tests/settings_tests.rs`
-- `platform/ios_keyboard/ContainerApp/ContentView.swift`
-- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
-- `platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements`
-- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
-- `platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift`
-- `platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements`
-- `platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj`
+- `docs/release_distribution_plan.md`
+- `platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template`
+- `platform/ios_keyboard/AppStoreMetadata/README.md`
 - `platform/ios_keyboard/README.md`
-- `platform/macos_imk/Sources/SettingsStore.swift`
-- `platform/windows_tsf/installer/open-settings.ps1`
-- `platform/windows_tsf/src/core_bridge.cpp`
+- `platform/macos_imk/README.md`
+- `platform/windows_tsf/README.md`
 - `scripts/build_macos_imk.sh`
-- `scripts/check_installers_settings_sources.sh`
-- `scripts/check_ios_keyboard_sources.sh`
-- `scripts/check_stage11_settings_privacy_sources.sh`
+- `scripts/check_stage12_release_sources.sh`
+- `scripts/package_ios_app_store.sh`
+- `scripts/package_macos_pkg.sh`
+- `scripts/package_windows_tsf.ps1`
 - `scripts/README.md`
 
 ## Next Step
 
-- Review stage-11 locally; after approval, push and merge through GitHub.
+- Review stage-12 locally; after approval, push and merge through GitHub.

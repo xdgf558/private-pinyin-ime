@@ -49,6 +49,11 @@
 - Added Stage 11 settings/privacy/iOS storage scaffold checks to CI.
 - Added iOS App Group entitlements, shared settings initialization, and explicit user-learning opt-in in the container app.
 - Added the shared `default_settings.json` template as an iOS app and keyboard-extension resource.
+- Added a Stage 12 release distribution plan with release gates for licensing, production lexicon data, signing, notarization, provisioning, smoke-test evidence, and privacy posture.
+- Added Windows package signing hooks for staged DLL/EXE artifacts and MSI output, including a `-RequireSigning` release-candidate gate.
+- Added macOS Developer ID app signing, hardened-runtime, installer signing, notarytool submission, and stapling hooks.
+- Added an iOS App Store archive/export script plus App Store Connect metadata and export-options templates.
+- Added a Stage 12 release-packaging scaffold check to CI.
 
 ### Changed
 
@@ -80,6 +85,7 @@
 - Changed the iOS keyboard extension to create the Rust engine from the shared settings path instead of built-in defaults.
 - Changed iOS mode display to derive from C ABI `ImeOutput.mode`.
 - Changed the iOS Globe key row to respect `needsInputModeSwitchKey`.
+- Changed release packaging guidance to prefer signed MSI/zip, signed/notarized macOS pkg, and TestFlight/App Store distribution before adding any in-app updater.
 
 ### Fixed
 
@@ -111,3 +117,4 @@
 - Ensured strict privacy mode disables user learning when settings snapshots are loaded or written.
 - Kept iOS `RequestsOpenAccess=false` while adding local App Group storage and user-controlled learning opt-in.
 - Kept CapsLock toggle hidden from platform settings UI until host semantics are implemented.
+- Kept automatic updates out of the first public release plan until signing, update-channel semantics, rollback policy, and privacy copy are ready.

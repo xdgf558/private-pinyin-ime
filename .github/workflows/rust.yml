@@ -56,6 +56,9 @@ jobs:
       - name: Check Stage 11 settings privacy scaffold
         run: bash scripts/check_stage11_settings_privacy_sources.sh
 
+      - name: Check Stage 12 release packaging scaffold
+        run: bash scripts/check_stage12_release_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

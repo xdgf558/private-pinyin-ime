@@ -17,7 +17,7 @@ The Windows host remains thin:
 - `installer/register-ime.ps1`: calls `regsvr32` for local registration.
 - `installer/unregister-ime.ps1`: unregisters the DLL.
 - `installer/open-settings.ps1`: opens a local settings window for privacy mode, user learning, prediction, lexicon clear, and lexicon export.
-- `installer/PrivatePinyinTsf.wxs`: WiX source for an unsigned prototype MSI.
+- `installer/PrivatePinyinTsf.wxs`: WiX source for the per-user MSI package.
 - `../../scripts/build_windows_tsf.ps1`: builds the Rust FFI library and the TSF DLL on Windows.
 - `../../scripts/package_windows_tsf.ps1`: stages installer files and builds a zip bundle; builds an MSI when WiX is installed.
 
@@ -48,7 +48,19 @@ dist\windows_tsf\PrivatePinyin-0.1.0.zip
 dist\windows_tsf\PrivatePinyin-0.1.0.msi
 ```
 
-The `.msi` is generated only when `wix` is available. The installer is unsigned, per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
+The `.msi` is generated only when `wix` is available. The installer is per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
+
+Release-candidate packaging must sign staged binaries and the MSI:
+
+```powershell
+.\scripts\package_windows_tsf.ps1 `
+  -Version 0.1.0 `
+  -SignCertSubject "CN=Example Code Signing Certificate" `
+  -TimestampUrl "http://timestamp.digicert.com" `
+  -RequireSigning
+```
+
+Without `-RequireSigning`, unsigned artifacts are for local testing only.
 
 ## Local Registration
 
@@ -87,6 +99,7 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 ## Known Gaps
 
 - Candidate UI is non-activating and now DPI/theme aware, but visual styling should still be smoke-tested in target applications.
-- TSF display attributes, code signing, production per-machine registration, and production installer validation are tracked as open items.
+- Owner code-signing certificate access and signed-artifact validation are still required before release.
+- TSF display attributes and production installer validation are tracked as open items.
 - This prototype should be validated on Windows 11; macOS/Linux CI cannot load TSF DLLs.
 - GitHub Actions runs Rust workspace tests and compiles the TSF DLL on `windows-2022`, but runtime activation and Notepad behavior still require manual validation.

@@ -111,3 +111,11 @@ Status: accepted
 Decision: Use `config/default_settings.json` as the packaged default template for platform hosts, keep CapsLock hidden from settings UI until host semantics are implemented, and make iOS learning an explicit opt-in backed by App Group storage while `RequestsOpenAccess` remains false.
 Reason: Settings drift and implicit iOS persistence are both privacy and support risks. Stage 11 should close those gaps without changing the C ABI shape or pretending release provisioning has been completed.
 Consequences: Desktop and iOS hosts patch only platform-local paths into the shared template, iOS can pass a real settings path to the Rust engine, and remaining iOS validation stays tracked as manual smoke/provisioning work.
+
+## Decision 015: Stage 12 release packaging boundary
+
+Date: 2026-07-07
+Status: accepted
+Decision: Prepare release-candidate packaging through configurable signing, notarization, provisioning, and App Store export hooks, while keeping final license, production lexicon approval, owner credentials, and platform smoke-test evidence as explicit release gates.
+Reason: Release automation should be auditable before credentials are available, but the project must not claim public release readiness without signed artifacts, notarization results, App Store provisioning, and license/data decisions.
+Consequences: Windows and macOS package scripts can build local unsigned artifacts by default and require explicit signing flags for release candidates. iOS App Store packaging requires owner-provided team and export options. The initial public release plan uses platform-native distribution channels and defers in-app auto-update frameworks.
