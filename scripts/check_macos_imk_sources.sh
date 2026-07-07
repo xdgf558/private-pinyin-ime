@@ -41,6 +41,7 @@ grep -q "PrivatePinyinOnboardingWindowController" platform/macos_imk/Sources/Pri
 grep -q "StationTheme" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "brandRow.widthAnchor.constraint(equalTo: root.widthAnchor)" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "输入法已经装好了" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "打开键盘设置" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q -- "--show-onboarding" platform/macos_imk/Sources/main.swift

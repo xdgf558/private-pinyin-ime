@@ -166,8 +166,9 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         let tip = makeTipRow()
         let footer = makeFooterRow()
 
+        let brandRow = makeBrandRow()
         let root = NSStackView(views: [
-            makeBrandRow(),
+            brandRow,
             heading,
             stepCard,
             tip,
@@ -184,6 +185,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
             root.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
             root.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 30),
             root.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+            brandRow.widthAnchor.constraint(equalTo: root.widthAnchor),
             subtitle.widthAnchor.constraint(equalTo: root.widthAnchor),
             stepCard.widthAnchor.constraint(equalTo: root.widthAnchor),
             tip.widthAnchor.constraint(equalTo: root.widthAnchor),
@@ -401,20 +403,20 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
     }
 
     private func paddedBadge(text: String) -> NSView {
-        let label = label(
+        let badgeLabel = label(
             text,
             font: .systemFont(ofSize: 11, weight: .regular),
             color: StationTheme.lampYellow
         )
         let box = roundedBox(background: StationTheme.badgeBackground, cornerRadius: 11, border: StationTheme.border)
-        label.translatesAutoresizingMaskIntoConstraints = false
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
         box.translatesAutoresizingMaskIntoConstraints = false
-        box.addSubview(label)
+        box.addSubview(badgeLabel)
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: box.topAnchor, constant: 4),
-            label.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -4),
-            label.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
-            label.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
+            badgeLabel.topAnchor.constraint(equalTo: box.topAnchor, constant: 4),
+            badgeLabel.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -4),
+            badgeLabel.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
+            badgeLabel.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
         ])
         return box
     }
