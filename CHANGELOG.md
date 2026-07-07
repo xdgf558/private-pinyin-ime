@@ -90,8 +90,9 @@
 - Changed release packaging guidance to prefer signed MSI/zip, signed/notarized macOS pkg, and TestFlight/App Store distribution before adding any in-app updater.
 - Changed Windows release packaging so staged PowerShell installer/settings scripts are signed with Authenticode when a signing certificate is configured.
 - Changed macOS input method metadata to include platform, input-source, Simplified Chinese script, and character repertoire keys for better System Settings discovery.
+- Changed the macOS input mode default state to disabled so System Settings lists PrivatePinyin as an addable input source before the user enables it.
 - Changed macOS smoke-test documentation to revalidate input source discovery/enabling after TIS metadata changes and to note the upgrade-onboarding limitation when an old input method process is already running.
-- Bumped the app and package version to `0.1.2` for the regenerated macOS onboarding installer.
+- Bumped the app and package version to `0.1.3` for the regenerated macOS onboarding installer.
 
 ### Fixed
 

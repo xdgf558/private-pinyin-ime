@@ -44,8 +44,8 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.2.zip
-dist\windows_tsf\PrivatePinyin-0.1.2.msi
+dist\windows_tsf\PrivatePinyin-0.1.3.zip
+dist\windows_tsf\PrivatePinyin-0.1.3.msi
 ```
 
 The `.msi` is generated only when `wix` is available. The installer is per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
@@ -54,7 +54,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.2 `
+  -Version 0.1.3 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning

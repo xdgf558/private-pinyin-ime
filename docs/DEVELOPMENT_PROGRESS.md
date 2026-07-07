@@ -143,11 +143,12 @@ Current status: completed
 - Updated macOS input method metadata for System Settings discovery and added smoke-test coverage for input-source discovery, enabling, and upgrade-onboarding behavior.
 - Redesigned the macOS onboarding window with the Station Cat visual system: fixed dark appearance, warm lamp accent, Chinese setup copy, station-style step card, and hover-aware custom AppKit buttons.
 - Addressed macOS onboarding review feedback by removing the `paddedBadge` local-variable shadowing risk and pinning the brand row width so the `setup` badge aligns to the right edge.
-- Bumped the app and package version from `0.1.0` to `0.1.2` for the regenerated onboarding installer and input source discovery refresh.
+- Bumped the app and package version from `0.1.0` to `0.1.3` for the regenerated onboarding installer and input source discovery refresh.
+- Fixed macOS input source discovery by setting `tsInputModeDefaultStateKey` to false; local System Settings debugging showed default-enabled third-party modes are filtered out of the add-input-source list.
 
 ## Current Work
 
-- macOS install onboarding polish is complete on local branch `codex/macos-install-onboarding`.
+- macOS install onboarding/input-source discovery polish is complete on local branch `codex/bump-version-0.1.3`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -174,7 +175,11 @@ Current status: completed
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.2.pkg` with the redesigned onboarding UI, input source localization, and postinstall script; pkg remains unsigned for local testing.
+- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.3.pkg` with the redesigned onboarding UI, input source localization, non-default input mode state, and postinstall script; pkg remains unsigned for local testing.
+
+- Command: System Settings manual debug
+- Result: passed
+- Notes: A temporary per-user test bundle with `tsInputModeDefaultStateKey=false` appeared in the add-input-source list; temporary test bundles were removed after validation.
 
 - Command: `cargo fmt --check`
 - Result: passed
