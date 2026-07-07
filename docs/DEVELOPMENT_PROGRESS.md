@@ -138,6 +138,7 @@ Current status: completed
 - Recorded the initial automatic update strategy: signed MSI/zip, signed/notarized pkg, and TestFlight/App Store updates first; defer Sparkle, MSIX, and App Installer.
 - Added `scripts/check_stage12_release_sources.sh` and wired it into CI.
 - Updated platform READMEs, script docs, changelog, decisions, open items, and development spec for Stage 12 release gates.
+- Addressed stage-12 review feedback so Windows packaging signs staged PowerShell installer/settings scripts with Authenticode when a signing certificate is configured, and folded that requirement into `OI-015`.
 
 ## Current Work
 
@@ -204,7 +205,7 @@ Current status: completed
 
 - Command: `bash scripts/check_stage12_release_sources.sh`
 - Result: passed
-- Notes: Stage 12 release packaging scaffold includes release gates, Windows signing hooks, macOS signing/notarization hooks, iOS archive/export hooks, App Store metadata templates, and update strategy.
+- Notes: Stage 12 release packaging scaffold includes release gates, Windows binary/MSI/PowerShell script signing hooks, macOS signing/notarization hooks, iOS archive/export hooks, App Store metadata templates, and update strategy.
 
 - Command: `bash -n scripts/build_macos_imk.sh`
 - Result: passed
@@ -240,7 +241,7 @@ Current status: completed
 - Replace sample lexicon data with licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
 - Refine Shift toggle semantics in platform hosts.
-- Provide Windows code-signing certificate and signed-artifact evidence.
+- Provide Windows code-signing certificate and signed binary/MSI/PowerShell-script evidence.
 - Validate signed Windows MSI install/uninstall on Windows 11.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
 - Add TSF display attributes for preedit text.

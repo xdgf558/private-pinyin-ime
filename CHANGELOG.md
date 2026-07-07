@@ -86,6 +86,7 @@
 - Changed iOS mode display to derive from C ABI `ImeOutput.mode`.
 - Changed the iOS Globe key row to respect `needsInputModeSwitchKey`.
 - Changed release packaging guidance to prefer signed MSI/zip, signed/notarized macOS pkg, and TestFlight/App Store distribution before adding any in-app updater.
+- Changed Windows release packaging so staged PowerShell installer/settings scripts are signed with Authenticode when a signing certificate is configured.
 
 ### Fixed
 

@@ -39,8 +39,9 @@ Signing:
   -RequireSigning
 ```
 
-The package script signs staged `.dll` and `.exe` files before zipping and signs
-the MSI after WiX builds it. `-RequireSigning` must be used for release
+The package script signs staged `.dll` and `.exe` files with SignTool, signs
+staged `.ps1` installer/settings scripts with `Set-AuthenticodeSignature`, and
+signs the MSI after WiX builds it. `-RequireSigning` must be used for release
 candidates. Without it, unsigned prototype artifacts are allowed for local
 testing only.
 

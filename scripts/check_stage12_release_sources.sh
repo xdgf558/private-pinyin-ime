@@ -30,6 +30,9 @@ grep -q "notarytool" scripts/package_macos_pkg.sh
 grep -q "stapler" scripts/package_macos_pkg.sh
 
 grep -q "Sign-Artifact" scripts/package_windows_tsf.ps1
+grep -q "Sign-PowerShellScript" scripts/package_windows_tsf.ps1
+grep -q "Set-AuthenticodeSignature" scripts/package_windows_tsf.ps1
+grep -q '".ps1"' scripts/package_windows_tsf.ps1
 grep -q "RequireSigning" scripts/package_windows_tsf.ps1
 grep -q "TimestampUrl" scripts/package_windows_tsf.ps1
 
