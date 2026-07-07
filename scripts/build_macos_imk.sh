@@ -41,6 +41,7 @@ swiftc \
   -Xlinker "@executable_path/../Frameworks" \
   "$repo_root/platform/macos_imk/Sources/SettingsStore.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/CAbiBridge.swift" \
   "$repo_root/platform/macos_imk/Sources/MacKeyMapper.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinInputController.swift" \

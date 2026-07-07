@@ -62,6 +62,11 @@ Checklist:
 |---|---|---|---|
 | Build | `scripts/build_macos_imk.sh` produces `dist/macos_imk/PrivatePinyin.app` | | |
 | Install | `platform/macos_imk/installer/install-local.sh` installs into Input Methods | | |
+| Package install | `scripts/package_macos_pkg.sh` pkg installs into `/Library/Input Methods` | | |
+| Post-install onboarding | Fresh pkg install opens the PrivatePinyin Setup onboarding window with an Open Keyboard Settings button | | |
+| Upgrade onboarding | If an old PrivatePinyin process is already running during pkg install, onboarding may not auto-open; manual launch or logout/login refresh is acceptable for unsigned local test builds | | |
+| Input source discovery | PrivatePinyin appears under Chinese/Simplified Chinese input sources after install; re-open System Settings or logout/login if the list is cached | | TIS keys changed in macOS onboarding work: mode `TISInputSourceID`, top-level `TISInputSourceID`, and `smSimpChinese` must be revalidated |
+| Enable input source | PrivatePinyin can be added and selected from the menu bar input menu | | |
 | TextEdit composition | Typing `zhongguo` shows composition and candidate `中国` | | |
 | Commit | `Space` commits `中国` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
@@ -70,6 +75,7 @@ Checklist:
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
+| Stale process check | After upgrade install, no old PrivatePinyin process keeps the previous binary loaded before smoke testing | | |
 | Uninstall | `platform/macos_imk/installer/uninstall-local.sh` removes the app | | |
 
 ## iOS Keyboard Smoke

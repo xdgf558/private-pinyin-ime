@@ -10,7 +10,7 @@ Current scripts:
 - `package_windows_tsf.ps1`: stages Windows installer files, optionally signs DLL/EXE/MSI artifacts, and builds a zip bundle plus an MSI when WiX is installed.
 - `check_macos_imk_sources.sh`: verifies the macOS InputMethodKit source scaffold and bundle plist.
 - `build_macos_imk.sh`: builds the Rust FFI library and local macOS InputMethodKit app bundle.
-- `package_macos_pkg.sh`: builds a macOS `.pkg` installer and optionally signs/notarizes it when Developer ID and notarytool settings are provided.
+- `package_macos_pkg.sh`: builds a macOS `.pkg` installer with a post-install onboarding window, and optionally signs/notarizes it when Developer ID and notarytool settings are provided.
 - `check_installers_settings_sources.sh`: verifies Stage 6 installer and settings scaffold files.
 - `build_ios_keyboard.sh`: builds the Rust iOS static library and the iOS container app/keyboard extension.
 - `package_ios_app_store.sh`: builds an iOS device archive and exports it with owner-provided App Store signing options.

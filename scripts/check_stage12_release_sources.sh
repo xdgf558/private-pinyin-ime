@@ -28,6 +28,7 @@ grep -q -- "--options runtime" scripts/build_macos_imk.sh
 grep -q "PRIVATE_PINYIN_MAC_INSTALLER_SIGN_IDENTITY" scripts/package_macos_pkg.sh
 grep -q "notarytool" scripts/package_macos_pkg.sh
 grep -q "stapler" scripts/package_macos_pkg.sh
+grep -q "postinstall" scripts/package_macos_pkg.sh
 
 grep -q "Sign-Artifact" scripts/package_windows_tsf.ps1
 grep -q "Sign-PowerShellScript" scripts/package_windows_tsf.ps1

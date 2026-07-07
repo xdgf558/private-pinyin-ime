@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-07 08:35
-Current stage: stage-12
+Last updated: 2026-07-07 18:22
+Current stage: macos-install-onboarding
 Current status: completed
 
 ## Stage Status
@@ -139,13 +139,41 @@ Current status: completed
 - Added `scripts/check_stage12_release_sources.sh` and wired it into CI.
 - Updated platform READMEs, script docs, changelog, decisions, open items, and development spec for Stage 12 release gates.
 - Addressed stage-12 review feedback so Windows packaging signs staged PowerShell installer/settings scripts with Authenticode when a signing certificate is configured, and folded that requirement into `OI-015`.
+- Added a macOS post-install onboarding window that opens after pkg installation and links users to Keyboard Settings.
+- Updated macOS input method metadata for System Settings discovery and added smoke-test coverage for input-source discovery, enabling, and upgrade-onboarding behavior.
+- Redesigned the macOS onboarding window with the Station Cat visual system: fixed dark appearance, warm lamp accent, Chinese setup copy, station-style step card, and hover-aware custom AppKit buttons.
+- Addressed macOS onboarding review feedback by removing the `paddedBadge` local-variable shadowing risk and pinning the brand row width so the `setup` badge aligns to the right edge.
 
 ## Current Work
 
-- Stage 12 is complete on local branch `codex/stage-12-release-packaging-distribution`.
+- macOS install onboarding polish is complete on local branch `codex/macos-install-onboarding`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
+
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: macOS scaffold check covers the onboarding controller, StationTheme, fixed dark appearance, Chinese setup copy, brand-row width pinning, postinstall wiring, and TIS metadata.
+
+- Command: `bash scripts/check_stage10_platform_host_sources.sh`
+- Result: passed
+- Notes: Existing Stage 10 host polish scaffold remains green after the onboarding redesign.
+
+- Command: `bash scripts/check_stage12_release_sources.sh`
+- Result: passed
+- Notes: Existing Stage 12 release packaging scaffold remains green after the pkg onboarding changes.
+
+- Command: `git diff --check`
+- Result: passed
+- Notes: No whitespace or patch formatting issues.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Rebuilt the redesigned Swift onboarding window after the review fix; `dist/macos_imk/PrivatePinyin.app` was produced and ad-hoc signed.
+
+- Command: `bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.0.pkg` with the redesigned onboarding UI and postinstall script; pkg remains unsigned for local testing.
 
 - Command: `cargo fmt --check`
 - Result: passed
@@ -257,26 +285,20 @@ Current status: completed
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
-- `README.md`
 - `CHANGELOG.md`
-- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/OPEN_ITEMS.md`
-- `docs/private_pinyin_ime_development_spec.md`
-- `docs/release_distribution_plan.md`
-- `platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template`
-- `platform/ios_keyboard/AppStoreMetadata/README.md`
-- `platform/ios_keyboard/README.md`
+- `docs/platform_smoke_test_plan.md`
+- `platform/macos_imk/Resources/Info.plist`
 - `platform/macos_imk/README.md`
-- `platform/windows_tsf/README.md`
+- `platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift`
+- `platform/macos_imk/Sources/main.swift`
 - `scripts/build_macos_imk.sh`
+- `scripts/check_macos_imk_sources.sh`
+- `scripts/check_platform_validation_sources.sh`
 - `scripts/check_stage12_release_sources.sh`
-- `scripts/package_ios_app_store.sh`
 - `scripts/package_macos_pkg.sh`
-- `scripts/package_windows_tsf.ps1`
 - `scripts/README.md`
 
 ## Next Step
 
-- Review stage-12 locally; after approval, push and merge through GitHub.
+- Review `codex/macos-install-onboarding` locally; after approval, push and merge through GitHub.
