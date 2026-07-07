@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 required_files=(
   "platform/macos_imk/Sources/SettingsStore.swift"
   "platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift"
+  "platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift"
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
@@ -36,6 +37,13 @@ grep -q "ime_session_reset" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "PrivatePinyinOnboardingWindowController" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "Open Keyboard Settings" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q -- "--show-onboarding" platform/macos_imk/Sources/main.swift
+grep -q "postinstall" scripts/package_macos_pkg.sh
+grep -q "launchctl asuser" scripts/package_macos_pkg.sh
+grep -q "TISInputSourceID" platform/macos_imk/Resources/Info.plist
+grep -q "smSimpChinese" platform/macos_imk/Resources/Info.plist
 grep -q "Preferences..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "NSWindow" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift

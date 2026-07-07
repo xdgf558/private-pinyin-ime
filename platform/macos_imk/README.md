@@ -52,6 +52,10 @@ The package is written to:
 dist/macos_imk/PrivatePinyin-0.1.0.pkg
 ```
 
+The installer includes a post-install onboarding window. After installation it
+opens PrivatePinyin Setup in the active user session, with a button for Keyboard
+Settings and the steps needed to add the input source.
+
 Install with:
 
 ```bash

@@ -7,6 +7,7 @@ cd "$repo_root"
 version="${PRIVATE_PINYIN_VERSION:-0.1.0}"
 app_dir="$repo_root/dist/macos_imk/PrivatePinyin.app"
 pkg_root="$repo_root/build/macos_pkg/root"
+pkg_scripts_dir="$repo_root/build/macos_pkg/scripts"
 unsigned_pkg_path="$repo_root/dist/macos_imk/PrivatePinyin-${version}-unsigned.pkg"
 pkg_path="$repo_root/dist/macos_imk/PrivatePinyin-${version}.pkg"
 install_dir="$pkg_root/Library/Input Methods"
@@ -31,12 +32,37 @@ fi
 
 bash "$repo_root/scripts/build_macos_imk.sh"
 
-rm -rf "$pkg_root" "$pkg_path" "$unsigned_pkg_path"
-mkdir -p "$install_dir"
+rm -rf "$pkg_root" "$pkg_scripts_dir" "$pkg_path" "$unsigned_pkg_path"
+mkdir -p "$install_dir" "$pkg_scripts_dir"
 cp -R "$app_dir" "$install_dir/PrivatePinyin.app"
+
+cat > "$pkg_scripts_dir/postinstall" <<'POSTINSTALL'
+#!/bin/sh
+set -eu
+
+app_path="/Library/Input Methods/PrivatePinyin.app"
+console_user="$(/usr/bin/stat -f %Su /dev/console 2>/dev/null || true)"
+
+if [ -z "$console_user" ] || [ "$console_user" = "root" ] || [ "$console_user" = "loginwindow" ]; then
+  exit 0
+fi
+
+console_uid="$(/usr/bin/id -u "$console_user" 2>/dev/null || true)"
+if [ -z "$console_uid" ]; then
+  exit 0
+fi
+
+/bin/launchctl asuser "$console_uid" \
+  /usr/bin/sudo -u "$console_user" \
+  /usr/bin/open "$app_path" --args --show-onboarding >/dev/null 2>&1 || true
+
+exit 0
+POSTINSTALL
+chmod 755 "$pkg_scripts_dir/postinstall"
 
 pkgbuild \
   --root "$pkg_root" \
+  --scripts "$pkg_scripts_dir" \
   --identifier "com.privatepinyin.inputmethod.pkg" \
   --version "$version" \
   --install-location "/" \

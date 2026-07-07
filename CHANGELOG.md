@@ -54,6 +54,7 @@
 - Added macOS Developer ID app signing, hardened-runtime, installer signing, notarytool submission, and stapling hooks.
 - Added an iOS App Store archive/export script plus App Store Connect metadata and export-options templates.
 - Added a Stage 12 release-packaging scaffold check to CI.
+- Added a macOS post-install onboarding window that opens after pkg installation and links users to Keyboard Settings.
 
 ### Changed
 
@@ -87,6 +88,7 @@
 - Changed the iOS Globe key row to respect `needsInputModeSwitchKey`.
 - Changed release packaging guidance to prefer signed MSI/zip, signed/notarized macOS pkg, and TestFlight/App Store distribution before adding any in-app updater.
 - Changed Windows release packaging so staged PowerShell installer/settings scripts are signed with Authenticode when a signing certificate is configured.
+- Changed macOS input method metadata to include platform, input-source, Simplified Chinese script, and character repertoire keys for better System Settings discovery.
 
 ### Fixed
 
