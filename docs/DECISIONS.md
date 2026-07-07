@@ -119,3 +119,11 @@ Status: accepted
 Decision: Prepare release-candidate packaging through configurable signing, notarization, provisioning, and App Store export hooks, while keeping final license, production lexicon approval, owner credentials, and platform smoke-test evidence as explicit release gates.
 Reason: Release automation should be auditable before credentials are available, but the project must not claim public release readiness without signed artifacts, notarization results, App Store provisioning, and license/data decisions.
 Consequences: Windows and macOS package scripts can build local unsigned artifacts by default and require explicit signing flags for release candidates. iOS App Store packaging requires owner-provided team and export options. The initial public release plan uses platform-native distribution channels and defers in-app auto-update frameworks.
+
+## Decision 016: Stage 13 lexicon import boundary
+
+Date: 2026-07-07
+Status: accepted
+Decision: Replace the eight-word embedded development sample with first-party starter lexicon assets and add a local lexicon import/manifest tool, while keeping third-party production data behind explicit owner approval.
+Reason: Local installed builds need enough first-party vocabulary to validate real typing paths, but public release data still has independent copyright and license obligations. Common upstream candidates have obligations such as LGPL/GPL or Creative Commons attribution/share-alike, so copying them into this all-rights-reserved repository without an owner license decision would create release risk.
+Consequences: The Rust core now embeds active `base_lexicon.tsv` and `bigram.tsv` starter assets. `tools/lexicon_builder` can convert local project TSV or CC-CEDICT-style files into the project format and write an audit manifest, but generated production data is not release-ready unless the manifest is explicitly marked approved after owner review. `OI-001` remains open.

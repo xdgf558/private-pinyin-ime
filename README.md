@@ -16,9 +16,9 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 12 is complete locally and awaiting review: the Rust workspace, core engine crate, indexed sample lexicon lookup, SQLite user lexicon range lookup, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, iOS container app and keyboard extension with App Group settings storage and learning opt-in, release packaging scripts, release distribution plan, App Store metadata templates, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, settings/privacy checks, and release-packaging checks are in place.
+Stage 13 is in local review: the Rust workspace, core engine crate, indexed starter lexicon lookup, SQLite user lexicon range lookup, local bigram prediction, lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, iOS container app and keyboard extension with App Group settings storage and learning opt-in, release packaging scripts, release distribution plan, App Store metadata templates, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, settings/privacy checks, release-packaging checks, and lexicon scaffold checks are in place.
 
-Public release is still gated on the final project license, production lexicon source/license approval, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records.
+Public release is still gated on the final project license, owner-approved production lexicon source/license/version, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records.
 
 ## Development Workflow
 
@@ -41,6 +41,7 @@ The root `Cargo.toml` defines a workspace with:
 - `ffi/ime_ffi` exposes the C ABI as `libprivate_pinyin_ime`.
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
 - `tools/settings_cli` manages settings snapshots and user lexicon clear/export actions for installer scripts.
+- `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -51,6 +52,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p test_cli -- nihao
 cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_settings.json
+cargo run -p private_pinyin_lexicon -- build-base --format private-pinyin-tsv --input ime_core/assets/base_lexicon_sample.tsv --output /tmp/private_pinyin_base.tsv --manifest /tmp/private_pinyin_lexicon_manifest.json --source-name "PrivatePinyin sample" --source-license "project-internal sample data"
 bash scripts/run_c_demo.sh
 bash scripts/check_windows_tsf_sources.sh
 bash scripts/check_macos_imk_sources.sh
@@ -61,6 +63,7 @@ bash scripts/check_stage09_core_sources.sh
 bash scripts/check_stage10_platform_host_sources.sh
 bash scripts/check_stage11_settings_privacy_sources.sh
 bash scripts/check_stage12_release_sources.sh
+bash scripts/check_stage13_lexicon_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh
@@ -68,4 +71,4 @@ bash scripts/build_ios_keyboard.sh
 
 ## Next Stage
 
-Next work should produce signed release-candidate evidence: choose the final project license, replace sample lexicon data with a licensed production source, run Windows/macOS/iOS smoke records, and build signed/notarized/provisioned artifacts with owner credentials.
+Next work should produce release-candidate evidence: choose the final project license, approve a production lexicon source and generated manifest, run Windows/macOS/iOS smoke records, and build signed/notarized/provisioned artifacts with owner credentials.

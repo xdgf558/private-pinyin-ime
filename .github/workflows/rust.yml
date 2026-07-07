@@ -59,6 +59,9 @@ jobs:
       - name: Check Stage 12 release packaging scaffold
         run: bash scripts/check_stage12_release_sources.sh
 
+      - name: Check Stage 13 lexicon scaffold
+        run: bash scripts/check_stage13_lexicon_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

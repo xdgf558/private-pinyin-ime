@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-07 18:22
-Current stage: macos-install-onboarding
-Current status: completed
+Last updated: 2026-07-07 19:05
+Current stage: 13 - Lexicon import and starter dictionary
+Current status: local review
 
 ## Stage Status
 
@@ -20,6 +20,7 @@ Current status: completed
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
+| 13 | Lexicon import and starter dictionary | local review | 2026-07-07 19:05 | First-party starter lexicon assets, local import/manifest tooling, and Stage 13 checks are ready for local review |
 
 ## Completed Work
 
@@ -145,10 +146,16 @@ Current status: completed
 - Addressed macOS onboarding review feedback by removing the `paddedBadge` local-variable shadowing risk and pinning the brand row width so the `setup` badge aligns to the right edge.
 - Bumped the app and package version from `0.1.0` to `0.1.3` for the regenerated onboarding installer and input source discovery refresh.
 - Fixed macOS input source discovery by setting `tsInputModeDefaultStateKey` to false; local System Settings debugging showed default-enabled third-party modes are filtered out of the add-input-source list.
+- Implemented Stage 13 lexicon import and starter dictionary work.
+- Added active `base_lexicon.tsv` and `bigram.tsv` first-party starter assets so installed local builds are no longer limited to the original eight-word sample lexicon.
+- Changed the Rust core to load the active starter assets while retaining the original sample files as source fixtures.
+- Added `tools/lexicon_builder`, a local Rust CLI that converts project TSV or local CC-CEDICT-style files into the standard base-lexicon TSV and emits an audit manifest with a release-approval flag.
+- Updated lexicon policy, manifest, changelog, README, CI, and open items so `OI-001` remains open for owner-approved production data.
+- Added `scripts/check_stage13_lexicon_sources.sh` and wired it into CI.
 
 ## Current Work
 
-- macOS install onboarding/input-source discovery polish is complete on local branch `codex/bump-version-0.1.3`.
+- Stage 13 lexicon import and starter dictionary work is complete on local branch `codex/stage-13-lexicon-ingestion`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -183,7 +190,7 @@ Current status: completed
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the Stage 12 release-packaging changes.
+- Notes: Formatting is clean after the Stage 13 lexicon changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -191,7 +198,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 49 workspace tests passed.
+- Notes: 52 workspace tests passed, including 3 lexicon-builder tests and the starter-lexicon candidate regression.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -227,7 +234,7 @@ Current status: completed
 
 - Command: `bash scripts/check_stage09_core_sources.sh`
 - Result: passed
-- Notes: Existing Stage 9 core hardening scaffold check remains green.
+- Notes: Existing Stage 9 core hardening scaffold remains green with the updated production-data gate wording.
 
 - Command: `bash scripts/check_stage10_platform_host_sources.sh`
 - Result: passed
@@ -240,6 +247,26 @@ Current status: completed
 - Command: `bash scripts/check_stage12_release_sources.sh`
 - Result: passed
 - Notes: Stage 12 release packaging scaffold includes release gates, Windows binary/MSI/PowerShell script signing hooks, macOS signing/notarization hooks, iOS archive/export hooks, App Store metadata templates, and update strategy.
+
+- Command: `bash scripts/check_stage13_lexicon_sources.sh`
+- Result: passed
+- Notes: Stage 13 lexicon scaffold validates active starter assets, import tooling, manifest release-approval gating, and a real project-TSV conversion run.
+
+- Command: `cargo test -p private_pinyin_lexicon`
+- Result: passed
+- Notes: 3 lexicon-builder tests passed for project TSV import, CC-CEDICT numbered-pinyin normalization, and punctuation-entry filtering.
+
+- Command: `cargo run -p test_cli -- diannao`
+- Result: passed
+- Notes: Output includes `电脑`, verifying the starter lexicon is active.
+
+- Command: `cargo run -p test_cli -- shijian`
+- Result: passed
+- Notes: Output includes `时间`, verifying common terms are no longer limited to the original sample.
+
+- Command: `cargo run -p test_cli -- yinwei`
+- Result: passed
+- Notes: Output includes `因为`, verifying the starter lexicon is active.
 
 - Command: `bash -n scripts/build_macos_imk.sh`
 - Result: passed
@@ -272,7 +299,7 @@ Current status: completed
 ## Open Items
 
 - Select the final project license before external reuse or release.
-- Replace sample lexicon data with licensed production lexicon data before release.
+- Replace starter lexicon data with owner-approved licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
 - Refine Shift toggle semantics in platform hosts.
 - Provide Windows code-signing certificate and signed binary/MSI/PowerShell-script evidence.
@@ -291,20 +318,29 @@ Current status: completed
 
 ## Files Changed In Latest Stage
 
+- `.github/workflows/rust.yml`
+- `Cargo.lock`
+- `Cargo.toml`
 - `CHANGELOG.md`
+- `README.md`
+- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/platform_smoke_test_plan.md`
-- `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/README.md`
-- `platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift`
-- `platform/macos_imk/Sources/main.swift`
-- `scripts/build_macos_imk.sh`
-- `scripts/check_macos_imk_sources.sh`
-- `scripts/check_platform_validation_sources.sh`
-- `scripts/check_stage12_release_sources.sh`
-- `scripts/package_macos_pkg.sh`
+- `docs/lexicon_data_policy.md`
+- `docs/OPEN_ITEMS.md`
+- `docs/private_pinyin_ime_development_spec.md`
+- `ime_core/README.md`
+- `ime_core/assets/base_lexicon.tsv`
+- `ime_core/assets/bigram.tsv`
+- `ime_core/assets/lexicon_manifest.json`
+- `ime_core/src/lexicon.rs`
+- `ime_core/src/predictor.rs`
+- `ime_core/tests/candidate_tests.rs`
+- `scripts/check_stage09_core_sources.sh`
+- `scripts/check_stage13_lexicon_sources.sh`
 - `scripts/README.md`
+- `tools/lexicon_builder/Cargo.toml`
+- `tools/lexicon_builder/src/main.rs`
 
 ## Next Step
 
-- Review `codex/macos-install-onboarding` locally; after approval, push and merge through GitHub.
+- Review `codex/stage-13-lexicon-ingestion` locally; after approval, push and merge through GitHub.

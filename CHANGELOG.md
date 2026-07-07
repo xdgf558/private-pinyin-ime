@@ -56,6 +56,9 @@
 - Added a Stage 12 release-packaging scaffold check to CI.
 - Added a macOS post-install onboarding window that opens after pkg installation and links users to Keyboard Settings.
 - Added the Station Cat-style macOS onboarding visual design with fixed dark appearance, warm lamp accent color, Chinese setup copy, and hover-aware custom AppKit buttons.
+- Added a Stage 13 first-party starter lexicon and bigram set so local builds are not limited to the original eight-word sample data.
+- Added `tools/lexicon_builder` for local base-lexicon conversion, validation, and manifest generation with an explicit release-approval gate.
+- Added a Stage 13 lexicon scaffold check to CI.
 
 ### Changed
 
@@ -93,6 +96,7 @@
 - Changed the macOS input mode default state to disabled so System Settings lists PrivatePinyin as an addable input source before the user enables it.
 - Changed macOS smoke-test documentation to revalidate input source discovery/enabling after TIS metadata changes and to note the upgrade-onboarding limitation when an old input method process is already running.
 - Bumped the app and package version to `0.1.3` for the regenerated macOS onboarding installer.
+- Changed the embedded base lexicon and predictor to load active `base_lexicon.tsv` and `bigram.tsv` assets instead of the original sample files.
 
 ### Fixed
 

@@ -25,6 +25,26 @@ fn continuous_pinyin_returns_phrase_candidate() {
 }
 
 #[test]
+fn starter_lexicon_returns_common_terms() {
+    let engine = ImeEngine::new().expect("engine loads starter lexicon");
+
+    for (raw_input, expected) in [
+        ("diannao", "电脑"),
+        ("shijian", "时间"),
+        ("yinwei", "因为"),
+        ("wenjian", "文件"),
+    ] {
+        let candidates = engine.candidates_for_raw(raw_input);
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| candidate.text == expected),
+            "{raw_input} should include {expected}"
+        );
+    }
+}
+
+#[test]
 fn input_session_updates_preedit_and_commits_first_candidate_with_space() {
     let engine = ImeEngine::new().expect("engine loads sample lexicon");
     let mut session = engine.create_session();

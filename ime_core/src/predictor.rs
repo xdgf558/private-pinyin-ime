@@ -2,7 +2,7 @@ use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
 use crate::ranker::Ranker;
 
-const EMBEDDED_BIGRAM: &str = include_str!("../assets/bigram_sample.tsv");
+const EMBEDDED_BIGRAM: &str = include_str!("../assets/bigram.tsv");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BigramEntry {

@@ -1,0 +1,170 @@
+phrase	pinyin	frequency
+中国	zhong guo	950000
+你好	ni hao	900000
+我们	wo men	850000
+今天	jin tian	800000
+天气	tian qi	700000
+谢谢	xie xie	600000
+我想去	wo xiang qu	300000
+你号	ni hao	10000
+我	wo	990000
+你	ni	980000
+他	ta	970000
+她	ta	960000
+它	ta	900000
+的	de	995000
+了	le	985000
+是	shi	975000
+在	zai	965000
+不	bu	955000
+有	you	945000
+和	he	935000
+人	ren	925000
+这	zhe	915000
+中	zhong	905000
+大	da	895000
+为	wei	885000
+上	shang	875000
+个	ge	865000
+国	guo	855000
+来	lai	845000
+到	dao	835000
+说	shuo	825000
+们	men	815000
+地	de	805000
+出	chu	795000
+要	yao	785000
+于	yu	775000
+就	jiu	765000
+可	ke	755000
+也	ye	745000
+去	qu	735000
+吃	chi	725000
+好	hao	715000
+世界	shi jie	690000
+你们	ni men	680000
+他们	ta men	670000
+一个	yi ge	660000
+这个	zhe ge	650000
+那个	na ge	640000
+不是	bu shi	630000
+可以	ke yi	620000
+没有	mei you	610000
+什么	shen me	600000
+怎么	zen me	590000
+为什么	wei shen me	580000
+现在	xian zai	570000
+明天	ming tian	560000
+昨天	zuo tian	550000
+时间	shi jian	540000
+工作	gong zuo	530000
+学习	xue xi	520000
+生活	sheng huo	510000
+朋友	peng you	500000
+家人	jia ren	490000
+手机	shou ji	480000
+电脑	dian nao	470000
+文件	wen jian	460000
+信息	xin xi	450000
+问题	wen ti	440000
+需要	xu yao	430000
+如果	ru guo	420000
+因为	yin wei	410000
+所以	suo yi	400000
+但是	dan shi	390000
+然后	ran hou	380000
+还是	hai shi	370000
+已经	yi jing	360000
+正在	zheng zai	350000
+可能	ke neng	340000
+觉得	jue de	330000
+知道	zhi dao	320000
+喜欢	xi huan	310000
+希望	xi wang	300000
+帮忙	bang mang	290000
+会议	hui yi	280000
+项目	xiang mu	270000
+开始	kai shi	260000
+结束	jie shu	250000
+完成	wan cheng	240000
+发送	fa song	230000
+接收	jie shou	220000
+保存	bao cun	210000
+打开	da kai	200000
+关闭	guan bi	190000
+设置	she zhi	180000
+输入	shu ru	170000
+输出	shu chu	160000
+候选	hou xuan	150000
+拼音	pin yin	140000
+中文	zhong wen	130000
+英文	ying wen	120000
+系统	xi tong	110000
+应用	ying yong	100000
+窗口	chuang kou	95000
+键盘	jian pan	90000
+鼠标	shu biao	85000
+网络	wang luo	80000
+安全	an quan	75000
+隐私	yin si	70000
+数据	shu ju	65000
+本地	ben di	60000
+用户	yong hu	55000
+词库	ci ku	50000
+预测	yu ce	45000
+联想	lian xiang	40000
+安装	an zhuang	35000
+更新	geng xin	34000
+版本	ban ben	33000
+测试	ce shi	32000
+审查	shen cha	31000
+合并	he bing	30000
+提交	ti jiao	29000
+分支	fen zhi	28000
+仓库	cang ku	27000
+代码	dai ma	26000
+文档	wen dang	25000
+开发	kai fa	24000
+修复	xiu fu	23000
+发布	fa bu	22000
+打包	da bao	21000
+下载	xia zai	20000
+上传	shang chuan	19000
+登录	deng lu	18000
+退出	tui chu	17000
+吃饭	chi fan	16000
+喝水	he shui	15000
+回家	hui jia	14000
+睡觉	shui jiao	13000
+起床	qi chuang	12000
+早上	zao shang	11000
+中午	zhong wu	10000
+晚上	wan shang	9000
+下午	xia wu	8000
+上午	shang wu	7000
+周末	zhou mo	6000
+下雨	xia yu	5000
+晴天	qing tian	4000
+电话	dian hua	3900
+图片	tu pian	3800
+视频	shi pin	3700
+声音	sheng yin	3600
+音乐	yin yue	3500
+地址	di zhi	3400
+名字	ming zi	3300
+邮箱	you xiang	3200
+账号	zhang hao	3100
+密码	mi ma	3000
+帮助	bang zhu	2900
+搜索	sou suo	2800
+复制	fu zhi	2700
+粘贴	zhan tie	2600
+删除	shan chu	2500
+返回	fan hui	2400
+确认	que ren	2300
+取消	qu xiao	2200
+成功	cheng gong	2100
+失败	shi bai	2000
+错误	cuo wu	1900
+不客气	bu ke qi	1800
+我想	wo xiang	1700
