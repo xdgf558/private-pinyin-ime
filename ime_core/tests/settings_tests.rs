@@ -4,6 +4,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use ime_core::{ImeMode, ImeSettings};
 
 #[test]
+fn packaged_default_settings_json_matches_rust_default() {
+    let settings = ImeSettings::from_json_str(include_str!("../../config/default_settings.json"))
+        .expect("default settings template parses");
+
+    assert_eq!(settings, ImeSettings::default());
+}
+
+#[test]
 fn settings_loads_json_snapshot() {
     let settings = ImeSettings::from_json_str(
         r#"{
@@ -69,6 +77,7 @@ fn invalid_numeric_settings_are_clamped_without_losing_other_fields() {
 #[test]
 fn settings_write_uses_atomic_target_file() {
     let path = temp_path("settings_write", "json");
+    std::fs::write(&path, "old settings").expect("write old settings");
     let settings = ImeSettings {
         default_mode: ImeMode::English,
         ..ImeSettings::default()

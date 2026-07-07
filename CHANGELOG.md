@@ -45,6 +45,10 @@
 - Added an open item to expose sanitized core logging through host ABI callbacks.
 - Added a Stage 10 platform-host polish scaffold check to CI.
 - Added a macOS InputMethodKit preferences window for strict privacy, prediction, and user learning settings.
+- Added a shared Rust `AtomicFile` writer for settings snapshots and user lexicon TSV exports.
+- Added Stage 11 settings/privacy/iOS storage scaffold checks to CI.
+- Added iOS App Group entitlements, shared settings initialization, and explicit user-learning opt-in in the container app.
+- Added the shared `default_settings.json` template as an iOS app and keyboard-extension resource.
 
 ### Changed
 
@@ -72,6 +76,10 @@
 - Changed the Windows candidate popup to anchor through TSF text extents when available, scale for monitor DPI, follow the Windows app light/dark preference, and clamp to the monitor work area.
 - Changed the macOS input method menu to expose a Preferences entry instead of relying only on direct JSON editing for common settings.
 - Changed the macOS preferences window to a shared process-wide controller that broadcasts settings reloads to active input controllers.
+- Changed Windows, macOS, and iOS host default settings initialization to read the packaged `config/default_settings.json` template and patch only the platform user-lexicon path.
+- Changed the iOS keyboard extension to create the Rust engine from the shared settings path instead of built-in defaults.
+- Changed iOS mode display to derive from C ABI `ImeOutput.mode`.
+- Changed the iOS Globe key row to respect `needsInputModeSwitchKey`.
 
 ### Fixed
 
@@ -92,6 +100,8 @@
 - Fixed numeric candidate selection so digits outside the visible candidate page do not commit hidden candidates.
 - Fixed swallowed user lexicon database failures so they emit sanitized error-code log events.
 - Fixed the Windows candidate popup class lifecycle so the window class is registered once and unregistered on DLL unload.
+- Fixed settings and user lexicon export writes so they no longer remove the target file before replacement.
+- Fixed iOS keyboard startup so shared-settings or App Group storage failures fall back to the built-in engine instead of leaving the keyboard unable to type.
 
 ### Security and Privacy
 
@@ -99,3 +109,5 @@
 - Clarified that error logs must not embed user input, pinyin input, candidates, or committed text.
 - Ensured strict privacy mode and disabled learning skip SQLite learning writes.
 - Ensured strict privacy mode disables user learning when settings snapshots are loaded or written.
+- Kept iOS `RequestsOpenAccess=false` while adding local App Group storage and user-controlled learning opt-in.
+- Kept CapsLock toggle hidden from platform settings UI until host semantics are implemented.

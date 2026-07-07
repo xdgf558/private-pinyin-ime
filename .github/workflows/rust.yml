@@ -53,6 +53,9 @@ jobs:
       - name: Check Stage 10 platform host polish scaffold
         run: bash scripts/check_stage10_platform_host_sources.sh
 
+      - name: Check Stage 11 settings privacy scaffold
+        run: bash scripts/check_stage11_settings_privacy_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

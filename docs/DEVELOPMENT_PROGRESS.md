@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-06 23:14
-Current stage: stage-10
+Last updated: 2026-07-07 07:45
+Current stage: stage-11
 Current status: completed
 
 ## Stage Status
@@ -17,7 +17,8 @@ Current status: completed
 | 07 | iOS keyboard extension | completed | 2026-07-06 20:44 | iOS container app, Keyboard Extension, C ABI static-library wiring, candidate bar, Globe key, and privacy-default scaffold are ready for local review |
 | 08 | Platform validation and CI hardening | completed | 2026-07-06 21:57 | Windows Rust test and TSF compile CI, platform smoke-test records, release-readiness validation checks, and Stage 9-12 planning are ready for local review |
 | 09 | Core production hardening | completed | 2026-07-06 23:04 | Merged to `main` through PR #8 |
-| 10 | Platform host polish | completed | 2026-07-06 23:14 | Windows candidate popup text-extent anchoring, DPI/theme polish, window-class cleanup, macOS preferences window, and Stage 10 source checks are ready for local review |
+| 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
+| 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 
 ## Completed Work
 
@@ -115,17 +116,29 @@ Current status: completed
 - Addressed stage-10 review feedback by making the macOS preferences window a shared process-wide controller and broadcasting settings changes to all active input controllers.
 - Added `scripts/check_stage10_platform_host_sources.sh` and wired it into CI.
 - Closed `OI-017`, `OI-019`, and `OI-020`; kept TSF display attributes, custom macOS menu icon assets, and real platform smoke validation open.
+- Merged stage 10 to `main`.
+- Implemented stage-11 settings, privacy, and iOS storage closure.
+- Added a shared Rust `AtomicFile` helper and moved settings JSON writes plus user lexicon TSV exports away from remove+rename.
+- Added a Rust test that keeps `config/default_settings.json` aligned with `ImeSettings::default`.
+- Changed Windows, macOS, and iOS default settings initialization to read packaged `default_settings.json` and patch only platform-local user lexicon paths.
+- Added iOS App Group entitlements for the container app and keyboard extension, and made the shared settings/user-lexicon path available to both targets.
+- Added iOS container-app controls and copy for Full Access, no-network behavior, App Group storage, local learning opt-in, and lexicon clearing.
+- Changed the iOS keyboard extension to pass the settings path into `ime_engine_new`, derive mode UI from `ImeOutput.mode`, and hide the Globe key when `needsInputModeSwitchKey` is false.
+- Added `scripts/check_stage11_settings_privacy_sources.sh` and wired it into CI.
+- Closed `OI-032`, `OI-033`, `OI-034`, `OI-036`, `OI-037`, `OI-039`, and `OI-040`; kept iOS simulator/device smoke validation open as `OI-038`.
+- Addressed stage-11 review feedback so the iOS keyboard falls back to the built-in engine if shared settings or App Group storage cannot be opened, and expanded `OI-038` to explicitly verify `RequestsOpenAccess=false` App Group behavior on device/simulator.
+- Addressed stage-11 review feedback by pinning the `"user_lexicon_path": null` default-template format in the Stage 11 source check so Windows template patching cannot silently lose learning after JSON reformatting.
 
 ## Current Work
 
-- Stage 10 is complete on local branch `codex/stage-10-platform-host-polish`.
+- Stage 11 is complete on local branch `codex/stage-11-settings-privacy-ios-storage`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the stage-10 host polish changes.
+- Notes: Formatting is clean after the stage-11 settings/privacy changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -133,7 +146,7 @@ Current status: completed
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 47 integration and ABI layout tests passed, covering indexed lookup, visible-page digit selection, paging, punctuation commits, ranking fusion, SQLite exact preservation, user-lexicon pinyin indexing, sanitized logging, parser/candidate behavior, prediction, privacy, settings, user lexicon, and C ABI layout.
+- Notes: 49 integration and ABI layout tests passed, including the new packaged default-settings template alignment check and settings overwrite check.
 
 - Command: `cargo run -p test_cli -- nihao`
 - Result: passed
@@ -153,11 +166,11 @@ Current status: completed
 
 - Command: `bash scripts/check_installers_settings_sources.sh`
 - Result: passed
-- Notes: Stage 6 installer/settings scaffold files and JSON template are present and parseable.
+- Notes: Installer/settings scaffold files are present, parseable, and desktop hosts reference packaged `default_settings.json`.
 
 - Command: `bash scripts/check_ios_keyboard_sources.sh`
 - Result: passed
-- Notes: iOS scaffold includes the Xcode project, SwiftUI container app, Keyboard Extension plist, `RequestsOpenAccess=false`, Globe key handling, candidate bar wiring, C ABI bridge, static-library build script, and no Swift network API usage.
+- Notes: iOS scaffold includes App Group entitlements, shared settings store, template resources, `RequestsOpenAccess=false`, C ABI settings-path wiring, mode derivation, Globe visibility handling, and no Swift network API usage.
 
 - Command: `bash scripts/check_platform_validation_sources.sh`
 - Result: passed
@@ -171,13 +184,21 @@ Current status: completed
 - Result: passed
 - Notes: Stage 10 host polish scaffold includes Windows TSF text-extent anchoring, DPI/theme-aware candidate popup rendering, window-class unregistering, and the shared macOS preferences window.
 
+- Command: `bash scripts/check_stage11_settings_privacy_sources.sh`
+- Result: passed
+- Notes: Stage 11 scaffold includes default-template alignment and format pinning, shared AtomicFile writes, hidden CapsLock platform UI, iOS App Group entitlements, settings fallback, learning opt-in, mode derivation, and Globe-key checks.
+
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with the preferences window, embedded Rust FFI dylib, and ad-hoc signing.
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with the preferences window, bundled `default_settings.json`, embedded Rust FFI dylib, and ad-hoc signing.
+
+- Command: `bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.0.pkg`; the sandboxed first run could not write the pkg artifact, and the authorized rerun passed.
 
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed
-- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`; sandboxed first run could not reach Xcode/CoreSimulator services, and the authorized rerun passed.
+- Notes: Built the Rust C ABI for `aarch64-apple-ios-sim` with iOS deployment target 18.0, then compiled the unsigned simulator `PrivatePinyin.app` with embedded `PrivatePinyinKeyboard.appex`, App Group entitlements, settings fallback, and `default_settings.json` resources; sandboxed first run could not reach Xcode/CoreSimulator services, and the authorized rerun passed.
 
 - Command: `windows-2022 CI: cargo test --workspace + scripts/build_windows_tsf.ps1`
 - Result: not run locally
@@ -200,42 +221,42 @@ Current status: completed
 - Verify IMK candidate panel number-key routing on macOS.
 - Add automatic update strategy.
 - Validate Windows installer and settings UI on Windows 11.
-- Use one packaged default settings template across hosts.
-- Harden Rust settings/export atomic file replacement on Windows.
-- Implement or hide CapsLock toggle in platform settings.
 - Configure iOS App Store signing and provisioning.
-- Design App Group storage and explicit learning opt-in for iOS.
-- Write user-facing iOS keyboard permission explanation.
-- Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit.
-- Derive iOS mode UI from C ABI output mode.
-- Respect `needsInputModeSwitchKey` for the iOS Globe key.
+- Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit and whether learning opt-in/App Group storage work under provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 
 ## Files Changed In Latest Stage
 
+- `.github/workflows/rust.yml`
 - `README.md`
 - `CHANGELOG.md`
-- `.github/workflows/rust.yml`
-- `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/DECISIONS.md`
+- `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
+- `docs/platform_smoke_test_plan.md`
 - `docs/private_pinyin_ime_development_spec.md`
-- `platform/windows_tsf/src/candidate_window.cpp`
-- `platform/windows_tsf/src/candidate_window.h`
-- `platform/windows_tsf/src/dllmain.cpp`
-- `platform/windows_tsf/src/text_service.cpp`
-- `platform/windows_tsf/src/text_service.h`
-- `platform/windows_tsf/README.md`
-- `platform/macos_imk/Sources/PrivatePinyinInputController.swift`
-- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
+- `ime_core/src/atomic_file.rs`
+- `ime_core/src/lib.rs`
+- `ime_core/src/settings.rs`
+- `ime_core/src/user_lexicon.rs`
+- `ime_core/tests/settings_tests.rs`
+- `platform/ios_keyboard/ContainerApp/ContentView.swift`
+- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
+- `platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements`
+- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
+- `platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift`
+- `platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements`
+- `platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj`
+- `platform/ios_keyboard/README.md`
 - `platform/macos_imk/Sources/SettingsStore.swift`
-- `platform/macos_imk/README.md`
+- `platform/windows_tsf/installer/open-settings.ps1`
+- `platform/windows_tsf/src/core_bridge.cpp`
 - `scripts/build_macos_imk.sh`
-- `scripts/check_macos_imk_sources.sh`
-- `scripts/check_windows_tsf_sources.sh`
-- `scripts/check_stage10_platform_host_sources.sh`
+- `scripts/check_installers_settings_sources.sh`
+- `scripts/check_ios_keyboard_sources.sh`
+- `scripts/check_stage11_settings_privacy_sources.sh`
 - `scripts/README.md`
 
 ## Next Step
 
-- Review stage-10 locally; after approval, push and merge through GitHub.
+- Review stage-11 locally; after approval, push and merge through GitHub.

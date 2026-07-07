@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+mod atomic_file;
+
 pub mod api;
 pub mod candidate;
 pub mod error;

@@ -1,13 +1,67 @@
 import Foundation
 
 enum IosSettingsStore {
+    static let appGroupIdentifier = "group.com.privatepinyin.ios"
+
+    static var usesAppGroupStorage: Bool {
+        appGroupContainerURL != nil
+    }
+
     static var supportDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PrivatePinyin", isDirectory: true)
+        let root = appGroupContainerURL ?? FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+        return root.appendingPathComponent("PrivatePinyin", isDirectory: true)
+    }
+
+    static var settingsURL: URL {
+        supportDirectory.appendingPathComponent("settings.json", isDirectory: false)
     }
 
     static var userLexiconURL: URL {
         supportDirectory.appendingPathComponent("user_lexicon.sqlite", isDirectory: false)
+    }
+
+    static func ensureSettingsFile() -> String? {
+        do {
+            try FileManager.default.createDirectory(
+                at: supportDirectory,
+                withIntermediateDirectories: true
+            )
+
+            if !FileManager.default.fileExists(atPath: settingsURL.path) {
+                try write(settings: defaultSettings())
+            }
+
+            return settingsURL.path
+        } catch {
+            return nil
+        }
+    }
+
+    static func isLearningEnabled() -> Bool {
+        readSettings()["enable_user_learning"] as? Bool ?? false
+    }
+
+    static func setLearningEnabled(_ enabled: Bool) -> Bool {
+        if enabled && !usesAppGroupStorage {
+            return false
+        }
+
+        return updateSettings { settings in
+            settings["enable_user_learning"] = enabled
+            if enabled {
+                settings["strict_privacy_mode"] = false
+            }
+        }
+    }
+
+    static func storageDescription() -> String {
+        if usesAppGroupStorage {
+            return "Learning data is stored locally in the shared App Group container."
+        }
+        return "App Group storage is unavailable in this build; learning stays disabled to avoid writing outside shared storage."
     }
 
     static func clearLocalLexiconArtifacts() throws -> Int {
@@ -23,5 +77,98 @@ enum IosSettingsStore {
             removed += 1
         }
         return removed
+    }
+
+    private static var appGroupContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+    }
+
+    private static func defaultSettings() -> [String: Any] {
+        var settings = bundledDefaultSettings() ?? [
+            "enable_prediction": true,
+            "strict_privacy_mode": false,
+        ]
+        settings["enable_user_learning"] = false
+        settings["user_lexicon_path"] = userLexiconURL.path
+        return settings
+    }
+
+    private static func readSettings() -> [String: Any] {
+        guard
+            let data = try? Data(contentsOf: settingsURL),
+            let object = try? JSONSerialization.jsonObject(with: data),
+            let settings = object as? [String: Any]
+        else {
+            return defaultSettings()
+        }
+
+        return settings
+    }
+
+    private static func updateSettings(_ update: (inout [String: Any]) -> Void) -> Bool {
+        _ = ensureSettingsFile()
+        var settings = readSettings()
+        update(&settings)
+        do {
+            try write(settings: settings)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func write(settings: [String: Any]) throws {
+        try FileManager.default.createDirectory(
+            at: supportDirectory,
+            withIntermediateDirectories: true
+        )
+        let data = try JSONSerialization.data(
+            withJSONObject: settings,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        let tempURL = settingsURL.deletingLastPathComponent()
+            .appendingPathComponent("settings.json.\(UUID().uuidString).tmp", isDirectory: false)
+        try data.write(to: tempURL, options: [.atomic])
+        if FileManager.default.fileExists(atPath: settingsURL.path) {
+            _ = try FileManager.default.replaceItemAt(
+                settingsURL,
+                withItemAt: tempURL,
+                backupItemName: nil,
+                options: []
+            )
+        } else {
+            try FileManager.default.moveItem(at: tempURL, to: settingsURL)
+        }
+    }
+
+    private static func bundledDefaultSettings() -> [String: Any]? {
+        for url in defaultSettingsTemplateURLs() {
+            guard
+                let data = try? Data(contentsOf: url),
+                let object = try? JSONSerialization.jsonObject(with: data),
+                let settings = object as? [String: Any]
+            else {
+                continue
+            }
+            return settings
+        }
+        return nil
+    }
+
+    private static func defaultSettingsTemplateURLs() -> [URL] {
+        var urls: [URL] = []
+        if let bundled = Bundle.main.url(forResource: "default_settings", withExtension: "json") {
+            urls.append(bundled)
+        }
+
+        let sourceTreeURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("config", isDirectory: true)
+            .appendingPathComponent("default_settings.json", isDirectory: false)
+        urls.append(sourceTreeURL)
+        return urls
     }
 }

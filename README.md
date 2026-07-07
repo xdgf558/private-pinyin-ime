@@ -16,7 +16,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 10 is complete locally and awaiting review: the Rust workspace, core engine crate, indexed sample lexicon lookup, SQLite user lexicon range lookup, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, prototype installer packaging scripts, iOS container app and keyboard extension scaffold, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, and platform-host polish checks are in place.
+Stage 11 is complete locally and awaiting review: the Rust workspace, core engine crate, indexed sample lexicon lookup, SQLite user lexicon range lookup, local bigram prediction, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, prototype installer packaging scripts, iOS container app and keyboard extension with App Group settings storage and learning opt-in, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, and settings/privacy checks are in place.
 
 ## Development Workflow
 
@@ -57,6 +57,7 @@ bash scripts/check_ios_keyboard_sources.sh
 bash scripts/check_platform_validation_sources.sh
 bash scripts/check_stage09_core_sources.sh
 bash scripts/check_stage10_platform_host_sources.sh
+bash scripts/check_stage11_settings_privacy_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh
@@ -64,4 +65,4 @@ bash scripts/build_ios_keyboard.sh
 
 ## Next Stage
 
-Stage 11 should close settings, privacy, and iOS storage gaps: default settings template drift, stronger atomic settings/export writes, CapsLock toggle handling, App Group storage and learning opt-in, iOS permission copy, mode derivation, and Globe key visibility.
+Stage 12 should move from prototype readiness toward release packaging and distribution: final license selection, signed Windows/macOS installers, iOS provisioning/App Store metadata, and the automatic update strategy.

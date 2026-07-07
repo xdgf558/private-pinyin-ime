@@ -3,7 +3,10 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
+
+extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace private_pinyin {
 namespace {
@@ -47,6 +50,91 @@ std::string json_escape(std::string value) {
     escaped.push_back(ch);
   }
   return escaped;
+}
+
+std::wstring module_directory() {
+  wchar_t module_path[MAX_PATH] = {};
+  const DWORD length = GetModuleFileNameW(
+      reinterpret_cast<HMODULE>(&__ImageBase),
+      module_path,
+      static_cast<DWORD>(MAX_PATH));
+  if (length == 0 || length >= MAX_PATH) {
+    return {};
+  }
+
+  std::wstring path(module_path, module_path + length);
+  const size_t separator = path.find_last_of(L"\\/");
+  if (separator == std::wstring::npos) {
+    return {};
+  }
+  return path.substr(0, separator);
+}
+
+std::optional<std::string> read_utf8_file(const std::wstring& path) {
+  const HANDLE file = CreateFileW(
+      path.c_str(),
+      GENERIC_READ,
+      FILE_SHARE_READ,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL,
+      nullptr);
+  if (file == INVALID_HANDLE_VALUE) {
+    return std::nullopt;
+  }
+
+  LARGE_INTEGER size = {};
+  if (GetFileSizeEx(file, &size) == FALSE || size.QuadPart < 0 || size.QuadPart > 1024 * 1024) {
+    CloseHandle(file);
+    return std::nullopt;
+  }
+
+  std::string contents(static_cast<size_t>(size.QuadPart), '\0');
+  DWORD read = 0;
+  const BOOL ok = ReadFile(
+      file,
+      contents.data(),
+      static_cast<DWORD>(contents.size()),
+      &read,
+      nullptr);
+  CloseHandle(file);
+
+  if (ok == FALSE || read != static_cast<DWORD>(contents.size())) {
+    return std::nullopt;
+  }
+  return contents;
+}
+
+bool replace_first(std::string& value, const std::string& needle, const std::string& replacement) {
+  const size_t position = value.find(needle);
+  if (position == std::string::npos) {
+    return false;
+  }
+  value.replace(position, needle.size(), replacement);
+  return true;
+}
+
+std::string default_settings_template() {
+  return "{\n"
+         "  \"default_mode\": \"Chinese\",\n"
+         "  \"toggle_key\": \"Shift\",\n"
+         "  \"candidate_page_size\": 5,\n"
+         "  \"enable_prediction\": true,\n"
+         "  \"enable_user_learning\": true,\n"
+         "  \"strict_privacy_mode\": false,\n"
+         "  \"user_lexicon_path\": null,\n"
+         "  \"fuzzy_pinyin\": {\n"
+         "    \"zh_z\": false,\n"
+         "    \"ch_c\": false,\n"
+         "    \"sh_s\": false,\n"
+         "    \"n_l\": false,\n"
+         "    \"an_ang\": false,\n"
+         "    \"en_eng\": false,\n"
+         "    \"in_ing\": false\n"
+         "  },\n"
+         "  \"theme\": \"system\",\n"
+         "  \"candidate_font_size\": 14\n"
+         "}\n";
 }
 
 bool write_utf8_file(const std::wstring& path, const std::string& contents) {
@@ -95,29 +183,21 @@ std::string ensure_settings_file() {
   if (!file_exists(settings_path)) {
     std::string user_lexicon_utf8 = wide_to_utf8(user_lexicon_path);
     std::replace(user_lexicon_utf8.begin(), user_lexicon_utf8.end(), '\\', '/');
-    const std::string contents =
-        "{\n"
-        "  \"default_mode\": \"Chinese\",\n"
-        "  \"toggle_key\": \"Shift\",\n"
-        "  \"candidate_page_size\": 5,\n"
-        "  \"enable_prediction\": true,\n"
-        "  \"enable_user_learning\": true,\n"
-        "  \"strict_privacy_mode\": false,\n"
-        "  \"user_lexicon_path\": \"" +
-        json_escape(user_lexicon_utf8) +
-        "\",\n"
-        "  \"fuzzy_pinyin\": {\n"
-        "    \"zh_z\": false,\n"
-        "    \"ch_c\": false,\n"
-        "    \"sh_s\": false,\n"
-        "    \"n_l\": false,\n"
-        "    \"an_ang\": false,\n"
-        "    \"en_eng\": false,\n"
-        "    \"in_ing\": false\n"
-        "  },\n"
-        "  \"theme\": \"system\",\n"
-        "  \"candidate_font_size\": 14\n"
-        "}\n";
+
+    std::string contents;
+    const std::wstring template_path = module_directory() + L"\\default_settings.json";
+    if (auto packaged_template = read_utf8_file(template_path)) {
+      contents = *packaged_template;
+    } else {
+      contents = default_settings_template();
+    }
+
+    const std::string replacement =
+        "\"user_lexicon_path\": \"" + json_escape(user_lexicon_utf8) + "\"";
+    if (!replace_first(contents, "\"user_lexicon_path\": null", replacement)) {
+      return {};
+    }
+
     if (!write_utf8_file(settings_path, contents)) {
       return {};
     }

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::atomic_file::AtomicFile;
 use crate::error::{ImeError, ImeResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,23 +79,13 @@ impl ImeSettings {
         let mut settings = self.clone();
         settings.normalize()?;
 
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|_| ImeError::SettingsIo)?;
-        }
-
-        let temp_path = path.with_extension("tmp");
         let serialized =
             serde_json::to_string_pretty(&settings).map_err(|_| ImeError::SettingsParse)?;
-        let mut file = fs::File::create(&temp_path).map_err(|_| ImeError::SettingsIo)?;
+        let mut file = AtomicFile::create(path).map_err(|_| ImeError::SettingsIo)?;
         file.write_all(serialized.as_bytes())
             .map_err(|_| ImeError::SettingsIo)?;
         file.write_all(b"\n").map_err(|_| ImeError::SettingsIo)?;
-        file.sync_all().map_err(|_| ImeError::SettingsIo)?;
-        drop(file);
-        if path.exists() {
-            fs::remove_file(path).map_err(|_| ImeError::SettingsIo)?;
-        }
-        fs::rename(&temp_path, path).map_err(|_| ImeError::SettingsIo)?;
+        file.finish().map_err(|_| ImeError::SettingsIo)?;
         Ok(())
     }
 

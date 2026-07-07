@@ -6,6 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection};
 
+use crate::atomic_file::AtomicFile;
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
 use crate::lexicon::MAX_LOOKUP_CANDIDATES;
@@ -248,25 +249,15 @@ impl UserLexicon {
     }
 }
 
-fn create_export_file(path: &Path) -> ImeResult<std::fs::File> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
-    }
-
-    let temp_path = path.with_extension("tmp");
-    let mut file = std::fs::File::create(&temp_path).map_err(|_| ImeError::UserLexiconDatabase)?;
+fn create_export_file(path: &Path) -> ImeResult<AtomicFile> {
+    let mut file = AtomicFile::create(path).map_err(|_| ImeError::UserLexiconDatabase)?;
     file.write_all(EXPORT_HEADER)
         .map_err(|_| ImeError::UserLexiconDatabase)?;
     Ok(file)
 }
 
-fn finish_export_file(path: &Path, file: std::fs::File) -> ImeResult<()> {
-    file.sync_all().map_err(|_| ImeError::UserLexiconDatabase)?;
-    drop(file);
-    if path.exists() {
-        std::fs::remove_file(path).map_err(|_| ImeError::UserLexiconDatabase)?;
-    }
-    std::fs::rename(path.with_extension("tmp"), path).map_err(|_| ImeError::UserLexiconDatabase)?;
+fn finish_export_file(_path: &Path, file: AtomicFile) -> ImeResult<()> {
+    file.finish().map_err(|_| ImeError::UserLexiconDatabase)?;
     Ok(())
 }
 

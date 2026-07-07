@@ -11,6 +11,7 @@ final class KeyboardViewController: UIInputViewController {
     private var symbolsVisible = false
     private var englishMode = false
     private var isPerformingTextOperation = false
+    private var lastNeedsInputModeSwitchKey = true
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,10 +25,21 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
 
-        _ = core?.reset()
+        if let output = core?.reset() {
+            englishMode = output.isEnglishMode
+        }
         currentPreedit = ""
         currentCandidates = []
+        rebuildKeyboard()
         updateCandidateBar()
+    }
+
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        if lastNeedsInputModeSwitchKey != needsInputModeSwitchKey {
+            lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
+            rebuildKeyboard()
+        }
     }
 
     private func setupView() {
@@ -83,7 +95,7 @@ final class KeyboardViewController: UIInputViewController {
             "qwertyuiop".map { .character(String($0)) },
             "asdfghjkl".map { .character(String($0)) },
             [.shift] + "zxcvbnm".map { .character(String($0)) } + [.backspace],
-            [.globe, .symbols, .space, .modeToggle(englishMode ? "EN" : "ZH"), .enter],
+            commandRow(with: .symbols),
         ]
     }
 
@@ -92,8 +104,17 @@ final class KeyboardViewController: UIInputViewController {
             "1234567890".map { .text(String($0)) },
             [".", ",", "?", "!", "'", "-", ":", ";", "/"].map { .text($0) },
             [.text("("), .text(")"), .text("@"), .text("#"), .text("$"), .text("&"), .backspace],
-            [.globe, .letters, .space, .modeToggle(englishMode ? "EN" : "ZH"), .enter],
+            commandRow(with: .letters),
         ]
+    }
+
+    private func commandRow(with layoutToggle: KeySpec) -> [KeySpec] {
+        var row: [KeySpec] = []
+        if needsInputModeSwitchKey {
+            row.append(.globe)
+        }
+        row.append(contentsOf: [layoutToggle, .space, .modeToggle(englishMode ? "EN" : "ZH"), .enter])
+        return row
     }
 
     private func makeKeyButton(_ key: KeySpec) -> UIButton {
@@ -176,7 +197,6 @@ final class KeyboardViewController: UIInputViewController {
             rebuildKeyboard()
         case .modeToggle:
             if let output = core?.toggleMode() {
-                englishMode.toggle()
                 apply(output)
             }
             rebuildKeyboard()
@@ -247,12 +267,18 @@ private extension KeyboardViewController {
             return
         }
 
+        let modeChanged = englishMode != output.isEnglishMode
+        englishMode = output.isEnglishMode
+
         if output.shouldCommit, !output.commitText.isEmpty {
             insertDocumentText(output.commitText)
         }
 
         currentPreedit = output.preedit
         currentCandidates = output.shouldShowCandidates ? output.candidates : []
+        if modeChanged {
+            rebuildKeyboard()
+        }
         updateCandidateBar()
     }
 
