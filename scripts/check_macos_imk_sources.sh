@@ -37,6 +37,7 @@ grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_session_reset" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
+grep -q "ime_engine_new(nil)" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "PrivatePinyinOnboardingWindowController" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "StationTheme" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
@@ -50,6 +51,7 @@ grep -q "postinstall" scripts/package_macos_pkg.sh
 grep -q "launchctl asuser" scripts/package_macos_pkg.sh
 grep -q "TISInputSourceID" platform/macos_imk/Resources/Info.plist
 grep -q "smSimpChinese" platform/macos_imk/Resources/Info.plist
+grep -A1 "tsInputModeDefaultStateKey" platform/macos_imk/Resources/Info.plist | grep -q "<false/>"
 grep -q "PrivatePinyin 拼音" platform/macos_imk/Resources/InfoPlist.loctable
 grep -q "InfoPlist.loctable" scripts/build_macos_imk.sh
 grep -q "Preferences..." platform/macos_imk/Sources/PrivatePinyinInputController.swift

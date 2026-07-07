@@ -127,3 +127,11 @@ Status: accepted
 Decision: Replace the eight-word embedded development sample with first-party starter lexicon assets and add a local lexicon import/manifest tool, while keeping third-party production data behind explicit owner approval.
 Reason: Local installed builds need enough first-party vocabulary to validate real typing paths, but public release data still has independent copyright and license obligations. Common upstream candidates have obligations such as LGPL/GPL or Creative Commons attribution/share-alike, so copying them into this all-rights-reserved repository without an owner license decision would create release risk.
 Consequences: The Rust core now embeds active `base_lexicon.tsv` and `bigram.tsv` starter assets. `tools/lexicon_builder` can convert local project TSV or CC-CEDICT-style files into the project format and write an audit manifest, but generated production data is not release-ready unless the manifest is explicitly marked approved after owner review. `OI-001` remains open.
+
+## Decision 017: macOS input source default state
+
+Date: 2026-07-07
+Status: accepted
+Decision: Keep the macOS input mode `tsInputModeDefaultStateKey` set to `false`.
+Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `PrivatePinyin 拼音` under Simplified Chinese and typing `nihao -> 你好`.
+Consequences: Future TIS metadata edits must preserve this value unless a replacement registration strategy is validated through the real package install path, not only a temporary per-user test bundle.

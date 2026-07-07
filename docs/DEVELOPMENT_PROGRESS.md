@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-07 19:05
+Last updated: 2026-07-07 23:10
 Current stage: 13 - Lexicon import and starter dictionary
 Current status: local review
 
@@ -20,7 +20,7 @@ Current status: local review
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
-| 13 | Lexicon import and starter dictionary | local review | 2026-07-07 19:05 | First-party starter lexicon assets, local import/manifest tooling, and Stage 13 checks are ready for local review |
+| 13 | Lexicon import and starter dictionary | local review | 2026-07-07 23:10 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and the formal macOS 0.1.3 pkg smoke fix are ready for local review |
 
 ## Completed Work
 
@@ -152,6 +152,9 @@ Current status: local review
 - Added `tools/lexicon_builder`, a local Rust CLI that converts project TSV or local CC-CEDICT-style files into the standard base-lexicon TSV and emits an audit manifest with a release-approval flag.
 - Updated lexicon policy, manifest, changelog, README, CI, and open items so `OI-001` remains open for owner-approved production data.
 - Added `scripts/check_stage13_lexicon_sources.sh` and wired it into CI.
+- Addressed macOS formal-pkg review feedback by documenting that `tsInputModeDefaultStateKey` must stay `false`, pinning that value in the macOS scaffold check, and recording the decision in `docs/DECISIONS.md`.
+- Added a macOS C ABI fallback so the installed IMK host retries `ime_engine_new(nil)` if a user settings path cannot open.
+- Verified the actual `PrivatePinyin-0.1.3.pkg` install path from `/Library/Input Methods`: `PrivatePinyin 拼音` appears under Simplified Chinese, the TIS mode can be enabled/selected, and TextEdit commits `nihao -> 你好`.
 
 ## Current Work
 
@@ -184,9 +187,9 @@ Current status: local review
 - Result: passed
 - Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.3.pkg` with the redesigned onboarding UI, input source localization, non-default input mode state, and postinstall script; pkg remains unsigned for local testing.
 
-- Command: System Settings manual debug
+- Command: Formal macOS pkg smoke (`dist/macos_imk/PrivatePinyin-0.1.3.pkg`)
 - Result: passed
-- Notes: A temporary per-user test bundle with `tsInputModeDefaultStateKey=false` appeared in the add-input-source list; temporary test bundles were removed after validation.
+- Notes: Installed the actual 0.1.3 pkg into `/Library/Input Methods`; System Settings showed `PrivatePinyin 拼音` in the Simplified Chinese input-source flow; running TIS enable/select outside the Codex sandbox reported `PrivatePinyin.Mode enabled=true selected=true`; TextEdit typed `nihao` and Space committed `你好`. Sandboxed TIS helper runs are not valid evidence because macOS denies HIServices/TSM access inside the sandbox.
 
 - Command: `cargo fmt --check`
 - Result: passed
@@ -290,7 +293,7 @@ Current status: local review
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Sandboxed first run could not write the pkg artifact; authorized rerun built `dist/macos_imk/PrivatePinyin-0.1.0.pkg` as an unsigned local package.
+- Notes: Authorized rerun built `dist/macos_imk/PrivatePinyin-0.1.3.pkg` as an unsigned local package for smoke testing.
 
 - Command: `pwsh` syntax check for `scripts/package_windows_tsf.ps1`
 - Result: not run locally
@@ -328,6 +331,7 @@ Current status: local review
 - `docs/lexicon_data_policy.md`
 - `docs/OPEN_ITEMS.md`
 - `docs/private_pinyin_ime_development_spec.md`
+- `docs/platform_smoke_test_plan.md`
 - `ime_core/README.md`
 - `ime_core/assets/base_lexicon.tsv`
 - `ime_core/assets/bigram.tsv`
@@ -336,8 +340,10 @@ Current status: local review
 - `ime_core/src/predictor.rs`
 - `ime_core/tests/candidate_tests.rs`
 - `scripts/check_stage09_core_sources.sh`
+- `scripts/check_macos_imk_sources.sh`
 - `scripts/check_stage13_lexicon_sources.sh`
 - `scripts/README.md`
+- `platform/macos_imk/Sources/CAbiBridge.swift`
 - `tools/lexicon_builder/Cargo.toml`
 - `tools/lexicon_builder/src/main.rs`
 
