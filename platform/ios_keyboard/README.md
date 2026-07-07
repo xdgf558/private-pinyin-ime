@@ -27,6 +27,21 @@ bash scripts/build_ios_keyboard.sh
 
 The script builds `private_pinyin_ime_ffi` as a static library and then runs `xcodebuild` for the `PrivatePinyin` scheme. It defaults to `IOS_DEPLOYMENT_TARGET=18.0`.
 
+## App Store Archive
+
+Stage 12 adds a release archive/export entry point. Copy
+`AppStoreMetadata/ExportOptions.plist.template` to an ignored or owner-managed
+plist, fill in the Apple team ID and provisioning profile names, then run:
+
+```bash
+PRIVATE_PINYIN_IOS_TEAM_ID="TEAMID1234" \
+PRIVATE_PINYIN_IOS_EXPORT_OPTIONS="platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist" \
+bash scripts/package_ios_app_store.sh
+```
+
+The script requires device signing/provisioning and writes the archive under
+`dist/ios/PrivatePinyin.xcarchive`.
+
 ## Local Smoke Test
 
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
@@ -53,7 +68,7 @@ Password and phone-number fields are expected to fall back to the system keyboar
 
 ## Known Gaps
 
-- App Store signing and provisioning are not configured.
+- App Store archive/export hooks and metadata templates are present, but owner signing and provisioning values are not configured.
 - App Group identifiers are present in source entitlements, but production signing/provisioning must enable the same group before release.
 - The simulator build requires the Rust iOS target to be installed locally.
 - Real Notes/Safari/password-field smoke testing still needs an iOS simulator or device pass.

@@ -18,7 +18,7 @@ The macOS host remains thin:
 - `Resources/Info.plist`: input method app bundle metadata.
 - `installer/install-local.sh`: copies the built app into `~/Library/Input Methods`.
 - `installer/uninstall-local.sh`: removes the local input method app.
-- `../../scripts/package_macos_pkg.sh`: creates an unsigned local `.pkg` installer.
+- `../../scripts/package_macos_pkg.sh`: creates a `.pkg` installer and optionally signs/notarizes it for release candidates.
 
 ## Build
 
@@ -58,6 +58,15 @@ Install with:
 sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.0.pkg -target /
 ```
 
+Release-candidate packages require Developer ID signing and notarization:
+
+```bash
+PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY="Developer ID Application: Example" \
+PRIVATE_PINYIN_MAC_INSTALLER_SIGN_IDENTITY="Developer ID Installer: Example" \
+PRIVATE_PINYIN_NOTARY_PROFILE="private-pinyin-notary" \
+bash scripts/package_macos_pkg.sh
+```
+
 ## Uninstall Locally
 
 ```bash
@@ -79,7 +88,7 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 
 ## Known Gaps
 
-- Local builds are ad-hoc signed only.
-- The package is unsigned; Developer ID signing and notarization are still required for release.
+- Local builds are ad-hoc signed unless `PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY` is provided.
+- Developer ID signing and notarization hooks are present; release still requires owner credentials and notarization evidence.
 - Candidate panel appearance and positioning need app-by-app validation.
 - A lightweight preferences window is included; custom menu icon assets remain.

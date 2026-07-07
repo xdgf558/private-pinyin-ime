@@ -12,6 +12,8 @@ contents_dir="$app_dir/Contents"
 macos_dir="$contents_dir/MacOS"
 frameworks_dir="$contents_dir/Frameworks"
 resources_dir="$contents_dir/Resources"
+codesign_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:--}"
+skip_codesign="${PRIVATE_PINYIN_SKIP_CODESIGN:-0}"
 
 cargo build -p private_pinyin_ime_ffi
 
@@ -57,8 +59,12 @@ install_name_tool -change "$original_install_name" \
   "@rpath/libprivate_pinyin_ime.dylib" \
   "$macos_dir/PrivatePinyin"
 
-if command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - "$app_dir" >/dev/null
+if [ "$skip_codesign" != "1" ] && command -v codesign >/dev/null 2>&1; then
+  codesign_args=(--force --deep --sign "$codesign_identity")
+  if [ "$codesign_identity" != "-" ]; then
+    codesign_args+=(--options runtime --timestamp)
+  fi
+  codesign "${codesign_args[@]}" "$app_dir" >/dev/null
 fi
 
 echo "Built $app_dir"

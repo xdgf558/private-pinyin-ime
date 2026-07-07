@@ -41,6 +41,11 @@ stage-04: add Windows TSF prototype
 stage-05: add macOS InputMethodKit prototype
 stage-06: add installers and settings UI
 stage-07: add iOS keyboard extension
+stage-08: add platform validation and CI hardening
+stage-09: harden core engine for production dictionaries
+stage-10: polish platform host experience
+stage-11: close settings privacy and ios storage gaps
+stage-12: prepare release packaging and distribution
 ```
 
 ### 0.3 进度文件模板
@@ -1328,13 +1333,37 @@ cargo test --workspace 通过
 
 ### 阶段 12：发布打包与分发
 
-任务方向：
+任务：
 
-1. 选择最终 License。
-2. Windows 签名、安装器和卸载流程发布化。
-3. macOS Developer ID 签名、notarization 和 pkg 发布化。
-4. iOS provisioning、App Store metadata 和 TestFlight/App Store 流程。
-5. 决定自动更新策略。
+1. 编写 `docs/release_distribution_plan.md`，明确 public release gates：最终 License、生产词库来源/许可证、签名证书、notarization、iOS provisioning、平台 smoke records、隐私姿态和版本号一致性。
+2. Windows 打包脚本增加 SignTool 支持，可签名 staged `.dll`、`.exe` 和 MSI；release candidate 必须能通过 `-RequireSigning` 强制失败而不是静默产出未签名包。
+3. macOS app build 支持 Developer ID Application 签名和 hardened runtime；pkg 脚本支持 Developer ID Installer 签名、notarytool 提交和 stapler。
+4. iOS 增加 App Store archive/export 脚本，要求 owner 提供 Apple team ID 和 ExportOptions plist；补充 App Store metadata/provisioning 模板。
+5. 决定首版自动更新策略：首个公开版本先走平台原生分发渠道，不内置 Sparkle/MSIX/App Installer，直到签名、更新密钥、回滚和隐私文案准备好。
+6. 增加 Stage 12 source scaffold 检查并纳入 CI。
+7. 更新 `docs/OPEN_ITEMS.md`：关闭已形成决策的自动更新项；保留最终 License、生产词库、签名凭证、notarization/App Store provisioning 和真实平台 smoke evidence。
+
+验收：
+
+```text
+docs/release_distribution_plan.md includes release gates
+Windows packaging supports Sign-Artifact, TimestampUrl, and -RequireSigning
+macOS build supports PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY and hardened runtime
+macOS package script supports PRIVATE_PINYIN_MAC_INSTALLER_SIGN_IDENTITY, notarytool, and stapler
+iOS package script requires PRIVATE_PINYIN_IOS_TEAM_ID and runs xcodebuild -exportArchive
+iOS App Store metadata/export-options templates exist
+automatic update strategy is recorded
+bash scripts/check_stage12_release_sources.sh 通过
+existing Rust and platform scaffold checks 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-12 标记为 completed。
+2. 在 `CHANGELOG.md` 写入发布打包与分发准备变更。
+3. 在 `docs/DECISIONS.md` 记录发布打包边界和自动更新策略。
+4. 在 `docs/OPEN_ITEMS.md` 更新 License、生产词库、签名、notarization、App Store provisioning 和 smoke-test release gates。
+5. 如果是 Git 仓库，提交 `stage-12: prepare release packaging and distribution`。
 
 ---
 
