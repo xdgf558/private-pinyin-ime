@@ -12,6 +12,7 @@ required_files=(
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
   "platform/macos_imk/Sources/main.swift"
   "platform/macos_imk/Resources/Info.plist"
+  "platform/macos_imk/Resources/InfoPlist.loctable"
   "platform/macos_imk/installer/install-local.sh"
   "platform/macos_imk/installer/uninstall-local.sh"
   "scripts/build_macos_imk.sh"
@@ -49,6 +50,8 @@ grep -q "postinstall" scripts/package_macos_pkg.sh
 grep -q "launchctl asuser" scripts/package_macos_pkg.sh
 grep -q "TISInputSourceID" platform/macos_imk/Resources/Info.plist
 grep -q "smSimpChinese" platform/macos_imk/Resources/Info.plist
+grep -q "PrivatePinyin 拼音" platform/macos_imk/Resources/InfoPlist.loctable
+grep -q "InfoPlist.loctable" scripts/build_macos_imk.sh
 grep -q "Preferences..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "NSWindow" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift

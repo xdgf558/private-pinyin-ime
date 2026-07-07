@@ -244,7 +244,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         let rows: [NSView] = [
             makeStepRow(number: 1, content: stepText("打开「键盘」设置"), isLast: false),
             makeStepRow(number: 2, content: stepText("在「文字输入 · 输入法」里点按「编辑」"), isLast: false),
-            makeStepRow(number: 3, content: stepText("点 ＋，选择「简体中文」，添加 PrivatePinyin"), isLast: false),
+            makeStepRow(number: 3, content: stepText("点 ＋，选择「简体中文」，添加「PrivatePinyin 拼音」"), isLast: false),
             makeStepRow(number: 4, content: makeLastStepContent(), isLast: true),
         ]
 
@@ -344,7 +344,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         ])
 
         let text = wrappingLabel(
-            "列表里没看到？关掉系统设置再打开一次。本地测试版偶尔需要重新登录才会刷新。",
+            "列表里没看到？清空搜索后选「中文（简体）」，或关掉系统设置再打开一次。",
             font: .systemFont(ofSize: 12, weight: .regular),
             color: StationTheme.textSecondary
         )
