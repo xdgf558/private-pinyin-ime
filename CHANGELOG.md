@@ -91,6 +91,7 @@
 - Changed Windows release packaging so staged PowerShell installer/settings scripts are signed with Authenticode when a signing certificate is configured.
 - Changed macOS input method metadata to include platform, input-source, Simplified Chinese script, and character repertoire keys for better System Settings discovery.
 - Changed macOS smoke-test documentation to revalidate input source discovery/enabling after TIS metadata changes and to note the upgrade-onboarding limitation when an old input method process is already running.
+- Bumped the app and package version to `0.1.1` for the regenerated macOS onboarding installer.
 
 ### Fixed
 

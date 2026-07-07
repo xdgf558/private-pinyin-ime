@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-version="${PRIVATE_PINYIN_VERSION:-0.1.0}"
+version="${PRIVATE_PINYIN_VERSION:-0.1.1}"
 app_dir="$repo_root/dist/macos_imk/PrivatePinyin.app"
 pkg_root="$repo_root/build/macos_pkg/root"
 pkg_scripts_dir="$repo_root/build/macos_pkg/scripts"

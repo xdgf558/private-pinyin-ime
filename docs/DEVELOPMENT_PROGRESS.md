@@ -143,6 +143,7 @@ Current status: completed
 - Updated macOS input method metadata for System Settings discovery and added smoke-test coverage for input-source discovery, enabling, and upgrade-onboarding behavior.
 - Redesigned the macOS onboarding window with the Station Cat visual system: fixed dark appearance, warm lamp accent, Chinese setup copy, station-style step card, and hover-aware custom AppKit buttons.
 - Addressed macOS onboarding review feedback by removing the `paddedBadge` local-variable shadowing risk and pinning the brand row width so the `setup` badge aligns to the right edge.
+- Bumped the app and package version from `0.1.0` to `0.1.1` for the regenerated onboarding installer.
 
 ## Current Work
 
@@ -173,7 +174,7 @@ Current status: completed
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.0.pkg` with the redesigned onboarding UI and postinstall script; pkg remains unsigned for local testing.
+- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.1.pkg` with the redesigned onboarding UI and postinstall script; pkg remains unsigned for local testing.
 
 - Command: `cargo fmt --check`
 - Result: passed
