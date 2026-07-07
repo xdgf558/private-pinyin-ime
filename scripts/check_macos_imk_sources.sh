@@ -38,7 +38,11 @@ grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.sw
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "PrivatePinyinOnboardingWindowController" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
-grep -q "Open Keyboard Settings" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "StationTheme" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "输入法已经装好了" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "打开键盘设置" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q -- "--show-onboarding" platform/macos_imk/Sources/main.swift
 grep -q "postinstall" scripts/package_macos_pkg.sh
 grep -q "launchctl asuser" scripts/package_macos_pkg.sh

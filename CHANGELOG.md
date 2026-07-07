@@ -55,6 +55,7 @@
 - Added an iOS App Store archive/export script plus App Store Connect metadata and export-options templates.
 - Added a Stage 12 release-packaging scaffold check to CI.
 - Added a macOS post-install onboarding window that opens after pkg installation and links users to Keyboard Settings.
+- Added the Station Cat-style macOS onboarding visual design with fixed dark appearance, warm lamp accent color, Chinese setup copy, and hover-aware custom AppKit buttons.
 
 ### Changed
 
