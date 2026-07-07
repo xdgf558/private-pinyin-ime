@@ -56,6 +56,11 @@ The installer includes a post-install onboarding window. After installation it
 opens PrivatePinyin Setup in the active user session, with a button for Keyboard
 Settings and the steps needed to add the input source.
 
+If an older PrivatePinyin input method process is already running during an
+upgrade install, macOS may activate the existing process instead of passing the
+onboarding flag to the new app. In that case, open the app manually, re-open
+System Settings, or logout/login before adding the input source.
+
 Install with:
 
 ```bash
@@ -82,13 +87,14 @@ platform/macos_imk/installer/uninstall-local.sh
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
 
 1. Open TextEdit.
-2. Switch to PrivatePinyin.
-3. Type `zhongguo`, press `Space`, and confirm `中国` commits.
-4. Type `nihao`, confirm candidates appear near the insertion point, and select one with a number key.
-5. Press standalone `Shift` to toggle mode; `Shift+A` should pass through as uppercase input.
-6. Open the input method menu and toggle Strict Privacy Mode.
-7. Open Preferences from the input method menu and toggle prediction or learning.
-8. Use the input method menu to export and clear the user lexicon.
+2. Confirm PrivatePinyin appears under Chinese/Simplified Chinese input sources and can be enabled.
+3. Switch to PrivatePinyin.
+4. Type `zhongguo`, press `Space`, and confirm `中国` commits.
+5. Type `nihao`, confirm candidates appear near the insertion point, and select one with a number key.
+6. Press standalone `Shift` to toggle mode; `Shift+A` should pass through as uppercase input.
+7. Open the input method menu and toggle Strict Privacy Mode.
+8. Open Preferences from the input method menu and toggle prediction or learning.
+9. Use the input method menu to export and clear the user lexicon.
 
 ## Known Gaps
 
