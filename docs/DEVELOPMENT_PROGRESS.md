@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 16:49
-Current stage: Post-stage macOS preferences UI refresh
+Last updated: 2026-07-08 18:09
+Current stage: Post-stage macOS public release preparation
 Current status: local review
 
 ## Stage Status
@@ -170,10 +170,13 @@ Current status: local review
 - Redesigned the macOS preferences window with the Station Cat dark visual system, custom toggle controls, a settings path card, and hover-aware AppKit buttons.
 - Extended macOS scaffold checks to pin the redesigned preferences window's fixed dark appearance, Chinese settings copy, custom toggles, and hover states.
 - Bumped the workspace, platform plist build numbers, and package default versions to `0.1.9` for the macOS preferences UI refresh.
+- Added a macOS public-release checklist for personal-website distribution, including Developer ID setup, notarization, website download copy, smoke tests, and manual update flow.
+- Added `scripts/check_macos_public_release.sh` to gate public `.pkg` publication on Developer ID identities, package signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output.
+- Documented that the current local `0.1.9` pkg remains blocked for public website distribution until Owner-provided Developer ID certificates and notarytool credentials are configured.
 
 ## Current Work
 
-- macOS preferences UI refresh is complete on local branch `codex/redesign-macos-preferences`.
+- macOS preferences UI refresh and public-release preflight scaffolding are complete on local branch `codex/redesign-macos-preferences`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -188,11 +191,19 @@ Current status: local review
 
 - Command: `bash scripts/check_stage12_release_sources.sh`
 - Result: passed
-- Notes: Existing Stage 12 release packaging scaffold remains green after the preferences UI refresh and version bump.
+- Notes: Existing Stage 12 release packaging scaffold now also pins the macOS public-release preflight script and website checklist.
 
 - Command: `bash scripts/check_installers_settings_sources.sh`
 - Result: passed
 - Notes: Existing installer/settings scaffold remains green after the preferences UI refresh.
+
+- Command: `bash -n scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: macOS public-release preflight script syntax is valid.
+
+- Command: `bash scripts/check_macos_public_release.sh`
+- Result: expected failure
+- Notes: Current local package is correctly blocked for website publication: no Developer ID Application identity, no Developer ID Installer identity, unsigned pkg, no stapled notarization ticket, and no usable `private-pinyin-notary` keychain profile.
 
 - Command: `git diff --check`
 - Result: passed
@@ -244,9 +255,13 @@ Current status: local review
 - `Cargo.toml`
 - `CHANGELOG.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
+- `docs/macos_public_release_checklist.md`
 - `docs/release_distribution_plan.md`
+- `scripts/README.md`
+- `scripts/check_macos_public_release.sh`
 - `scripts/check_macos_imk_sources.sh`
 - `scripts/check_stage10_platform_host_sources.sh`
+- `scripts/check_stage12_release_sources.sh`
 - `scripts/package_macos_pkg.sh`
 - `scripts/package_windows_tsf.ps1`
 - `README.md`
@@ -259,4 +274,4 @@ Current status: local review
 
 ## Next Step
 
-- Review `codex/redesign-macos-preferences` locally; after approval, push and merge through GitHub.
+- Configure Owner Developer ID Application/Installer certificates and a `private-pinyin-notary` notarytool profile, then rebuild the signed/notarized macOS pkg and rerun `bash scripts/check_macos_public_release.sh`.

@@ -76,6 +76,8 @@ is provided. Unsigned/ad-hoc artifacts are local testing only.
 Manual gates:
 
 - Install the signed and notarized pkg on a clean macOS user account.
+- Run `bash scripts/check_macos_public_release.sh` and publish the reported
+  SHA256 checksum with the website download.
 - Confirm the input method can be added from System Settings.
 - Smoke-test TextEdit, Safari, Chrome, and VS Code.
 - Confirm uninstall guidance removes the app bundle and no stale process keeps
