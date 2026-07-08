@@ -5,7 +5,7 @@ This directory contains the shared Rust core engine.
 Current responsibilities:
 
 - Pinyin parsing.
-- Candidate generation.
+- Candidate generation from the embedded starter lexicon.
 - Ranking.
 - SQLite user lexicon persistence.
 - Local bigram prediction.

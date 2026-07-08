@@ -5,7 +5,7 @@ use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
 
-const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon_sample.tsv");
+const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon.tsv");
 pub const MAX_LOOKUP_CANDIDATES: usize = 50;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

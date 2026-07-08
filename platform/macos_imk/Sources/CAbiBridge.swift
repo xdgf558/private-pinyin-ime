@@ -96,12 +96,15 @@ final class PinyinCoreBridge {
     }
 
     private static func openEngine(settingsPath: String?) -> (OpaquePointer, OpaquePointer)? {
-        let engine: OpaquePointer?
+        var engine: OpaquePointer?
         if let settingsPath {
             engine = settingsPath.withCString { pathPointer in
                 ime_engine_new(pathPointer)
             }
         } else {
+            engine = ime_engine_new(nil)
+        }
+        if engine == nil, settingsPath != nil {
             engine = ime_engine_new(nil)
         }
 

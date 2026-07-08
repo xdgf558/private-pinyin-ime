@@ -32,6 +32,6 @@ grep -q "Number-key selection" docs/platform_smoke_test_plan.md
 grep -q "Input source discovery" docs/platform_smoke_test_plan.md
 grep -q "Post-install onboarding" docs/platform_smoke_test_plan.md
 grep -q "Upgrade onboarding" docs/platform_smoke_test_plan.md
-grep -q "smSimpChinese" docs/platform_smoke_test_plan.md
+grep -q "Consecutive upgrade" docs/platform_smoke_test_plan.md
 grep -q "jintian -> 今天" docs/platform_smoke_test_plan.md
 grep -q "textDidChange" docs/platform_smoke_test_plan.md

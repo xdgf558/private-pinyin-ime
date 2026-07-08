@@ -48,6 +48,7 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/main.swift"
 
 cp "$repo_root/platform/macos_imk/Resources/Info.plist" "$contents_dir/Info.plist"
+cp "$repo_root/platform/macos_imk/Resources/InfoPlist.loctable" "$resources_dir/InfoPlist.loctable"
 cp "$repo_root/config/default_settings.json" "$resources_dir/default_settings.json"
 cp "$repo_root/target/debug/libprivate_pinyin_ime.dylib" \
   "$frameworks_dir/libprivate_pinyin_ime.dylib"

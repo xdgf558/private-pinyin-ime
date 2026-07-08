@@ -2,7 +2,7 @@
 
 | ID | Stage | Item | Priority | Owner | Status | Notes |
 |---|---|---|---|---|---|---|
-| OI-001 | 01 | Replace sample lexicon with licensed production lexicon | High | TBD | open | Stage 09 adds `docs/lexicon_data_policy.md` and keeps the sample manifest explicit, but production replacement still requires owner-approved source and license |
+| OI-001 | 01 | Replace starter lexicon with licensed production lexicon | High | Codex | closed | Stage 13 replaces the starter base lexicon with an owner-approved AOSP PinyinIME rawdict import supplemented by mozillazg pinyin-data single-character readings; manifest records Apache-2.0/MIT sources, exact revisions, 100,657 entries, and release approval |
 | OI-002 | 00 | Select final project license | Medium | Owner | open | Stage 12 records this as a public release gate; repository currently uses all-rights-reserved text |
 | OI-003 | 01 | Implement Rust core engine crate | High | Codex | closed | Completed in stage 01 local branch |
 | OI-004 | 01 | Add minimal GitHub Actions for Rust validation | High | Codex | closed | Completed in stage 01 local branch |
@@ -43,3 +43,5 @@
 | OI-039 | 07 | Derive iOS mode UI from C ABI output mode | Medium | Codex | closed | Stage 11 exposes `ImeOutput.mode` through the iOS Swift bridge and derives the keyboard mode label from engine output instead of local toggling |
 | OI-040 | 07 | Respect `needsInputModeSwitchKey` for the iOS Globe key | Medium | Codex | closed | Stage 11 hides the Globe key when `needsInputModeSwitchKey` is false and rebuilds the keyboard row if the system requirement changes |
 | OI-041 | 09 | Expose sanitized core logging through host ABI callbacks | Medium | Codex | open | Stage 09 adds core `set_log_sink` support, but Windows/macOS/iOS cannot connect it yet; add an `ime_set_log_callback`-style ABI with explicit callback lifetime and thread-safety contract before release diagnostics |
+| OI-042 | 13 | Measure production lexicon engine initialization latency | Medium | Codex | open | Stage 13 embeds a 100,657-entry base lexicon with `include_str!`; measure first activation/engine creation on macOS and especially Windows TSF per-process activation before deciding whether binary precompiled lexicon data, shared caching, or lazy loading is needed |
+| OI-043 | 13 | Replace starter bigram prediction data with licensed production source | Medium | TBD | open | Stage 13 upgrades the base lexicon, but `bigram.tsv` remains a 20-entry first-party starter set; find or generate an owner-approved prediction/bigram source, record its license/version, and update manifest/notices before release approval |

@@ -65,10 +65,11 @@ Checklist:
 | Package install | `scripts/package_macos_pkg.sh` pkg installs into `/Library/Input Methods` | | |
 | Post-install onboarding | Fresh pkg install opens the PrivatePinyin Setup onboarding window with an Open Keyboard Settings button | | |
 | Upgrade onboarding | If an old PrivatePinyin process is already running during pkg install, onboarding may not auto-open; manual launch or logout/login refresh is acceptable for unsigned local test builds | | |
-| Input source discovery | PrivatePinyin appears under Chinese/Simplified Chinese input sources after install; re-open System Settings or logout/login if the list is cached | | TIS keys changed in macOS onboarding work: mode `TISInputSourceID`, top-level `TISInputSourceID`, and `smSimpChinese` must be revalidated |
+| Input source discovery | PrivatePinyin appears exactly once under Chinese/Simplified Chinese input sources after installing the actual `.pkg`; re-open System Settings or logout/login if the list is cached | | TIS keys changed in macOS onboarding work: mode `TISInputSourceID`, top-level `TISInputSourceID`, and `smSimpChinese` must be revalidated. `tsInputModeDefaultStateKey` must remain `false`; setting it to `true` can make third-party modes disappear from the add-input-source selector before the user enables them |
+| Consecutive upgrade input-source dedupe | After consecutive upgrade installs across two versions, System Settings and the menu bar input menu show at most one PrivatePinyin entry | | Regression for stale `AppleEnabledInputSources` / `AppleEnabledThirdPartyInputSources` records created by older default-enabled builds or manual `TISEnableInputSource` diagnostics |
 | Enable input source | PrivatePinyin can be added and selected from the menu bar input menu | | |
-| TextEdit composition | Typing `zhongguo` shows composition and candidate `中国` | | |
-| Commit | `Space` commits `中国` | | |
+| TextEdit composition | Typing `nihao` shows composition and candidate `你好`; typing `zhongguo` shows candidate `中国` | | |
+| Commit | `Space` commits `你好` for `nihao` and `中国` for `zhongguo` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
 | Number selection | Number-key selection does not double-select through `IMKCandidates` | | |
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |

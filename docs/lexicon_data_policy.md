@@ -11,7 +11,7 @@ Every bundled lexicon-like asset must be listed in `ime_core/assets/lexicon_mani
 - `license`
 - `entry_count`
 
-The manifest source must say whether the data is handwritten, generated from project-owned material, or derived from a third-party dataset.
+The manifest source must say whether the data is handwritten, generated from project-owned material, or derived from a third-party dataset. Active release assets must also record whether the data is approved for public release packaging.
 
 ## Production Data Rules
 
@@ -19,7 +19,24 @@ The manifest source must say whether the data is handwritten, generated from pro
 - Do not place third-party sample data into this all-rights-reserved repository without recording the exact upstream project, version, license, and transformation steps.
 - Keep generated production dictionaries outside runtime-writable directories.
 - Treat phrase text, pinyin, frequencies, and bigrams as data with their own licensing requirements.
+- Do not mark imported data as release-approved until the owner has accepted the upstream license terms and any attribution/share-alike obligations.
+- Keep `THIRD_PARTY_NOTICES.md` aligned with any bundled third-party lexicon data.
 
-## Current Stage 09 Status
+## Stage 13 Import Tooling
 
-The bundled sample files are still handwritten project-internal data for development. Stage 09 hardens the ingestion, lookup, ranking, paging, punctuation, and logging paths so a licensed production dictionary can be swapped in later, but it does not replace the sample lexicon with third-party data.
+Stage 13 adds `tools/lexicon_builder`, a local conversion and validation tool for building a standard base lexicon TSV plus an audit manifest. The tool supports:
+
+- `private-pinyin-tsv`: the project-native `phrase<TAB>pinyin<TAB>frequency` format.
+- `cc-cedict`: local CC-CEDICT style files with numbered pinyin converted to tone-less pinyin for validation.
+- `pinyin-data`: mozillazg/pinyin-data style `U+XXXX: pinyin,pinyin # character` lines. Marked pinyin is normalized to tone-less pinyin and can be weighted by an optional character-frequency TSV.
+- `aosp-rawdict`: Android Open Source Project PinyinIME raw dictionary lines. UTF-16 rawdict files are decoded, floating-point frequencies are scaled into `u32`, and validated entries are emitted as base-lexicon rows.
+
+The tool does not download third-party data. It only converts local files supplied by the maintainer, writes a generated manifest, and leaves `release_approved` false unless the caller explicitly passes the approval flag.
+
+## Current Stage 13 Status
+
+The active `base_lexicon.tsv` is generated from owner-approved AOSP PinyinIME rawdict data, supplemented with mozillazg pinyin-data single-character readings. The active base lexicon has 100,657 entries and includes phrase coverage such as `ganma -> 干嘛`.
+
+The active `bigram.tsv` remains first-party starter data. If future releases replace or expand bigram data from a third-party source, the same manifest, notice, and owner-approval rules apply.
+
+`OI-001` is closed for the current bundled base lexicon because the owner selected AOSP PinyinIME rawdict plus pinyin-data, accepted their Apache-2.0/MIT terms, recorded exact source revisions, and generated the manifest with release approval. The final project license, code signing, notarization, provisioning, and platform smoke evidence remain separate release gates.

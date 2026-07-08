@@ -18,7 +18,7 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>0.1.4</string>
   <key>CFBundleSignature</key>
   <string>????</string>
   <key>CFBundleSupportedPlatforms</key>
@@ -26,7 +26,7 @@
     <string>MacOSX</string>
   </array>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>4</string>
   <key>ComponentInputModeDict</key>
   <dict>
     <key>tsInputModeListKey</key>
@@ -47,7 +47,7 @@
           <string>Hans</string>
         </array>
         <key>tsInputModeDefaultStateKey</key>
-        <true/>
+        <false/>
         <key>tsInputModeIsVisibleKey</key>
         <true/>
         <key>tsInputModePrimaryInScriptKey</key>
@@ -76,6 +76,8 @@
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   <key>NSSupportsSuddenTermination</key>
+  <true/>
+  <key>TISIconIsTemplate</key>
   <true/>
   <key>TISInputSourceID</key>
   <string>com.privatepinyin.inputmethod.PrivatePinyin</string>

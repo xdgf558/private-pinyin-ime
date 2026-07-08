@@ -119,3 +119,35 @@ Status: accepted
 Decision: Prepare release-candidate packaging through configurable signing, notarization, provisioning, and App Store export hooks, while keeping final license, production lexicon approval, owner credentials, and platform smoke-test evidence as explicit release gates.
 Reason: Release automation should be auditable before credentials are available, but the project must not claim public release readiness without signed artifacts, notarization results, App Store provisioning, and license/data decisions.
 Consequences: Windows and macOS package scripts can build local unsigned artifacts by default and require explicit signing flags for release candidates. iOS App Store packaging requires owner-provided team and export options. The initial public release plan uses platform-native distribution channels and defers in-app auto-update frameworks.
+
+## Decision 016: Stage 13 lexicon import boundary
+
+Date: 2026-07-07
+Status: accepted
+Decision: Replace the eight-word embedded development sample with first-party starter lexicon assets and add a local lexicon import/manifest tool, while keeping third-party production data behind explicit owner approval.
+Reason: Local installed builds need enough first-party vocabulary to validate real typing paths, but public release data still has independent copyright and license obligations. Common upstream candidates have obligations such as LGPL/GPL or Creative Commons attribution/share-alike, so copying them into this all-rights-reserved repository without an owner license decision would create release risk.
+Consequences: The Rust core now embeds active `base_lexicon.tsv` and `bigram.tsv` starter assets. `tools/lexicon_builder` can convert local project TSV or CC-CEDICT-style files into the project format and write an audit manifest, but generated production data is not release-ready unless the manifest is explicitly marked approved after owner review. `OI-001` remained open until Decision 019 selected and imported approved production data.
+
+## Decision 017: macOS input source default state
+
+Date: 2026-07-07
+Status: accepted
+Decision: Keep the macOS input mode `tsInputModeDefaultStateKey` set to `false`.
+Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `PrivatePinyin 拼音` under Simplified Chinese and typing `nihao -> 你好`.
+Consequences: Future TIS metadata edits must preserve this value unless a replacement registration strategy is validated through the real package install path, not only a temporary per-user test bundle.
+
+## Decision 018: macOS duplicate input-source cleanup
+
+Date: 2026-07-08
+Status: accepted
+Decision: Treat repeated PrivatePinyin rows in System Settings as stale enabled-input-source records, not as a reason to change the input mode script metadata away from `smSimpChinese`.
+Reason: Local cleanup showed `AppleEnabledInputSources` / `AppleEnabledThirdPartyInputSources` can retain records created by older `tsInputModeDefaultStateKey=true` builds and manual `TISEnableInputSource` diagnostics. Cleaning those user preference records removed the repeated rows without requiring a metadata change.
+Consequences: Do not use `TISEnableInputSource` as part of normal macOS smoke tests. macOS package validation must include a consecutive-upgrade check that confirms System Settings and the menu bar input menu show at most one PrivatePinyin entry.
+
+## Decision 019: Production base lexicon source
+
+Date: 2026-07-08
+Status: accepted
+Decision: Use Android Open Source Project PinyinIME `rawdict_utf16_65105_freq.txt` as the production phrase lexicon source and supplement it with mozillazg pinyin-data single-character readings.
+Reason: AOSP PinyinIME provides a broad phrase dictionary with frequencies under Apache-2.0, and pinyin-data provides broad single-character reading coverage under MIT. Together they solve the immediate usability gap where common phrases such as `ganma -> 干嘛` were missing while keeping licensing compatible with the repository's all-rights-reserved application code.
+Consequences: `tools/lexicon_builder` now supports `aosp-rawdict` and `pinyin-data` imports, the active base lexicon has 100,657 entries, `THIRD_PARTY_NOTICES.md` records upstream notices, and `OI-001` is closed for the current bundled base dictionary. Future third-party bigram or lexicon replacements must still update the manifest and notices before release approval.

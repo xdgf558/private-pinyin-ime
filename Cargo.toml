@@ -2,6 +2,7 @@
 members = [
     "ffi/ime_ffi",
     "ime_core",
+    "tools/lexicon_builder",
     "tools/settings_cli",
     "tools/test_cli",
 ]
@@ -9,6 +10,6 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.1.0"
+version = "0.1.4"
 authors = ["PrivatePinyin IME contributors"]
 license = "LicenseRef-All-Rights-Reserved"

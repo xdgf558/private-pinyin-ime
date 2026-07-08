@@ -7,21 +7,55 @@ use ime_core::{ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifier
 
 #[test]
 fn nihao_returns_expected_candidates() {
-    let engine = ImeEngine::new().expect("engine loads sample lexicon");
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
     let candidates = engine.candidates_for_raw("nihao");
 
-    assert!(candidates.iter().any(|candidate| candidate.text == "你好"));
-    assert!(candidates.iter().any(|candidate| candidate.text == "你号"));
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("你好")
+    );
+    assert!(candidates
+        .iter()
+        .any(|candidate| candidate.text == "你好啊"));
 }
 
 #[test]
 fn continuous_pinyin_returns_phrase_candidate() {
-    let engine = ImeEngine::new().expect("engine loads sample lexicon");
-    let candidates = engine.candidates_for_raw("woxiangqu");
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("xiangqu");
 
-    assert!(candidates
-        .iter()
-        .any(|candidate| candidate.text == "我想去"));
+    assert!(candidates.iter().any(|candidate| candidate.text == "想去"));
+}
+
+#[test]
+fn starter_lexicon_returns_common_terms() {
+    let engine = ImeEngine::new().expect("engine loads starter lexicon");
+
+    for (raw_input, expected) in [
+        ("diannao", "电脑"),
+        ("shijian", "时间"),
+        ("yinwei", "因为"),
+        ("wenjian", "文件"),
+    ] {
+        let candidates = engine.candidates_for_raw(raw_input);
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| candidate.text == expected),
+            "{raw_input} should include {expected}"
+        );
+    }
+}
+
+#[test]
+fn production_lexicon_returns_ganma_phrase() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("ganma");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("干嘛")
+    );
 }
 
 #[test]
