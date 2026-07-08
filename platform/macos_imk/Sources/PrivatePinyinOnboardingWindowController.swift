@@ -244,7 +244,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         let rows: [NSView] = [
             makeStepRow(number: 1, content: stepText("打开「键盘」设置"), isLast: false),
             makeStepRow(number: 2, content: stepText("在「文字输入 · 输入法」里点按「编辑」"), isLast: false),
-            makeStepRow(number: 3, content: stepText("点 ＋，选择「简体中文」，添加「PrivatePinyin 拼音」"), isLast: false),
+            makeStepRow(number: 3, content: stepText("点 ＋，选择「简体中文」，添加「猫栈拼音」"), isLast: false),
             makeStepRow(number: 4, content: makeLastStepContent(), isLast: true),
         ]
 

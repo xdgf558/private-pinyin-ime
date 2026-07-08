@@ -38,7 +38,7 @@ dist/macos_imk/PrivatePinyin.app
 platform/macos_imk/installer/install-local.sh
 ```
 
-Then open System Settings > Keyboard > Input Sources and add PrivatePinyin.
+Then open System Settings > Keyboard > Input Sources and add 猫栈拼音.
 
 ## Build Package
 
@@ -49,7 +49,7 @@ bash scripts/package_macos_pkg.sh
 The package is written to:
 
 ```text
-dist/macos_imk/PrivatePinyin-0.1.4.pkg
+dist/macos_imk/PrivatePinyin-0.1.7.pkg
 ```
 
 The installer includes a post-install onboarding window. After installation it
@@ -64,7 +64,7 @@ System Settings, or logout/login before adding the input source.
 Install with:
 
 ```bash
-sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.4.pkg -target /
+sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.7.pkg -target /
 ```
 
 Release-candidate packages require Developer ID signing and notarization:
@@ -101,4 +101,4 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 - Local builds are ad-hoc signed unless `PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY` is provided.
 - Developer ID signing and notarization hooks are present; release still requires owner credentials and notarization evidence.
 - Candidate panel appearance and positioning need app-by-app validation.
-- A lightweight preferences window is included; custom menu icon assets remain.
+- The menu bar/input-source icon uses the packaged template TIFF; the app bundle uses the packaged color icon.

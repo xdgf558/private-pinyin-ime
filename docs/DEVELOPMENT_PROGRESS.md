@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 10:42
-Current stage: 13 - Lexicon import and production dictionary
+Last updated: 2026-07-08 13:23
+Current stage: Post-stage macOS icon refresh
 Current status: local review
 
 ## Stage Status
@@ -20,7 +20,7 @@ Current status: local review
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
-| 13 | Lexicon import and production dictionary | local review | 2026-07-08 10:42 | AOSP PinyinIME rawdict plus pinyin-data production base lexicon, import/manifest tooling, third-party notices, Stage 13 checks, and `ganma -> 干嘛` regression are ready for local review |
+| 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 
 ## Completed Work
 
@@ -159,10 +159,15 @@ Current status: local review
 - Addressed macOS formal-pkg review feedback by documenting that `tsInputModeDefaultStateKey` must stay `false`, pinning that value in the macOS scaffold check, and recording the decision in `docs/DECISIONS.md`.
 - Added a macOS C ABI fallback so the installed IMK host retries `ime_engine_new(nil)` if a user settings path cannot open.
 - Verified the actual `PrivatePinyin-0.1.3.pkg` install path from `/Library/Input Methods`: `PrivatePinyin 拼音` appears under Simplified Chinese, the TIS mode can be enabled/selected, and TextEdit commits `nihao -> 你好`.
+- Added the redesigned macOS template menu icon, color app icon, and `InfoPlist.strings` localization fallback resources.
+- Wired the new icon resources into the macOS IMK plist, build script, package output, and scaffold checks.
+- Bumped the workspace, platform plist, and package default versions to `0.1.7` for the icon/name refresh.
+- Renamed the macOS Chinese input source display name to `猫栈拼音`, with localized input method name `猫栈`.
+- Closed `OI-028` for macOS settings entry and menu icon assets; real light/dark menu-bar icon appearance still needs macOS smoke evidence.
 
 ## Current Work
 
-- Stage 13 production lexicon import work is complete on local branch `codex/stage-13-lexicon-ingestion`.
+- macOS icon refresh is complete on local branch `codex/macos-icon-redesign`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -349,11 +354,11 @@ Current status: local review
 
 - Command: Local macOS input-source cleanup
 - Result: passed
-- Notes: With the input source switched to Simplified Pinyin, System Settings and KeyboardSettings were closed; `com.apple.HIToolbox` history/selection records were cleaned, the stale `com.apple.inputsources` PrivatePinyin top-level entry was cleared through System Settings, and the input-source edit list now shows no repeated PrivatePinyin rows. Re-add PrivatePinyin once after logout/login for the final smoke check.
+- Notes: With the input source switched to Simplified Pinyin, System Settings and KeyboardSettings were closed; `com.apple.HIToolbox` history/selection records were cleaned, the stale `com.apple.inputsources` PrivatePinyin top-level entry was cleared through System Settings, and the input-source edit list now shows no repeated PrivatePinyin rows. Re-add 猫栈拼音 once after logout/login for the final smoke check.
 
 - Command: `installer -pkg dist/macos_imk/PrivatePinyin-0.1.4.pkg -target /`
 - Result: blocked
-- Notes: macOS requires root for `/Library/Input Methods`; `sudo -n` reported that a password is required. The generated pkg is ready for manual installation, after which the formal smoke check must verify that PrivatePinyin appears exactly once.
+- Notes: macOS requires root for `/Library/Input Methods`; `sudo -n` reported that a password is required. The generated pkg is ready for manual installation, after which the formal smoke check must verify that 猫栈拼音 appears exactly once.
 
 - Command: `cargo test -p private_pinyin_lexicon`
 - Result: passed
@@ -395,6 +400,34 @@ Current status: local review
 - Result: passed
 - Notes: No whitespace errors.
 
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: macOS scaffold now verifies template menu/palette icon keys, app icon file wiring, packaged icon assets, `zh_Hans` loctable localization, and `zh-Hans.lproj` localization fallback.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.7`, multi-size `PrivatePinyinMenuIcon.tif`, multi-size `PrivatePinyinAppIcon.icns`, and localized `InfoPlist.strings` resources for `猫栈拼音`.
+
+- Command: `cargo fmt --check`
+- Result: passed
+- Notes: Formatting is clean after the icon refresh and version bump.
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: 56 workspace tests passed with crates reporting version `0.1.7`.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+- Notes: No clippy warnings after the icon refresh.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: C ABI demo still returns and commits `你好` from `nihao`.
+
+- Command: `bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Built unsigned local package `dist/macos_imk/PrivatePinyin-0.1.7.pkg` after the icon asset cleanup; the first sandboxed pkgbuild attempt could not write to the external-volume `dist` path, and the authorized rerun succeeded.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -407,7 +440,6 @@ Current status: local review
 - Provide macOS Developer ID credentials and notarization evidence.
 - Validate signed/notarized macOS pkg install/uninstall and release uninstall guidance.
 - Polish macOS candidate positioning and appearance.
-- Add custom macOS menu icon assets.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
 - Configure iOS App Store signing, provisioning, App Store metadata, and TestFlight evidence.
@@ -418,41 +450,27 @@ Current status: local review
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
 - `Cargo.lock`
 - `Cargo.toml`
 - `CHANGELOG.md`
-- `README.md`
-- `THIRD_PARTY_NOTICES.md`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/lexicon_data_policy.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/private_pinyin_ime_development_spec.md`
 - `docs/platform_smoke_test_plan.md`
-- `ime_core/README.md`
-- `ime_core/assets/base_lexicon.tsv`
-- `ime_core/assets/bigram.tsv`
-- `ime_core/assets/lexicon_manifest.json`
-- `ime_core/src/lexicon.rs`
-- `ime_core/src/predictor.rs`
-- `ime_core/tests/candidate_tests.rs`
-- `scripts/check_stage09_core_sources.sh`
 - `scripts/check_macos_imk_sources.sh`
-- `scripts/check_platform_validation_sources.sh`
 - `scripts/package_macos_pkg.sh`
 - `scripts/package_windows_tsf.ps1`
-- `scripts/check_stage13_lexicon_sources.sh`
-- `scripts/README.md`
 - `platform/ios_keyboard/ContainerApp/Info.plist`
 - `platform/ios_keyboard/KeyboardExtension/Info.plist`
 - `platform/macos_imk/README.md`
 - `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/Sources/CAbiBridge.swift`
+- `platform/macos_imk/Resources/InfoPlist.loctable`
+- `platform/macos_imk/Resources/PrivatePinyinAppIcon.icns`
+- `platform/macos_imk/Resources/PrivatePinyinMenuIcon.tif`
+- `platform/macos_imk/Resources/en.lproj/InfoPlist.strings`
+- `platform/macos_imk/Resources/zh-Hans.lproj/InfoPlist.strings`
 - `platform/windows_tsf/README.md`
-- `tools/lexicon_builder/Cargo.toml`
-- `tools/lexicon_builder/src/main.rs`
 
 ## Next Step
 
-- Review `codex/stage-13-lexicon-ingestion` locally; after approval, push and merge through GitHub.
+- Review `codex/macos-icon-redesign` locally; after approval, push and merge through GitHub.

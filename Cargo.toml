@@ -10,6 +10,6 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.1.4"
+version = "0.1.7"
 authors = ["PrivatePinyin IME contributors"]
 license = "LicenseRef-All-Rights-Reserved"

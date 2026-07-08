@@ -17,4 +17,4 @@ rm -rf "$destination_app"
 cp -R "$source_app" "$destination_app"
 
 echo "Installed $destination_app"
-echo "Open System Settings > Keyboard > Input Sources and add PrivatePinyin."
+echo "Open System Settings > Keyboard > Input Sources and add 猫栈拼音."

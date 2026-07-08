@@ -102,7 +102,7 @@ Date: 2026-07-06
 Status: accepted
 Decision: Polish the existing thin platform hosts without expanding the C ABI: Windows TSF improves candidate popup anchoring, DPI/dark-mode rendering, and window-class lifecycle; macOS IMK adds a lightweight preferences window for common settings.
 Reason: Stage 10 should reduce real-application rough edges while preserving the shared Rust engine contract and avoiding high-risk TSF display-attribute provider work until it can be validated on Windows.
-Consequences: Windows candidate-positioning and popup lifecycle open items can close once Windows CI compiles. Full TSF display attributes, custom macOS menu icon assets, and app-by-app runtime smoke validation remain tracked separately.
+Consequences: Windows candidate-positioning and popup lifecycle open items can close once Windows CI compiles. Full TSF display attributes and app-by-app runtime smoke validation remain tracked separately; macOS menu icon assets were later closed by the icon refresh.
 
 ## Decision 014: Stage 11 settings and iOS privacy boundary
 
@@ -133,7 +133,7 @@ Consequences: The Rust core now embeds active `base_lexicon.tsv` and `bigram.tsv
 Date: 2026-07-07
 Status: accepted
 Decision: Keep the macOS input mode `tsInputModeDefaultStateKey` set to `false`.
-Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `PrivatePinyin 拼音` under Simplified Chinese and typing `nihao -> 你好`.
+Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `猫栈拼音` under Simplified Chinese and typing `nihao -> 你好`.
 Consequences: Future TIS metadata edits must preserve this value unless a replacement registration strategy is validated through the real package install path, not only a temporary per-user test bundle.
 
 ## Decision 018: macOS duplicate input-source cleanup

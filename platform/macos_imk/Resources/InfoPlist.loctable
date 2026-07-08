@@ -6,35 +6,35 @@
   <key>en</key>
   <dict>
     <key>CFBundleDisplayName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>CFBundleName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin.Mode</key>
-    <string>PrivatePinyin Pinyin</string>
+    <string>猫栈拼音</string>
   </dict>
   <key>zh_CN</key>
   <dict>
     <key>CFBundleDisplayName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>CFBundleName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin.Mode</key>
-    <string>PrivatePinyin 拼音</string>
+    <string>猫栈拼音</string>
   </dict>
   <key>zh_Hans</key>
   <dict>
     <key>CFBundleDisplayName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>CFBundleName</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin</key>
-    <string>PrivatePinyin</string>
+    <string>猫栈</string>
     <key>com.privatepinyin.inputmethod.PrivatePinyin.Mode</key>
-    <string>PrivatePinyin 拼音</string>
+    <string>猫栈拼音</string>
   </dict>
 </dict>
 </plist>

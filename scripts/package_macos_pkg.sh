@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export COPYFILE_DISABLE=1
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-version="${PRIVATE_PINYIN_VERSION:-0.1.4}"
+version="${PRIVATE_PINYIN_VERSION:-0.1.7}"
 app_dir="$repo_root/dist/macos_imk/PrivatePinyin.app"
 pkg_root="$repo_root/build/macos_pkg/root"
 pkg_scripts_dir="$repo_root/build/macos_pkg/scripts"
@@ -35,6 +36,10 @@ bash "$repo_root/scripts/build_macos_imk.sh"
 rm -rf "$pkg_root" "$pkg_scripts_dir" "$pkg_path" "$unsigned_pkg_path"
 mkdir -p "$install_dir" "$pkg_scripts_dir"
 cp -R "$app_dir" "$install_dir/PrivatePinyin.app"
+
+if command -v xattr >/dev/null 2>&1; then
+  xattr -cr "$pkg_root" || true
+fi
 
 cat > "$pkg_scripts_dir/postinstall" <<'POSTINSTALL'
 #!/bin/sh
@@ -83,4 +88,4 @@ fi
 
 echo "Built $pkg_path"
 echo "Install with: sudo installer -pkg \"$pkg_path\" -target /"
-echo "Then open System Settings > Keyboard > Input Sources and add PrivatePinyin."
+echo "Then open System Settings > Keyboard > Input Sources and add 猫栈拼音."

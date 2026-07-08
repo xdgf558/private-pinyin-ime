@@ -33,7 +33,7 @@ Stage 5 implements the macOS InputMethodKit host prototype.
 
 1. Build with `bash scripts/build_macos_imk.sh`.
 2. Install with `platform/macos_imk/installer/install-local.sh`.
-3. Open System Settings > Keyboard > Input Sources and add PrivatePinyin.
+3. Open System Settings > Keyboard > Input Sources and add 猫栈拼音.
 4. In TextEdit, type `zhongguo`, press `Space`, and confirm `中国` commits.
 5. Type `nihao`, confirm candidates follow the insertion point, and select a candidate with a number key.
 6. Press standalone `Shift` to toggle mode, then press `Shift+A` and confirm uppercase input passes through.

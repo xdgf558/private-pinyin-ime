@@ -105,6 +105,10 @@
 - Changed the embedded base lexicon and predictor to load active `base_lexicon.tsv` and `bigram.tsv` assets instead of the original sample files.
 - Changed the active base lexicon from first-party starter data to an owner-approved 100,657-entry AOSP PinyinIME rawdict import supplemented with pinyin-data single-character readings.
 - Closed the production base-lexicon source/license/version gate for the current bundled dictionary while keeping final project license and platform release evidence as separate gates.
+- Changed the macOS input method icon to use the new packaged template menu icon and color app icon assets.
+- Changed macOS input-source localization packaging to include `InfoPlist.strings` fallback bundles for English and Simplified Chinese display names.
+- Changed the macOS input source display name to `猫栈拼音` with `猫栈` as the localized input method name.
+- Bumped the app and package version to `0.1.7` for the macOS icon/name refresh.
 
 ### Fixed
 

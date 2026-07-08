@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export COPYFILE_DISABLE=1
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
@@ -49,9 +50,17 @@ swiftc \
 
 cp "$repo_root/platform/macos_imk/Resources/Info.plist" "$contents_dir/Info.plist"
 cp "$repo_root/platform/macos_imk/Resources/InfoPlist.loctable" "$resources_dir/InfoPlist.loctable"
+cp "$repo_root/platform/macos_imk/Resources/PrivatePinyinMenuIcon.tif" "$resources_dir/PrivatePinyinMenuIcon.tif"
+cp "$repo_root/platform/macos_imk/Resources/PrivatePinyinAppIcon.icns" "$resources_dir/PrivatePinyinAppIcon.icns"
+cp -R "$repo_root/platform/macos_imk/Resources/en.lproj" "$resources_dir/en.lproj"
+cp -R "$repo_root/platform/macos_imk/Resources/zh-Hans.lproj" "$resources_dir/zh-Hans.lproj"
 cp "$repo_root/config/default_settings.json" "$resources_dir/default_settings.json"
 cp "$repo_root/target/debug/libprivate_pinyin_ime.dylib" \
   "$frameworks_dir/libprivate_pinyin_ime.dylib"
+
+if command -v xattr >/dev/null 2>&1; then
+  xattr -cr "$app_dir" || true
+fi
 
 install_name_tool -id "@rpath/libprivate_pinyin_ime.dylib" \
   "$frameworks_dir/libprivate_pinyin_ime.dylib"
