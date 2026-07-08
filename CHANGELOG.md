@@ -63,6 +63,8 @@
 - Added third-party notices for the bundled AOSP PinyinIME rawdict and mozillazg pinyin-data derived lexicon data.
 - Added a `ganma -> 干嘛` candidate regression test.
 - Added follow-up open items for measuring production lexicon initialization latency and replacing starter bigram prediction data.
+- Added a macOS public-release checklist for personal-website distribution, signed/notarized package gates, download-page copy, smoke tests, and manual update flow.
+- Added `scripts/check_macos_public_release.sh` to verify Developer ID identities, installer signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output before website publication.
 
 ### Changed
 
@@ -110,8 +112,11 @@
 - Changed the macOS input source display name to `猫栈拼音` with `猫栈` as the localized input method name.
 - Changed the macOS input method menu, preferences window, and settings alerts to Chinese user-facing text.
 - Changed the macOS onboarding window title, brand label, and setup instructions to use `猫栈拼音`.
+- Changed the macOS preferences window to the Station Cat dark visual design with custom toggles, path card, and hover-aware buttons.
+- Changed the macOS release distribution plan and script index to include the public-release preflight and website checksum requirement.
 - Bumped the app and package version to `0.1.7` for the macOS icon/name refresh.
 - Bumped the app and package version to `0.1.8` for the macOS menu localization refresh.
+- Bumped the app and package version to `0.1.9` for the macOS preferences UI refresh.
 
 ### Fixed
 

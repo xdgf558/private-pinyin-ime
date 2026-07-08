@@ -26,5 +26,7 @@ grep -q "DLL_PROCESS_DETACH" platform/windows_tsf/src/dllmain.cpp
 grep -q "static let shared" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "privatePinyinSettingsChanged" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "StationToggle" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "猫栈拼音偏好设置" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "偏好设置..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "updateSettings" platform/macos_imk/Sources/SettingsStore.swift

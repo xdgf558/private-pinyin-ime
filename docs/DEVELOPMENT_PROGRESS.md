@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 15:05
-Current stage: Post-stage macOS menu localization
+Last updated: 2026-07-08 18:09
+Current stage: Post-stage macOS public release preparation
 Current status: local review
 
 ## Stage Status
@@ -167,25 +167,43 @@ Current status: local review
 - Localized the macOS input method menu, preferences window, and settings action alerts into Chinese.
 - Updated the macOS onboarding window title, brand label, and setup subtitle to consistently refer to `猫栈拼音`.
 - Bumped the workspace, platform plist, and package default versions to `0.1.8` for the macOS menu localization refresh.
+- Redesigned the macOS preferences window with the Station Cat dark visual system, custom toggle controls, a settings path card, and hover-aware AppKit buttons.
+- Extended macOS scaffold checks to pin the redesigned preferences window's fixed dark appearance, Chinese settings copy, custom toggles, and hover states.
+- Bumped the workspace, platform plist build numbers, and package default versions to `0.1.9` for the macOS preferences UI refresh.
+- Added a macOS public-release checklist for personal-website distribution, including Developer ID setup, notarization, website download copy, smoke tests, and manual update flow.
+- Added `scripts/check_macos_public_release.sh` to gate public `.pkg` publication on Developer ID identities, package signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output.
+- Documented that the current local `0.1.9` pkg remains blocked for public website distribution until Owner-provided Developer ID certificates and notarytool credentials are configured.
 
 ## Current Work
 
-- macOS menu localization is complete on local branch `codex/localize-macos-menu`.
+- macOS preferences UI refresh and public-release preflight scaffolding are complete on local branch `codex/redesign-macos-preferences`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: macOS scaffold check covers the onboarding controller, StationTheme, fixed dark appearance, Chinese setup copy, brand-row width pinning, postinstall wiring, and TIS metadata.
+- Notes: macOS scaffold check covers the redesigned preferences controller, StationToggle, StationButton, fixed dark appearance, Chinese settings copy, postinstall wiring, icon resources, and TIS metadata.
 
 - Command: `bash scripts/check_stage10_platform_host_sources.sh`
 - Result: passed
-- Notes: Existing Stage 10 host polish scaffold remains green after the onboarding redesign.
+- Notes: Existing Stage 10 host polish scaffold remains green and now pins the redesigned shared macOS preferences controller.
 
 - Command: `bash scripts/check_stage12_release_sources.sh`
 - Result: passed
-- Notes: Existing Stage 12 release packaging scaffold remains green after the pkg onboarding changes.
+- Notes: Existing Stage 12 release packaging scaffold now also pins the macOS public-release preflight script and website checklist.
+
+- Command: `bash scripts/check_installers_settings_sources.sh`
+- Result: passed
+- Notes: Existing installer/settings scaffold remains green after the preferences UI refresh.
+
+- Command: `bash -n scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: macOS public-release preflight script syntax is valid.
+
+- Command: `bash scripts/check_macos_public_release.sh`
+- Result: expected failure
+- Notes: Current local package is correctly blocked for website publication: no Developer ID Application identity, no Developer ID Installer identity, unsigned pkg, no stapled notarization ticket, and no usable `private-pinyin-notary` keychain profile.
 
 - Command: `git diff --check`
 - Result: passed
@@ -193,243 +211,23 @@ Current status: local review
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Rebuilt the redesigned Swift onboarding window after the review fix; `dist/macos_imk/PrivatePinyin.app` was produced and ad-hoc signed.
+- Notes: Rebuilt the redesigned Swift preferences window; `dist/macos_imk/PrivatePinyin.app` was produced and ad-hoc signed with bundle version `0.1.9`.
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Rebuilt `dist/macos_imk/PrivatePinyin-0.1.3.pkg` with the redesigned onboarding UI, input source localization, non-default input mode state, and postinstall script; pkg remains unsigned for local testing.
-
-- Command: Formal macOS pkg smoke (`dist/macos_imk/PrivatePinyin-0.1.3.pkg`)
-- Result: passed
-- Notes: Installed the actual 0.1.3 pkg into `/Library/Input Methods`; System Settings showed `PrivatePinyin 拼音` in the Simplified Chinese input-source flow; running TIS enable/select outside the Codex sandbox reported `PrivatePinyin.Mode enabled=true selected=true`; TextEdit typed `nihao` and Space committed `你好`. Sandboxed TIS helper runs are not valid evidence because macOS denies HIServices/TSM access inside the sandbox.
+- Notes: Rebuilt unsigned local package `dist/macos_imk/PrivatePinyin-0.1.9.pkg` with the redesigned preferences UI and version bump.
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the Stage 13 lexicon changes.
+- Notes: Formatting is clean after the preferences UI refresh and version bump.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings in the Rust workspace.
+- Notes: No clippy warnings in the Rust workspace with crates reporting version `0.1.9`.
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 52 workspace tests passed, including 3 lexicon-builder tests and the starter-lexicon candidate regression.
-
-- Command: `cargo run -p test_cli -- nihao`
-- Result: passed
-- Notes: Output includes `你好`.
-
-- Command: `cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_stage12_settings.json`
-- Result: passed
-- Notes: Settings CLI still writes a default settings snapshot.
-
-- Command: `bash scripts/run_c_demo.sh`
-- Result: passed
-- Notes: C layout assertions compiled and ran; C demo fed `nihao`, read first candidate `你好`, and committed `你好`.
-
-- Command: `bash scripts/check_windows_tsf_sources.sh`
-- Result: passed
-- Notes: Existing Windows TSF scaffold check remains green.
-
-- Command: `bash scripts/check_macos_imk_sources.sh`
-- Result: passed
-- Notes: Existing macOS IMK scaffold check remains green.
-
-- Command: `bash scripts/check_installers_settings_sources.sh`
-- Result: passed
-- Notes: Existing installer/settings scaffold check remains green.
-
-- Command: `bash scripts/check_ios_keyboard_sources.sh`
-- Result: passed
-- Notes: Existing iOS scaffold check remains green.
-
-- Command: `bash scripts/check_platform_validation_sources.sh`
-- Result: passed
-- Notes: Existing Stage 8 platform validation scaffold check remains green.
-
-- Command: `bash scripts/check_stage09_core_sources.sh`
-- Result: passed
-- Notes: Existing Stage 9 core hardening scaffold remains green with the updated production-data gate wording.
-
-- Command: `bash scripts/check_stage10_platform_host_sources.sh`
-- Result: passed
-- Notes: Existing Stage 10 host polish scaffold check remains green.
-
-- Command: `bash scripts/check_stage11_settings_privacy_sources.sh`
-- Result: passed
-- Notes: Existing Stage 11 settings/privacy scaffold check remains green.
-
-- Command: `bash scripts/check_stage12_release_sources.sh`
-- Result: passed
-- Notes: Stage 12 release packaging scaffold includes release gates, Windows binary/MSI/PowerShell script signing hooks, macOS signing/notarization hooks, iOS archive/export hooks, App Store metadata templates, and update strategy.
-
-- Command: `bash scripts/check_stage13_lexicon_sources.sh`
-- Result: passed
-- Notes: Stage 13 lexicon scaffold validates active starter assets, import tooling, manifest release-approval gating, and a real project-TSV conversion run.
-
-- Command: `cargo test -p private_pinyin_lexicon`
-- Result: passed
-- Notes: 3 lexicon-builder tests passed for project TSV import, CC-CEDICT numbered-pinyin normalization, and punctuation-entry filtering.
-
-- Command: `cargo run -p test_cli -- diannao`
-- Result: passed
-- Notes: Output includes `电脑`, verifying the starter lexicon is active.
-
-- Command: `cargo run -p test_cli -- shijian`
-- Result: passed
-- Notes: Output includes `时间`, verifying common terms are no longer limited to the original sample.
-
-- Command: `cargo run -p test_cli -- yinwei`
-- Result: passed
-- Notes: Output includes `因为`, verifying the starter lexicon is active.
-
-- Command: `bash -n scripts/build_macos_imk.sh`
-- Result: passed
-- Notes: macOS app build script syntax is valid.
-
-- Command: `bash -n scripts/package_macos_pkg.sh`
-- Result: passed
-- Notes: macOS pkg script syntax is valid.
-
-- Command: `bash -n scripts/package_ios_app_store.sh`
-- Result: passed
-- Notes: iOS App Store archive/export script syntax is valid.
-
-- Command: `plutil -lint platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template`
-- Result: passed
-- Notes: Export options template is a valid plist.
-
-- Command: `bash scripts/build_macos_imk.sh`
-- Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app`; default path remains ad-hoc signed.
-
-- Command: `bash scripts/package_macos_pkg.sh`
-- Result: passed
-- Notes: Authorized rerun built `dist/macos_imk/PrivatePinyin-0.1.3.pkg` as an unsigned local package for smoke testing.
-
-- Command: `pwsh` syntax check for `scripts/package_windows_tsf.ps1`
-- Result: not run locally
-- Notes: PowerShell is not installed in this macOS environment; Windows packaging remains covered by source checks and the pinned Windows CI build after push.
-
-- Command: `cargo check --workspace`
-- Result: passed
-- Notes: Workspace crates report version `0.1.4` after the package-version bump.
-
-- Command: `bash scripts/check_macos_imk_sources.sh`
-- Result: passed
-- Notes: macOS scaffold pins `smSimpChinese` for Simplified Chinese discovery and keeps `tsInputModeDefaultStateKey=false`.
-
-- Command: `bash scripts/check_platform_validation_sources.sh`
-- Result: passed
-- Notes: Smoke-test documentation now requires PrivatePinyin to appear exactly once and adds a consecutive-upgrade dedupe regression.
-
-- Command: `cargo fmt --check`
-- Result: passed
-- Notes: Formatting is clean after the macOS input-source cleanup documentation changes.
-
-- Command: `bash scripts/build_macos_imk.sh`
-- Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.4`.
-
-- Command: `bash scripts/package_macos_pkg.sh`
-- Result: passed
-- Notes: Built unsigned local test package `dist/macos_imk/PrivatePinyin-0.1.4.pkg`; the first sandboxed `pkgbuild` attempt could not write to the external-volume `dist` path, and the authorized rerun succeeded.
-
-- Command: `cargo test --workspace`
-- Result: passed
-- Notes: 52 workspace tests passed after the version bump and macOS input-source cleanup documentation changes.
-
-- Command: `cargo clippy --workspace --all-targets -- -D warnings`
-- Result: passed
-- Notes: No clippy warnings after the cleanup regression documentation changes.
-
-- Command: `bash scripts/check_stage12_release_sources.sh`
-- Result: passed
-- Notes: Release packaging scaffold checks still pass with the default package version set to `0.1.4`.
-
-- Command: `bash scripts/check_installers_settings_sources.sh`
-- Result: passed
-- Notes: Installer/settings scaffold checks still pass.
-
-- Command: `bash scripts/check_stage13_lexicon_sources.sh`
-- Result: passed
-- Notes: Stage 13 lexicon scaffold checks still pass after the version and macOS cleanup-regression update.
-
-- Command: Local macOS input-source cleanup
-- Result: passed
-- Notes: With the input source switched to Simplified Pinyin, System Settings and KeyboardSettings were closed; `com.apple.HIToolbox` history/selection records were cleaned, the stale `com.apple.inputsources` PrivatePinyin top-level entry was cleared through System Settings, and the input-source edit list now shows no repeated PrivatePinyin rows. Re-add 猫栈拼音 once after logout/login for the final smoke check.
-
-- Command: `installer -pkg dist/macos_imk/PrivatePinyin-0.1.4.pkg -target /`
-- Result: blocked
-- Notes: macOS requires root for `/Library/Input Methods`; `sudo -n` reported that a password is required. The generated pkg is ready for manual installation, after which the formal smoke check must verify that 猫栈拼音 appears exactly once.
-
-- Command: `cargo test -p private_pinyin_lexicon`
-- Result: passed
-- Notes: 6 lexicon-builder tests passed, including pinyin-data marked-pinyin import, AOSP rawdict frequency scaling, and UTF-16 rawdict decoding.
-
-- Command: `cargo run -q -p private_pinyin_lexicon -- build-base --format aosp-rawdict ... --supplemental-pinyin-data ... --release-approved`
-- Result: passed
-- Notes: Generated active `ime_core/assets/base_lexicon.tsv` with 100,657 entries from AOSP PinyinIME rawdict plus pinyin-data single-character readings.
-
-- Command: `cargo run -q -p test_cli -- ganma`
-- Result: passed
-- Notes: First candidate is `干嘛`, followed by related candidates such as `干吗` and `干妈`.
-
-- Command: `cargo fmt --check`
-- Result: passed
-- Notes: Formatting is clean after the production lexicon import changes.
-
-- Command: `cargo clippy --workspace --all-targets -- -D warnings`
-- Result: passed
-- Notes: No clippy warnings after adding the pinyin-data and AOSP rawdict importers.
-
-- Command: `cargo test --workspace`
-- Result: passed
-- Notes: 56 workspace tests passed, including the new `ganma -> 干嘛` regression and 6 lexicon-builder tests.
-
-- Command: `bash scripts/check_stage09_core_sources.sh`
-- Result: passed
-- Notes: Stage 9 core hardening checks accept the updated production-data gate wording.
-
-- Command: `bash scripts/check_stage13_lexicon_sources.sh`
-- Result: passed
-- Notes: Stage 13 checks cover production lexicon manifest approval, third-party notices, pinyin-data import, AOSP rawdict import, and active `干嘛` coverage.
-
-- Command: `bash scripts/run_c_demo.sh`
-- Result: passed
-- Notes: C ABI demo still returns and commits `你好` from `nihao` with the production lexicon.
-
-- Command: `git diff --check`
-- Result: passed
-- Notes: No whitespace errors.
-
-- Command: `bash scripts/check_macos_imk_sources.sh`
-- Result: passed
-- Notes: macOS scaffold now verifies template menu/palette icon keys, app icon file wiring, packaged icon assets, `zh_Hans` loctable localization, `zh-Hans.lproj` localization fallback, and Chinese menu labels.
-
-- Command: `bash scripts/build_macos_imk.sh`
-- Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.8`, Chinese input method menu labels, multi-size `PrivatePinyinMenuIcon.tif`, multi-size `PrivatePinyinAppIcon.icns`, and localized `InfoPlist.strings` resources for `猫栈拼音`.
-
-- Command: `cargo fmt --check`
-- Result: passed
-- Notes: Formatting is clean after the icon refresh and version bump.
-
-- Command: `cargo test --workspace`
-- Result: passed
-- Notes: 56 workspace tests passed with crates reporting version `0.1.8`.
-
-- Command: `cargo clippy --workspace --all-targets -- -D warnings`
-- Result: passed
-- Notes: No clippy warnings after the menu-localization version bump.
-
-- Command: `bash scripts/run_c_demo.sh`
-- Result: passed
-- Notes: C ABI demo still returns and commits `你好` from `nihao`.
-
-- Command: `bash scripts/package_macos_pkg.sh`
-- Result: passed
-- Notes: Built unsigned local package `dist/macos_imk/PrivatePinyin-0.1.8.pkg` after the menu-localization update.
+- Notes: 56 workspace tests passed.
 
 ## Open Items
 
@@ -456,24 +254,24 @@ Current status: local review
 - `Cargo.lock`
 - `Cargo.toml`
 - `CHANGELOG.md`
-- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/OPEN_ITEMS.md`
-- `docs/platform_smoke_test_plan.md`
+- `docs/macos_public_release_checklist.md`
+- `docs/release_distribution_plan.md`
+- `scripts/README.md`
+- `scripts/check_macos_public_release.sh`
 - `scripts/check_macos_imk_sources.sh`
+- `scripts/check_stage10_platform_host_sources.sh`
+- `scripts/check_stage12_release_sources.sh`
 - `scripts/package_macos_pkg.sh`
 - `scripts/package_windows_tsf.ps1`
+- `README.md`
 - `platform/ios_keyboard/ContainerApp/Info.plist`
 - `platform/ios_keyboard/KeyboardExtension/Info.plist`
 - `platform/macos_imk/README.md`
 - `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/Resources/InfoPlist.loctable`
-- `platform/macos_imk/Resources/PrivatePinyinAppIcon.icns`
-- `platform/macos_imk/Resources/PrivatePinyinMenuIcon.tif`
-- `platform/macos_imk/Resources/en.lproj/InfoPlist.strings`
-- `platform/macos_imk/Resources/zh-Hans.lproj/InfoPlist.strings`
+- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
 - `platform/windows_tsf/README.md`
 
 ## Next Step
 
-- Review `codex/macos-icon-redesign` locally; after approval, push and merge through GitHub.
+- Configure Owner Developer ID Application/Installer certificates and a `private-pinyin-notary` notarytool profile, then rebuild the signed/notarized macOS pkg and rerun `bash scripts/check_macos_public_release.sh`.

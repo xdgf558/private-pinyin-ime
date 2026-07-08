@@ -6,8 +6,10 @@ cd "$repo_root"
 
 required_files=(
   "docs/release_distribution_plan.md"
+  "docs/macos_public_release_checklist.md"
   "platform/ios_keyboard/AppStoreMetadata/README.md"
   "platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template"
+  "scripts/check_macos_public_release.sh"
   "scripts/package_ios_app_store.sh"
 )
 
@@ -29,6 +31,12 @@ grep -q "PRIVATE_PINYIN_MAC_INSTALLER_SIGN_IDENTITY" scripts/package_macos_pkg.s
 grep -q "notarytool" scripts/package_macos_pkg.sh
 grep -q "stapler" scripts/package_macos_pkg.sh
 grep -q "postinstall" scripts/package_macos_pkg.sh
+grep -q "pkgutil --check-signature" scripts/check_macos_public_release.sh
+grep -q "spctl --assess --type install" scripts/check_macos_public_release.sh
+grep -q "stapler validate" scripts/check_macos_public_release.sh
+grep -q "shasum -a 256" scripts/check_macos_public_release.sh
+grep -q "Website Download Page" docs/macos_public_release_checklist.md
+grep -q "Update Flow" docs/macos_public_release_checklist.md
 
 grep -q "Sign-Artifact" scripts/package_windows_tsf.ps1
 grep -q "Sign-PowerShellScript" scripts/package_windows_tsf.ps1
