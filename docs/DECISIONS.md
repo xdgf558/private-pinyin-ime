@@ -135,3 +135,11 @@ Status: accepted
 Decision: Keep the macOS input mode `tsInputModeDefaultStateKey` set to `false`.
 Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `PrivatePinyin 拼音` under Simplified Chinese and typing `nihao -> 你好`.
 Consequences: Future TIS metadata edits must preserve this value unless a replacement registration strategy is validated through the real package install path, not only a temporary per-user test bundle.
+
+## Decision 018: macOS input mode script metadata
+
+Date: 2026-07-08
+Status: accepted
+Decision: Use `tsInputModeScriptKey=smUnicodeScript` with `TISIntendedLanguage=zh-Hans` for the PrivatePinyin input mode.
+Reason: Local System Settings validation showed that the third-party mode could be enabled through TIS while System Settings repeatedly displayed the same input mode when the mode script was marked `smSimpChinese`. The Unicode script key matches Apple IMK examples for third-party-style mode metadata, while `TISIntendedLanguage=zh-Hans` keeps the mode discoverable under Simplified Chinese.
+Consequences: macOS package smoke tests must verify that PrivatePinyin appears exactly once in the add-input-source list and menu bar selector. Future attempts to use `smSimpChinese` must be validated through the formal `.pkg` install path before merging.

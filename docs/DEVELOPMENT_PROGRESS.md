@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-07 23:10
+Last updated: 2026-07-08 08:53
 Current stage: 13 - Lexicon import and starter dictionary
 Current status: local review
 
@@ -20,7 +20,7 @@ Current status: local review
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
-| 13 | Lexicon import and starter dictionary | local review | 2026-07-07 23:10 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and the formal macOS 0.1.3 pkg smoke fix are ready for local review |
+| 13 | Lexicon import and starter dictionary | local review | 2026-07-08 08:53 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and the macOS 0.1.4 input-source duplication fix are ready for local review |
 
 ## Completed Work
 
@@ -299,6 +299,54 @@ Current status: local review
 - Result: not run locally
 - Notes: PowerShell is not installed in this macOS environment; Windows packaging remains covered by source checks and the pinned Windows CI build after push.
 
+- Command: `cargo check --workspace`
+- Result: passed
+- Notes: Workspace crates report version `0.1.4` after the package-version bump.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: macOS scaffold now pins `smUnicodeScript` for the input mode metadata and keeps `tsInputModeDefaultStateKey=false`.
+
+- Command: `bash scripts/check_platform_validation_sources.sh`
+- Result: passed
+- Notes: Smoke-test documentation now requires PrivatePinyin to appear exactly once in the macOS input-source list.
+
+- Command: `cargo fmt --check`
+- Result: passed
+- Notes: Formatting is clean after the macOS metadata fix.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.4`.
+
+- Command: `bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Built unsigned local test package `dist/macos_imk/PrivatePinyin-0.1.4.pkg`; the first sandboxed `pkgbuild` attempt could not write to the external-volume `dist` path, and the authorized rerun succeeded.
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: 52 workspace tests passed after the version bump and macOS metadata change.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+- Notes: No clippy warnings after the metadata fix.
+
+- Command: `bash scripts/check_stage12_release_sources.sh`
+- Result: passed
+- Notes: Release packaging scaffold checks still pass with the default package version set to `0.1.4`.
+
+- Command: `bash scripts/check_installers_settings_sources.sh`
+- Result: passed
+- Notes: Installer/settings scaffold checks still pass.
+
+- Command: `bash scripts/check_stage13_lexicon_sources.sh`
+- Result: passed
+- Notes: Stage 13 lexicon scaffold checks still pass after the version and macOS metadata update.
+
+- Command: `installer -pkg dist/macos_imk/PrivatePinyin-0.1.4.pkg -target /`
+- Result: blocked
+- Notes: macOS requires root for `/Library/Input Methods`; `sudo -n` reported that a password is required. The generated pkg is ready for manual installation, after which the formal smoke check must verify that PrivatePinyin appears exactly once.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -341,9 +389,17 @@ Current status: local review
 - `ime_core/tests/candidate_tests.rs`
 - `scripts/check_stage09_core_sources.sh`
 - `scripts/check_macos_imk_sources.sh`
+- `scripts/check_platform_validation_sources.sh`
+- `scripts/package_macos_pkg.sh`
+- `scripts/package_windows_tsf.ps1`
 - `scripts/check_stage13_lexicon_sources.sh`
 - `scripts/README.md`
+- `platform/ios_keyboard/ContainerApp/Info.plist`
+- `platform/ios_keyboard/KeyboardExtension/Info.plist`
+- `platform/macos_imk/README.md`
+- `platform/macos_imk/Resources/Info.plist`
 - `platform/macos_imk/Sources/CAbiBridge.swift`
+- `platform/windows_tsf/README.md`
 - `tools/lexicon_builder/Cargo.toml`
 - `tools/lexicon_builder/src/main.rs`
 
