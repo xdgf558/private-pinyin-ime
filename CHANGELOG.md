@@ -62,6 +62,7 @@
 - Added `pinyin-data` and `aosp-rawdict` import support to `tools/lexicon_builder`, including UTF-16 rawdict decoding, marked-pinyin normalization, frequency scaling, optional character-frequency weighting, and pinyin-data supplemental single-character readings.
 - Added third-party notices for the bundled AOSP PinyinIME rawdict and mozillazg pinyin-data derived lexicon data.
 - Added a `ganma -> 干嘛` candidate regression test.
+- Added follow-up open items for measuring production lexicon initialization latency and replacing starter bigram prediction data.
 
 ### Changed
 

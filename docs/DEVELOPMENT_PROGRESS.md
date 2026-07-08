@@ -413,6 +413,8 @@ Current status: local review
 - Configure iOS App Store signing, provisioning, App Store metadata, and TestFlight evidence.
 - Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit and whether learning opt-in/App Group storage work under provisioning.
 - Expose sanitized core logging through host ABI callbacks.
+- Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
+- Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 
 ## Files Changed In Latest Stage
 
