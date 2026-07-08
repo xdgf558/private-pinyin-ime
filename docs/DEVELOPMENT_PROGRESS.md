@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 13:23
-Current stage: Post-stage macOS icon refresh
+Last updated: 2026-07-08 15:05
+Current stage: Post-stage macOS menu localization
 Current status: local review
 
 ## Stage Status
@@ -164,10 +164,13 @@ Current status: local review
 - Bumped the workspace, platform plist, and package default versions to `0.1.7` for the icon/name refresh.
 - Renamed the macOS Chinese input source display name to `猫栈拼音`, with localized input method name `猫栈`.
 - Closed `OI-028` for macOS settings entry and menu icon assets; real light/dark menu-bar icon appearance still needs macOS smoke evidence.
+- Localized the macOS input method menu, preferences window, and settings action alerts into Chinese.
+- Updated the macOS onboarding window title, brand label, and setup subtitle to consistently refer to `猫栈拼音`.
+- Bumped the workspace, platform plist, and package default versions to `0.1.8` for the macOS menu localization refresh.
 
 ## Current Work
 
-- macOS icon refresh is complete on local branch `codex/macos-icon-redesign`.
+- macOS menu localization is complete on local branch `codex/localize-macos-menu`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -402,11 +405,11 @@ Current status: local review
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: macOS scaffold now verifies template menu/palette icon keys, app icon file wiring, packaged icon assets, `zh_Hans` loctable localization, and `zh-Hans.lproj` localization fallback.
+- Notes: macOS scaffold now verifies template menu/palette icon keys, app icon file wiring, packaged icon assets, `zh_Hans` loctable localization, `zh-Hans.lproj` localization fallback, and Chinese menu labels.
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.7`, multi-size `PrivatePinyinMenuIcon.tif`, multi-size `PrivatePinyinAppIcon.icns`, and localized `InfoPlist.strings` resources for `猫栈拼音`.
+- Notes: Built `dist/macos_imk/PrivatePinyin.app` with bundle version `0.1.8`, Chinese input method menu labels, multi-size `PrivatePinyinMenuIcon.tif`, multi-size `PrivatePinyinAppIcon.icns`, and localized `InfoPlist.strings` resources for `猫栈拼音`.
 
 - Command: `cargo fmt --check`
 - Result: passed
@@ -414,11 +417,11 @@ Current status: local review
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 56 workspace tests passed with crates reporting version `0.1.7`.
+- Notes: 56 workspace tests passed with crates reporting version `0.1.8`.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings after the icon refresh.
+- Notes: No clippy warnings after the menu-localization version bump.
 
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
@@ -426,7 +429,7 @@ Current status: local review
 
 - Command: `bash scripts/package_macos_pkg.sh`
 - Result: passed
-- Notes: Built unsigned local package `dist/macos_imk/PrivatePinyin-0.1.7.pkg` after the icon asset cleanup; the first sandboxed pkgbuild attempt could not write to the external-volume `dist` path, and the authorized rerun succeeded.
+- Notes: Built unsigned local package `dist/macos_imk/PrivatePinyin-0.1.8.pkg` after the menu-localization update.
 
 ## Open Items
 

@@ -68,6 +68,8 @@ grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinOnboardingWindo
 grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "brandRow.widthAnchor.constraint(equalTo: root.widthAnchor)" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "输入法已经装好了" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "window.title = \"猫栈拼音设置\"" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "把「猫栈拼音」加进系统输入源" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "打开键盘设置" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q -- "--show-onboarding" platform/macos_imk/Sources/main.swift
 grep -q "postinstall" scripts/package_macos_pkg.sh
@@ -87,6 +89,7 @@ grep -q "猫栈" platform/macos_imk/Resources/Info.plist
 grep -q "zh_Hans" platform/macos_imk/Resources/InfoPlist.loctable
 grep -q "猫栈拼音" platform/macos_imk/Resources/zh-Hans.lproj/InfoPlist.strings
 grep -q "猫栈拼音" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
+grep -q "station cat · input method" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "InfoPlist.loctable" scripts/build_macos_imk.sh
 grep -q "PrivatePinyinMenuIcon.tif" scripts/build_macos_imk.sh
 grep -q "PrivatePinyinAppIcon.icns" scripts/build_macos_imk.sh
@@ -95,8 +98,11 @@ grep -q "COPYFILE_DISABLE=1" scripts/build_macos_imk.sh
 grep -q "COPYFILE_DISABLE=1" scripts/package_macos_pkg.sh
 grep -q "xattr -cr" scripts/build_macos_imk.sh
 grep -q "xattr -cr" scripts/package_macos_pkg.sh
-grep -q "Preferences..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "偏好设置..." platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "NSWindow" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
-grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "清空用户词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "导出用户词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "打开设置文件" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "updateComposition" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "InputMethodConnectionName" platform/macos_imk/Resources/Info.plist

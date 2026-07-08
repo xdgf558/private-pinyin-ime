@@ -4,17 +4,17 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
     static let shared = PrivatePinyinPreferencesWindowController()
 
     private let strictPrivacyButton = NSButton(
-        checkboxWithTitle: "Strict Privacy Mode",
+        checkboxWithTitle: "严格隐私模式",
         target: nil,
         action: nil
     )
     private let predictionButton = NSButton(
-        checkboxWithTitle: "Prediction Candidates",
+        checkboxWithTitle: "显示预测候选",
         target: nil,
         action: nil
     )
     private let learningButton = NSButton(
-        checkboxWithTitle: "User Learning",
+        checkboxWithTitle: "用户学习",
         target: nil,
         action: nil
     )
@@ -27,7 +27,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "PrivatePinyin Preferences"
+        window.title = "猫栈拼音偏好设置"
         window.isReleasedWhenClosed = false
         super.init(window: window)
         buildContent()
@@ -63,12 +63,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         settingsPathLabel.textColor = .secondaryLabelColor
 
         let openSettingsButton = NSButton(
-            title: "Open Settings File",
+            title: "打开设置文件",
             target: self,
             action: #selector(openSettingsFile(_:))
         )
         let reloadButton = NSButton(
-            title: "Reload",
+            title: "重新载入",
             target: self,
             action: #selector(reloadButtonPressed(_:))
         )
@@ -88,7 +88,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         buttons.spacing = 8
 
         let root = NSStackView(views: [
-            NSTextField(labelWithString: "PrivatePinyin"),
+            NSTextField(labelWithString: "猫栈拼音"),
             controls,
             settingsPathLabel,
             buttons,
@@ -131,13 +131,13 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             reloadFromSettings()
             NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
         } else {
-            showAlert("Could not update settings.")
+            showAlert("无法更新设置。")
         }
     }
 
     @objc private func openSettingsFile(_ sender: Any?) {
         guard PrivatePinyinSettingsStore.ensureSettingsFile() != nil else {
-            showAlert("Could not create settings file.")
+            showAlert("无法创建设置文件。")
             return
         }
         NSWorkspace.shared.open(PrivatePinyinSettingsStore.settingsURL)

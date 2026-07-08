@@ -60,10 +60,10 @@ final class PrivatePinyinInputController: IMKInputController {
     }
 
     override func menu() -> NSMenu! {
-        let menu = NSMenu(title: "PrivatePinyin")
+        let menu = NSMenu(title: "猫栈")
 
         let preferencesItem = NSMenuItem(
-            title: "Preferences...",
+            title: "偏好设置...",
             action: #selector(openPreferences(_:)),
             keyEquivalent: ""
         )
@@ -73,7 +73,7 @@ final class PrivatePinyinInputController: IMKInputController {
         menu.addItem(NSMenuItem.separator())
 
         let privacyItem = NSMenuItem(
-            title: "Strict Privacy Mode",
+            title: "严格隐私模式",
             action: #selector(toggleStrictPrivacyMode(_:)),
             keyEquivalent: ""
         )
@@ -84,7 +84,7 @@ final class PrivatePinyinInputController: IMKInputController {
         menu.addItem(NSMenuItem.separator())
 
         let clearItem = NSMenuItem(
-            title: "Clear User Lexicon",
+            title: "清空用户词库",
             action: #selector(clearUserLexicon(_:)),
             keyEquivalent: ""
         )
@@ -92,7 +92,7 @@ final class PrivatePinyinInputController: IMKInputController {
         menu.addItem(clearItem)
 
         let exportItem = NSMenuItem(
-            title: "Export User Lexicon...",
+            title: "导出用户词库...",
             action: #selector(exportUserLexicon(_:)),
             keyEquivalent: ""
         )
@@ -100,7 +100,7 @@ final class PrivatePinyinInputController: IMKInputController {
         menu.addItem(exportItem)
 
         let openSettingsItem = NSMenuItem(
-            title: "Open Settings File",
+            title: "打开设置文件",
             action: #selector(openSettingsFile(_:)),
             keyEquivalent: ""
         )
@@ -275,15 +275,15 @@ final class PrivatePinyinInputController: IMKInputController {
     @objc private func toggleStrictPrivacyMode(_ sender: Any?) {
         let enabled = !PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled()
         guard PrivatePinyinSettingsStore.setStrictPrivacyMode(enabled) else {
-            showSettingsAlert("Could not update settings.")
+            showSettingsAlert("无法更新设置。")
             return
         }
         resetComposition()
         guard core?.reload() == true else {
-            showSettingsAlert("Could not reload PrivatePinyin.")
+            showSettingsAlert("无法重新加载猫栈拼音。")
             return
         }
-        showSettingsAlert(enabled ? "Strict privacy mode is on." : "Strict privacy mode is off.")
+        showSettingsAlert(enabled ? "严格隐私模式已开启。" : "严格隐私模式已关闭。")
     }
 
     @objc private func openPreferences(_ sender: Any?) {
@@ -298,9 +298,9 @@ final class PrivatePinyinInputController: IMKInputController {
     @objc private func clearUserLexicon(_ sender: Any?) {
         resetComposition()
         if core?.clearUserLexicon() == true {
-            showSettingsAlert("User lexicon cleared.")
+            showSettingsAlert("用户词库已清空。")
         } else {
-            showSettingsAlert("Could not clear user lexicon.")
+            showSettingsAlert("无法清空用户词库。")
         }
     }
 
@@ -318,16 +318,16 @@ final class PrivatePinyinInputController: IMKInputController {
             }
 
             if self.core?.exportUserLexicon(to: url.path) == true {
-                self.showSettingsAlert("User lexicon exported.")
+                self.showSettingsAlert("用户词库已导出。")
             } else {
-                self.showSettingsAlert("Could not export user lexicon.")
+                self.showSettingsAlert("无法导出用户词库。")
             }
         }
     }
 
     @objc private func openSettingsFile(_ sender: Any?) {
         guard PrivatePinyinSettingsStore.ensureSettingsFile() != nil else {
-            showSettingsAlert("Could not create settings file.")
+            showSettingsAlert("无法创建设置文件。")
             return
         }
         NSWorkspace.shared.open(PrivatePinyinSettingsStore.settingsURL)

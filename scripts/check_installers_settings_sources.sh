@@ -28,7 +28,7 @@ grep -q "ime_engine_clear_user_lexicon" ffi/c_api.h
 grep -q "ime_engine_export_user_lexicon" ffi/c_api.h
 grep -q "config_json_path" ffi/c_api.h
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/PrivatePinyinInputController.swift
-grep -q "Strict Privacy Mode" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "default_settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "default_settings.json" platform/windows_tsf/installer/open-settings.ps1

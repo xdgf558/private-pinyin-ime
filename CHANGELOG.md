@@ -108,7 +108,10 @@
 - Changed the macOS input method icon to use the new packaged template menu icon and color app icon assets.
 - Changed macOS input-source localization packaging to include `InfoPlist.strings` fallback bundles for English and Simplified Chinese display names.
 - Changed the macOS input source display name to `猫栈拼音` with `猫栈` as the localized input method name.
+- Changed the macOS input method menu, preferences window, and settings alerts to Chinese user-facing text.
+- Changed the macOS onboarding window title, brand label, and setup instructions to use `猫栈拼音`.
 - Bumped the app and package version to `0.1.7` for the macOS icon/name refresh.
+- Bumped the app and package version to `0.1.8` for the macOS menu localization refresh.
 
 ### Fixed
 

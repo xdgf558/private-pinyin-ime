@@ -117,7 +117,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "PrivatePinyin Setup"
+        window.title = "猫栈拼音设置"
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = true
@@ -152,7 +152,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
             color: StationTheme.textPrimary
         )
         let subtitle = wrappingLabel(
-            "还差最后一步：把 PrivatePinyin 加进系统输入源，就可以在任何应用里打字了。",
+            "还差最后一步：把「猫栈拼音」加进系统输入源，就可以在任何应用里打字了。",
             font: .systemFont(ofSize: 14, weight: .regular),
             color: StationTheme.textSecondary
         )
@@ -214,7 +214,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         ])
 
         let name = label(
-            "PrivatePinyin",
+            "猫栈拼音",
             font: .systemFont(ofSize: 13, weight: .medium),
             color: StationTheme.textPrimary
         )

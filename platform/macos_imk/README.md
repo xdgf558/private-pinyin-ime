@@ -49,7 +49,7 @@ bash scripts/package_macos_pkg.sh
 The package is written to:
 
 ```text
-dist/macos_imk/PrivatePinyin-0.1.7.pkg
+dist/macos_imk/PrivatePinyin-0.1.8.pkg
 ```
 
 The installer includes a post-install onboarding window. After installation it
@@ -64,7 +64,7 @@ System Settings, or logout/login before adding the input source.
 Install with:
 
 ```bash
-sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.7.pkg -target /
+sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.8.pkg -target /
 ```
 
 Release-candidate packages require Developer ID signing and notarization:
@@ -92,9 +92,9 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 4. Type `zhongguo`, press `Space`, and confirm `中国` commits.
 5. Type `nihao`, confirm candidates appear near the insertion point, and select one with a number key.
 6. Press standalone `Shift` to toggle mode; `Shift+A` should pass through as uppercase input.
-7. Open the input method menu and toggle Strict Privacy Mode.
-8. Open Preferences from the input method menu and toggle prediction or learning.
-9. Use the input method menu to export and clear the user lexicon.
+7. Open the input method menu and toggle `严格隐私模式`.
+8. Open `偏好设置...` from the input method menu and toggle prediction or learning.
+9. Use the input method menu to `导出用户词库...` and `清空用户词库`.
 
 ## Known Gaps
 
