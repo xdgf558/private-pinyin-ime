@@ -68,6 +68,10 @@ The download page should show:
 - SHA256 checksum from `scripts/check_macos_public_release.sh`.
 - Short install steps: install the pkg, log out and log back in, then add
   `猫栈拼音` in System Settings > Keyboard > Input Sources.
+- User-facing install copy must say `猫栈拼音`, not `PrivatePinyin`.
+- Architecture copy must match the signed package actually published; do not
+  label the download as Intel-compatible until an x86_64/universal package is
+  built and verified.
 - Privacy copy: local computation, no account, no telemetry, no cloud sync, and
   no raw-input logging.
 - Third-party data notice link to `THIRD_PARTY_NOTICES.md`.

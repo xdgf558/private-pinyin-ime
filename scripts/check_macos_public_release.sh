@@ -93,7 +93,8 @@ fi
 
 if [ -f "$pkg_path" ]; then
   pkg_signature="$(pkgutil --check-signature "$pkg_path" 2>&1 || true)"
-  if printf "%s\n" "$pkg_signature" | grep -q "Status: signed"; then
+  if printf "%s\n" "$pkg_signature" | grep -q "Status: signed by a developer certificate issued by Apple for distribution" &&
+    printf "%s\n" "$pkg_signature" | grep -q "Developer ID Installer"; then
     pass "package has a trusted installer signature"
   else
     fail "package is not signed with a trusted Developer ID Installer certificate"
