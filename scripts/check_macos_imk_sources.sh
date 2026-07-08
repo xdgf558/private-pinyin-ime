@@ -62,6 +62,15 @@ grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.sw
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_engine_new(nil)" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "StationToggle" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "StationButton" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "猫栈拼音偏好设置" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "记住你常选的词" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "打开设置文件" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "a small station, still lit at night" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "PrivatePinyinOnboardingWindowController" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "StationTheme" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
 grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift
