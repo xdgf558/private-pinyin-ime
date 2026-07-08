@@ -94,8 +94,8 @@
 - Changed Windows release packaging so staged PowerShell installer/settings scripts are signed with Authenticode when a signing certificate is configured.
 - Changed macOS input method metadata to include platform, input-source, Simplified Chinese script, and character repertoire keys for better System Settings discovery.
 - Changed the macOS input mode default state to disabled so System Settings lists PrivatePinyin as an addable input source before the user enables it.
-- Changed macOS input mode script metadata back to `smUnicodeScript` with `TISIntendedLanguage=zh-Hans` to avoid System Settings duplicating the same third-party mode.
 - Changed macOS smoke-test documentation to revalidate input source discovery/enabling after TIS metadata changes and to note the upgrade-onboarding limitation when an old input method process is already running.
+- Changed macOS smoke-test documentation to include consecutive-upgrade input-source dedupe coverage for stale enabled-source records.
 - Bumped the app and package version to `0.1.3` for the regenerated macOS onboarding installer.
 - Bumped the app and package version to `0.1.4` for the macOS input-source duplication fix.
 - Changed the embedded base lexicon and predictor to load active `base_lexicon.tsv` and `bigram.tsv` assets instead of the original sample files.

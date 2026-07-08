@@ -136,10 +136,10 @@ Decision: Keep the macOS input mode `tsInputModeDefaultStateKey` set to `false`.
 Reason: Local System Settings debugging showed that marking a third-party input mode default-enabled can make it disappear from the add-input-source selector even when the bundle is installed and localized correctly. The actual `.pkg` install path must be smoke-tested by finding `PrivatePinyin 拼音` under Simplified Chinese and typing `nihao -> 你好`.
 Consequences: Future TIS metadata edits must preserve this value unless a replacement registration strategy is validated through the real package install path, not only a temporary per-user test bundle.
 
-## Decision 018: macOS input mode script metadata
+## Decision 018: macOS duplicate input-source cleanup
 
 Date: 2026-07-08
 Status: accepted
-Decision: Use `tsInputModeScriptKey=smUnicodeScript` with `TISIntendedLanguage=zh-Hans` for the PrivatePinyin input mode.
-Reason: Local System Settings validation showed that the third-party mode could be enabled through TIS while System Settings repeatedly displayed the same input mode when the mode script was marked `smSimpChinese`. The Unicode script key matches Apple IMK examples for third-party-style mode metadata, while `TISIntendedLanguage=zh-Hans` keeps the mode discoverable under Simplified Chinese.
-Consequences: macOS package smoke tests must verify that PrivatePinyin appears exactly once in the add-input-source list and menu bar selector. Future attempts to use `smSimpChinese` must be validated through the formal `.pkg` install path before merging.
+Decision: Treat repeated PrivatePinyin rows in System Settings as stale enabled-input-source records, not as a reason to change the input mode script metadata away from `smSimpChinese`.
+Reason: Local cleanup showed `AppleEnabledInputSources` / `AppleEnabledThirdPartyInputSources` can retain records created by older `tsInputModeDefaultStateKey=true` builds and manual `TISEnableInputSource` diagnostics. Cleaning those user preference records removed the repeated rows without requiring a metadata change.
+Consequences: Do not use `TISEnableInputSource` as part of normal macOS smoke tests. macOS package validation must include a consecutive-upgrade check that confirms System Settings and the menu bar input menu show at most one PrivatePinyin entry.

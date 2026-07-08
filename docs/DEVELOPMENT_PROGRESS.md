@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-08 08:53
+Last updated: 2026-07-08 09:17
 Current stage: 13 - Lexicon import and starter dictionary
 Current status: local review
 
@@ -20,7 +20,7 @@ Current status: local review
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
-| 13 | Lexicon import and starter dictionary | local review | 2026-07-08 08:53 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and the macOS 0.1.4 input-source duplication fix are ready for local review |
+| 13 | Lexicon import and starter dictionary | local review | 2026-07-08 09:17 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and macOS duplicate input-source cleanup/regression coverage are ready for local review |
 
 ## Completed Work
 
@@ -305,15 +305,15 @@ Current status: local review
 
 - Command: `bash scripts/check_macos_imk_sources.sh`
 - Result: passed
-- Notes: macOS scaffold now pins `smUnicodeScript` for the input mode metadata and keeps `tsInputModeDefaultStateKey=false`.
+- Notes: macOS scaffold pins `smSimpChinese` for Simplified Chinese discovery and keeps `tsInputModeDefaultStateKey=false`.
 
 - Command: `bash scripts/check_platform_validation_sources.sh`
 - Result: passed
-- Notes: Smoke-test documentation now requires PrivatePinyin to appear exactly once in the macOS input-source list.
+- Notes: Smoke-test documentation now requires PrivatePinyin to appear exactly once and adds a consecutive-upgrade dedupe regression.
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the macOS metadata fix.
+- Notes: Formatting is clean after the macOS input-source cleanup documentation changes.
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
@@ -325,11 +325,11 @@ Current status: local review
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 52 workspace tests passed after the version bump and macOS metadata change.
+- Notes: 52 workspace tests passed after the version bump and macOS input-source cleanup documentation changes.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: No clippy warnings after the metadata fix.
+- Notes: No clippy warnings after the cleanup regression documentation changes.
 
 - Command: `bash scripts/check_stage12_release_sources.sh`
 - Result: passed
@@ -341,7 +341,11 @@ Current status: local review
 
 - Command: `bash scripts/check_stage13_lexicon_sources.sh`
 - Result: passed
-- Notes: Stage 13 lexicon scaffold checks still pass after the version and macOS metadata update.
+- Notes: Stage 13 lexicon scaffold checks still pass after the version and macOS cleanup-regression update.
+
+- Command: Local macOS input-source cleanup
+- Result: passed
+- Notes: With the input source switched to Simplified Pinyin, System Settings and KeyboardSettings were closed; `com.apple.HIToolbox` history/selection records were cleaned, the stale `com.apple.inputsources` PrivatePinyin top-level entry was cleared through System Settings, and the input-source edit list now shows no repeated PrivatePinyin rows. Re-add PrivatePinyin once after logout/login for the final smoke check.
 
 - Command: `installer -pkg dist/macos_imk/PrivatePinyin-0.1.4.pkg -target /`
 - Result: blocked
