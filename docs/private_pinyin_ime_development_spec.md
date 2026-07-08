@@ -1365,25 +1365,25 @@ existing Rust and platform scaffold checks 通过
 4. 在 `docs/OPEN_ITEMS.md` 更新 License、生产词库、签名、notarization、App Store provisioning 和 smoke-test release gates。
 5. 如果是 Git 仓库，提交 `stage-12: prepare release packaging and distribution`。
 
-### 阶段 13：词库导入与 starter 词库
+### 阶段 13：词库导入与生产词库
 
 任务：
 
 1. 将运行时嵌入词库切换到 active 资产 `ime_core/assets/base_lexicon.tsv` 和 `ime_core/assets/bigram.tsv`，保留原始 sample 文件作为测试 fixture。
 2. 提供第一方 starter 词库，让本地安装包不再只包含八条开发样例词。
-3. 新增 `tools/lexicon_builder`，支持把本地 `private-pinyin-tsv` 或 CC-CEDICT 风格文件转换为项目标准 TSV，并生成 manifest。
+3. 新增 `tools/lexicon_builder`，支持把本地 `private-pinyin-tsv`、CC-CEDICT 风格文件、mozillazg pinyin-data、AOSP PinyinIME rawdict 转换为项目标准 TSV，并生成 manifest。
 4. manifest 必须记录来源、许可证、版本、输出条目数和 `release_approved`，默认不得把第三方导入结果视为可发布。
-5. 更新 `docs/lexicon_data_policy.md`，明确 starter 数据不等于正式生产词库，`OI-001` 在 owner 批准生产来源前保持 open。
+5. 更新 `docs/lexicon_data_policy.md`，明确 starter 数据不等于正式生产词库；owner 批准生产来源后，记录确切来源版本、第三方声明和 release-approved manifest。
 6. 增加 Stage 13 source scaffold 检查并纳入 CI。
 
 验收：
 
 ```text
 ime_core embeds base_lexicon.tsv and bigram.tsv
-starter lexicon can return common terms such as 电脑, 时间, 因为
-private-pinyin-lexicon build-base can convert project TSV into validated output plus manifest
+production base lexicon can return common terms such as 干嘛, 什么, 电脑
+private-pinyin-lexicon build-base can convert project TSV, pinyin-data, and AOSP rawdict inputs into validated output plus manifest
 manifest records release_approved and defaults to false
-docs/lexicon_data_policy.md explains the production data gate
+docs/lexicon_data_policy.md explains the production data source and remaining release gates
 bash scripts/check_stage13_lexicon_sources.sh 通过
 cargo test --workspace 通过
 ```
@@ -1391,10 +1391,10 @@ cargo test --workspace 通过
 阶段完成后必须保存：
 
 1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-13 标记为 local review 或 completed。
-2. 在 `CHANGELOG.md` 写入 starter 词库和导入工具变更。
-3. 在 `docs/DECISIONS.md` 记录词库导入边界。
+2. 在 `CHANGELOG.md` 写入生产词库和导入工具变更。
+3. 在 `docs/DECISIONS.md` 记录词库导入边界和生产数据来源。
 4. 在 `docs/OPEN_ITEMS.md` 更新生产词库 open item。
-5. 如果是 Git 仓库，提交 `stage-13: add lexicon import pipeline and starter dictionary`。
+5. 如果是 Git 仓库，提交 `stage-13: add lexicon import pipeline and production dictionary`。
 
 ---
 

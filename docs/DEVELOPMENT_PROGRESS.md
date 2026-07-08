@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 09:17
-Current stage: 13 - Lexicon import and starter dictionary
+Last updated: 2026-07-08 10:42
+Current stage: 13 - Lexicon import and production dictionary
 Current status: local review
 
 ## Stage Status
@@ -20,7 +20,7 @@ Current status: local review
 | 10 | Platform host polish | completed | 2026-07-06 23:14 | Merged to `main` through PR #9 |
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
-| 13 | Lexicon import and starter dictionary | local review | 2026-07-08 09:17 | First-party starter lexicon assets, local import/manifest tooling, Stage 13 checks, and macOS duplicate input-source cleanup/regression coverage are ready for local review |
+| 13 | Lexicon import and production dictionary | local review | 2026-07-08 10:42 | AOSP PinyinIME rawdict plus pinyin-data production base lexicon, import/manifest tooling, third-party notices, Stage 13 checks, and `ganma -> 干嘛` regression are ready for local review |
 
 ## Completed Work
 
@@ -152,13 +152,17 @@ Current status: local review
 - Added `tools/lexicon_builder`, a local Rust CLI that converts project TSV or local CC-CEDICT-style files into the standard base-lexicon TSV and emits an audit manifest with a release-approval flag.
 - Updated lexicon policy, manifest, changelog, README, CI, and open items so `OI-001` remains open for owner-approved production data.
 - Added `scripts/check_stage13_lexicon_sources.sh` and wired it into CI.
+- Extended `tools/lexicon_builder` with mozillazg pinyin-data and AOSP PinyinIME rawdict import support, including UTF-16 rawdict decoding, marked-pinyin normalization, frequency scaling, and supplemental single-character readings.
+- Replaced the first-party starter base lexicon with a 100,657-entry owner-approved AOSP PinyinIME rawdict import supplemented by pinyin-data single-character readings.
+- Added `THIRD_PARTY_NOTICES.md`, updated the active lexicon manifest with exact upstream revisions and licenses, and closed `OI-001` for the current bundled base dictionary.
+- Added a `ganma -> 干嘛` core candidate regression.
 - Addressed macOS formal-pkg review feedback by documenting that `tsInputModeDefaultStateKey` must stay `false`, pinning that value in the macOS scaffold check, and recording the decision in `docs/DECISIONS.md`.
 - Added a macOS C ABI fallback so the installed IMK host retries `ime_engine_new(nil)` if a user settings path cannot open.
 - Verified the actual `PrivatePinyin-0.1.3.pkg` install path from `/Library/Input Methods`: `PrivatePinyin 拼音` appears under Simplified Chinese, the TIS mode can be enabled/selected, and TextEdit commits `nihao -> 你好`.
 
 ## Current Work
 
-- Stage 13 lexicon import and starter dictionary work is complete on local branch `codex/stage-13-lexicon-ingestion`.
+- Stage 13 production lexicon import work is complete on local branch `codex/stage-13-lexicon-ingestion`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
@@ -351,10 +355,49 @@ Current status: local review
 - Result: blocked
 - Notes: macOS requires root for `/Library/Input Methods`; `sudo -n` reported that a password is required. The generated pkg is ready for manual installation, after which the formal smoke check must verify that PrivatePinyin appears exactly once.
 
+- Command: `cargo test -p private_pinyin_lexicon`
+- Result: passed
+- Notes: 6 lexicon-builder tests passed, including pinyin-data marked-pinyin import, AOSP rawdict frequency scaling, and UTF-16 rawdict decoding.
+
+- Command: `cargo run -q -p private_pinyin_lexicon -- build-base --format aosp-rawdict ... --supplemental-pinyin-data ... --release-approved`
+- Result: passed
+- Notes: Generated active `ime_core/assets/base_lexicon.tsv` with 100,657 entries from AOSP PinyinIME rawdict plus pinyin-data single-character readings.
+
+- Command: `cargo run -q -p test_cli -- ganma`
+- Result: passed
+- Notes: First candidate is `干嘛`, followed by related candidates such as `干吗` and `干妈`.
+
+- Command: `cargo fmt --check`
+- Result: passed
+- Notes: Formatting is clean after the production lexicon import changes.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+- Notes: No clippy warnings after adding the pinyin-data and AOSP rawdict importers.
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: 56 workspace tests passed, including the new `ganma -> 干嘛` regression and 6 lexicon-builder tests.
+
+- Command: `bash scripts/check_stage09_core_sources.sh`
+- Result: passed
+- Notes: Stage 9 core hardening checks accept the updated production-data gate wording.
+
+- Command: `bash scripts/check_stage13_lexicon_sources.sh`
+- Result: passed
+- Notes: Stage 13 checks cover production lexicon manifest approval, third-party notices, pinyin-data import, AOSP rawdict import, and active `干嘛` coverage.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: C ABI demo still returns and commits `你好` from `nihao` with the production lexicon.
+
+- Command: `git diff --check`
+- Result: passed
+- Notes: No whitespace errors.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
-- Replace starter lexicon data with owner-approved licensed production lexicon data before release.
 - Keep production runtime data outside source directories.
 - Refine Shift toggle semantics in platform hosts.
 - Provide Windows code-signing certificate and signed binary/MSI/PowerShell-script evidence.
@@ -378,6 +421,7 @@ Current status: local review
 - `Cargo.toml`
 - `CHANGELOG.md`
 - `README.md`
+- `THIRD_PARTY_NOTICES.md`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/lexicon_data_policy.md`

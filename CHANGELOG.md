@@ -59,6 +59,9 @@
 - Added a Stage 13 first-party starter lexicon and bigram set so local builds are not limited to the original eight-word sample data.
 - Added `tools/lexicon_builder` for local base-lexicon conversion, validation, and manifest generation with an explicit release-approval gate.
 - Added a Stage 13 lexicon scaffold check to CI.
+- Added `pinyin-data` and `aosp-rawdict` import support to `tools/lexicon_builder`, including UTF-16 rawdict decoding, marked-pinyin normalization, frequency scaling, optional character-frequency weighting, and pinyin-data supplemental single-character readings.
+- Added third-party notices for the bundled AOSP PinyinIME rawdict and mozillazg pinyin-data derived lexicon data.
+- Added a `ganma -> 干嘛` candidate regression test.
 
 ### Changed
 
@@ -99,6 +102,8 @@
 - Bumped the app and package version to `0.1.3` for the regenerated macOS onboarding installer.
 - Bumped the app and package version to `0.1.4` for the macOS input-source duplication fix.
 - Changed the embedded base lexicon and predictor to load active `base_lexicon.tsv` and `bigram.tsv` assets instead of the original sample files.
+- Changed the active base lexicon from first-party starter data to an owner-approved 100,657-entry AOSP PinyinIME rawdict import supplemented with pinyin-data single-character readings.
+- Closed the production base-lexicon source/license/version gate for the current bundled dictionary while keeping final project license and platform release evidence as separate gates.
 
 ### Fixed
 
@@ -121,6 +126,7 @@
 - Fixed the Windows candidate popup class lifecycle so the window class is registered once and unregistered on DLL unload.
 - Fixed settings and user lexicon export writes so they no longer remove the target file before replacement.
 - Fixed iOS keyboard startup so shared-settings or App Group storage failures fall back to the built-in engine instead of leaving the keyboard unable to type.
+- Fixed missing common phrase coverage such as `ganma -> 干嘛` by replacing the starter base lexicon with the approved production import.
 
 ### Security and Privacy
 

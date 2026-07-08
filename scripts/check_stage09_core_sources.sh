@@ -27,4 +27,4 @@ grep -q "commit_punctuation" ime_core/src/session.rs
 grep -q "emit_error" ime_core/src/session.rs
 grep -q "emit_error" ime_core/src/api.rs
 grep -q "lexicon_manifest.json" docs/lexicon_data_policy.md
-grep -q "does not close the production data release gate" docs/lexicon_data_policy.md
+grep -q "OI-001.*closed" docs/lexicon_data_policy.md

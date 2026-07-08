@@ -16,9 +16,9 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 13 is in local review: the Rust workspace, core engine crate, indexed starter lexicon lookup, SQLite user lexicon range lookup, local bigram prediction, lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, iOS container app and keyboard extension with App Group settings storage and learning opt-in, release packaging scripts, release distribution plan, App Store metadata templates, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, settings/privacy checks, release-packaging checks, and lexicon scaffold checks are in place.
+Stage 13 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram prediction, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, iOS container app and keyboard extension with App Group settings storage and learning opt-in, release packaging scripts, release distribution plan, App Store metadata templates, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, settings/privacy checks, release-packaging checks, and lexicon scaffold checks are in place.
 
-Public release is still gated on the final project license, owner-approved production lexicon source/license/version, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records.
+Public release is still gated on the final project license, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records. The bundled base lexicon source/license/version gate is closed for the current AOSP+pinyin-data import.
 
 ## Development Workflow
 
@@ -71,4 +71,4 @@ bash scripts/build_ios_keyboard.sh
 
 ## Next Stage
 
-Next work should produce release-candidate evidence: choose the final project license, approve a production lexicon source and generated manifest, run Windows/macOS/iOS smoke records, and build signed/notarized/provisioned artifacts with owner credentials.
+Next work should produce release-candidate evidence: choose the final project license, run Windows/macOS/iOS smoke records, and build signed/notarized/provisioned artifacts with owner credentials.

@@ -26,11 +26,31 @@ fn run() -> Result<(), String> {
 }
 
 fn build_base_lexicon(args: BuildBaseArgs) -> Result<(), String> {
-    let input = fs::read_to_string(&args.input).map_err(|_| "Could not read input lexicon")?;
-    let entries = match args.source_format {
+    let input = read_source_text(args.source_format, &args.input)?;
+    let char_frequencies = match &args.char_frequency_input {
+        Some(path) => Some(parse_char_frequency_tsv(
+            &fs::read_to_string(path).map_err(|_| "Could not read character frequency input")?,
+        )?),
+        None => None,
+    };
+    let mut entries = match args.source_format {
         SourceFormat::PrivatePinyinTsv => parse_private_pinyin_tsv(&input)?,
         SourceFormat::CcCedict => parse_cc_cedict(&input, args.default_frequency)?,
+        SourceFormat::PinyinData => {
+            parse_pinyin_data(&input, args.default_frequency, char_frequencies.as_ref())?
+        }
+        SourceFormat::AospRawdict => parse_aosp_rawdict(&input, args.frequency_scale)?,
     };
+
+    if let Some(path) = &args.supplemental_pinyin_data {
+        let supplemental_input = read_source_text(SourceFormat::PinyinData, path)?;
+        entries.extend(parse_pinyin_data(
+            &supplemental_input,
+            args.default_frequency,
+            char_frequencies.as_ref(),
+        )?);
+        entries = dedup_and_sort(entries);
+    }
 
     if entries.is_empty() {
         return Err("Input lexicon produced no supported entries".to_owned());
@@ -53,6 +73,16 @@ fn build_base_lexicon(args: BuildBaseArgs) -> Result<(), String> {
             license: args.source_license,
             version: args.source_version,
             local_input: args.input.display().to_string(),
+            frequency_scale: (args.source_format == SourceFormat::AospRawdict)
+                .then_some(args.frequency_scale),
+            char_frequency_input: args
+                .char_frequency_input
+                .as_ref()
+                .map(|path| path.display().to_string()),
+            supplemental_pinyin_data: args
+                .supplemental_pinyin_data
+                .as_ref()
+                .map(|path| path.display().to_string()),
         },
         outputs: vec![ManifestOutput {
             file: args.output.display().to_string(),
@@ -93,6 +123,9 @@ struct BuildBaseArgs {
     source_license: String,
     source_version: String,
     default_frequency: u32,
+    frequency_scale: f64,
+    char_frequency_input: Option<PathBuf>,
+    supplemental_pinyin_data: Option<PathBuf>,
     release_approved: bool,
 }
 
@@ -100,6 +133,8 @@ struct BuildBaseArgs {
 enum SourceFormat {
     PrivatePinyinTsv,
     CcCedict,
+    PinyinData,
+    AospRawdict,
 }
 
 impl SourceFormat {
@@ -107,7 +142,9 @@ impl SourceFormat {
         match value {
             "private-pinyin-tsv" => Ok(Self::PrivatePinyinTsv),
             "cc-cedict" => Ok(Self::CcCedict),
-            _ => Err("Unsupported --format; expected private-pinyin-tsv or cc-cedict".to_owned()),
+            "pinyin-data" => Ok(Self::PinyinData),
+            "aosp-rawdict" => Ok(Self::AospRawdict),
+            _ => Err("Unsupported --format; expected private-pinyin-tsv, cc-cedict, pinyin-data, or aosp-rawdict".to_owned()),
         }
     }
 
@@ -115,6 +152,8 @@ impl SourceFormat {
         match self {
             Self::PrivatePinyinTsv => "private-pinyin-tsv",
             Self::CcCedict => "cc-cedict",
+            Self::PinyinData => "pinyin-data",
+            Self::AospRawdict => "aosp-rawdict",
         }
     }
 }
@@ -145,6 +184,9 @@ impl BuildBaseArgs {
         let mut source_license = None;
         let mut source_version = None;
         let mut default_frequency = DEFAULT_IMPORTED_FREQUENCY;
+        let mut frequency_scale = 1.0;
+        let mut char_frequency_input = None;
+        let mut supplemental_pinyin_data = None;
         let mut release_approved = false;
 
         let mut index = 0;
@@ -169,6 +211,20 @@ impl BuildBaseArgs {
                         .parse::<u32>()
                         .map_err(|_| "--default-frequency must be a u32")?;
                 }
+                "--frequency-scale" => {
+                    frequency_scale = next_value(args, &mut index)?
+                        .parse::<f64>()
+                        .map_err(|_| "--frequency-scale must be a finite positive number")?;
+                    if !frequency_scale.is_finite() || frequency_scale <= 0.0 {
+                        return Err("--frequency-scale must be a finite positive number".to_owned());
+                    }
+                }
+                "--char-frequency-input" => {
+                    char_frequency_input = Some(PathBuf::from(next_value(args, &mut index)?))
+                }
+                "--supplemental-pinyin-data" => {
+                    supplemental_pinyin_data = Some(PathBuf::from(next_value(args, &mut index)?))
+                }
                 "--release-approved" => release_approved = true,
                 _ => return Err(usage()),
             }
@@ -185,6 +241,9 @@ impl BuildBaseArgs {
             source_license: source_license.ok_or_else(usage)?,
             source_version: source_version.unwrap_or_else(|| "unknown".to_owned()),
             default_frequency,
+            frequency_scale,
+            char_frequency_input,
+            supplemental_pinyin_data,
             release_approved,
         })
     }
@@ -202,6 +261,44 @@ struct BaseLexiconEntry {
     phrase: String,
     pinyin: String,
     frequency: u32,
+}
+
+fn read_source_text(source_format: SourceFormat, path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|_| "Could not read input lexicon")?;
+    if source_format == SourceFormat::AospRawdict {
+        return decode_utf_text(&bytes);
+    }
+    String::from_utf8(bytes).map_err(|_| "Input lexicon must be UTF-8".to_owned())
+}
+
+fn decode_utf_text(bytes: &[u8]) -> Result<String, String> {
+    if bytes.starts_with(&[0xff, 0xfe]) {
+        return decode_utf16_bytes(&bytes[2..], true);
+    }
+    if bytes.starts_with(&[0xfe, 0xff]) {
+        return decode_utf16_bytes(&bytes[2..], false);
+    }
+    if bytes.iter().take(256).filter(|byte| **byte == 0).count() > 16 {
+        return decode_utf16_bytes(bytes, true);
+    }
+    String::from_utf8(bytes.to_vec())
+        .map_err(|_| "Input lexicon must be UTF-8 or UTF-16".to_owned())
+}
+
+fn decode_utf16_bytes(bytes: &[u8], little_endian: bool) -> Result<String, String> {
+    if !bytes.len().is_multiple_of(2) {
+        return Err("UTF-16 input has an odd byte count".to_owned());
+    }
+    let units = bytes.chunks_exact(2).map(|chunk| {
+        if little_endian {
+            u16::from_le_bytes([chunk[0], chunk[1]])
+        } else {
+            u16::from_be_bytes([chunk[0], chunk[1]])
+        }
+    });
+    std::char::decode_utf16(units)
+        .map(|item| item.map_err(|_| "UTF-16 input contains invalid data".to_owned()))
+        .collect::<Result<String, String>>()
 }
 
 fn parse_private_pinyin_tsv(input: &str) -> Result<Vec<BaseLexiconEntry>, String> {
@@ -234,6 +331,127 @@ fn parse_private_pinyin_tsv(input: &str) -> Result<Vec<BaseLexiconEntry>, String
         entries.push(entry);
     }
     Ok(dedup_and_sort(entries))
+}
+
+fn parse_pinyin_data(
+    input: &str,
+    default_frequency: u32,
+    char_frequencies: Option<&BTreeMap<char, u32>>,
+) -> Result<Vec<BaseLexiconEntry>, String> {
+    let mut entries = Vec::new();
+    for (line_index, line) in input.lines().enumerate() {
+        let line = line
+            .split_once('#')
+            .map(|(head, _comment)| head)
+            .unwrap_or(line)
+            .trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let (codepoint, readings) = line
+            .split_once(':')
+            .ok_or_else(|| format!("Invalid pinyin-data line {}", line_index + 1))?;
+        let codepoint = codepoint
+            .trim()
+            .strip_prefix("U+")
+            .ok_or_else(|| format!("Invalid code point at line {}", line_index + 1))?;
+        let scalar = u32::from_str_radix(codepoint, 16)
+            .map_err(|_| format!("Invalid code point at line {}", line_index + 1))?;
+        let Some(character) = char::from_u32(scalar) else {
+            return Err(format!("Invalid Unicode scalar at line {}", line_index + 1));
+        };
+        let phrase = character.to_string();
+        if !is_supported_han_phrase(&phrase) {
+            continue;
+        }
+
+        let frequency = char_frequencies
+            .and_then(|frequencies| frequencies.get(&character).copied())
+            .unwrap_or(default_frequency);
+        for reading in readings.split(',') {
+            let Some(pinyin) = normalize_marked_pinyin(reading.trim()) else {
+                continue;
+            };
+            let entry = BaseLexiconEntry {
+                phrase: phrase.clone(),
+                pinyin,
+                frequency,
+            };
+            validate_entry(&entry)
+                .map_err(|error| format!("{error} at line {}", line_index + 1))?;
+            entries.push(entry);
+        }
+    }
+    Ok(dedup_and_sort(entries))
+}
+
+fn parse_aosp_rawdict(input: &str, frequency_scale: f64) -> Result<Vec<BaseLexiconEntry>, String> {
+    let mut entries = Vec::new();
+    for (line_index, line) in input.lines().enumerate() {
+        let line = line.trim().trim_start_matches('\u{feff}');
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        if fields.len() < 4 {
+            return Err(format!(
+                "Invalid AOSP rawdict field count at line {}",
+                line_index + 1
+            ));
+        }
+        if !is_supported_han_phrase(fields[0]) {
+            continue;
+        }
+        let Some(pinyin) = normalize_plain_pinyin(&fields[3..].join(" ")) else {
+            continue;
+        };
+        let entry = BaseLexiconEntry {
+            phrase: fields[0].to_owned(),
+            pinyin,
+            frequency: scaled_frequency(fields[1], frequency_scale, line_index + 1)?,
+        };
+        validate_entry(&entry).map_err(|error| format!("{error} at line {}", line_index + 1))?;
+        entries.push(entry);
+    }
+    Ok(dedup_and_sort(entries))
+}
+
+fn parse_char_frequency_tsv(input: &str) -> Result<BTreeMap<char, u32>, String> {
+    let mut frequencies = BTreeMap::new();
+    for (line_index, line) in input.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty()
+            || line.starts_with('#')
+            || (line_index == 0 && line.eq_ignore_ascii_case("character\tfrequency"))
+        {
+            continue;
+        }
+
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        if fields.len() != 2 {
+            return Err(format!(
+                "Invalid character frequency field count at line {}",
+                line_index + 1
+            ));
+        }
+        let mut chars = fields[0].chars();
+        let Some(character) = chars.next() else {
+            return Err(format!("Invalid character at line {}", line_index + 1));
+        };
+        if chars.next().is_some() {
+            return Err(format!("Expected one character at line {}", line_index + 1));
+        }
+        if !is_supported_han_phrase(fields[0]) {
+            continue;
+        }
+        let frequency = fields[1]
+            .parse::<u32>()
+            .map_err(|_| format!("Invalid character frequency at line {}", line_index + 1))?;
+        frequencies.insert(character, frequency);
+    }
+    Ok(frequencies)
 }
 
 fn parse_cc_cedict(input: &str, default_frequency: u32) -> Result<Vec<BaseLexiconEntry>, String> {
@@ -296,6 +514,64 @@ fn normalize_numbered_pinyin(value: &str) -> Option<String> {
     validate_pinyin_syllables(&syllables)
 }
 
+fn normalize_marked_pinyin(value: &str) -> Option<String> {
+    let mut syllables = Vec::new();
+    for raw_syllable in value.split_whitespace() {
+        let mut normalized = String::new();
+        for ch in raw_syllable.chars() {
+            if ch.is_ascii_digit() || matches!(ch, '\u{0300}'..='\u{036f}') {
+                continue;
+            }
+            if let Some(replacement) = tone_mark_to_plain(ch) {
+                normalized.push_str(replacement);
+            } else if ch.is_ascii_alphabetic() {
+                normalized.push(ch.to_ascii_lowercase());
+            } else if ch == 'ü' || ch == 'Ü' {
+                normalized.push('ü');
+            } else if ch == ':' && normalized.ends_with('u') {
+                normalized.pop();
+                normalized.push('ü');
+            } else {
+                return None;
+            }
+        }
+        syllables.push(normalized.replace('v', "ü"));
+    }
+    validate_pinyin_syllables(&syllables)
+}
+
+fn tone_mark_to_plain(ch: char) -> Option<&'static str> {
+    match ch {
+        'ā' | 'á' | 'ǎ' | 'à' | 'Ā' | 'Á' | 'Ǎ' | 'À' => Some("a"),
+        'ē' | 'é' | 'ě' | 'è' | 'Ē' | 'É' | 'Ě' | 'È' => Some("e"),
+        'ī' | 'í' | 'ǐ' | 'ì' | 'Ī' | 'Í' | 'Ǐ' | 'Ì' => Some("i"),
+        'ō' | 'ó' | 'ǒ' | 'ò' | 'Ō' | 'Ó' | 'Ǒ' | 'Ò' => Some("o"),
+        'ū' | 'ú' | 'ǔ' | 'ù' | 'Ū' | 'Ú' | 'Ǔ' | 'Ù' => Some("u"),
+        'ǖ' | 'ǘ' | 'ǚ' | 'ǜ' | 'Ǖ' | 'Ǘ' | 'Ǚ' | 'Ǜ' => Some("ü"),
+        'ń' | 'ň' | 'ǹ' | 'Ń' | 'Ň' | 'Ǹ' => Some("n"),
+        'ḿ' | 'Ḿ' => Some("m"),
+        'ê' | 'ế' | 'ề' | 'Ê' | 'Ế' | 'Ề' => Some("e"),
+        _ => None,
+    }
+}
+
+fn scaled_frequency(raw_frequency: &str, scale: f64, line_number: usize) -> Result<u32, String> {
+    let frequency = raw_frequency
+        .parse::<f64>()
+        .map_err(|_| format!("Invalid AOSP frequency at line {line_number}"))?;
+    if !frequency.is_finite() || frequency <= 0.0 {
+        return Err(format!("Invalid AOSP frequency at line {line_number}"));
+    }
+    let scaled = (frequency * scale).round();
+    if scaled <= 0.0 {
+        return Ok(1);
+    }
+    if scaled >= u32::MAX as f64 {
+        return Ok(u32::MAX);
+    }
+    Ok(scaled as u32)
+}
+
 fn validate_pinyin_syllables(syllables: &[String]) -> Option<String> {
     if syllables.is_empty()
         || syllables
@@ -324,7 +600,15 @@ fn is_supported_han_phrase(phrase: &str) -> bool {
     !phrase.is_empty()
         && phrase.chars().all(|ch| {
             let codepoint = ch as u32;
-            (0x3400..=0x9fff).contains(&codepoint) || (0xf900..=0xfaff).contains(&codepoint)
+            codepoint == 0x3007
+                || (0x3400..=0x9fff).contains(&codepoint)
+                || (0xf900..=0xfaff).contains(&codepoint)
+                || (0x20000..=0x2a6df).contains(&codepoint)
+                || (0x2a700..=0x2b73f).contains(&codepoint)
+                || (0x2b740..=0x2b81f).contains(&codepoint)
+                || (0x2b820..=0x2ceaf).contains(&codepoint)
+                || (0x2ceb0..=0x2ebef).contains(&codepoint)
+                || (0x30000..=0x323af).contains(&codepoint)
         })
 }
 
@@ -383,7 +667,7 @@ fn current_unix_time() -> u64 {
 }
 
 fn usage() -> String {
-    "Usage: private-pinyin-lexicon build-base --format <private-pinyin-tsv|cc-cedict> --input <path> --output <path> --manifest <path> --source-name <name> --source-license <license> [--source-url <url>] [--source-version <version>] [--default-frequency <u32>] [--release-approved]".to_owned()
+    "Usage: private-pinyin-lexicon build-base --format <private-pinyin-tsv|cc-cedict|pinyin-data|aosp-rawdict> --input <path> --output <path> --manifest <path> --source-name <name> --source-license <license> [--source-url <url>] [--source-version <version>] [--default-frequency <u32>] [--frequency-scale <number>] [--char-frequency-input <path>] [--supplemental-pinyin-data <path>] [--release-approved]".to_owned()
 }
 
 #[derive(Serialize)]
@@ -405,6 +689,12 @@ struct ManifestSource {
     license: String,
     version: String,
     local_input: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    frequency_scale: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    char_frequency_input: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplemental_pinyin_data: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -474,5 +764,68 @@ mod tests {
                 .expect("CC-CEDICT imports");
 
         assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn pinyin_data_imports_marked_multi_reading_characters() {
+        let frequencies = parse_char_frequency_tsv("character\tfrequency\n行\t42\n")
+            .expect("character frequencies import");
+        let entries = parse_pinyin_data(
+            "U+884C: xíng,háng  # 行\nU+0041: ēi # A\n",
+            7,
+            Some(&frequencies),
+        )
+        .expect("pinyin-data imports");
+
+        assert_eq!(
+            entries,
+            vec![
+                BaseLexiconEntry {
+                    phrase: "行".to_owned(),
+                    pinyin: "hang".to_owned(),
+                    frequency: 42,
+                },
+                BaseLexiconEntry {
+                    phrase: "行".to_owned(),
+                    pinyin: "xing".to_owned(),
+                    frequency: 42,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn aosp_rawdict_imports_phrases_and_scales_float_frequency() {
+        let entries = parse_aosp_rawdict("干嘛 17002.7639686 0 gan ma\nabc 9 0 a b c\n", 10.0)
+            .expect("AOSP rawdict imports");
+
+        assert_eq!(
+            entries,
+            vec![BaseLexiconEntry {
+                phrase: "干嘛".to_owned(),
+                pinyin: "gan ma".to_owned(),
+                frequency: 170028,
+            }]
+        );
+    }
+
+    #[test]
+    fn aosp_rawdict_input_can_be_utf16() {
+        let mut bytes = vec![0xff, 0xfe];
+        for unit in "什么 12.5 0 shen me\n".encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+
+        let decoded = decode_utf_text(&bytes).expect("UTF-16 rawdict decodes");
+        let entries = parse_aosp_rawdict(&decoded, 1.0).expect("AOSP rawdict imports");
+
+        assert_eq!(
+            entries,
+            vec![BaseLexiconEntry {
+                phrase: "什么".to_owned(),
+                pinyin: "shen me".to_owned(),
+                frequency: 13,
+            }]
+        );
     }
 }

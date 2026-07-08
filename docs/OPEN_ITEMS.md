@@ -2,7 +2,7 @@
 
 | ID | Stage | Item | Priority | Owner | Status | Notes |
 |---|---|---|---|---|---|---|
-| OI-001 | 01 | Replace starter lexicon with licensed production lexicon | High | TBD | open | Stage 13 adds first-party starter assets plus local import/manifest tooling, but public release still requires owner-approved production source, license, version, and release-approved manifest |
+| OI-001 | 01 | Replace starter lexicon with licensed production lexicon | High | Codex | closed | Stage 13 replaces the starter base lexicon with an owner-approved AOSP PinyinIME rawdict import supplemented by mozillazg pinyin-data single-character readings; manifest records Apache-2.0/MIT sources, exact revisions, 100,657 entries, and release approval |
 | OI-002 | 00 | Select final project license | Medium | Owner | open | Stage 12 records this as a public release gate; repository currently uses all-rights-reserved text |
 | OI-003 | 01 | Implement Rust core engine crate | High | Codex | closed | Completed in stage 01 local branch |
 | OI-004 | 01 | Add minimal GitHub Actions for Rust validation | High | Codex | closed | Completed in stage 01 local branch |
