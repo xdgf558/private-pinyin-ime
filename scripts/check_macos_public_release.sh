@@ -32,11 +32,23 @@ require_command() {
   fi
 }
 
-check_identity() {
+check_codesigning_identity() {
   local label="$1"
   local pattern="$2"
   local identities
   identities="$(security find-identity -v -p codesigning 2>/dev/null || true)"
+  if printf "%s\n" "$identities" | grep -Fq "$pattern"; then
+    pass "$label signing identity is available"
+  else
+    fail "$label signing identity is missing or does not match: $pattern"
+  fi
+}
+
+check_identity() {
+  local label="$1"
+  local pattern="$2"
+  local identities
+  identities="$(security find-identity -v 2>/dev/null || true)"
   if printf "%s\n" "$identities" | grep -Fq "$pattern"; then
     pass "$label signing identity is available"
   else
@@ -70,7 +82,7 @@ require_command spctl
 require_command xcrun
 require_command shasum
 
-check_identity "Developer ID Application" "$app_identity"
+check_codesigning_identity "Developer ID Application" "$app_identity"
 check_identity "Developer ID Installer" "$installer_identity"
 
 if [ -f "$pkg_path" ]; then
