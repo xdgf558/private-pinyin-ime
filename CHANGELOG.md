@@ -67,6 +67,7 @@
 - Added `scripts/check_macos_public_release.sh` to verify Developer ID identities, installer signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output before website publication.
 - Added first-pass local user bigram learning so repeated selected-word sequences can outrank starter prediction data without leaving the local user lexicon.
 - Added second-pass local short phrase completion learning for bounded selected-candidate sequences such as `今天 -> 天气不错`.
+- Added a manual GitHub Actions workflow for unsigned Windows internal-test zip/MSI packaging.
 
 ### Changed
 
@@ -118,6 +119,7 @@
 - Changed the macOS release distribution plan and script index to include the public-release preflight and website checksum requirement.
 - Bumped the app and package version to `0.1.7` for the macOS icon/name refresh.
 - Bumped the app and package version to `0.1.8` for the macOS menu localization refresh.
+- Changed Windows packaging to support both WiX v4+ `wix build` and WiX v3 `candle.exe`/`light.exe`.
 - Bumped the app and package version to `0.1.9` for the macOS preferences UI refresh.
 - Bumped the app and package version to `0.1.10` for the user learning and short phrase prediction package refresh.
 
