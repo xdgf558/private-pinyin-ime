@@ -66,6 +66,7 @@
 - Added a macOS public-release checklist for personal-website distribution, signed/notarized package gates, download-page copy, smoke tests, and manual update flow.
 - Added `scripts/check_macos_public_release.sh` to verify Developer ID identities, installer signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output before website publication.
 - Added first-pass local user bigram learning so repeated selected-word sequences can outrank starter prediction data without leaving the local user lexicon.
+- Added second-pass local short phrase completion learning for bounded selected-candidate sequences such as `今天 -> 天气不错`.
 
 ### Changed
 
@@ -122,6 +123,7 @@
 ### Fixed
 
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
+- Fixed user bigram learning so prediction candidates without pinyin no longer create empty-pinyin `user_bigrams` rows.
 - Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
 - Fixed macOS Shift+digit handling so shifted number keys pass through to the host instead of selecting candidates.
 - Fixed the stage-03 reserved `config_json_path` so non-null paths now load settings snapshots.

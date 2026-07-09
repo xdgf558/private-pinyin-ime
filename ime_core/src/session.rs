@@ -232,20 +232,34 @@ impl InputSession {
             let Some(last_token) = self.context_tokens.last() else {
                 return base_candidates;
             };
-            let user_candidates = self
-                .user_lexicon
-                .as_ref()
-                .map(|user_lexicon| match user_lexicon.predict_next(last_token) {
-                    Ok(candidates) => candidates,
-                    Err(error) => {
-                        logger::emit_error(error);
-                        Vec::new()
-                    }
-                })
-                .unwrap_or_default();
+            let mut user_candidates = Vec::new();
+            if let Some(user_lexicon) = &self.user_lexicon {
+                match user_lexicon.predict_short_phrases(last_token) {
+                    Ok(candidates) => user_candidates.extend(candidates),
+                    Err(error) => logger::emit_error(error),
+                }
+                match user_lexicon.predict_next(last_token) {
+                    Ok(candidates) => user_candidates.extend(candidates),
+                    Err(error) => logger::emit_error(error),
+                }
+            }
             merge_prediction_candidates(user_candidates, base_candidates)
         } else {
             Vec::new()
+        }
+    }
+
+    fn learn_short_phrase_prediction(&self, candidate: &Candidate, user_lexicon: &UserLexicon) {
+        if self.context_tokens.len() < 2 {
+            return;
+        }
+
+        let left_index = self.context_tokens.len() - 2;
+        let left = &self.context_tokens[left_index];
+        let middle = &self.context_tokens[left_index + 1];
+        let phrase = format!("{middle}{}", candidate.text);
+        if let Err(error) = user_lexicon.record_short_phrase_prediction(left, &phrase, 2) {
+            logger::emit_error(error);
         }
     }
 
@@ -410,6 +424,7 @@ impl InputSession {
                     logger::emit_error(error);
                 }
             }
+            self.learn_short_phrase_prediction(candidate, user_lexicon);
         }
     }
 }
