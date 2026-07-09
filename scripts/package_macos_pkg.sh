@@ -5,7 +5,7 @@ export COPYFILE_DISABLE=1
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-version="${PRIVATE_PINYIN_VERSION:-0.1.10}"
+version="${PRIVATE_PINYIN_VERSION:-$(awk -F '"' '/^version = / { print $2; exit }' Cargo.toml)}"
 app_dir="$repo_root/dist/macos_imk/PrivatePinyin.app"
 pkg_root="$repo_root/build/macos_pkg/root"
 pkg_scripts_dir="$repo_root/build/macos_pkg/scripts"
