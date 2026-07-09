@@ -167,6 +167,7 @@ impl UserLexicon {
     pub fn record_transition(&self, left: &str, right: &str, right_pinyin: &str) -> ImeResult<()> {
         if left.is_empty()
             || right.is_empty()
+            || right_pinyin.is_empty()
             || exceeds_user_bigram_phrase_limit(left)
             || exceeds_user_bigram_phrase_limit(right)
         {

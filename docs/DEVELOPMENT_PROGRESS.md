@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-09 08:53
+Last updated: 2026-07-09 09:23
 Current stage: User short phrase learning
 Current status: local review
 
@@ -178,6 +178,7 @@ Current status: local review
 - Extended user lexicon clear/export behavior to cover learned one-step prediction transitions.
 - Added second-pass local short phrase learning so selecting `A`, `B`, then `C` can teach the local predictor to suggest `BC` after future `A` commits.
 - Kept short phrase learning bounded to two-token continuations with a 12-character phrase cap, and covered it with clear/export behavior.
+- Addressed short-phrase-learning review feedback so prediction candidates without pinyin do not create empty-pinyin `user_bigrams` rows.
 
 ## Current Work
 
@@ -188,7 +189,7 @@ Current status: local review
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 66 workspace tests passed, including short phrase learning, prediction selection, disabled-learning, strict-privacy, export, clear, and length-limit regressions.
+- Notes: 67 workspace tests passed, including short phrase learning, prediction selection, empty-pinyin bigram guarding, disabled-learning, strict-privacy, export, clear, and length-limit regressions.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed

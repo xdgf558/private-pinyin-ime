@@ -405,6 +405,18 @@ fn user_bigram_learning_skips_long_phrases() {
 }
 
 #[test]
+fn user_bigram_learning_skips_empty_pinyin() {
+    let temp_db = TempDb::new("empty_pinyin_bigram");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+
+    user_lexicon
+        .record_transition("今天", "天气不错", "")
+        .expect("record empty-pinyin transition is ignored");
+
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+}
+
+#[test]
 fn user_short_phrase_learning_skips_long_phrases() {
     let temp_db = TempDb::new("long_short_phrase");
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");

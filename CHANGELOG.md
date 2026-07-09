@@ -123,6 +123,7 @@
 ### Fixed
 
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
+- Fixed user bigram learning so prediction candidates without pinyin no longer create empty-pinyin `user_bigrams` rows.
 - Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
 - Fixed macOS Shift+digit handling so shifted number keys pass through to the host instead of selecting candidates.
 - Fixed the stage-03 reserved `config_json_path` so non-null paths now load settings snapshots.
