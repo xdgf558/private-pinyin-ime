@@ -1428,6 +1428,119 @@ bash scripts/check_ios_keyboard_sources.sh 通过
 4. 在 `docs/OPEN_ITEMS.md` 更新 iOS provisioning/TestFlight open item。
 5. 如果是 Git 仓库，提交 `stage-14: configure ios signing and app group inputs`。
 
+### 阶段 15：iOS 模拟器/本地开发构建
+
+任务：
+
+1. 修通并验证 `scripts/build_ios_keyboard.sh` 的模拟器构建路径。
+2. 新增 iOS smoke readiness 脚本，自动构建 iOS Simulator app 和 Keyboard Extension。
+3. readiness 脚本必须检查 build 产物存在、app/extension bundle ID 展开、App Group ID 展开、`RequestsOpenAccess=false`、`PrimaryLanguage=zh-Hans`、默认设置资源打包和 Keyboard Extension 无网络源码姿态。
+4. 新增 iOS keyboard smoke record，明确自动项和必须人工验证的系统交互项。
+5. 模拟器基础冒烟必须覆盖：容器 App 可安装、系统设置可添加键盘、Notes 中可输入 `nihao -> 你好`。
+6. 平台 smoke test plan 必须指向 readiness 脚本。
+7. 增加 Stage 15 source scaffold 检查并纳入 CI。
+
+验收：
+
+```text
+scripts/run_ios_smoke_readiness.sh builds simulator app and extension
+readiness checks built Info.plist identifiers and App Group expansion
+readiness checks RequestsOpenAccess=false
+readiness checks default_settings.json is bundled in app and extension
+docs/ios_keyboard_smoke_record.md separates automated readiness from manual keyboard checks
+simulator can install the container app
+simulator Settings can add the keyboard
+Notes can input nihao -> 你好
+bash scripts/check_stage15_ios_smoke_sources.sh 通过
+bash scripts/run_ios_smoke_readiness.sh 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-15 标记为 local review 或 completed。
+2. 在 `CHANGELOG.md` 写入 iOS smoke readiness 变更。
+3. 在 `docs/DECISIONS.md` 记录自动 readiness 与手动 smoke 的边界。
+4. 在 `docs/OPEN_ITEMS.md` 更新 OI-038，保留真实系统交互验证项。
+5. 如果是 Git 仓库，提交 `stage-15: add ios smoke readiness automation`。
+
+### 阶段 16：TestFlight Archive 与上传
+
+任务：
+
+1. 修通并验证 `scripts/package_ios_app_store.sh` 的 archive/export 流程。
+2. 使用 Owner 的 Apple Developer Team、bundle IDs、App Group、provisioning profiles 和 ExportOptions plist 构建签名 archive。
+3. 产出可上传 App Store Connect 的 export 结果。
+4. 上传 App Store Connect，并记录 TestFlight build 编号、处理状态和可分发状态。
+
+验收：
+
+```text
+package_ios_app_store.sh produces archive/export
+archive/export uses configured Team ID, bundle IDs, App Group, and profiles
+uploaded build appears in App Store Connect
+TestFlight build can be distributed for testing
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`。
+2. 在 `CHANGELOG.md` 写入 TestFlight archive/upload 准备。
+3. 在 `docs/OPEN_ITEMS.md` 更新 OI-035。
+4. 如果是 Git 仓库，提交 `stage-16: prepare ios testflight archive and upload`。
+
+### 阶段 17：真机键盘行为与隐私闭环
+
+任务：
+
+1. 在真实 iPhone/iPad 上完成键盘行为冒烟记录。
+2. 验证 Notes/Safari 可输入，密码/电话字段回退系统键盘。
+3. 验证 Full Access 默认关闭。
+4. 验证 App Group、用户学习开关和本地学习数据策略。
+5. 明确 `RequestsOpenAccess=false` 下 iOS 学习功能是否可用；如不可用，记录产品决策。
+
+验收：
+
+```text
+Notes/Safari can input Chinese through the keyboard
+password and phone fields fall back to system keyboard
+Full Access is off by default
+learning toggle behavior is documented and matches implementation
+device smoke record is complete
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`。
+2. 在 `docs/OPEN_ITEMS.md` 更新或关闭 OI-038。
+3. 如学习策略变化，更新隐私文档和 App Store metadata。
+4. 如果是 Git 仓库，提交 `stage-17: validate ios device keyboard privacy behavior`。
+
+### 阶段 18：App Store 发布准备
+
+任务：
+
+1. 准备 App Store 截图、描述、关键词、年龄分级、支持 URL、隐私 URL、隐私标签和审核说明。
+2. 更新 App Store Connect metadata 记录。
+3. 编写提交前 release checklist。
+4. 确认 TestFlight 审查/提交前检查通过。
+
+验收：
+
+```text
+App Store Connect metadata is complete
+privacy labels match local-only implementation
+support/privacy URLs are ready
+release checklist passes before submission
+TestFlight review or pre-submission checks pass
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`。
+2. 在 `CHANGELOG.md` 写入 App Store release-prep 变更。
+3. 在 `docs/OPEN_ITEMS.md` 更新 App Store metadata/release gates。
+4. 如果是 Git 仓库，提交 `stage-18: prepare ios app store release metadata`。
+
 ---
 
 ## 11. Codex 首次开发提示词

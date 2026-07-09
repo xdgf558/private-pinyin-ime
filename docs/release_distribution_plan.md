@@ -93,6 +93,15 @@ Manual gates:
 
 ## iOS Release
 
+The detailed iOS release-preparation sequence is tracked in
+`docs/ios_release_stage_plan.md`:
+
+- Stage 14: signing and App Group configuration.
+- Stage 15: simulator/local development build and basic smoke.
+- Stage 16: TestFlight archive and upload.
+- Stage 17: device keyboard behavior and privacy closure.
+- Stage 18: App Store release preparation.
+
 Artifacts:
 
 - `dist/ios/PrivatePinyin.xcarchive`

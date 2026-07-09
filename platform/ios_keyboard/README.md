@@ -31,6 +31,16 @@ For local signing/App Group experiments, the simulator build also accepts
 `PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`, and
 `PRIVATE_PINYIN_IOS_APP_GROUP_ID`, defaulting to the checked-in scaffold values.
 
+Before manual keyboard testing, run the automated readiness checks:
+
+```bash
+bash scripts/run_ios_smoke_readiness.sh
+```
+
+This builds the simulator app and verifies the produced app/extension bundle
+identifiers, App Group ID expansion, `RequestsOpenAccess=false`, bundled default
+settings, and Keyboard Extension no-network source posture.
+
 ## App Store Archive
 
 Stage 14 makes signing identifiers explicit. Copy

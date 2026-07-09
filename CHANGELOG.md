@@ -69,6 +69,7 @@
 - Added second-pass local short phrase completion learning for bounded selected-candidate sequences such as `今天 -> 天气不错`.
 - Added a manual GitHub Actions workflow for unsigned Windows internal-test zip/MSI packaging.
 - Added Stage 14 iOS signing and App Group source gates, plus an owner-filled `Signing.env.example`.
+- Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
 
 ### Changed
 

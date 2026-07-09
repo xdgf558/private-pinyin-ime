@@ -77,7 +77,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 14 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram and short phrase learning, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with unsigned internal MSI packaging, macOS InputMethodKit prototype with preferences/onboarding UI, JSON settings loading, iOS container app and keyboard extension with App Group settings storage, learning opt-in, explicit signing/App Group release inputs, tests, CI workflows, platform smoke-test plan, and staged source checks are in place.
+Stage 15 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram and short phrase learning, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with unsigned internal MSI packaging, macOS InputMethodKit prototype with preferences/onboarding UI, JSON settings loading, iOS container app and keyboard extension with App Group settings storage, learning opt-in, explicit signing/App Group release inputs, iOS smoke-readiness automation, tests, CI workflows, platform smoke-test plan, and staged source checks are in place.
 
 Public release is still gated on the final project license, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records. The bundled base lexicon source/license/version gate is closed for the current AOSP+pinyin-data import.
 
@@ -126,9 +126,11 @@ bash scripts/check_stage11_settings_privacy_sources.sh
 bash scripts/check_stage12_release_sources.sh
 bash scripts/check_stage13_lexicon_sources.sh
 bash scripts/check_stage14_ios_signing_sources.sh
+bash scripts/check_stage15_ios_smoke_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh
+bash scripts/run_ios_smoke_readiness.sh
 ```
 
 ## Next Stage

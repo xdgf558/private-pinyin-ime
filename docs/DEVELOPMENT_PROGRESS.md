@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-09 11:20
-Current stage: Stage 14 iOS signing and App Group configuration
+Last updated: 2026-07-09 12:40
+Current stage: Stage 15 iOS simulator/local development build
 Current status: local review
 
 ## Stage Status
@@ -21,7 +21,11 @@ Current status: local review
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
-| 14 | iOS signing and App Group configuration | in_review | 2026-07-09 11:20 | Owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready for local review |
+| 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
+| 15 | iOS simulator/local development build | in_review | 2026-07-09 12:40 | Automated iOS smoke-readiness script, smoke record, source gates, and CI wiring passed locally; simulator install/add-keyboard/typing smoke remains to be recorded |
+| 16 | TestFlight archive and upload | planned | | Fix package archive/export, upload to App Store Connect, and confirm TestFlight build can be distributed |
+| 17 | Device keyboard behavior and privacy closure | planned | | Record real-device Notes/Safari/password/phone behavior and decide Full Access/App Group/learning policy |
+| 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Completed Work
 
@@ -253,6 +257,22 @@ Current status: local review
 - Result: passed
 - Notes: Rust formatting remains clean.
 
+### Stage 15 - iOS Smoke Readiness
+
+- Added `scripts/run_ios_smoke_readiness.sh` to run source gates, build the iOS Simulator app/extension, and verify built bundle identifiers, App Group expansion, `RequestsOpenAccess=false`, `PrimaryLanguage=zh-Hans`, bundled defaults, and no-network Keyboard Extension Swift sources.
+- Added `docs/ios_keyboard_smoke_record.md` to separate automated readiness evidence from the remaining manual Simulator/device keyboard checks.
+- Added `docs/ios_release_stage_plan.md` to record the Stage 14-18 iOS release-preparation plan.
+- Added `scripts/check_stage15_ios_smoke_sources.sh` and wired it into CI.
+- Updated `OI-038` to keep manual keyboard enablement, Notes composition, prediction retention, App Group storage, Globe switching, no Full Access, and password/phone fallback checks open.
+
+- Command: `bash scripts/check_stage15_ios_smoke_sources.sh`
+- Result: passed
+- Notes: Stage 15 source scaffold, smoke record, platform smoke plan link, and shell syntax checks passed.
+
+- Command: `bash scripts/run_ios_smoke_readiness.sh`
+- Result: passed
+- Notes: Required sandbox escalation for local Xcode/CoreSimulator access; produced the Debug iOS Simulator app and Keyboard Extension, verified bundle IDs, App Group expansion, `RequestsOpenAccess=false`, `PrimaryLanguage=zh-Hans`, bundled defaults, and no-network Keyboard Extension Swift source usage.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -277,30 +297,20 @@ Current status: local review
 ## Files Changed In Latest Stage
 
 - `.github/workflows/rust.yml`
-- `.gitignore`
 - `CHANGELOG.md`
 - `README.md`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
+- `docs/ios_release_stage_plan.md`
+- `docs/ios_keyboard_smoke_record.md`
+- `docs/platform_smoke_test_plan.md`
 - `docs/private_pinyin_ime_development_spec.md`
-- `docs/release_distribution_plan.md`
-- `platform/ios_keyboard/AppStoreMetadata/README.md`
-- `platform/ios_keyboard/AppStoreMetadata/Signing.env.example`
-- `platform/ios_keyboard/ContainerApp/Info.plist`
-- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
-- `platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements`
-- `platform/ios_keyboard/KeyboardExtension/Info.plist`
-- `platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements`
-- `platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj`
 - `platform/ios_keyboard/README.md`
 - `scripts/README.md`
-- `scripts/build_ios_keyboard.sh`
-- `scripts/check_ios_keyboard_sources.sh`
-- `scripts/check_stage11_settings_privacy_sources.sh`
-- `scripts/check_stage14_ios_signing_sources.sh`
-- `scripts/package_ios_app_store.sh`
+- `scripts/check_stage15_ios_smoke_sources.sh`
+- `scripts/run_ios_smoke_readiness.sh`
 
 ## Next Step
 
-- Owner fills `Signing.env` and `ExportOptions.plist`, enables matching App Group capability on the app and extension identifiers, then runs `scripts/package_ios_app_store.sh` for a signed archive/export attempt.
+- Run the Stage 15 automated readiness script, then complete the manual iOS keyboard smoke checklist in Simulator or on a device and update `docs/ios_keyboard_smoke_record.md` with evidence.
