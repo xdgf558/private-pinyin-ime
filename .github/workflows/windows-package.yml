@@ -1,0 +1,57 @@
+name: Windows Unsigned Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Windows package version to build
+        required: true
+        default: "0.1.10"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          choco install wixtoolset -y --no-progress
+          $wixBin = Get-ChildItem "${env:ProgramFiles(x86)}" -Directory -Filter "WiX Toolset*" |
+            Sort-Object Name -Descending |
+            Select-Object -First 1 |
+            ForEach-Object { Join-Path $_.FullName "bin" }
+          if (-not $wixBin -or -not (Test-Path (Join-Path $wixBin "candle.exe"))) {
+            throw "WiX Toolset v3 was installed, but candle.exe was not found."
+          }
+          Add-Content $env:GITHUB_PATH $wixBin
+
+      - name: Build unsigned Windows package
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: .\scripts\package_windows_tsf.ps1 -Version "$env:PACKAGE_VERSION"
+
+      - name: Upload unsigned package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrivatePinyin-Windows-${{ inputs.version }}-unsigned
+          path: |
+            dist/windows_tsf/PrivatePinyin-${{ inputs.version }}.zip
+            dist/windows_tsf/PrivatePinyin-${{ inputs.version }}.msi
+          if-no-files-found: error
+          retention-days: 14

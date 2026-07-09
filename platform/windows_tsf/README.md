@@ -48,7 +48,15 @@ dist\windows_tsf\PrivatePinyin-0.1.10.zip
 dist\windows_tsf\PrivatePinyin-0.1.10.msi
 ```
 
-The `.msi` is generated only when `wix` is available. The installer is per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
+The `.msi` is generated only when WiX is available. The packaging script supports both WiX v4+ `wix build` and WiX v3 `candle.exe`/`light.exe`. The installer is per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
+
+Unsigned internal-test packages can also be built from GitHub Actions:
+
+1. Open the `Windows Unsigned Package` workflow.
+2. Run it manually with the desired version, such as `0.1.10`.
+3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle and `.msi`.
+
+These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
 
 Release-candidate packaging must sign staged binaries and the MSI:
 

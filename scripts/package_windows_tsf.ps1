@@ -108,6 +108,110 @@ function Sign-PowerShellScript {
     }
 }
 
+function Resolve-Wix3Command {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [string[]]$FallbackBins = @()
+    )
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($bin in $FallbackBins) {
+        if (-not $bin) {
+            continue
+        }
+        $candidate = Join-Path $bin $Name
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Resolve-WixToolchain {
+    $wix = Get-Command wix -ErrorAction SilentlyContinue
+    if ($wix) {
+        return [pscustomobject]@{
+            Kind = "WixCli"
+            Wix = $wix.Source
+            Candle = $null
+            Light = $null
+        }
+    }
+
+    $fallbackBins = @()
+    if (${env:ProgramFiles(x86)}) {
+        $fallbackBins += (Join-Path ${env:ProgramFiles(x86)} "WiX Toolset v3.14\bin")
+        $fallbackBins += (Join-Path ${env:ProgramFiles(x86)} "WiX Toolset v3.11\bin")
+
+        Get-ChildItem -Path ${env:ProgramFiles(x86)} -Directory -Filter "WiX Toolset*" -ErrorAction SilentlyContinue |
+            ForEach-Object { $fallbackBins += (Join-Path $_.FullName "bin") }
+    }
+    if ($env:WIX) {
+        $fallbackBins += $env:WIX
+    }
+    if ($env:ChocolateyInstall) {
+        $fallbackBins += (Join-Path $env:ChocolateyInstall "bin")
+    }
+
+    $candle = Resolve-Wix3Command -Name "candle.exe" -FallbackBins $fallbackBins
+    $light = Resolve-Wix3Command -Name "light.exe" -FallbackBins $fallbackBins
+    if ($candle -and $light) {
+        return [pscustomobject]@{
+            Kind = "Wix3"
+            Wix = $null
+            Candle = $candle
+            Light = $light
+        }
+    }
+
+    return $null
+}
+
+function Build-Msi {
+    param(
+        [Parameter(Mandatory = $true)][pscustomobject]$WixToolchain,
+        [Parameter(Mandatory = $true)][string]$PackageSource,
+        [Parameter(Mandatory = $true)][string]$ProductVersion,
+        [Parameter(Mandatory = $true)][string]$OutputPath
+    )
+
+    if ($WixToolchain.Kind -eq "WixCli") {
+        & $WixToolchain.Wix build `
+            "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
+            "-dPackageSource=$PackageSource" `
+            "-dProductVersion=$ProductVersion" `
+            -out $OutputPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "WiX build failed."
+        }
+        return
+    }
+
+    $wixObjDir = Join-Path $repoRoot "build\windows_tsf\wix"
+    New-Item -ItemType Directory -Force -Path $wixObjDir | Out-Null
+    $wixObj = Join-Path $wixObjDir "PrivatePinyinTsf.wixobj"
+    Remove-Item -Force $wixObj -ErrorAction SilentlyContinue
+
+    & $WixToolchain.Candle `
+        "-dPackageSource=$PackageSource" `
+        "-dProductVersion=$ProductVersion" `
+        "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
+        -out $wixObj
+    if ($LASTEXITCODE -ne 0) {
+        throw "WiX candle.exe failed."
+    }
+
+    & $WixToolchain.Light $wixObj -out $OutputPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "WiX light.exe failed."
+    }
+}
+
 $resolvedSignTool = Resolve-SignTool
 $resolvedSigningCertificate = Resolve-SigningCertificate
 
@@ -162,14 +266,14 @@ Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $stageDir "*") -DestinationPath $zipPath
 Write-Host "Built Windows installer bundle: $zipPath"
 
-$wix = Get-Command wix -ErrorAction SilentlyContinue
-if ($wix) {
+$wixToolchain = Resolve-WixToolchain
+if ($wixToolchain) {
     Remove-Item -Force $msiPath -ErrorAction SilentlyContinue
-    & $wix.Source build `
-        "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
-        "-dPackageSource=$stageDir" `
-        "-dProductVersion=$Version" `
-        -out $msiPath
+    Build-Msi `
+        -WixToolchain $wixToolchain `
+        -PackageSource $stageDir `
+        -ProductVersion $Version `
+        -OutputPath $msiPath
     Sign-Artifact -Path $msiPath -ResolvedSignTool $resolvedSignTool
     Write-Host "Built Windows MSI: $msiPath"
 } else {

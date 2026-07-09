@@ -45,6 +45,14 @@ signs the MSI after WiX builds it. `-RequireSigning` must be used for release
 candidates. Without it, unsigned prototype artifacts are allowed for local
 testing only.
 
+Unsigned internal-test packages can be generated without a signing certificate
+through the manual `Windows Unsigned Package` GitHub Actions workflow. The
+workflow runs on `windows-2022`, installs WiX, calls
+`scripts/package_windows_tsf.ps1`, and uploads a
+`PrivatePinyin-Windows-<version>-unsigned` artifact containing the `.zip` bundle
+and `.msi`. These artifacts are not release candidates and may trigger Windows
+trust warnings.
+
 Manual gates:
 
 - Install MSI as a normal user on Windows 11.

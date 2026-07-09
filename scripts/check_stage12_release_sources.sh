@@ -9,6 +9,7 @@ required_files=(
   "docs/macos_public_release_checklist.md"
   "platform/ios_keyboard/AppStoreMetadata/README.md"
   "platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template"
+  ".github/workflows/windows-package.yml"
   "scripts/check_macos_public_release.sh"
   "scripts/package_ios_app_store.sh"
 )
@@ -44,6 +45,10 @@ grep -q "Set-AuthenticodeSignature" scripts/package_windows_tsf.ps1
 grep -q '".ps1"' scripts/package_windows_tsf.ps1
 grep -q "RequireSigning" scripts/package_windows_tsf.ps1
 grep -q "TimestampUrl" scripts/package_windows_tsf.ps1
+grep -q "Resolve-WixToolchain" scripts/package_windows_tsf.ps1
+grep -q "candle.exe" scripts/package_windows_tsf.ps1
+grep -q "Windows Unsigned Package" .github/workflows/windows-package.yml
+grep -q "actions/upload-artifact" .github/workflows/windows-package.yml
 
 grep -q "PRIVATE_PINYIN_IOS_TEAM_ID" scripts/package_ios_app_store.sh
 grep -q -- "-exportArchive" scripts/package_ios_app_store.sh
