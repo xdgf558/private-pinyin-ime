@@ -53,9 +53,11 @@ else
   fi
 fi
 
-grep -q "group.com.privatepinyin.ios" platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements
-grep -q "group.com.privatepinyin.ios" platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID" platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID" platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "appGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "fallbackAppGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "settings\\[\"enable_user_learning\"\\] = false" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "Learn selected candidates" platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q "RequestsOpenAccess" platform/ios_keyboard/KeyboardExtension/Info.plist

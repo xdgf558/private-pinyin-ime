@@ -26,21 +26,28 @@ bash scripts/build_ios_keyboard.sh
 ```
 
 The script builds `private_pinyin_ime_ffi` as a static library and then runs `xcodebuild` for the `PrivatePinyin` scheme. It defaults to `IOS_DEPLOYMENT_TARGET=18.0`.
+For local signing/App Group experiments, the simulator build also accepts
+`PRIVATE_PINYIN_IOS_APP_BUNDLE_ID`,
+`PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`, and
+`PRIVATE_PINYIN_IOS_APP_GROUP_ID`, defaulting to the checked-in scaffold values.
 
 ## App Store Archive
 
-Stage 12 adds a release archive/export entry point. Copy
-`AppStoreMetadata/ExportOptions.plist.template` to an ignored or owner-managed
-plist, fill in the Apple team ID and provisioning profile names, then run:
+Stage 14 makes signing identifiers explicit. Copy
+`AppStoreMetadata/Signing.env.example` to the ignored `Signing.env`, copy
+`AppStoreMetadata/ExportOptions.plist.template` to the ignored
+`ExportOptions.plist`, fill in the Apple team ID, bundle IDs, App Group ID, and
+provisioning profile names, then run:
 
 ```bash
-PRIVATE_PINYIN_IOS_TEAM_ID="TEAMID1234" \
-PRIVATE_PINYIN_IOS_EXPORT_OPTIONS="platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist" \
+. platform/ios_keyboard/AppStoreMetadata/Signing.env
 bash scripts/package_ios_app_store.sh
 ```
 
 The script requires device signing/provisioning and writes the archive under
-`dist/ios/PrivatePinyin.xcarchive`.
+`dist/ios/PrivatePinyin.xcarchive`. It fails before archiving unless the export
+options plist contains provisioning profile entries for both the container app
+bundle ID and keyboard extension bundle ID.
 
 ## Local Smoke Test
 
@@ -61,14 +68,14 @@ Password and phone-number fields are expected to fall back to the system keyboar
 - The keyboard extension does not request Full Access.
 - iOS sources do not use network APIs.
 - User learning is disabled by default on iOS and must be enabled in the container app.
-- When App Group entitlements are active, settings and learned lexicon files live under `group.com.privatepinyin.ios`.
+- When App Group entitlements are active, settings and learned lexicon files live under the configured `PRIVATE_PINYIN_IOS_APP_GROUP_ID` value, defaulting to `group.com.privatepinyin.ios` for local scaffolding.
 - If App Group storage is unavailable, the learning toggle stays disabled rather than writing learned data into a private, extension-only sandbox.
 - If the keyboard extension cannot open shared settings while Full Access is off, it falls back to built-in defaults so typing still works without learning.
 - The container app can clear local lexicon artifacts, including SQLite WAL/SHM sidecar files.
 
 ## Known Gaps
 
-- App Store archive/export hooks and metadata templates are present, but owner signing and provisioning values are not configured.
-- App Group identifiers are present in source entitlements, but production signing/provisioning must enable the same group before release.
+- App Store archive/export hooks, signing env templates, and App Group build-setting wiring are present, but owner signing/provisioning values are not committed.
+- Production signing/provisioning must enable the same App Group configured through `PRIVATE_PINYIN_IOS_APP_GROUP_ID` before release.
 - The simulator build requires the Rust iOS target to be installed locally.
 - Real Notes/Safari/password-field smoke testing still needs an iOS simulator or device pass.

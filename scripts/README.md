@@ -23,6 +23,7 @@ Current scripts:
 - `check_stage11_settings_privacy_sources.sh`: verifies Stage 11 default-template, privacy, iOS App Group, mode-state, and Globe-key wiring.
 - `check_stage12_release_sources.sh`: verifies Stage 12 release packaging, signing hooks, macOS public-release preflight, App Store metadata templates, and update-strategy documentation.
 - `check_stage13_lexicon_sources.sh`: verifies Stage 13 production lexicon assets, AOSP/pinyin-data import tooling, third-party notices, and manifest release approval.
+- `check_stage14_ios_signing_sources.sh`: verifies Stage 14 iOS signing, bundle ID, export-options, and App Group build-setting wiring.
 
 Planned scripts:
 

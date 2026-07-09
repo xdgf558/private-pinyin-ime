@@ -1396,6 +1396,38 @@ cargo test --workspace 通过
 4. 在 `docs/OPEN_ITEMS.md` 更新生产词库 open item。
 5. 如果是 Git 仓库，提交 `stage-13: add lexicon import pipeline and production dictionary`。
 
+### 阶段 14：iOS 签名与 App Group 配置
+
+任务：
+
+1. 将 iOS App Store 打包脚本改为显式要求 Apple Team ID、容器 App bundle ID、Keyboard Extension bundle ID、App Group ID 和 ExportOptions plist。
+2. Xcode 工程中的 `PRODUCT_BUNDLE_IDENTIFIER` 和 App Group entitlement 必须通过 build setting 注入，保留本地开发默认值，但发布时可由环境变量覆盖。
+3. iOS 运行时读取 App Group ID 时应从 Info.plist/build setting 获取，并保留本地默认兜底；不得只依赖源码硬编码。
+4. 提供 owner 本地复制使用的 signing env 示例文件，并忽略真实 `Signing.env` 和 `ExportOptions.plist`。
+5. 打包脚本必须在 archive 前校验 ExportOptions plist 是否包含与当前 bundle ID 一致的 provisioning profile 映射。
+6. 增加 Stage 14 source scaffold 检查并纳入 CI。
+
+验收：
+
+```text
+scripts/package_ios_app_store.sh requires PRIVATE_PINYIN_IOS_TEAM_ID
+scripts/package_ios_app_store.sh requires app bundle, keyboard bundle, and App Group inputs
+Xcode project PRODUCT_BUNDLE_IDENTIFIER uses PRIVATE_PINYIN_IOS_* build settings
+iOS App Group entitlements use PRIVATE_PINYIN_IOS_APP_GROUP_ID build setting
+IosSettingsStore reads PrivatePinyinAppGroupIdentifier from Info.plist with a default fallback
+Signing.env.example exists and local Signing.env/ExportOptions.plist are ignored
+bash scripts/check_stage14_ios_signing_sources.sh 通过
+bash scripts/check_ios_keyboard_sources.sh 通过
+```
+
+阶段完成后必须保存：
+
+1. 更新 `docs/DEVELOPMENT_PROGRESS.md`，把 stage-14 标记为 local review 或 completed。
+2. 在 `CHANGELOG.md` 写入 iOS 签名与 App Group 配置变更。
+3. 在 `docs/DECISIONS.md` 记录 iOS signing 配置边界。
+4. 在 `docs/OPEN_ITEMS.md` 更新 iOS provisioning/TestFlight open item。
+5. 如果是 Git 仓库，提交 `stage-14: configure ios signing and app group inputs`。
+
 ---
 
 ## 11. Codex 首次开发提示词

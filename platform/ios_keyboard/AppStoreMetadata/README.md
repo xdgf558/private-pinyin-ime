@@ -3,10 +3,10 @@
 This directory records owner-provided App Store Connect metadata for the iOS
 container app and keyboard extension.
 
-Stage 12 includes templates and release gates only. Do not treat these files as
-final marketing copy or privacy declarations until the owner confirms product
-name, license, screenshots, support URL, privacy nutrition labels, and
-provisioning setup.
+Stage 14 includes signing configuration templates and release gates. Do not
+treat these files as final marketing copy or privacy declarations until the
+owner confirms product name, license, screenshots, support URL, privacy
+nutrition labels, and provisioning setup.
 
 ## Required Owner Inputs
 
@@ -19,6 +19,20 @@ provisioning setup.
 - App Store category, age rating, screenshots, subtitle, description, keywords,
   and review notes.
 - Product decision for whether iOS learning may require Full Access.
+
+## Local Signing Files
+
+Copy `Signing.env.example` to ignored `Signing.env` and update the values for
+the Apple Developer account. Copy `ExportOptions.plist.template` to ignored
+`ExportOptions.plist` and make sure the `teamID` and `provisioningProfiles`
+keys match the same bundle IDs used in `Signing.env`.
+
+The release script refuses to archive unless all four identifiers are supplied:
+
+- `PRIVATE_PINYIN_IOS_TEAM_ID`
+- `PRIVATE_PINYIN_IOS_APP_BUNDLE_ID`
+- `PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`
+- `PRIVATE_PINYIN_IOS_APP_GROUP_ID`
 
 ## Privacy Notes
 

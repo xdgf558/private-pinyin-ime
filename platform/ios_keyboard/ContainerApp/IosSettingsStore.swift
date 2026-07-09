@@ -1,7 +1,19 @@
 import Foundation
 
 enum IosSettingsStore {
-    static let appGroupIdentifier = "group.com.privatepinyin.ios"
+    private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
+
+    static var appGroupIdentifier: String {
+        guard
+            let configured = Bundle.main.object(
+                forInfoDictionaryKey: "PrivatePinyinAppGroupIdentifier"
+            ) as? String,
+            configured.hasPrefix("group.")
+        else {
+            return fallbackAppGroupIdentifier
+        }
+        return configured
+    }
 
     static var usesAppGroupStorage: Bool {
         appGroupContainerURL != nil

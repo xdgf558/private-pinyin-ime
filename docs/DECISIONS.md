@@ -151,3 +151,11 @@ Status: accepted
 Decision: Use Android Open Source Project PinyinIME `rawdict_utf16_65105_freq.txt` as the production phrase lexicon source and supplement it with mozillazg pinyin-data single-character readings.
 Reason: AOSP PinyinIME provides a broad phrase dictionary with frequencies under Apache-2.0, and pinyin-data provides broad single-character reading coverage under MIT. Together they solve the immediate usability gap where common phrases such as `ganma -> 干嘛` were missing while keeping licensing compatible with the repository's all-rights-reserved application code.
 Consequences: `tools/lexicon_builder` now supports `aosp-rawdict` and `pinyin-data` imports, the active base lexicon has 100,657 entries, `THIRD_PARTY_NOTICES.md` records upstream notices, and `OI-001` is closed for the current bundled base dictionary. Future third-party bigram or lexicon replacements must still update the manifest and notices before release approval.
+
+## Decision 020: Stage 14 iOS signing configuration boundary
+
+Date: 2026-07-09
+Status: accepted
+Decision: Keep source-tree iOS signing and App Group values configurable through build settings and owner-filled local files instead of committing release credentials, bundle identifiers, or provisioning profile names.
+Reason: iOS release readiness needs Apple Developer team ownership, App Group capabilities, and provisioning profiles, but those values differ by owner account and should not be silently hard-coded into project source. The repo should make the required inputs explicit and fail early when export options do not match the configured app and keyboard bundle IDs.
+Consequences: `scripts/package_ios_app_store.sh` now requires explicit team, app bundle, keyboard bundle, App Group, and export-options inputs. The Xcode project and entitlements use `PRIVATE_PINYIN_IOS_*` build settings with local defaults. `OI-035` remains open until real provisioning profiles, App Store metadata, archive/export evidence, and TestFlight smoke evidence are provided.

@@ -68,6 +68,7 @@
 - Added first-pass local user bigram learning so repeated selected-word sequences can outrank starter prediction data without leaving the local user lexicon.
 - Added second-pass local short phrase completion learning for bounded selected-candidate sequences such as `今天 -> 天气不错`.
 - Added a manual GitHub Actions workflow for unsigned Windows internal-test zip/MSI packaging.
+- Added Stage 14 iOS signing and App Group source gates, plus an owner-filled `Signing.env.example`.
 
 ### Changed
 
@@ -122,6 +123,8 @@
 - Changed Windows packaging to support both WiX v4+ `wix build` and WiX v3 `candle.exe`/`light.exe`.
 - Bumped the app and package version to `0.1.9` for the macOS preferences UI refresh.
 - Bumped the app and package version to `0.1.10` for the user learning and short phrase prediction package refresh.
+- Changed iOS App Store packaging to require explicit app bundle ID, keyboard bundle ID, and App Group ID inputs and to verify matching export-options provisioning profiles.
+- Changed iOS App Group entitlements and runtime lookup to use a build-setting-provided App Group identifier with a local default fallback.
 
 ### Fixed
 
