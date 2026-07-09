@@ -81,6 +81,7 @@ Current status: TestFlight build ready for internal testing
 - Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
 - Added prototype packaging scripts for macOS `.pkg`, Windows installer staging zip, and optional WiX MSI generation.
 - Added a Windows NSIS setup EXE packaging path for internal testing, including 64-bit TSF registration and a post-install setup guide.
+- Fixed the Windows NSIS setup EXE to use the cat-brand installer icon instead of the default NSIS gear icon.
 - Added CI scaffold coverage for installer/settings files.
 - Addressed stage-06 review feedback by changing the WiX MSI template to per-user install and user-context TSF registration.
 - Addressed stage-06 review feedback by enabling SQLite WAL and a busy timeout for multi-process user lexicon writes.

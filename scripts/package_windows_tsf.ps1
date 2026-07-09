@@ -202,6 +202,7 @@ function Build-NsisInstaller {
     param(
         [Parameter(Mandatory = $true)][string]$NsisToolchain,
         [Parameter(Mandatory = $true)][string]$PackageSource,
+        [Parameter(Mandatory = $true)][string]$InstallerIcon,
         [Parameter(Mandatory = $true)][string]$ProductVersion,
         [Parameter(Mandatory = $true)][string]$OutputPath
     )
@@ -209,6 +210,7 @@ function Build-NsisInstaller {
     & $NsisToolchain `
         "/DPRODUCT_VERSION=$ProductVersion" `
         "/DPACKAGE_SOURCE=$PackageSource" `
+        "/DICON_PATH=$InstallerIcon" `
         "/DOUTPUT_PATH=$OutputPath" `
         "platform\windows_tsf\installer\PrivatePinyinTsf.nsi"
     if ($LASTEXITCODE -ne 0) {
@@ -271,6 +273,7 @@ $stageDir = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version"
 $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
 $msiPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.msi"
 $exePath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version-setup.exe"
+$installerIcon = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinInstaller.ico"
 
 Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -291,6 +294,9 @@ $settingsTool = Join-Path $repoRoot "target\release\private-pinyin-settings.exe"
 if (-not (Test-Path $settingsTool)) {
     throw "Could not find settings tool at $settingsTool."
 }
+if (-not (Test-Path $installerIcon)) {
+    throw "Could not find Windows installer icon at $installerIcon."
+}
 
 Copy-Item $tsfDll.FullName -Destination $stageDir
 Copy-Item $ffiDll -Destination $stageDir
@@ -299,6 +305,7 @@ Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageD
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
+Copy-Item $installerIcon -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
 
 Get-ChildItem -Path $stageDir -File |
@@ -318,6 +325,7 @@ if ($nsisToolchain) {
     Build-NsisInstaller `
         -NsisToolchain $nsisToolchain `
         -PackageSource $stageDir `
+        -InstallerIcon $installerIcon `
         -ProductVersion $Version `
         -OutputPath $exePath
     Sign-Artifact -Path $exePath -ResolvedSignTool $resolvedSignTool

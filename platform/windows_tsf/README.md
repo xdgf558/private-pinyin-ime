@@ -20,6 +20,7 @@ The Windows host remains thin:
 - `installer/open-onboarding.ps1`: opens the post-install setup guide with language-settings and preferences shortcuts.
 - `installer/PrivatePinyinTsf.wxs`: WiX source for the per-user MSI package.
 - `installer/PrivatePinyinTsf.nsi`: NSIS source for the per-user EXE installer.
+- `installer/PrivatePinyinInstaller.ico`: cat-brand installer icon used by the EXE, uninstaller, and Start Menu shortcuts.
 - `../../scripts/build_windows_tsf.ps1`: builds the Rust FFI library and the TSF DLL on Windows.
 - `../../scripts/package_windows_tsf.ps1`: stages installer files and builds a zip bundle; builds an MSI when WiX is installed.
 

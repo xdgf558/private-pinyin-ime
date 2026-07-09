@@ -155,6 +155,7 @@
 - Fixed iOS keyboard startup so shared-settings or App Group storage failures fall back to the built-in engine instead of leaving the keyboard unable to type.
 - Fixed missing common phrase coverage such as `ganma -> 干嘛` by replacing the starter base lexicon with the approved production import.
 - Fixed iOS TestFlight upload validation failures for missing app icons, missing `CFBundleIconName`, and incomplete iPad orientation support.
+- Fixed the unsigned Windows NSIS setup icon so it uses the cat-brand icon instead of the default NSIS gear.
 
 ### Security and Privacy
 

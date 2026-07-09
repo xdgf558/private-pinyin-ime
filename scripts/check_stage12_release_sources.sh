@@ -13,6 +13,7 @@ required_files=(
   "scripts/check_macos_public_release.sh"
   "scripts/package_ios_app_store.sh"
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
+  "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
 )
 
 for file in "${required_files[@]}"; do
@@ -50,6 +51,8 @@ grep -q "Resolve-WixToolchain" scripts/package_windows_tsf.ps1
 grep -q "candle.exe" scripts/package_windows_tsf.ps1
 grep -q "Resolve-NsisToolchain" scripts/package_windows_tsf.ps1
 grep -q "makensis.exe" scripts/package_windows_tsf.ps1
+grep -q "PrivatePinyinInstaller.ico" scripts/package_windows_tsf.ps1
+grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "Windows Unsigned Package" .github/workflows/windows-package.yml
 grep -q "PrivatePinyin-\${{ inputs.version }}-setup.exe" .github/workflows/windows-package.yml
