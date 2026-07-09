@@ -27,6 +27,7 @@ Every public release candidate must have:
 Artifacts:
 
 - `dist/windows_tsf/PrivatePinyin-<version>.zip`
+- `dist/windows_tsf/PrivatePinyin-<version>-setup.exe` when NSIS is installed
 - `dist/windows_tsf/PrivatePinyin-<version>.msi` when WiX is installed
 
 Signing:
@@ -41,21 +42,23 @@ Signing:
 
 The package script signs staged `.dll` and `.exe` files with SignTool, signs
 staged `.ps1` installer/settings scripts with `Set-AuthenticodeSignature`, and
-signs the MSI after WiX builds it. `-RequireSigning` must be used for release
-candidates. Without it, unsigned prototype artifacts are allowed for local
-testing only.
+signs the NSIS setup EXE and MSI after the installer toolchains build them.
+`-RequireSigning` must be used for release candidates. Without it, unsigned
+prototype artifacts are allowed for local testing only.
 
 Unsigned internal-test packages can be generated without a signing certificate
 through the manual `Windows Unsigned Package` GitHub Actions workflow. The
-workflow runs on `windows-2022`, installs WiX, calls
+workflow runs on `windows-2022`, installs NSIS and WiX, calls
 `scripts/package_windows_tsf.ps1`, and uploads a
-`PrivatePinyin-Windows-<version>-unsigned` artifact containing the `.zip` bundle
-and `.msi`. These artifacts are not release candidates and may trigger Windows
-trust warnings.
+`PrivatePinyin-Windows-<version>-unsigned` artifact containing the `.zip` bundle,
+preferred `.exe` setup installer, and `.msi`. These artifacts are not release
+candidates and may trigger Windows trust warnings.
 
 Manual gates:
 
-- Install MSI as a normal user on Windows 11.
+- Install the EXE setup as a normal user on Windows 11.
+- Confirm the finish-page setup guide opens and can launch Windows language
+  settings.
 - Confirm PrivatePinyin appears in language/input settings.
 - Smoke-test Notepad and at least one browser/editor.
 - Uninstall and confirm the TSF profile is removed.

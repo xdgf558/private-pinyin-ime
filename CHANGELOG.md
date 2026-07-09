@@ -72,6 +72,7 @@
 - Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
 - Added Stage 16 TestFlight upload scaffolding, including upload ExportOptions, App Store Connect API key gating, package summaries, and an iOS TestFlight upload record.
 - Added iOS AppIcon asset catalog resources required for App Store Connect/TestFlight validation.
+- Added a Windows NSIS setup EXE path for internal testing, including 64-bit TSF registration and a post-install setup guide.
 
 ### Changed
 

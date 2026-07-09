@@ -16,7 +16,9 @@ required_files=(
   "platform/windows_tsf/installer/register-ime.ps1"
   "platform/windows_tsf/installer/unregister-ime.ps1"
   "platform/windows_tsf/installer/open-settings.ps1"
+  "platform/windows_tsf/installer/open-onboarding.ps1"
   "platform/windows_tsf/installer/PrivatePinyinTsf.wxs"
+  "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "scripts/build_windows_tsf.ps1"
   "scripts/package_windows_tsf.ps1"
 )
@@ -46,3 +48,7 @@ grep -q "AppsUseLightTheme" platform/windows_tsf/src/candidate_window.cpp
 grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RequestExecutionLevel user" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1

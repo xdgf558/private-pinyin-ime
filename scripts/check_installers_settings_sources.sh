@@ -10,7 +10,9 @@ required_files=(
   "scripts/package_macos_pkg.sh"
   "scripts/package_windows_tsf.ps1"
   "platform/windows_tsf/installer/PrivatePinyinTsf.wxs"
+  "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "platform/windows_tsf/installer/open-settings.ps1"
+  "platform/windows_tsf/installer/open-onboarding.ps1"
   "platform/macos_imk/Sources/SettingsStore.swift"
 )
 
@@ -35,7 +37,10 @@ grep -q "default_settings.json" platform/windows_tsf/installer/open-settings.ps1
 grep -q "default_settings.json" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "default_settings.json" scripts/build_macos_imk.sh
 grep -q "PrivatePinyinTsf.wxs" scripts/package_windows_tsf.ps1
+grep -q "PrivatePinyinTsf.nsi" scripts/package_windows_tsf.ps1
+grep -q "open-onboarding.ps1" scripts/package_windows_tsf.ps1
 grep -q "Copy-Item \"config\\\\default_settings.json\"" scripts/package_windows_tsf.ps1
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "Open language settings" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "pkgbuild" scripts/package_macos_pkg.sh

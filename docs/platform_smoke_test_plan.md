@@ -30,8 +30,9 @@ Checklist:
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
 | Build | `scripts/build_windows_tsf.ps1` produces `PrivatePinyinTsf.dll` | | |
-| Package | `scripts/package_windows_tsf.ps1` produces zip; MSI if WiX is installed | | |
-| Install | Per-user install/register succeeds without admin-only HKCU mismatch | | |
+| Package | `scripts/package_windows_tsf.ps1` produces zip, EXE setup when NSIS is installed, and MSI when WiX is installed | | |
+| Install | EXE per-user install/register succeeds without admin-only HKCU mismatch or 32-bit regsvr32 redirection | | |
+| Post-install guide | EXE finish page can open the setup guide, and the guide opens Windows language settings and preferences | | |
 | Enable IME | PrivatePinyin appears in Windows language/input settings | | |
 | Notepad composition | Typing `nihao` shows composition and candidate `你好` | | |
 | Commit | `Space` commits `你好` | | |
