@@ -52,16 +52,21 @@
   <Fragment>
     <ComponentGroup Id="PrivatePinyinComponents" Directory="INSTALLFOLDER">
       <Component Id="PrivatePinyinTsfDllComponent" Guid="D09204C6-B49B-4ACD-9C85-A3250408D944">
-        <File Id="PrivatePinyinTsfDll" Source="$(var.PackageSource)\PrivatePinyinTsf.dll" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDll" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <File Id="PrivatePinyinTsfDll" Source="$(var.PackageSource)\PrivatePinyinTsf.dll" />
       </Component>
       <Component Id="PrivatePinyinFfiDllComponent" Guid="25D234A5-7805-4651-B804-D2F652753E43">
-        <File Id="PrivatePinyinFfiDll" Source="$(var.PackageSource)\private_pinyin_ime.dll" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="FfiDll" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinFfiDll" Source="$(var.PackageSource)\private_pinyin_ime.dll" />
       </Component>
       <Component Id="PrivatePinyinSettingsToolComponent" Guid="050BB8F6-A41F-44D7-BA89-497D94425CCE">
-        <File Id="PrivatePinyinSettingsTool" Source="$(var.PackageSource)\private-pinyin-settings.exe" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="SettingsTool" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinSettingsTool" Source="$(var.PackageSource)\private-pinyin-settings.exe" />
       </Component>
       <Component Id="PrivatePinyinInstallerScriptsComponent" Guid="F6453682-606E-4937-88FF-B006577798FB">
-        <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="InstallerScripts" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" />
         <File Id="UnregisterImeScript" Source="$(var.PackageSource)\unregister-ime.ps1" />
         <File Id="OpenSettingsScript" Source="$(var.PackageSource)\open-settings.ps1" />
         <File Id="DefaultSettingsJson" Source="$(var.PackageSource)\default_settings.json" />
