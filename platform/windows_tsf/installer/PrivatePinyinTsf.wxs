@@ -4,6 +4,7 @@
     Id="*"
     Name="猫栈拼音"
     Language="1033"
+    Codepage="65001"
     Version="$(var.ProductVersion)"
     Manufacturer="猫栈"
     UpgradeCode="2B3455F6-25ED-4BCB-8871-BE5B63C3875F">
@@ -11,6 +12,7 @@
       InstallerVersion="500"
       Compressed="yes"
       InstallScope="perUser"
+      SummaryCodepage="65001"
       Description="猫栈拼音 Windows TSF 输入法" />
 
     <MajorUpgrade DowngradeErrorMessage="已经安装了更新版本的猫栈拼音。" />
