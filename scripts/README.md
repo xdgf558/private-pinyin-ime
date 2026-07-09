@@ -7,8 +7,8 @@ Current scripts:
 - `run_c_demo.sh`: builds the FFI library, checks C ABI layout, and runs the C demo.
 - `check_windows_tsf_sources.sh`: verifies the Windows TSF source scaffold on non-Windows CI.
 - `build_windows_tsf.ps1`: builds the Rust FFI library and Windows TSF DLL on Windows.
-- `package_windows_tsf.ps1`: stages Windows installer files, optionally signs DLL/EXE/MSI artifacts, and builds a zip bundle plus an MSI when WiX is installed.
-- `.github/workflows/windows-package.yml`: manually builds unsigned Windows internal-test zip/MSI artifacts on a Windows runner.
+- `package_windows_tsf.ps1`: stages Windows installer files, optionally signs DLL/EXE/MSI artifacts, and builds a zip bundle, an EXE setup installer when NSIS is installed, and an MSI when WiX is installed.
+- `.github/workflows/windows-package.yml`: manually builds unsigned Windows internal-test zip/EXE/MSI artifacts on a Windows runner.
 - `check_macos_imk_sources.sh`: verifies the macOS InputMethodKit source scaffold and bundle plist.
 - `build_macos_imk.sh`: builds the Rust FFI library and local macOS InputMethodKit app bundle.
 - `package_macos_pkg.sh`: builds a macOS `.pkg` installer with a post-install onboarding window, and optionally signs/notarizes it when Developer ID and notarytool settings are provided.

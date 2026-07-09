@@ -71,6 +71,10 @@
 - Added Stage 14 iOS signing and App Group source gates, plus an owner-filled `Signing.env.example`.
 - Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
 - Added Stage 16 TestFlight upload scaffolding, including upload ExportOptions, App Store Connect API key gating, package summaries, and an iOS TestFlight upload record.
+- Added iOS AppIcon asset catalog resources required for App Store Connect/TestFlight validation.
+- Added a Windows NSIS setup EXE path for internal testing, including 64-bit TSF registration and a post-install setup guide.
+- Added first-pass continuous-pinyin segmentation and shorthand-initial candidate lookup, so longer inputs such as `wojintianxiangquchifan` and initials such as `nh` can produce phrase candidates.
+- Added first-party common `lü` lexicon supplements such as `gailv -> 概率`, `xiaolv -> 效率`, and a higher-ranked `lv -> 率` fallback.
 
 ### Changed
 
@@ -127,6 +131,12 @@
 - Bumped the app and package version to `0.1.10` for the user learning and short phrase prediction package refresh.
 - Changed iOS App Store packaging to require explicit app bundle ID, keyboard bundle ID, and App Group ID inputs and to verify matching export-options provisioning profiles.
 - Changed iOS App Group entitlements and runtime lookup to use a build-setting-provided App Group identifier with a local default fallback.
+- Changed the iOS app archive metadata to declare App Group capability, complete iPad interface orientations, and non-exempt encryption absence for TestFlight uploads.
+- Changed the Windows NSIS setup EXE to request administrator rights for TSF profile registration and pre-unregister stale DLL registrations before registering.
+- Bumped the Windows package version to `0.1.11` for the TSF registration hardening build.
+- Changed the Windows TSF display name, installer UI, onboarding, settings window, Start Menu shortcuts, and uninstall metadata to use the Chinese product name `猫栈拼音`.
+- Changed Chinese-mode punctuation commits to full-width punctuation for comma, period, minus, equal, and semicolon.
+- Bumped the Windows/core package version to `0.1.12` for the display-name and input-behavior build.
 
 ### Fixed
 
@@ -151,6 +161,9 @@
 - Fixed settings and user lexicon export writes so they no longer remove the target file before replacement.
 - Fixed iOS keyboard startup so shared-settings or App Group storage failures fall back to the built-in engine instead of leaving the keyboard unable to type.
 - Fixed missing common phrase coverage such as `ganma -> 干嘛` by replacing the starter base lexicon with the approved production import.
+- Fixed iOS TestFlight upload validation failures for missing app icons, missing `CFBundleIconName`, and incomplete iPad orientation support.
+- Fixed the unsigned Windows NSIS setup icon so it uses the cat-brand icon instead of the default NSIS gear.
+- Fixed Windows TSF registration so reinstalling over older builds removes stale language profile and category records before adding the profile again.
 
 ### Security and Privacy
 

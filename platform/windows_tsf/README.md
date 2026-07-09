@@ -17,7 +17,10 @@ The Windows host remains thin:
 - `installer/register-ime.ps1`: calls `regsvr32` for local registration.
 - `installer/unregister-ime.ps1`: unregisters the DLL.
 - `installer/open-settings.ps1`: opens a local settings window for privacy mode, user learning, prediction, lexicon clear, and lexicon export.
+- `installer/open-onboarding.ps1`: opens the post-install setup guide with language-settings and preferences shortcuts.
 - `installer/PrivatePinyinTsf.wxs`: WiX source for the per-user MSI package.
+- `installer/PrivatePinyinTsf.nsi`: NSIS source for the per-user EXE installer.
+- `installer/PrivatePinyinInstaller.ico`: cat-brand installer icon used by the EXE, uninstaller, and Start Menu shortcuts.
 - `../../scripts/build_windows_tsf.ps1`: builds the Rust FFI library and the TSF DLL on Windows.
 - `../../scripts/package_windows_tsf.ps1`: stages installer files and builds a zip bundle; builds an MSI when WiX is installed.
 
@@ -35,7 +38,7 @@ next to `PrivatePinyinTsf.dll` before registration.
 
 ## Package
 
-Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, and optional WiX installed:
+Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, and optional NSIS/WiX installed:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1
@@ -44,17 +47,26 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.10.zip
-dist\windows_tsf\PrivatePinyin-0.1.10.msi
+dist\windows_tsf\PrivatePinyin-0.1.12.zip
+dist\windows_tsf\PrivatePinyin-0.1.12-setup.exe
+dist\windows_tsf\PrivatePinyin-0.1.12.msi
 ```
 
-The `.msi` is generated only when WiX is available. The packaging script supports both WiX v4+ `wix build` and WiX v3 `candle.exe`/`light.exe`. The installer is per-user, installs under `%LOCALAPPDATA%\PrivatePinyin`, and runs TSF registration in the installing user's context so the existing HKCU registration path is visible to that user.
+The `.exe` is generated when NSIS is available. It is the preferred unsigned
+internal-test installer because it does not depend on Windows Installer MSI
+custom actions, requests administrator rights for TSF profile registration,
+calls the 64-bit `regsvr32.exe` explicitly, and opens a setup guide from the
+finish page. The `.msi` is generated only when WiX is available.
+The packaging script supports both WiX v4+ `wix build` and WiX v3
+`candle.exe`/`light.exe`. Both installers are per-user, install under
+`%LOCALAPPDATA%\PrivatePinyin`, and run TSF registration in the installing
+user's context so the existing HKCU registration path is visible to that user.
 
 Unsigned internal-test packages can also be built from GitHub Actions:
 
 1. Open the `Windows Unsigned Package` workflow.
-2. Run it manually with the desired version, such as `0.1.10`.
-3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle and `.msi`.
+2. Run it manually with the desired version, such as `0.1.12`.
+3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle, `.exe` setup installer, and `.msi`.
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
 
@@ -62,7 +74,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.10 `
+  -Version 0.1.12 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning
@@ -92,12 +104,25 @@ Unregister:
 
 The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/export operations call `private-pinyin-settings.exe`, which is included in packaged builds.
 
+## Post-install guide
+
+The NSIS `.exe` installer shows a finish-page checkbox that launches:
+
+```powershell
+.\platform\windows_tsf\installer\open-onboarding.ps1
+```
+
+The guide links to Windows language settings, links to the preferences window,
+and reminds testers to use `Win+Space` and to sign out/in once if the TSF profile
+does not appear immediately. The MSI path does not yet have a custom onboarding
+UI; use the `.exe` installer for internal testing when onboarding matters.
+
 ## Manual Smoke Test
 
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
 
 1. Open Notepad.
-2. Switch to PrivatePinyin IME.
+2. Switch to `猫栈拼音`.
 3. Type `nihao`.
 4. Confirm the composition shows `nihao` and the candidate window shows `你好`.
 5. Press `Space` to commit `你好`.

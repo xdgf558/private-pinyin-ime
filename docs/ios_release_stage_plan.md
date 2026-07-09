@@ -15,4 +15,5 @@
 
 - Stage 15 可以自动化构建和产物检查，但添加键盘、Notes 输入等系统交互仍需要模拟器或真机人工证据，除非后续找到稳定自动化路径。
 - Stage 16 依赖 Owner 提供 Apple Developer team、bundle identifiers、App Group capability、provisioning profiles 和 App Store Connect 权限。
+- Stage 16 上传 App Store Connect 时必须使用 Apple 当前支持的正式版或 RC Xcode；本地可用 beta Xcode 跑 iOS 27 设备调试，但早期 beta SDK 产物会被 TestFlight 上传校验拒绝。
 - Stage 17 必须确认 `RequestsOpenAccess=false` 下 iOS 学习功能是否可用；如果系统沙箱阻止共享存储，需要记录产品决策。

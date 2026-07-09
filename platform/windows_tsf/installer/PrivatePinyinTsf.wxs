@@ -2,21 +2,23 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product
     Id="*"
-    Name="PrivatePinyin IME"
+    Name="猫栈拼音"
     Language="1033"
+    Codepage="936"
     Version="$(var.ProductVersion)"
-    Manufacturer="PrivatePinyin"
+    Manufacturer="猫栈"
     UpgradeCode="2B3455F6-25ED-4BCB-8871-BE5B63C3875F">
     <Package
       InstallerVersion="500"
       Compressed="yes"
       InstallScope="perUser"
-      Description="PrivatePinyin Windows TSF input method" />
+      SummaryCodepage="936"
+      Description="猫栈拼音 Windows TSF 输入法" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of PrivatePinyin IME is already installed." />
+    <MajorUpgrade DowngradeErrorMessage="已经安装了更新版本的猫栈拼音。" />
     <MediaTemplate EmbedCab="yes" />
 
-    <Feature Id="MainFeature" Title="PrivatePinyin IME" Level="1">
+    <Feature Id="MainFeature" Title="猫栈拼音" Level="1">
       <ComponentGroupRef Id="PrivatePinyinComponents" />
     </Feature>
 

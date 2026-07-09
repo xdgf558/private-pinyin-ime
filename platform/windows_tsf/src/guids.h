@@ -25,7 +25,7 @@ inline constexpr GUID kDisplayAttributeGuid = {
 inline constexpr LANGID kTextServiceLangId =
     MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED);
 
-inline constexpr wchar_t kTextServiceDescription[] = L"PrivatePinyin IME";
+inline constexpr wchar_t kTextServiceDescription[] = L"猫栈拼音";
 inline constexpr wchar_t kThreadingModel[] = L"Apartment";
 
 }  // namespace private_pinyin

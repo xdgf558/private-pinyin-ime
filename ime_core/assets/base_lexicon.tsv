@@ -74997,7 +74997,7 @@ phrase	pinyin	frequency
 僂	lü	25
 儢	lü	25
 勴	lü	25
-吕	lü	25
+吕	lü	30000
 呂	lü	25
 哷	lü	25
 垏	lü	25
@@ -75010,13 +75010,13 @@ phrase	pinyin	frequency
 履	lü	25
 嵂	lü	25
 廬	lü	25
-律	lü	25
+律	lü	65000
 慮	lü	25
 慺	lü	25
 挔	lü	25
 捋	lü	25
 捛	lü	25
-旅	lü	25
+旅	lü	60000
 梠	lü	25
 榈	lü	25
 樓	lü	25
@@ -75024,13 +75024,13 @@ phrase	pinyin	frequency
 櫚	lü	25
 櫨	lü	25
 氀	lü	25
-氯	lü	25
-滤	lü	25
+氯	lü	22000
+滤	lü	18000
 漊	lü	25
 濾	lü	25
 焒	lü	25
 爈	lü	25
-率	lü	25
+率	lü	85000
 瘻	lü	25
 盧	lü	25
 瞜	lü	25
@@ -75046,7 +75046,7 @@ phrase	pinyin	frequency
 緑	lü	25
 縷	lü	25
 繂	lü	25
-绿	lü	25
+绿	lü	90000
 缕	lü	25
 膂	lü	25
 膐	lü	25
@@ -75057,7 +75057,7 @@ phrase	pinyin	frequency
 葎	lü	25
 蔞	lü	25
 藘	lü	25
-虑	lü	25
+虑	lü	55000
 褛	lü	25
 褸	lü	25
 謱	lü	25
@@ -75067,7 +75067,7 @@ phrase	pinyin	frequency
 録	lü	25
 鏤	lü	25
 鑢	lü	25
-铝	lü	25
+铝	lü	28000
 閭	lü	25
 闾	lü	25
 馿	lü	25
@@ -100656,3 +100656,15 @@ phrase	pinyin	frequency
 朾	zhen	1
 捙	zhuai	1
 潀	zong	1
+概率	gai lü	120000
+效率	xiao lü	90000
+频率	pin lü	85000
+利率	li lü	80000
+汇率	hui lü	75000
+比率	bi lü	70000
+速率	su lü	65000
+税率	shui lü	60000
+倍率	bei lü	50000
+几率	ji lü	48000
+心率	xin lü	45000
+功率	gong lü	45000

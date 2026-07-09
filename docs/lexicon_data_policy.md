@@ -35,7 +35,7 @@ The tool does not download third-party data. It only converts local files suppli
 
 ## Current Stage 13 Status
 
-The active `base_lexicon.tsv` is generated from owner-approved AOSP PinyinIME rawdict data, supplemented with mozillazg pinyin-data single-character readings. The active base lexicon has 100,657 entries and includes phrase coverage such as `ganma -> 干嘛`.
+The active `base_lexicon.tsv` is generated from owner-approved AOSP PinyinIME rawdict data, supplemented with mozillazg pinyin-data single-character readings and first-party common-word fixes for high-value gaps such as `gailv -> 概率`. The active base lexicon has 100,669 entries and includes phrase coverage such as `ganma -> 干嘛`.
 
 The active `bigram.tsv` remains first-party starter data. If future releases replace or expand bigram data from a third-party source, the same manifest, notice, and owner-approval rules apply.
 

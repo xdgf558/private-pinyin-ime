@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.10",
+    [string]$Version = "0.1.12",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",
@@ -172,6 +172,52 @@ function Resolve-WixToolchain {
     return $null
 }
 
+function Resolve-NsisToolchain {
+    $command = Get-Command makensis.exe -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    $fallbacks = @()
+    if (${env:ProgramFiles(x86)}) {
+        $fallbacks += (Join-Path ${env:ProgramFiles(x86)} "NSIS\makensis.exe")
+    }
+    if ($env:ProgramFiles) {
+        $fallbacks += (Join-Path $env:ProgramFiles "NSIS\makensis.exe")
+    }
+    if ($env:ChocolateyInstall) {
+        $fallbacks += (Join-Path $env:ChocolateyInstall "bin\makensis.exe")
+    }
+
+    foreach ($candidate in $fallbacks) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Build-NsisInstaller {
+    param(
+        [Parameter(Mandatory = $true)][string]$NsisToolchain,
+        [Parameter(Mandatory = $true)][string]$PackageSource,
+        [Parameter(Mandatory = $true)][string]$InstallerIcon,
+        [Parameter(Mandatory = $true)][string]$ProductVersion,
+        [Parameter(Mandatory = $true)][string]$OutputPath
+    )
+
+    & $NsisToolchain `
+        "/DPRODUCT_VERSION=$ProductVersion" `
+        "/DPACKAGE_SOURCE=$PackageSource" `
+        "/DICON_PATH=$InstallerIcon" `
+        "/DOUTPUT_PATH=$OutputPath" `
+        "platform\windows_tsf\installer\PrivatePinyinTsf.nsi"
+    if ($LASTEXITCODE -ne 0) {
+        throw "NSIS makensis.exe failed."
+    }
+}
+
 function Build-Msi {
     param(
         [Parameter(Mandatory = $true)][pscustomobject]$WixToolchain,
@@ -226,6 +272,8 @@ $buildDir = Join-Path $repoRoot "build\windows_tsf"
 $stageDir = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version"
 $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
 $msiPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.msi"
+$exePath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version-setup.exe"
+$installerIcon = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinInstaller.ico"
 
 Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -246,6 +294,9 @@ $settingsTool = Join-Path $repoRoot "target\release\private-pinyin-settings.exe"
 if (-not (Test-Path $settingsTool)) {
     throw "Could not find settings tool at $settingsTool."
 }
+if (-not (Test-Path $installerIcon)) {
+    throw "Could not find Windows installer icon at $installerIcon."
+}
 
 Copy-Item $tsfDll.FullName -Destination $stageDir
 Copy-Item $ffiDll -Destination $stageDir
@@ -253,6 +304,8 @@ Copy-Item $settingsTool -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
+Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
+Copy-Item $installerIcon -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
 
 Get-ChildItem -Path $stageDir -File |
@@ -265,6 +318,24 @@ Get-ChildItem -Path $stageDir -File |
 Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $stageDir "*") -DestinationPath $zipPath
 Write-Host "Built Windows installer bundle: $zipPath"
+
+$nsisToolchain = Resolve-NsisToolchain
+if ($nsisToolchain) {
+    Remove-Item -Force $exePath -ErrorAction SilentlyContinue
+    Build-NsisInstaller `
+        -NsisToolchain $nsisToolchain `
+        -PackageSource $stageDir `
+        -InstallerIcon $installerIcon `
+        -ProductVersion $Version `
+        -OutputPath $exePath
+    Sign-Artifact -Path $exePath -ResolvedSignTool $resolvedSignTool
+    Write-Host "Built Windows EXE installer: $exePath"
+} else {
+    if ($RequireSigning) {
+        throw "NSIS is required to build the signed release EXE when -RequireSigning is set."
+    }
+    Write-Warning "NSIS is not installed; skipped EXE installer generation. Install NSIS and rerun this script to build the EXE."
+}
 
 $wixToolchain = Resolve-WixToolchain
 if ($wixToolchain) {

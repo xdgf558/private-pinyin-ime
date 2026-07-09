@@ -6,7 +6,7 @@ on:
       version:
         description: Windows package version to build
         required: true
-        default: "0.1.10"
+        default: "0.1.12"
 
 permissions:
   contents: read
@@ -40,6 +40,16 @@ jobs:
           }
           Add-Content $env:GITHUB_PATH $wixBin
 
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $nsisBin = Join-Path ${env:ProgramFiles(x86)} "NSIS"
+          if (-not (Test-Path (Join-Path $nsisBin "makensis.exe"))) {
+            throw "NSIS was installed, but makensis.exe was not found."
+          }
+          Add-Content $env:GITHUB_PATH $nsisBin
+
       - name: Build unsigned Windows package
         shell: pwsh
         env:
@@ -53,5 +63,6 @@ jobs:
           path: |
             dist/windows_tsf/PrivatePinyin-${{ inputs.version }}.zip
             dist/windows_tsf/PrivatePinyin-${{ inputs.version }}.msi
+            dist/windows_tsf/PrivatePinyin-${{ inputs.version }}-setup.exe
           if-no-files-found: error
           retention-days: 14

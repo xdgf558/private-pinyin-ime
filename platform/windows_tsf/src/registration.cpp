@@ -74,6 +74,21 @@ HRESULT register_tsf_profile() {
     return hr;
   }
 
+  ComPtr<ITfCategoryMgr> category_mgr;
+  hr = CoCreateInstance(CLSID_TF_CategoryMgr, nullptr, CLSCTX_INPROC_SERVER,
+                        IID_PPV_ARGS(category_mgr.put()));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // Registration must be idempotent because unsigned internal builds are often
+  // reinstalled over older packages while the same TIP GUID is already present.
+  category_mgr->UnregisterCategory(kTextServiceClsid, GUID_TFCAT_TIP_KEYBOARD,
+                                   kTextServiceClsid);
+  profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
+                                  kTextServiceProfileGuid);
+  profiles->Unregister(kTextServiceClsid);
+
   hr = profiles->Register(kTextServiceClsid);
   if (FAILED(hr)) {
     return hr;
@@ -83,13 +98,6 @@ HRESULT register_tsf_profile() {
                                     kTextServiceProfileGuid, kTextServiceDescription,
                                     static_cast<ULONG>(std::size(kTextServiceDescription) - 1),
                                     nullptr, 0, 0);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  ComPtr<ITfCategoryMgr> category_mgr;
-  hr = CoCreateInstance(CLSID_TF_CategoryMgr, nullptr, CLSCTX_INPROC_SERVER,
-                        IID_PPV_ARGS(category_mgr.put()));
   if (FAILED(hr)) {
     return hr;
   }
@@ -109,6 +117,8 @@ void unregister_tsf_profile() {
   ComPtr<ITfInputProcessorProfiles> profiles;
   if (SUCCEEDED(CoCreateInstance(CLSID_TF_InputProcessorProfiles, nullptr, CLSCTX_INPROC_SERVER,
                                  IID_PPV_ARGS(profiles.put())))) {
+    profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
+                                    kTextServiceProfileGuid);
     profiles->Unregister(kTextServiceClsid);
   }
 }

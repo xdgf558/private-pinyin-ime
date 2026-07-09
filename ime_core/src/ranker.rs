@@ -8,7 +8,10 @@ const USER_SOURCE_BOOST: f64 = 100_000_000.0;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateMatchKind {
     Exact,
+    Segmented,
+    InitialExact,
     Prefix,
+    InitialPrefix,
 }
 
 pub struct Ranker;
@@ -32,8 +35,11 @@ impl Ranker {
         source: CandidateSource,
     ) -> f64 {
         let match_tier = match match_kind {
-            CandidateMatchKind::Exact => 2.0,
+            CandidateMatchKind::Exact => 3.0,
+            CandidateMatchKind::Segmented => 2.0,
+            CandidateMatchKind::InitialExact => 1.5,
             CandidateMatchKind::Prefix => 1.0,
+            CandidateMatchKind::InitialPrefix => 0.8,
         };
         let source_boost = match source {
             CandidateSource::User => USER_SOURCE_BOOST,

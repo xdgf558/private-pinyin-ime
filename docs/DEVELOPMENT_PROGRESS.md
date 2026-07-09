@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-09 13:56
-Current stage: Stage 16 TestFlight archive and upload
-Current status: local review
+Last updated: 2026-07-09 18:58
+Current stage: Stage 17 Device keyboard behavior and privacy closure
+Current status: TestFlight build ready for internal testing
 
 ## Stage Status
 
@@ -23,8 +23,8 @@ Current status: local review
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-09 12:40 | Merged to local `main`; automated iOS smoke-readiness script, smoke record, source gates, and CI wiring passed locally; simulator install/add-keyboard/typing smoke remains to be recorded |
-| 16 | TestFlight archive and upload | in_review | 2026-07-09 13:56 | TestFlight upload template, App Store Connect API key gating, package summary, upload record, source gates, and CI wiring are ready for local review; real archive/upload still requires Owner profiles and App Store Connect API key |
-| 17 | Device keyboard behavior and privacy closure | planned | | Record real-device Notes/Safari/password/phone behavior and decide Full Access/App Group/learning policy |
+| 16 | TestFlight archive and upload | completed | 2026-07-09 18:58 | App Store Connect app record `6789098978` created; build `0.1.10 (10)` uploaded with Xcode 26.6 and marked `准备测试` after export-compliance declaration |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-09 18:58 | TestFlight build is ready for internal testing; next step is internal tester group/install and real-device Notes/Safari/password/phone smoke evidence |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Completed Work
@@ -80,6 +80,10 @@ Current status: local review
 - Added macOS settings menu actions for strict privacy mode, clearing/exporting the user lexicon, and opening the settings file.
 - Added Windows settings initialization under `%LOCALAPPDATA%\PrivatePinyin` and a PowerShell settings window for privacy, learning, prediction, clear, and export actions.
 - Added prototype packaging scripts for macOS `.pkg`, Windows installer staging zip, and optional WiX MSI generation.
+- Added a Windows NSIS setup EXE packaging path for internal testing, including 64-bit TSF registration and a post-install setup guide.
+- Fixed the Windows NSIS setup EXE to use the cat-brand installer icon instead of the default NSIS gear icon.
+- Hardened the Windows NSIS setup EXE as version `0.1.11` by requesting administrator rights and making TSF profile registration clear stale records before reinstalling.
+- Localized the Windows TSF display name and installer surfaces to `猫栈拼音`, bumped the Windows/core build to `0.1.12`, and added first-pass continuous-pinyin, initials shorthand, full-width punctuation, and common `lü` lexicon fixes.
 - Added CI scaffold coverage for installer/settings files.
 - Addressed stage-06 review feedback by changing the WiX MSI template to per-user install and user-context TSF registration.
 - Addressed stage-06 review feedback by enabling SQLite WAL and a busy timeout for multi-process user lexicon writes.
@@ -189,8 +193,8 @@ Current status: local review
 
 ## Current Work
 
-- The local `main` branch contains the reviewed user bigram and short phrase learning merges plus the `0.1.10` macOS package refresh.
-- Awaiting owner decision before pushing to GitHub.
+- The local `main` branch contains Stage 17/TestFlight follow-up changes: App Group capability metadata, iOS AppIcon assets, iPad orientation compliance, and export-compliance plist declarations.
+- App Store Connect has build `0.1.10 (10)` in TestFlight with status `准备测试`; internal tester group/device install remains to be performed.
 
 ## Validation Results
 

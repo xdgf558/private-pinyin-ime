@@ -28,6 +28,24 @@ fn continuous_pinyin_returns_phrase_candidate() {
 }
 
 #[test]
+fn long_continuous_pinyin_can_segment_common_sentence() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("wojintianxiangquchifan");
+
+    assert!(candidates
+        .iter()
+        .any(|candidate| candidate.text == "我今天想去吃饭"));
+}
+
+#[test]
+fn shorthand_initials_return_phrase_candidates() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("nh");
+
+    assert!(candidates.iter().any(|candidate| candidate.text == "你好"));
+}
+
+#[test]
 fn starter_lexicon_returns_common_terms() {
     let engine = ImeEngine::new().expect("engine loads starter lexicon");
 
@@ -55,6 +73,24 @@ fn production_lexicon_returns_ganma_phrase() {
     assert_eq!(
         candidates.first().map(|candidate| candidate.text.as_str()),
         Some("干嘛")
+    );
+}
+
+#[test]
+fn production_lexicon_prioritizes_common_lv_words() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let lv_candidates = engine.candidates_for_raw("lv");
+    let gailv_candidates = engine.candidates_for_raw("gailv");
+
+    assert!(lv_candidates
+        .iter()
+        .take(3)
+        .any(|candidate| candidate.text == "率"));
+    assert_eq!(
+        gailv_candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("概率")
     );
 }
 
@@ -148,7 +184,7 @@ fn unhandled_key_preserves_active_composition_output() {
         session.feed_key(KeyEvent::from_char(ch));
     }
 
-    let output = session.feed_key(KeyEvent::new(KeyCode::ArrowDown));
+    let output = session.feed_key(KeyEvent::new(KeyCode::Unknown));
 
     assert_eq!(session.raw_input, "nihao");
     assert_eq!(output.preedit, "nihao");
@@ -169,7 +205,7 @@ fn punctuation_commits_in_chinese_mode() {
     let output = session.feed_key(KeyEvent::from_char('.'));
 
     assert!(output.should_commit);
-    assert_eq!(output.commit_text, ".");
+    assert_eq!(output.commit_text, "。");
 }
 
 #[test]
@@ -183,7 +219,7 @@ fn punctuation_after_composition_commits_first_candidate_before_punctuation() {
     let output = session.feed_key(KeyEvent::from_char(','));
 
     assert!(output.should_commit);
-    assert_eq!(output.commit_text, "你好,");
+    assert_eq!(output.commit_text, "你好，");
     assert_eq!(session.raw_input, "");
 }
 

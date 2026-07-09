@@ -38,6 +38,7 @@ grep -q "MIT" ime_core/assets/lexicon_manifest.json
 grep -q "Android Open Source Project" THIRD_PARTY_NOTICES.md
 grep -q "mozillazg" THIRD_PARTY_NOTICES.md
 grep -q $'^干嘛\tgan ma\t' ime_core/assets/base_lexicon.tsv
+grep -q $'^概率\tgai lü\t' ime_core/assets/base_lexicon.tsv
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
