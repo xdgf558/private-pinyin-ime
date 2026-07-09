@@ -60,6 +60,6 @@ fi
 
 grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID" platform/ios_keyboard/AppStoreMetadata/Signing.env.example
 grep -q "Signing.env" .gitignore
-grep -q "ExportOptions.plist" .gitignore
+grep -Fq "platform/ios_keyboard/AppStoreMetadata/ExportOptions*.plist" .gitignore
 
 echo "Stage 14 iOS signing and App Group source checks passed."

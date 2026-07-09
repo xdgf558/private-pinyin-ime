@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-09 12:40
-Current stage: Stage 15 iOS simulator/local development build
+Last updated: 2026-07-09 13:56
+Current stage: Stage 16 TestFlight archive and upload
 Current status: local review
 
 ## Stage Status
@@ -22,8 +22,8 @@ Current status: local review
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
-| 15 | iOS simulator/local development build | in_review | 2026-07-09 12:40 | Automated iOS smoke-readiness script, smoke record, source gates, and CI wiring passed locally; simulator install/add-keyboard/typing smoke remains to be recorded |
-| 16 | TestFlight archive and upload | planned | | Fix package archive/export, upload to App Store Connect, and confirm TestFlight build can be distributed |
+| 15 | iOS simulator/local development build | completed | 2026-07-09 12:40 | Merged to local `main`; automated iOS smoke-readiness script, smoke record, source gates, and CI wiring passed locally; simulator install/add-keyboard/typing smoke remains to be recorded |
+| 16 | TestFlight archive and upload | in_review | 2026-07-09 13:56 | TestFlight upload template, App Store Connect API key gating, package summary, upload record, source gates, and CI wiring are ready for local review; real archive/upload still requires Owner profiles and App Store Connect API key |
 | 17 | Device keyboard behavior and privacy closure | planned | | Record real-device Notes/Safari/password/phone behavior and decide Full Access/App Group/learning policy |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
@@ -273,6 +273,23 @@ Current status: local review
 - Result: passed
 - Notes: Required sandbox escalation for local Xcode/CoreSimulator access; produced the Debug iOS Simulator app and Keyboard Extension, verified bundle IDs, App Group expansion, `RequestsOpenAccess=false`, `PrimaryLanguage=zh-Hans`, bundled defaults, and no-network Keyboard Extension Swift source usage.
 
+### Stage 16 - TestFlight Archive And Upload
+
+- Added upload-aware `scripts/package_ios_app_store.sh` validation for `ExportOptions.plist` destination, App Store Connect API key inputs, and package summary output.
+- Added `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template` for TestFlight upload with `testFlightInternalTestingOnly=true`.
+- Extended `Signing.env.example` and iOS platform docs with App Store Connect API key variables.
+- Added `docs/ios_testflight_upload_record.md` to track signed archive/export, uploaded build number, processing status, and TestFlight distribution status.
+- Added `scripts/check_stage16_ios_testflight_sources.sh` and wired it into CI.
+- Updated `OI-035` to keep real provisioning profiles, signed archive/export, upload, and TestFlight evidence open for Owner credentials.
+
+- Command: `bash scripts/check_stage16_ios_testflight_sources.sh`
+- Result: passed
+- Notes: Stage 16 upload template, App Store Connect API key gating, package summary, upload record, and CI scaffold checks passed.
+
+- Command: `bash -n scripts/package_ios_app_store.sh`
+- Result: passed
+- Notes: Shell syntax is valid. Early validation was exercised with template signing values: upload mode fails before build when App Store Connect API key variables are absent, and export mode reaches the expected missing local `aarch64-apple-ios` target gate. Full archive/upload still requires Owner provisioning profiles and App Store Connect API key values.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -287,7 +304,7 @@ Current status: local review
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
-- Configure iOS App Store signing, provisioning, App Store metadata, and TestFlight evidence.
+- Configure iOS App Store signing, provisioning, App Store Connect API key, App Store metadata, and TestFlight evidence.
 - Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit and whether learning opt-in/App Group storage work under provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
@@ -302,15 +319,16 @@ Current status: local review
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/ios_release_stage_plan.md`
-- `docs/ios_keyboard_smoke_record.md`
-- `docs/platform_smoke_test_plan.md`
-- `docs/private_pinyin_ime_development_spec.md`
+- `docs/ios_testflight_upload_record.md`
+- `docs/release_distribution_plan.md`
+- `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template`
+- `platform/ios_keyboard/AppStoreMetadata/README.md`
+- `platform/ios_keyboard/AppStoreMetadata/Signing.env.example`
 - `platform/ios_keyboard/README.md`
 - `scripts/README.md`
-- `scripts/check_stage15_ios_smoke_sources.sh`
-- `scripts/run_ios_smoke_readiness.sh`
+- `scripts/check_stage16_ios_testflight_sources.sh`
+- `scripts/package_ios_app_store.sh`
 
 ## Next Step
 
-- Run the Stage 15 automated readiness script, then complete the manual iOS keyboard smoke checklist in Simulator or on a device and update `docs/ios_keyboard_smoke_record.md` with evidence.
+- Owner fills real iOS signing/provisioning values and App Store Connect API key variables, then runs `scripts/package_ios_app_store.sh` with upload ExportOptions and updates `docs/ios_testflight_upload_record.md` with the App Store Connect build number and TestFlight status.

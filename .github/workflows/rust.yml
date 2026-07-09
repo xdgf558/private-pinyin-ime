@@ -71,6 +71,9 @@ jobs:
       - name: Check Stage 15 iOS smoke scaffold
         run: bash scripts/check_stage15_ios_smoke_sources.sh
 
+      - name: Check Stage 16 iOS TestFlight scaffold
+        run: bash scripts/check_stage16_ios_testflight_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

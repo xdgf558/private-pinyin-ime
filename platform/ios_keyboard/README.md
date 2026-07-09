@@ -59,6 +59,12 @@ The script requires device signing/provisioning and writes the archive under
 options plist contains provisioning profile entries for both the container app
 bundle ID and keyboard extension bundle ID.
 
+For TestFlight upload, copy `AppStoreMetadata/ExportOptions.upload.plist.template`
+to the ignored `ExportOptions.plist`, configure the App Store Connect API key
+variables in `Signing.env`, then run the same package script. The script writes
+`dist/ios/package_summary.txt`; update `docs/ios_testflight_upload_record.md`
+with the App Store Connect build number and processing status after upload.
+
 ## Local Smoke Test
 
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
@@ -76,7 +82,7 @@ Password and phone-number fields are expected to fall back to the system keyboar
 ## Privacy Notes
 
 - The keyboard extension does not request Full Access.
-- iOS sources do not use network APIs.
+- The keyboard extension does not use network APIs.
 - User learning is disabled by default on iOS and must be enabled in the container app.
 - When App Group entitlements are active, settings and learned lexicon files live under the configured `PRIVATE_PINYIN_IOS_APP_GROUP_ID` value, defaulting to `group.com.privatepinyin.ios` for local scaffolding.
 - If App Group storage is unavailable, the learning toggle stays disabled rather than writing learned data into a private, extension-only sandbox.

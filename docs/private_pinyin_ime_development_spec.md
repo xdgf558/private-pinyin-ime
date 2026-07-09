@@ -1470,13 +1470,16 @@ bash scripts/run_ios_smoke_readiness.sh 通过
 1. 修通并验证 `scripts/package_ios_app_store.sh` 的 archive/export 流程。
 2. 使用 Owner 的 Apple Developer Team、bundle IDs、App Group、provisioning profiles 和 ExportOptions plist 构建签名 archive。
 3. 产出可上传 App Store Connect 的 export 结果。
-4. 上传 App Store Connect，并记录 TestFlight build 编号、处理状态和可分发状态。
+4. 增加 TestFlight upload ExportOptions 模板，并在 upload 模式下显式要求 App Store Connect API key path、key ID 和 issuer ID。
+5. 上传 App Store Connect，并记录 TestFlight build 编号、处理状态和可分发状态。
 
 验收：
 
 ```text
 package_ios_app_store.sh produces archive/export
 archive/export uses configured Team ID, bundle IDs, App Group, and profiles
+upload mode requires App Store Connect API key inputs
+docs/ios_testflight_upload_record.md tracks build number, processing, and distribution status
 uploaded build appears in App Store Connect
 TestFlight build can be distributed for testing
 ```
@@ -1486,7 +1489,8 @@ TestFlight build can be distributed for testing
 1. 更新 `docs/DEVELOPMENT_PROGRESS.md`。
 2. 在 `CHANGELOG.md` 写入 TestFlight archive/upload 准备。
 3. 在 `docs/OPEN_ITEMS.md` 更新 OI-035。
-4. 如果是 Git 仓库，提交 `stage-16: prepare ios testflight archive and upload`。
+4. 在 `docs/DECISIONS.md` 记录 archive/export 与真实 upload 证据边界。
+5. 如果是 Git 仓库，提交 `stage-16: prepare ios testflight archive and upload`。
 
 ### 阶段 17：真机键盘行为与隐私闭环
 

@@ -70,6 +70,7 @@
 - Added a manual GitHub Actions workflow for unsigned Windows internal-test zip/MSI packaging.
 - Added Stage 14 iOS signing and App Group source gates, plus an owner-filled `Signing.env.example`.
 - Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
+- Added Stage 16 TestFlight upload scaffolding, including upload ExportOptions, App Store Connect API key gating, package summaries, and an iOS TestFlight upload record.
 
 ### Changed
 

@@ -167,3 +167,11 @@ Status: accepted
 Decision: Split iOS validation into automated smoke-readiness checks that run from the repository and manual keyboard behavior checks that must be performed in Simulator or on a device.
 Reason: Xcode can verify build products, Info.plist expansion, App Group configuration, `RequestsOpenAccess=false`, bundled settings, and Keyboard Extension no-network source posture, but iOS keyboard enablement, Notes input, prediction retention, Globe switching, and password/phone fallback depend on system UI behavior.
 Consequences: `scripts/run_ios_smoke_readiness.sh` provides repeatable automated readiness evidence, while `docs/ios_keyboard_smoke_record.md` tracks the remaining manual smoke checklist. `OI-038` remains open until the manual Simulator/device checks are completed with evidence.
+
+## Decision 022: Stage 16 TestFlight upload boundary
+
+Date: 2026-07-09
+Status: accepted
+Decision: Support both local App Store export and App Store Connect upload through the same package script, with upload mode requiring explicit App Store Connect API key inputs and an owner-updated TestFlight record.
+Reason: TestFlight upload is release-sensitive and should not depend on whatever Xcode account happens to be logged into a developer machine. The repository can validate script wiring and required inputs, but only the owner can provide provisioning profiles, App Store Connect credentials, and post-upload build status.
+Consequences: `scripts/package_ios_app_store.sh` validates `ExportOptions.plist` destination, team ID, provisioning profile mappings, and App Store Connect API key variables before upload. `docs/ios_testflight_upload_record.md` remains pending until a signed archive is uploaded and the build appears in App Store Connect.
