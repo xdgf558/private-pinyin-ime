@@ -26,6 +26,7 @@ Current scripts:
 - `check_stage13_lexicon_sources.sh`: verifies Stage 13 production lexicon assets, AOSP/pinyin-data import tooling, third-party notices, and manifest release approval.
 - `check_stage14_ios_signing_sources.sh`: verifies Stage 14 iOS signing, bundle ID, export-options, and App Group build-setting wiring.
 - `check_stage15_ios_smoke_sources.sh`: verifies Stage 15 iOS smoke-readiness script and record coverage.
+- `check_stage16_ios_testflight_sources.sh`: verifies Stage 16 TestFlight archive/upload script, templates, and record coverage.
 
 Planned scripts:
 

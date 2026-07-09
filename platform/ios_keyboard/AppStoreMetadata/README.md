@@ -24,8 +24,10 @@ nutrition labels, and provisioning setup.
 
 Copy `Signing.env.example` to ignored `Signing.env` and update the values for
 the Apple Developer account. Copy `ExportOptions.plist.template` to ignored
-`ExportOptions.plist` and make sure the `teamID` and `provisioningProfiles`
-keys match the same bundle IDs used in `Signing.env`.
+`ExportOptions.plist` for a local export, or copy
+`ExportOptions.upload.plist.template` for TestFlight upload. Make sure the
+`teamID` and `provisioningProfiles` keys match the same bundle IDs used in
+`Signing.env`.
 
 The release script refuses to archive unless all four identifiers are supplied:
 
@@ -34,10 +36,20 @@ The release script refuses to archive unless all four identifiers are supplied:
 - `PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`
 - `PRIVATE_PINYIN_IOS_APP_GROUP_ID`
 
+For upload mode, set `destination` to `upload` in `ExportOptions.plist` and
+provide all three App Store Connect API key variables:
+
+- `PRIVATE_PINYIN_IOS_ASC_KEY_PATH`
+- `PRIVATE_PINYIN_IOS_ASC_KEY_ID`
+- `PRIVATE_PINYIN_IOS_ASC_ISSUER_ID`
+
+After a successful upload, update `docs/ios_testflight_upload_record.md` with
+the App Store Connect build number, processing state, and distribution status.
+
 ## Privacy Notes
 
 - The keyboard extension requests `RequestsOpenAccess=false` by default.
-- The source tree does not use Swift network APIs.
+- The keyboard extension does not use Swift network APIs.
 - User learning is off by default and should remain disabled if the keyboard
   cannot access shared App Group storage without Full Access.
 - App Store privacy labels should report no data collection unless future work

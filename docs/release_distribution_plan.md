@@ -115,6 +115,14 @@ Build:
 bash scripts/package_ios_app_store.sh
 ```
 
+Use `ExportOptions.plist.template` for local App Store export, or
+`ExportOptions.upload.plist.template` for TestFlight upload. Upload mode
+requires `PRIVATE_PINYIN_IOS_ASC_KEY_PATH`,
+`PRIVATE_PINYIN_IOS_ASC_KEY_ID`, and
+`PRIVATE_PINYIN_IOS_ASC_ISSUER_ID` in `Signing.env`. The package script writes
+`dist/ios/package_summary.txt`; copy the App Store Connect build number and
+processing state into `docs/ios_testflight_upload_record.md` after upload.
+
 Owner-provided App Store Connect metadata, bundle IDs, provisioning profiles,
 and App Group capability configuration are required. Stage 14 makes
 `PRIVATE_PINYIN_IOS_APP_BUNDLE_ID`,

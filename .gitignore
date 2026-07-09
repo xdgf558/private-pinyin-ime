@@ -21,7 +21,8 @@ release/
 # Xcode
 DerivedData/
 xcuserdata/
-platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist
+*.p8
+platform/ios_keyboard/AppStoreMetadata/ExportOptions*.plist
 platform/ios_keyboard/AppStoreMetadata/Signing.env
 
 # Visual Studio
