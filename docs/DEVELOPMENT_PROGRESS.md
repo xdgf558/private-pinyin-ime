@@ -223,12 +223,14 @@ Current status: local review
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
+- Add a retention policy for long-running `user_phrases` and `user_bigrams` growth.
 
 ## Files Changed In Latest Stage
 
 - `CHANGELOG.md`
 - `README.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
+- `docs/OPEN_ITEMS.md`
 - `docs/privacy_spec.md`
 - `ime_core/README.md`
 - `ime_core/src/predictor.rs`
