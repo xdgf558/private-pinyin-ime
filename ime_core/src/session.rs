@@ -122,11 +122,11 @@ impl InputSession {
             }
             KeyCode::PageDown | KeyCode::ArrowDown => self.turn_candidate_page(1),
             KeyCode::PageUp | KeyCode::ArrowUp => self.turn_candidate_page(-1),
-            KeyCode::Comma => self.commit_punctuation(","),
-            KeyCode::Period => self.commit_punctuation("."),
-            KeyCode::Minus => self.commit_punctuation("-"),
-            KeyCode::Equal => self.commit_punctuation("="),
-            KeyCode::Semicolon => self.commit_punctuation(";"),
+            KeyCode::Comma => self.commit_punctuation("，"),
+            KeyCode::Period => self.commit_punctuation("。"),
+            KeyCode::Minus => self.commit_punctuation("－"),
+            KeyCode::Equal => self.commit_punctuation("＝"),
+            KeyCode::Semicolon => self.commit_punctuation("；"),
             _ => {
                 if self.has_active_input() {
                     self.current_output(false, false, String::new())

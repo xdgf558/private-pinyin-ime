@@ -33,8 +33,11 @@ Checklist:
 | Package | `scripts/package_windows_tsf.ps1` produces zip, EXE setup when NSIS is installed, and MSI when WiX is installed | | |
 | Install | EXE per-user install/register succeeds without admin-only HKCU mismatch or 32-bit regsvr32 redirection | | |
 | Post-install guide | EXE finish page can open the setup guide, and the guide opens Windows language settings and preferences | | |
-| Enable IME | PrivatePinyin appears in Windows language/input settings | | |
+| Enable IME | `猫栈拼音` appears in Windows language/input settings | | |
 | Notepad composition | Typing `nihao` shows composition and candidate `你好` | | |
+| Continuous pinyin | Typing a longer sentence pinyin such as `wojintianxiangquchifan` can produce a multi-word candidate when the segments exist in the lexicon | | |
+| Initials shorthand | Typing shorthand initials such as `nh` produces phrase candidates such as `你好` | | |
+| Chinese punctuation | Chinese mode commits full-width punctuation such as `，` and `。` | | |
 | Commit | `Space` commits `你好` | | |
 | Cancel | `Esc` clears composition without leaking keys | | |
 | Shortcuts | `Ctrl+C`, `Ctrl+V`, `Ctrl+A` pass through while IME is active | | |

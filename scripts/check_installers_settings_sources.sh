@@ -45,5 +45,6 @@ grep -q "Copy-Item \"config\\\\default_settings.json\"" scripts/package_windows_
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
-grep -q "Open language settings" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "打开语言设置" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "猫栈拼音偏好设置" platform/windows_tsf/installer/open-settings.ps1
 grep -q "pkgbuild" scripts/package_macos_pkg.sh

@@ -34,7 +34,7 @@ Signing:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.11 `
+  -Version 0.1.12 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning
@@ -59,7 +59,7 @@ Manual gates:
 - Install the EXE setup as a normal user on Windows 11.
 - Confirm the finish-page setup guide opens and can launch Windows language
   settings.
-- Confirm PrivatePinyin appears in language/input settings.
+- Confirm `猫栈拼音` appears in language/input settings.
 - Smoke-test Notepad and at least one browser/editor.
 - Uninstall and confirm the TSF profile is removed.
 

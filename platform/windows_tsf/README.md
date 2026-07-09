@@ -47,9 +47,9 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.11.zip
-dist\windows_tsf\PrivatePinyin-0.1.11-setup.exe
-dist\windows_tsf\PrivatePinyin-0.1.11.msi
+dist\windows_tsf\PrivatePinyin-0.1.12.zip
+dist\windows_tsf\PrivatePinyin-0.1.12-setup.exe
+dist\windows_tsf\PrivatePinyin-0.1.12.msi
 ```
 
 The `.exe` is generated when NSIS is available. It is the preferred unsigned
@@ -65,7 +65,7 @@ user's context so the existing HKCU registration path is visible to that user.
 Unsigned internal-test packages can also be built from GitHub Actions:
 
 1. Open the `Windows Unsigned Package` workflow.
-2. Run it manually with the desired version, such as `0.1.11`.
+2. Run it manually with the desired version, such as `0.1.12`.
 3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle, `.exe` setup installer, and `.msi`.
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
@@ -74,7 +74,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.11 `
+  -Version 0.1.12 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning
@@ -122,7 +122,7 @@ UI; use the `.exe` installer for internal testing when onboarding matters.
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
 
 1. Open Notepad.
-2. Switch to PrivatePinyin IME.
+2. Switch to `猫栈拼音`.
 3. Type `nihao`.
 4. Confirm the composition shows `nihao` and the candidate window shows `你好`.
 5. Press `Space` to commit `你好`.
