@@ -374,7 +374,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ContainerApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_APP_BUNDLE_ID = com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRIVATE_PINYIN_IOS_APP_BUNDLE_ID)";
 				PRODUCT_NAME = PrivatePinyin;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -392,7 +394,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ContainerApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_APP_BUNDLE_ID = com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRIVATE_PINYIN_IOS_APP_BUNDLE_ID)";
 				PRODUCT_NAME = PrivatePinyin;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -424,7 +428,9 @@
 					"$(SRCROOT)/../../target/$(IOS_RUST_TARGET)/release/libprivate_pinyin_ime.a",
 					"$(inherited)",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatepinyin.ios.keyboard;
+				PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID = com.privatepinyin.ios.keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID)";
 				PRODUCT_NAME = PrivatePinyinKeyboard;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -457,7 +463,9 @@
 					"$(SRCROOT)/../../target/$(IOS_RUST_TARGET)/release/libprivate_pinyin_ime.a",
 					"$(inherited)",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatepinyin.ios.keyboard;
+				PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios;
+				PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID = com.privatepinyin.ios.keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID)";
 				PRODUCT_NAME = PrivatePinyinKeyboard;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

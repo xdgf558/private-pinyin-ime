@@ -102,13 +102,16 @@ Artifacts:
 Build:
 
 ```bash
-PRIVATE_PINYIN_IOS_TEAM_ID="TEAMID1234" \
-PRIVATE_PINYIN_IOS_EXPORT_OPTIONS="platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist" \
+. platform/ios_keyboard/AppStoreMetadata/Signing.env
 bash scripts/package_ios_app_store.sh
 ```
 
 Owner-provided App Store Connect metadata, bundle IDs, provisioning profiles,
-and App Group capability configuration are required. Keep
+and App Group capability configuration are required. Stage 14 makes
+`PRIVATE_PINYIN_IOS_APP_BUNDLE_ID`,
+`PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`, and
+`PRIVATE_PINYIN_IOS_APP_GROUP_ID` explicit release inputs and checks that the
+export-options plist contains both provisioning profile mappings. Keep
 `RequestsOpenAccess=false` unless the owner explicitly decides that iOS learning
 requires Full Access after real-device validation.
 

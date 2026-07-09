@@ -77,7 +77,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 13 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram prediction, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with polished candidate popup positioning/DPI/theme handling, macOS InputMethodKit prototype with a preferences window, JSON settings loading, iOS container app and keyboard extension with App Group settings storage and learning opt-in, release packaging scripts, release distribution plan, App Store metadata templates, tests, Rust CI workflow, Windows Rust test and TSF compile CI wiring, platform smoke-test plan, core production-hardening checks, platform-host polish checks, settings/privacy checks, release-packaging checks, and lexicon scaffold checks are in place.
+Stage 14 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram and short phrase learning, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with unsigned internal MSI packaging, macOS InputMethodKit prototype with preferences/onboarding UI, JSON settings loading, iOS container app and keyboard extension with App Group settings storage, learning opt-in, explicit signing/App Group release inputs, tests, CI workflows, platform smoke-test plan, and staged source checks are in place.
 
 Public release is still gated on the final project license, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records. The bundled base lexicon source/license/version gate is closed for the current AOSP+pinyin-data import.
 
@@ -125,6 +125,7 @@ bash scripts/check_stage10_platform_host_sources.sh
 bash scripts/check_stage11_settings_privacy_sources.sh
 bash scripts/check_stage12_release_sources.sh
 bash scripts/check_stage13_lexicon_sources.sh
+bash scripts/check_stage14_ios_signing_sources.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh

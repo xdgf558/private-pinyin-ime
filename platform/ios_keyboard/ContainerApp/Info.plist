@@ -22,6 +22,8 @@
 	<string>10</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>PrivatePinyinAppGroupIdentifier</key>
+	<string>$(PRIVATE_PINYIN_IOS_APP_GROUP_ID)</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

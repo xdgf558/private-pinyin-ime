@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-09 10:08
-Current stage: macOS package refresh
+Last updated: 2026-07-09 11:20
+Current stage: Stage 14 iOS signing and App Group configuration
 Current status: local review
 
 ## Stage Status
@@ -21,6 +21,7 @@ Current status: local review
 | 11 | Settings, privacy, and iOS storage closure | completed | 2026-07-07 07:45 | Shared default template use, stronger settings/export writes, hidden CapsLock platform UI, iOS App Group settings storage, learning opt-in, mode derivation, Globe-key visibility, review fixes, and Stage 11 checks are ready for local review |
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
+| 14 | iOS signing and App Group configuration | in_review | 2026-07-09 11:20 | Owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready for local review |
 
 ## Completed Work
 
@@ -213,9 +214,44 @@ Current status: local review
 - Result: passed
 - Notes: Built local unsigned test package `dist/macos_imk/PrivatePinyin-0.1.10.pkg`; package signature check reports `Status: no signature`.
 
+### Stage 14 - iOS Signing And App Group Configuration
+
+- Added explicit iOS release inputs for Apple team ID, container app bundle ID, keyboard extension bundle ID, App Group ID, and export-options plist.
+- Changed the iOS Xcode project, Info.plist files, and entitlements to inject App Group and bundle identifiers through build settings while keeping local defaults.
+- Added `Signing.env.example`, ignored local signing/export plist files, export-options consistency checks, and a Stage 14 source-check script wired into CI.
+- Kept `OI-035` open for owner-provided provisioning profiles, App Store metadata, archive/export evidence, and TestFlight validation.
+
 - Command: `git diff --check`
 - Result: passed
 - Notes: No whitespace or patch formatting issues.
+
+- Command: `bash scripts/check_ios_keyboard_sources.sh`
+- Result: passed
+- Notes: Existing iOS keyboard scaffold check accepts build-setting injected App Group values.
+
+- Command: `bash scripts/check_stage11_settings_privacy_sources.sh`
+- Result: passed
+- Notes: Stage 11 privacy/storage gates remain green after the App Group source wiring change.
+
+- Command: `bash scripts/check_stage12_release_sources.sh`
+- Result: passed
+- Notes: Existing release packaging gates remain green.
+
+- Command: `bash scripts/check_stage14_ios_signing_sources.sh`
+- Result: passed
+- Notes: Stage 14 signing, bundle ID, App Group, and export-options source gates pass.
+
+- Command: `bash scripts/build_ios_keyboard.sh`
+- Result: passed
+- Notes: Required sandbox escalation for local Xcode/CoreSimulator access; produced a Debug iOS Simulator build and expanded `PrivatePinyinAppGroupIdentifier` to `group.com.privatepinyin.ios` in both the app and keyboard extension Info.plist files.
+
+- Command: `bash -n scripts/package_ios_app_store.sh scripts/build_ios_keyboard.sh scripts/check_stage14_ios_signing_sources.sh scripts/check_ios_keyboard_sources.sh scripts/check_stage11_settings_privacy_sources.sh`
+- Result: passed
+- Notes: Shell script syntax is valid.
+
+- Command: `cargo fmt --check`
+- Result: passed
+- Notes: Rust formatting remains clean.
 
 ## Open Items
 
@@ -240,26 +276,31 @@ Current status: local review
 
 ## Files Changed In Latest Stage
 
+- `.github/workflows/rust.yml`
+- `.gitignore`
 - `CHANGELOG.md`
-- `Cargo.lock`
-- `Cargo.toml`
 - `README.md`
+- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/privacy_spec.md`
-- `ime_core/README.md`
-- `ime_core/src/ranker.rs`
-- `ime_core/src/session.rs`
-- `ime_core/src/user_lexicon.rs`
-- `ime_core/tests/user_lexicon_tests.rs`
+- `docs/private_pinyin_ime_development_spec.md`
+- `docs/release_distribution_plan.md`
+- `platform/ios_keyboard/AppStoreMetadata/README.md`
+- `platform/ios_keyboard/AppStoreMetadata/Signing.env.example`
 - `platform/ios_keyboard/ContainerApp/Info.plist`
+- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
+- `platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements`
 - `platform/ios_keyboard/KeyboardExtension/Info.plist`
-- `platform/macos_imk/README.md`
-- `platform/macos_imk/Resources/Info.plist`
-- `platform/windows_tsf/README.md`
-- `scripts/package_macos_pkg.sh`
-- `scripts/package_windows_tsf.ps1`
+- `platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements`
+- `platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj`
+- `platform/ios_keyboard/README.md`
+- `scripts/README.md`
+- `scripts/build_ios_keyboard.sh`
+- `scripts/check_ios_keyboard_sources.sh`
+- `scripts/check_stage11_settings_privacy_sources.sh`
+- `scripts/check_stage14_ios_signing_sources.sh`
+- `scripts/package_ios_app_store.sh`
 
 ## Next Step
 
-- Install and smoke-test `dist/macos_imk/PrivatePinyin-0.1.10.pkg`; use Developer ID signing/notarization before website distribution.
+- Owner fills `Signing.env` and `ExportOptions.plist`, enables matching App Group capability on the app and extension identifiers, then runs `scripts/package_ios_app_store.sh` for a signed archive/export attempt.

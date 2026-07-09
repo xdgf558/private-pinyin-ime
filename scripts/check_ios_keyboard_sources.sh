@@ -38,13 +38,17 @@ grep -q "advanceToNextInputMode" platform/ios_keyboard/KeyboardExtension/Keyboar
 grep -q "needsInputModeSwitchKey" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "RequestsOpenAccess" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -A1 "RequestsOpenAccess" platform/ios_keyboard/KeyboardExtension/Info.plist | grep -q "<false/>"
-grep -q "group.com.privatepinyin.ios" platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements
-grep -q "group.com.privatepinyin.ios" platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID" platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID" platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements
+grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
+grep -q "PrivatePinyinAppGroupIdentifier" platform/ios_keyboard/ContainerApp/Info.plist
+grep -q "PrivatePinyinAppGroupIdentifier" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -q "CODE_SIGN_ENTITLEMENTS = ContainerApp/PrivatePinyin.entitlements" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "CODE_SIGN_ENTITLEMENTS = KeyboardExtension/PrivatePinyinKeyboard.entitlements" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "default_settings.json in Resources" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "enable_user_learning.*false" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "appGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "fallbackAppGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "ime_engine_new(pathPointer)" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
