@@ -143,6 +143,51 @@ fn sequential_candidate_commits_learn_user_bigram_prediction() {
 }
 
 #[test]
+fn sequential_candidate_commits_learn_short_phrase_prediction() {
+    let temp_db = TempDb::new("learn_short_phrase");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens user lexicon");
+    let mut session = engine.create_session();
+
+    let first = commit_first_candidate_in_session(&mut session, "jintian");
+    let second = commit_first_candidate_in_session(&mut session, "tianqi");
+    let third = commit_first_candidate_in_session(&mut session, "bucuo");
+
+    assert_eq!(first.commit_text, "今天");
+    assert_eq!(second.commit_text, "天气");
+    assert_eq!(third.commit_text, "不错");
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        1
+    );
+
+    let next_engine = ImeEngine::with_settings(settings).expect("engine reopens user lexicon");
+    let mut next_session = next_engine.create_session();
+    let output = commit_first_candidate_in_session(&mut next_session, "jintian");
+
+    assert_eq!(output.commit_text, "今天");
+    assert_eq!(
+        output
+            .candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("天气不错")
+    );
+    assert_eq!(
+        next_session
+            .feed_key(KeyEvent::from_char('1'))
+            .commit_text
+            .as_str(),
+        "天气不错"
+    );
+}
+
+#[test]
 fn disabled_user_learning_does_not_write_user_lexicon() {
     let temp_db = TempDb::new("learn_disabled");
     let mut settings = settings_with_user_lexicon(temp_db.path.clone());
@@ -172,6 +217,29 @@ fn disabled_user_learning_does_not_write_user_bigram() {
 }
 
 #[test]
+fn disabled_user_learning_does_not_write_short_phrase_prediction() {
+    let temp_db = TempDb::new("short_phrase_disabled");
+    let mut settings = settings_with_user_lexicon(temp_db.path.clone());
+    settings.enable_user_learning = false;
+    let engine = ImeEngine::with_settings(settings).expect("engine opens user lexicon");
+    let mut session = engine.create_session();
+
+    commit_first_candidate_in_session(&mut session, "jintian");
+    commit_first_candidate_in_session(&mut session, "tianqi");
+    commit_first_candidate_in_session(&mut session, "bucuo");
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
+    assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        0
+    );
+}
+
+#[test]
 fn strict_privacy_mode_does_not_write_user_lexicon() {
     let temp_db = TempDb::new("strict_privacy");
     let mut settings = settings_with_user_lexicon(temp_db.path.clone());
@@ -198,6 +266,29 @@ fn strict_privacy_mode_does_not_write_user_bigram() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+}
+
+#[test]
+fn strict_privacy_mode_does_not_write_short_phrase_prediction() {
+    let temp_db = TempDb::new("strict_short_phrase");
+    let mut settings = settings_with_user_lexicon(temp_db.path.clone());
+    settings.strict_privacy_mode = true;
+    let engine = ImeEngine::with_settings(settings).expect("engine opens user lexicon");
+    let mut session = engine.create_session();
+
+    commit_first_candidate_in_session(&mut session, "jintian");
+    commit_first_candidate_in_session(&mut session, "tianqi");
+    commit_first_candidate_in_session(&mut session, "bucuo");
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
+    assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        0
+    );
 }
 
 #[test]
@@ -255,6 +346,49 @@ fn clear_user_lexicon_removes_user_bigram_predictions() {
 }
 
 #[test]
+fn clear_user_lexicon_removes_short_phrase_predictions() {
+    let temp_db = TempDb::new("clear_short_phrase");
+    let temp_export = TempFile::new("clear_short_phrase", "tsv");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings).expect("engine opens user lexicon");
+    let mut session = engine.create_session();
+
+    commit_first_candidate_in_session(&mut session, "jintian");
+    commit_first_candidate_in_session(&mut session, "tianqi");
+    commit_first_candidate_in_session(&mut session, "bucuo");
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
+    assert_eq!(user_lexicon.entry_count().expect("entry count"), 3);
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        1
+    );
+    assert_eq!(
+        engine
+            .export_user_lexicon(&temp_export.path)
+            .expect("export lexicon"),
+        6
+    );
+    let exported = std::fs::read_to_string(&temp_export.path).expect("read export");
+    assert!(exported.contains("# user_short_phrases"));
+    assert!(exported.contains("left_phrase\tphrase\ttoken_count\tfrequency\tupdated_at_ms"));
+    assert!(exported.contains("今天\t天气不错\t2\t1\t"));
+
+    engine.clear_user_lexicon().expect("clear lexicon");
+    assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        0
+    );
+}
+
+#[test]
 fn user_bigram_learning_skips_long_phrases() {
     let temp_db = TempDb::new("long_bigram");
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
@@ -268,6 +402,23 @@ fn user_bigram_learning_skips_long_phrases() {
         .expect("record long transition is ignored");
 
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+}
+
+#[test]
+fn user_short_phrase_learning_skips_long_phrases() {
+    let temp_db = TempDb::new("long_short_phrase");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+
+    user_lexicon
+        .record_short_phrase_prediction("今天", "一二三四五六七八九十十一二", 2)
+        .expect("record long short phrase is ignored");
+
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        0
+    );
 }
 
 #[test]

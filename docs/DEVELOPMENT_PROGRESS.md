@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-09 08:07
-Current stage: User bigram learning
+Last updated: 2026-07-09 08:53
+Current stage: User short phrase learning
 Current status: local review
 
 ## Stage Status
@@ -176,17 +176,19 @@ Current status: local review
 - Added first-pass local user bigram learning so selecting `A` then `B` teaches the local predictor to suggest `B` after future `A` commits.
 - Kept user bigram learning behind the existing `enable_user_learning` and `strict_privacy_mode` write guards.
 - Extended user lexicon clear/export behavior to cover learned one-step prediction transitions.
+- Added second-pass local short phrase learning so selecting `A`, `B`, then `C` can teach the local predictor to suggest `BC` after future `A` commits.
+- Kept short phrase learning bounded to two-token continuations with a 12-character phrase cap, and covered it with clear/export behavior.
 
 ## Current Work
 
-- User bigram learning is complete on local branch `codex/user-bigram-learning`.
+- User short phrase learning is complete on local branch `codex/user-short-phrase-learning`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 61 workspace tests passed, including new user bigram learning, privacy-off, strict-privacy, export, and clear regressions.
+- Notes: 66 workspace tests passed, including short phrase learning, prediction selection, disabled-learning, strict-privacy, export, clear, and length-limit regressions.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -194,11 +196,11 @@ Current status: local review
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the user bigram learning changes.
+- Notes: Formatting is clean after the user short phrase learning changes.
 
 - Command: `bash scripts/check_stage09_core_sources.sh`
 - Result: passed
-- Notes: Existing core production-hardening scaffold remains green after adding local user prediction learning.
+- Notes: Existing core production-hardening scaffold remains green after adding local short phrase prediction learning.
 
 - Command: `git diff --check`
 - Result: passed
@@ -223,7 +225,7 @@ Current status: local review
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
-- Add a retention policy for long-running `user_phrases` and `user_bigrams` growth.
+- Add a retention policy for long-running `user_phrases`, `user_bigrams`, and `user_short_phrases` growth.
 
 ## Files Changed In Latest Stage
 
@@ -233,7 +235,6 @@ Current status: local review
 - `docs/OPEN_ITEMS.md`
 - `docs/privacy_spec.md`
 - `ime_core/README.md`
-- `ime_core/src/predictor.rs`
 - `ime_core/src/ranker.rs`
 - `ime_core/src/session.rs`
 - `ime_core/src/user_lexicon.rs`
@@ -241,4 +242,4 @@ Current status: local review
 
 ## Next Step
 
-- Review the local `codex/user-bigram-learning` commit, then push/open the GitHub PR after approval.
+- Review the local `codex/user-short-phrase-learning` commit, then push/open the GitHub PR after approval.
