@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-08 18:09
-Current stage: Post-stage macOS public release preparation
+Last updated: 2026-07-09 08:07
+Current stage: User bigram learning
 Current status: local review
 
 ## Stage Status
@@ -173,61 +173,36 @@ Current status: local review
 - Added a macOS public-release checklist for personal-website distribution, including Developer ID setup, notarization, website download copy, smoke tests, and manual update flow.
 - Added `scripts/check_macos_public_release.sh` to gate public `.pkg` publication on Developer ID identities, package signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output.
 - Documented that the current local `0.1.9` pkg remains blocked for public website distribution until Owner-provided Developer ID certificates and notarytool credentials are configured.
+- Added first-pass local user bigram learning so selecting `A` then `B` teaches the local predictor to suggest `B` after future `A` commits.
+- Kept user bigram learning behind the existing `enable_user_learning` and `strict_privacy_mode` write guards.
+- Extended user lexicon clear/export behavior to cover learned one-step prediction transitions.
 
 ## Current Work
 
-- macOS preferences UI refresh and public-release preflight scaffolding are complete on local branch `codex/redesign-macos-preferences`.
+- User bigram learning is complete on local branch `codex/user-bigram-learning`.
 - Awaiting local review before pushing to GitHub.
 
 ## Validation Results
 
-- Command: `bash scripts/check_macos_imk_sources.sh`
+- Command: `cargo test --workspace`
 - Result: passed
-- Notes: macOS scaffold check covers the redesigned preferences controller, StationToggle, StationButton, fixed dark appearance, Chinese settings copy, postinstall wiring, icon resources, and TIS metadata.
+- Notes: 61 workspace tests passed, including new user bigram learning, privacy-off, strict-privacy, export, and clear regressions.
 
-- Command: `bash scripts/check_stage10_platform_host_sources.sh`
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
-- Notes: Existing Stage 10 host polish scaffold remains green and now pins the redesigned shared macOS preferences controller.
+- Notes: No clippy warnings in the Rust workspace.
 
-- Command: `bash scripts/check_stage12_release_sources.sh`
+- Command: `cargo fmt --check`
 - Result: passed
-- Notes: Existing Stage 12 release packaging scaffold now also pins the macOS public-release preflight script and website checklist.
+- Notes: Formatting is clean after the user bigram learning changes.
 
-- Command: `bash scripts/check_installers_settings_sources.sh`
+- Command: `bash scripts/check_stage09_core_sources.sh`
 - Result: passed
-- Notes: Existing installer/settings scaffold remains green after the preferences UI refresh.
-
-- Command: `bash -n scripts/check_macos_public_release.sh`
-- Result: passed
-- Notes: macOS public-release preflight script syntax is valid.
-
-- Command: `bash scripts/check_macos_public_release.sh`
-- Result: expected failure
-- Notes: Current local package is correctly blocked for website publication: no Developer ID Application identity, no Developer ID Installer identity, unsigned pkg, no stapled notarization ticket, and no usable `private-pinyin-notary` keychain profile.
+- Notes: Existing core production-hardening scaffold remains green after adding local user prediction learning.
 
 - Command: `git diff --check`
 - Result: passed
 - Notes: No whitespace or patch formatting issues.
-
-- Command: `bash scripts/build_macos_imk.sh`
-- Result: passed
-- Notes: Rebuilt the redesigned Swift preferences window; `dist/macos_imk/PrivatePinyin.app` was produced and ad-hoc signed with bundle version `0.1.9`.
-
-- Command: `bash scripts/package_macos_pkg.sh`
-- Result: passed
-- Notes: Rebuilt unsigned local package `dist/macos_imk/PrivatePinyin-0.1.9.pkg` with the redesigned preferences UI and version bump.
-
-- Command: `cargo fmt --check`
-- Result: passed
-- Notes: Formatting is clean after the preferences UI refresh and version bump.
-
-- Command: `cargo clippy --workspace --all-targets -- -D warnings`
-- Result: passed
-- Notes: No clippy warnings in the Rust workspace with crates reporting version `0.1.9`.
-
-- Command: `cargo test --workspace`
-- Result: passed
-- Notes: 56 workspace tests passed.
 
 ## Open Items
 
@@ -251,27 +226,17 @@ Current status: local review
 
 ## Files Changed In Latest Stage
 
-- `Cargo.lock`
-- `Cargo.toml`
 - `CHANGELOG.md`
-- `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/macos_public_release_checklist.md`
-- `docs/release_distribution_plan.md`
-- `scripts/README.md`
-- `scripts/check_macos_public_release.sh`
-- `scripts/check_macos_imk_sources.sh`
-- `scripts/check_stage10_platform_host_sources.sh`
-- `scripts/check_stage12_release_sources.sh`
-- `scripts/package_macos_pkg.sh`
-- `scripts/package_windows_tsf.ps1`
 - `README.md`
-- `platform/ios_keyboard/ContainerApp/Info.plist`
-- `platform/ios_keyboard/KeyboardExtension/Info.plist`
-- `platform/macos_imk/README.md`
-- `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
-- `platform/windows_tsf/README.md`
+- `docs/DEVELOPMENT_PROGRESS.md`
+- `docs/privacy_spec.md`
+- `ime_core/README.md`
+- `ime_core/src/predictor.rs`
+- `ime_core/src/ranker.rs`
+- `ime_core/src/session.rs`
+- `ime_core/src/user_lexicon.rs`
+- `ime_core/tests/user_lexicon_tests.rs`
 
 ## Next Step
 
-- Configure Owner Developer ID Application/Installer certificates and a `private-pinyin-notary` notarytool profile, then rebuild the signed/notarized macOS pkg and rerun `bash scripts/check_macos_public_release.sh`.
+- Review the local `codex/user-bigram-learning` commit, then push/open the GitHub PR after approval.
