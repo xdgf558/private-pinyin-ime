@@ -98,6 +98,7 @@ Checklist:
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
 | Build | `scripts/build_ios_keyboard.sh` produces simulator app and keyboard extension | | |
+| Automated readiness | `scripts/run_ios_smoke_readiness.sh` passes, including Info.plist, App Group, Full Access, default settings, and Keyboard Extension no-network source checks | | |
 | Install | Container app installs on simulator/device | | |
 | Enable keyboard | PrivatePinyin can be added from Settings > General > Keyboard | | |
 | Full Access | Full Access remains off by default | | |

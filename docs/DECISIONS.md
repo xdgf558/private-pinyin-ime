@@ -159,3 +159,11 @@ Status: accepted
 Decision: Keep source-tree iOS signing and App Group values configurable through build settings and owner-filled local files instead of committing release credentials, bundle identifiers, or provisioning profile names.
 Reason: iOS release readiness needs Apple Developer team ownership, App Group capabilities, and provisioning profiles, but those values differ by owner account and should not be silently hard-coded into project source. The repo should make the required inputs explicit and fail early when export options do not match the configured app and keyboard bundle IDs.
 Consequences: `scripts/package_ios_app_store.sh` now requires explicit team, app bundle, keyboard bundle, App Group, and export-options inputs. The Xcode project and entitlements use `PRIVATE_PINYIN_IOS_*` build settings with local defaults. `OI-035` remains open until real provisioning profiles, App Store metadata, archive/export evidence, and TestFlight smoke evidence are provided.
+
+## Decision 021: Stage 15 iOS smoke validation boundary
+
+Date: 2026-07-09
+Status: accepted
+Decision: Split iOS validation into automated smoke-readiness checks that run from the repository and manual keyboard behavior checks that must be performed in Simulator or on a device.
+Reason: Xcode can verify build products, Info.plist expansion, App Group configuration, `RequestsOpenAccess=false`, bundled settings, and Keyboard Extension no-network source posture, but iOS keyboard enablement, Notes input, prediction retention, Globe switching, and password/phone fallback depend on system UI behavior.
+Consequences: `scripts/run_ios_smoke_readiness.sh` provides repeatable automated readiness evidence, while `docs/ios_keyboard_smoke_record.md` tracks the remaining manual smoke checklist. `OI-038` remains open until the manual Simulator/device checks are completed with evidence.

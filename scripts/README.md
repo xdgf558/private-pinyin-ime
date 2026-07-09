@@ -16,6 +16,7 @@ Current scripts:
 - `check_installers_settings_sources.sh`: verifies Stage 6 installer and settings scaffold files.
 - `build_ios_keyboard.sh`: builds the Rust iOS static library and the iOS container app/keyboard extension.
 - `package_ios_app_store.sh`: builds an iOS device archive and exports it with owner-provided App Store signing options.
+- `run_ios_smoke_readiness.sh`: builds the iOS simulator app and verifies automated smoke-readiness gates before manual keyboard testing.
 - `check_ios_keyboard_sources.sh`: verifies the iOS keyboard source scaffold, plist privacy defaults, and Xcode project wiring.
 - `check_platform_validation_sources.sh`: verifies Stage 8 platform smoke-test documentation and Windows TSF CI wiring.
 - `check_stage09_core_sources.sh`: verifies Stage 9 core hardening for indexed lookup, paging, ranking, logging, and lexicon data policy.
@@ -24,6 +25,7 @@ Current scripts:
 - `check_stage12_release_sources.sh`: verifies Stage 12 release packaging, signing hooks, macOS public-release preflight, App Store metadata templates, and update-strategy documentation.
 - `check_stage13_lexicon_sources.sh`: verifies Stage 13 production lexicon assets, AOSP/pinyin-data import tooling, third-party notices, and manifest release approval.
 - `check_stage14_ios_signing_sources.sh`: verifies Stage 14 iOS signing, bundle ID, export-options, and App Group build-setting wiring.
+- `check_stage15_ios_smoke_sources.sh`: verifies Stage 15 iOS smoke-readiness script and record coverage.
 
 Planned scripts:
 
