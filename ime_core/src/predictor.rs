@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
+use crate::lexicon::MAX_LOOKUP_CANDIDATES;
 use crate::ranker::Ranker;
 
 const EMBEDDED_BIGRAM: &str = include_str!("../assets/bigram.tsv");
@@ -77,7 +80,33 @@ impl Predictor {
             })
             .collect::<Vec<_>>();
         Ranker::sort_candidates(&mut candidates);
-        candidates.truncate(50);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
         candidates
     }
+}
+
+pub fn merge_prediction_candidates(
+    user_candidates: Vec<Candidate>,
+    base_candidates: Vec<Candidate>,
+) -> Vec<Candidate> {
+    let mut combined = user_candidates
+        .into_iter()
+        .chain(base_candidates)
+        .collect::<Vec<_>>();
+    Ranker::sort_candidates(&mut combined);
+
+    let mut merged = Vec::new();
+    let mut seen = HashSet::new();
+
+    for candidate in combined {
+        if seen.insert(candidate.text.clone()) {
+            merged.push(candidate);
+        }
+
+        if merged.len() == MAX_LOOKUP_CANDIDATES {
+            break;
+        }
+    }
+
+    merged
 }

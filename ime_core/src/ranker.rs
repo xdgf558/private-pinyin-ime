@@ -1,6 +1,7 @@
 use crate::candidate::{Candidate, CandidateSource};
 
 const MATCH_TIER_WEIGHT: f64 = 10_000_000_000.0;
+const USER_PREDICTION_BOOST: f64 = 1_000_000_000.0;
 const USER_SOURCE_BOOST: f64 = 100_000_000.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,6 +15,10 @@ pub struct Ranker;
 impl Ranker {
     pub fn score(base_frequency: u32) -> f64 {
         base_frequency as f64
+    }
+
+    pub fn score_user_prediction(base_frequency: u32) -> f64 {
+        USER_PREDICTION_BOOST + Self::score(base_frequency)
     }
 
     pub fn score_match(

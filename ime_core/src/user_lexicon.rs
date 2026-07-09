@@ -14,6 +14,7 @@ use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinPar
 use crate::ranker::{CandidateMatchKind, Ranker};
 
 const EXPORT_HEADER: &[u8] = b"phrase\tpinyin\tfrequency\tupdated_at_ms\n";
+const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 
 pub struct UserLexicon {
     db_path: PathBuf,
@@ -161,10 +162,74 @@ impl UserLexicon {
         Ok(())
     }
 
+    pub fn record_transition(&self, left: &str, right: &str, right_pinyin: &str) -> ImeResult<()> {
+        if left.is_empty()
+            || right.is_empty()
+            || exceeds_user_bigram_phrase_limit(left)
+            || exceeds_user_bigram_phrase_limit(right)
+        {
+            return Ok(());
+        }
+
+        let connection = self.connection()?;
+        connection
+            .execute(
+                "INSERT INTO user_bigrams
+                   (left_phrase, right_phrase, right_pinyin, frequency, updated_at_ms)
+                 VALUES (?1, ?2, ?3, 1, ?4)
+                 ON CONFLICT(left_phrase, right_phrase) DO UPDATE SET
+                   right_pinyin = excluded.right_pinyin,
+                   frequency = frequency + 1,
+                   updated_at_ms = excluded.updated_at_ms",
+                params![left, right, right_pinyin, now_ms()],
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        Ok(())
+    }
+
+    pub fn predict_next(&self, left: &str) -> ImeResult<Vec<Candidate>> {
+        if left.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let connection = self.connection()?;
+        let rows = {
+            let mut statement = connection
+                .prepare(
+                    "SELECT right_phrase, right_pinyin, frequency
+                     FROM user_bigrams
+                     WHERE left_phrase = ?1
+                     ORDER BY frequency DESC, updated_at_ms DESC, right_phrase ASC
+                     LIMIT ?2",
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            let mapped_rows = statement
+                .query_map(params![left, MAX_LOOKUP_CANDIDATES as i64], |row| {
+                    let phrase: String = row.get(0)?;
+                    let pinyin: String = row.get(1)?;
+                    let frequency: i64 = row.get(2)?;
+                    Ok((phrase, pinyin, frequency))
+                })
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            collect_user_rows(mapped_rows)?
+        };
+
+        let mut candidates = rows
+            .into_iter()
+            .map(user_prediction_candidate)
+            .collect::<Vec<_>>();
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        Ok(candidates)
+    }
+
     pub fn clear(&self) -> ImeResult<()> {
         let connection = self.connection()?;
         connection
-            .execute("DELETE FROM user_phrases", [])
+            .execute_batch(
+                "DELETE FROM user_phrases;
+                 DELETE FROM user_bigrams;",
+            )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         Ok(())
     }
@@ -201,6 +266,46 @@ impl UserLexicon {
             count += 1;
         }
 
+        let mut statement = connection
+            .prepare(
+                "SELECT left_phrase, right_phrase, right_pinyin, frequency, updated_at_ms
+                 FROM user_bigrams
+                 ORDER BY updated_at_ms DESC, frequency DESC, left_phrase ASC, right_phrase ASC",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                ))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let mut wrote_bigram_header = false;
+        for row in rows {
+            let (left_phrase, right_phrase, right_pinyin, frequency, updated_at_ms) =
+                row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            if !wrote_bigram_header {
+                writeln!(file, "\n# user_bigrams").map_err(|_| ImeError::UserLexiconDatabase)?;
+                writeln!(
+                    file,
+                    "left_phrase\tright_phrase\tright_pinyin\tfrequency\tupdated_at_ms"
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+                wrote_bigram_header = true;
+            }
+            writeln!(
+                file,
+                "{left_phrase}\t{right_phrase}\t{right_pinyin}\t{frequency}\t{updated_at_ms}"
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+            count += 1;
+        }
+
         finish_export_file(path, file)?;
         Ok(count)
     }
@@ -222,6 +327,16 @@ impl UserLexicon {
         usize::try_from(count).map_err(|_| ImeError::UserLexiconDatabase)
     }
 
+    pub fn bigram_count(&self) -> ImeResult<usize> {
+        let connection = self.connection()?;
+        let count = connection
+            .query_row("SELECT COUNT(*) FROM user_bigrams", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        usize::try_from(count).map_err(|_| ImeError::UserLexiconDatabase)
+    }
+
     fn ensure_schema(&self) -> ImeResult<()> {
         let connection = self.connection()?;
         connection
@@ -237,7 +352,17 @@ impl UserLexicon {
                  CREATE INDEX IF NOT EXISTS idx_user_phrases_pinyin
                    ON user_phrases(pinyin);
                  CREATE INDEX IF NOT EXISTS idx_user_phrases_compact_pinyin
-                   ON user_phrases(compact_pinyin);",
+                   ON user_phrases(compact_pinyin);
+                 CREATE TABLE IF NOT EXISTS user_bigrams (
+                   left_phrase TEXT NOT NULL,
+                   right_phrase TEXT NOT NULL,
+                   right_pinyin TEXT NOT NULL,
+                   frequency INTEGER NOT NULL,
+                   updated_at_ms INTEGER NOT NULL,
+                   PRIMARY KEY (left_phrase, right_phrase)
+                 );
+                 CREATE INDEX IF NOT EXISTS idx_user_bigrams_left_phrase
+                   ON user_bigrams(left_phrase, frequency DESC, updated_at_ms DESC);",
             )
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
@@ -295,6 +420,17 @@ fn user_candidate(
             match_kind,
             CandidateSource::User,
         ))
+}
+
+fn user_prediction_candidate((phrase, pinyin, frequency): (String, String, i64)) -> Candidate {
+    let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
+    Candidate::new(phrase, pinyin, CandidateSource::Prediction)
+        .with_score(Ranker::score(frequency))
+        .with_rank_score(Ranker::score_user_prediction(frequency))
+}
+
+fn exceeds_user_bigram_phrase_limit(phrase: &str) -> bool {
+    phrase.chars().count() > MAX_USER_BIGRAM_PHRASE_CHARS
 }
 
 fn collect_user_rows(

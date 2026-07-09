@@ -7,7 +7,7 @@ Current responsibilities:
 - Pinyin parsing.
 - Candidate generation from the embedded starter lexicon.
 - Ranking.
-- SQLite user lexicon persistence.
+- SQLite user lexicon persistence and one-step user bigram learning.
 - Local bigram prediction.
 - Settings and privacy enforcement.
 - JSON settings snapshots.

@@ -65,6 +65,7 @@
 - Added follow-up open items for measuring production lexicon initialization latency and replacing starter bigram prediction data.
 - Added a macOS public-release checklist for personal-website distribution, signed/notarized package gates, download-page copy, smoke tests, and manual update flow.
 - Added `scripts/check_macos_public_release.sh` to verify Developer ID identities, installer signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output before website publication.
+- Added first-pass local user bigram learning so repeated selected-word sequences can outrank starter prediction data without leaving the local user lexicon.
 
 ### Changed
 

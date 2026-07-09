@@ -6,7 +6,7 @@ use crate::key_event::{KeyCode, KeyEvent};
 use crate::lexicon::{merge_user_and_base_candidates, Lexicon};
 use crate::logger;
 use crate::pinyin_parser::PinyinParser;
-use crate::predictor::Predictor;
+use crate::predictor::{merge_prediction_candidates, Predictor};
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
 use crate::user_lexicon::UserLexicon;
 
@@ -228,7 +228,22 @@ impl InputSession {
             && self.mode == ImeMode::Chinese
             && self.settings_snapshot.enable_prediction
         {
-            self.predictor.predict_next(&self.context_tokens)
+            let base_candidates = self.predictor.predict_next(&self.context_tokens);
+            let Some(last_token) = self.context_tokens.last() else {
+                return base_candidates;
+            };
+            let user_candidates = self
+                .user_lexicon
+                .as_ref()
+                .map(|user_lexicon| match user_lexicon.predict_next(last_token) {
+                    Ok(candidates) => candidates,
+                    Err(error) => {
+                        logger::emit_error(error);
+                        Vec::new()
+                    }
+                })
+                .unwrap_or_default();
+            merge_prediction_candidates(user_candidates, base_candidates)
         } else {
             Vec::new()
         }
@@ -387,6 +402,13 @@ impl InputSession {
         if let Some(user_lexicon) = &self.user_lexicon {
             if let Err(error) = user_lexicon.record_selection(&candidate.text, &candidate.pinyin) {
                 logger::emit_error(error);
+            }
+            if let Some(previous) = self.context_tokens.last() {
+                if let Err(error) =
+                    user_lexicon.record_transition(previous, &candidate.text, &candidate.pinyin)
+                {
+                    logger::emit_error(error);
+                }
             }
         }
     }
