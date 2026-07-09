@@ -31,7 +31,7 @@ bash scripts/package_macos_pkg.sh
 安装生成的 pkg：
 
 ```bash
-sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.9.pkg -target /
+sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.10.pkg -target /
 ```
 
 安装后建议注销并重新登录一次，让 macOS 刷新输入法缓存。然后打开：

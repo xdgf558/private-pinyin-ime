@@ -119,6 +119,7 @@
 - Bumped the app and package version to `0.1.7` for the macOS icon/name refresh.
 - Bumped the app and package version to `0.1.8` for the macOS menu localization refresh.
 - Bumped the app and package version to `0.1.9` for the macOS preferences UI refresh.
+- Bumped the app and package version to `0.1.10` for the user learning and short phrase prediction package refresh.
 
 ### Fixed
 

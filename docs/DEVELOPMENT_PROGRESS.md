@@ -1,7 +1,7 @@
 # Development Progress
 
-Last updated: 2026-07-09 09:23
-Current stage: User short phrase learning
+Last updated: 2026-07-09 10:08
+Current stage: macOS package refresh
 Current status: local review
 
 ## Stage Status
@@ -172,24 +172,26 @@ Current status: local review
 - Bumped the workspace, platform plist build numbers, and package default versions to `0.1.9` for the macOS preferences UI refresh.
 - Added a macOS public-release checklist for personal-website distribution, including Developer ID setup, notarization, website download copy, smoke tests, and manual update flow.
 - Added `scripts/check_macos_public_release.sh` to gate public `.pkg` publication on Developer ID identities, package signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output.
-- Documented that the current local `0.1.9` pkg remains blocked for public website distribution until Owner-provided Developer ID certificates and notarytool credentials are configured.
+- Documented that the local pkg remains blocked for public website distribution until Owner-provided Developer ID certificates and notarization evidence are available.
 - Added first-pass local user bigram learning so selecting `A` then `B` teaches the local predictor to suggest `B` after future `A` commits.
 - Kept user bigram learning behind the existing `enable_user_learning` and `strict_privacy_mode` write guards.
 - Extended user lexicon clear/export behavior to cover learned one-step prediction transitions.
 - Added second-pass local short phrase learning so selecting `A`, `B`, then `C` can teach the local predictor to suggest `BC` after future `A` commits.
 - Kept short phrase learning bounded to two-token continuations with a 12-character phrase cap, and covered it with clear/export behavior.
 - Addressed short-phrase-learning review feedback so prediction candidates without pinyin do not create empty-pinyin `user_bigrams` rows.
+- Bumped the workspace, platform plist build numbers, and package default versions to `0.1.10` for the regenerated macOS installer.
+- Deleted the old local macOS `0.1.9` package and generated `dist/macos_imk/PrivatePinyin-0.1.10.pkg` as a local unsigned test installer.
 
 ## Current Work
 
-- User short phrase learning is complete on local branch `codex/user-short-phrase-learning`.
-- Awaiting local review before pushing to GitHub.
+- The local `main` branch contains the reviewed user bigram and short phrase learning merges plus the `0.1.10` macOS package refresh.
+- Awaiting owner decision before pushing to GitHub.
 
 ## Validation Results
 
 - Command: `cargo test --workspace`
 - Result: passed
-- Notes: 67 workspace tests passed, including short phrase learning, prediction selection, empty-pinyin bigram guarding, disabled-learning, strict-privacy, export, clear, and length-limit regressions.
+- Notes: 67 workspace tests passed with workspace crates reporting version `0.1.10`.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`
 - Result: passed
@@ -197,11 +199,19 @@ Current status: local review
 
 - Command: `cargo fmt --check`
 - Result: passed
-- Notes: Formatting is clean after the user short phrase learning changes.
+- Notes: Formatting is clean after the macOS package refresh.
 
 - Command: `bash scripts/check_stage09_core_sources.sh`
 - Result: passed
 - Notes: Existing core production-hardening scaffold remains green after adding local short phrase prediction learning.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: macOS IMK scaffold remains green after the version bump.
+
+- Command: `env CARGO_NET_OFFLINE=true bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: Built local unsigned test package `dist/macos_imk/PrivatePinyin-0.1.10.pkg`; package signature check reports `Status: no signature`.
 
 - Command: `git diff --check`
 - Result: passed
@@ -231,6 +241,8 @@ Current status: local review
 ## Files Changed In Latest Stage
 
 - `CHANGELOG.md`
+- `Cargo.lock`
+- `Cargo.toml`
 - `README.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
@@ -240,7 +252,14 @@ Current status: local review
 - `ime_core/src/session.rs`
 - `ime_core/src/user_lexicon.rs`
 - `ime_core/tests/user_lexicon_tests.rs`
+- `platform/ios_keyboard/ContainerApp/Info.plist`
+- `platform/ios_keyboard/KeyboardExtension/Info.plist`
+- `platform/macos_imk/README.md`
+- `platform/macos_imk/Resources/Info.plist`
+- `platform/windows_tsf/README.md`
+- `scripts/package_macos_pkg.sh`
+- `scripts/package_windows_tsf.ps1`
 
 ## Next Step
 
-- Review the local `codex/user-short-phrase-learning` commit, then push/open the GitHub PR after approval.
+- Install and smoke-test `dist/macos_imk/PrivatePinyin-0.1.10.pkg`; use Developer ID signing/notarization before website distribution.
