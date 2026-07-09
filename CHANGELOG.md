@@ -130,6 +130,8 @@
 - Changed iOS App Store packaging to require explicit app bundle ID, keyboard bundle ID, and App Group ID inputs and to verify matching export-options provisioning profiles.
 - Changed iOS App Group entitlements and runtime lookup to use a build-setting-provided App Group identifier with a local default fallback.
 - Changed the iOS app archive metadata to declare App Group capability, complete iPad interface orientations, and non-exempt encryption absence for TestFlight uploads.
+- Changed the Windows NSIS setup EXE to request administrator rights for TSF profile registration and pre-unregister stale DLL registrations before registering.
+- Bumped the Windows package version to `0.1.11` for the TSF registration hardening build.
 
 ### Fixed
 
@@ -156,6 +158,7 @@
 - Fixed missing common phrase coverage such as `ganma -> 干嘛` by replacing the starter base lexicon with the approved production import.
 - Fixed iOS TestFlight upload validation failures for missing app icons, missing `CFBundleIconName`, and incomplete iPad orientation support.
 - Fixed the unsigned Windows NSIS setup icon so it uses the cat-brand icon instead of the default NSIS gear.
+- Fixed Windows TSF registration so reinstalling over older builds removes stale language profile and category records before adding the profile again.
 
 ### Security and Privacy
 

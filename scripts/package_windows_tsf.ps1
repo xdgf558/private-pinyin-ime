@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.10",
+    [string]$Version = "0.1.11",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",

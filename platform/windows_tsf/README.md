@@ -47,15 +47,16 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.10.zip
-dist\windows_tsf\PrivatePinyin-0.1.10-setup.exe
-dist\windows_tsf\PrivatePinyin-0.1.10.msi
+dist\windows_tsf\PrivatePinyin-0.1.11.zip
+dist\windows_tsf\PrivatePinyin-0.1.11-setup.exe
+dist\windows_tsf\PrivatePinyin-0.1.11.msi
 ```
 
 The `.exe` is generated when NSIS is available. It is the preferred unsigned
 internal-test installer because it does not depend on Windows Installer MSI
-custom actions, calls the 64-bit `regsvr32.exe` explicitly, and opens a setup
-guide from the finish page. The `.msi` is generated only when WiX is available.
+custom actions, requests administrator rights for TSF profile registration,
+calls the 64-bit `regsvr32.exe` explicitly, and opens a setup guide from the
+finish page. The `.msi` is generated only when WiX is available.
 The packaging script supports both WiX v4+ `wix build` and WiX v3
 `candle.exe`/`light.exe`. Both installers are per-user, install under
 `%LOCALAPPDATA%\PrivatePinyin`, and run TSF registration in the installing
@@ -64,7 +65,7 @@ user's context so the existing HKCU registration path is visible to that user.
 Unsigned internal-test packages can also be built from GitHub Actions:
 
 1. Open the `Windows Unsigned Package` workflow.
-2. Run it manually with the desired version, such as `0.1.10`.
+2. Run it manually with the desired version, such as `0.1.11`.
 3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle, `.exe` setup installer, and `.msi`.
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
@@ -73,7 +74,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.10 `
+  -Version 0.1.11 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning

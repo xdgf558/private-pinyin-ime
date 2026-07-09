@@ -44,5 +44,6 @@ grep -q "PrivatePinyinInstaller.ico" scripts/package_windows_tsf.ps1
 grep -q "Copy-Item \"config\\\\default_settings.json\"" scripts/package_windows_tsf.ps1
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "Open language settings" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "pkgbuild" scripts/package_macos_pkg.sh

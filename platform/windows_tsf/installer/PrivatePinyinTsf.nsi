@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.10"
+!define PRODUCT_VERSION "0.1.11"
 !endif
 
 !ifndef PACKAGE_SOURCE
@@ -19,7 +19,7 @@
 !endif
 
 Unicode true
-RequestExecutionLevel user
+RequestExecutionLevel admin
 Name "PrivatePinyin IME"
 OutFile "${OUTPUT_PATH}"
 Icon "${ICON_PATH}"
@@ -94,10 +94,11 @@ Section "PrivatePinyin IME" SecMain
   CreateShortcut "$SMPROGRAMS\PrivatePinyin IME\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 
   ${DisableX64FSRedirection}
+  ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\PrivatePinyinTsf.dll"'
   ExecWait '"$WINDIR\System32\regsvr32.exe" /s "$INSTDIR\PrivatePinyinTsf.dll"' $0
   ${EnableX64FSRedirection}
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "PrivatePinyin IME was copied, but Windows TSF registration failed with exit code $0. Try reinstalling from a normal user account on 64-bit Windows."
+    MessageBox MB_ICONSTOP "PrivatePinyin IME was copied, but Windows TSF registration failed with regsvr32 exit code $0. Close apps using the old input method, then rerun this installer as administrator on 64-bit Windows. If it still fails, uninstall the previous build, sign out, and sign in again before reinstalling."
     Abort
   ${EndIf}
 
