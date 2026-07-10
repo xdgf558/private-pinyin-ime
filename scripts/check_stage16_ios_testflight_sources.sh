@@ -34,7 +34,10 @@ grep -q "xcodebuild -exportArchive" scripts/package_ios_app_store.sh
 grep -q "package_summary.txt" scripts/package_ios_app_store.sh
 
 grep -q "<string>upload</string>" platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template
-grep -q "testFlightInternalTestingOnly" platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template
+if grep -q "testFlightInternalTestingOnly" platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template; then
+  echo "Upload ExportOptions must not force internal-only TestFlight builds." >&2
+  exit 1
+fi
 grep -q "uploadSymbols" platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template
 
 grep -q "PRIVATE_PINYIN_IOS_ASC_KEY_PATH" platform/ios_keyboard/AppStoreMetadata/Signing.env.example

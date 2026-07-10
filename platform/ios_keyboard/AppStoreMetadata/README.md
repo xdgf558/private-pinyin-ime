@@ -36,8 +36,11 @@ The release script refuses to archive unless all four identifiers are supplied:
 - `PRIVATE_PINYIN_IOS_KEYBOARD_BUNDLE_ID`
 - `PRIVATE_PINYIN_IOS_APP_GROUP_ID`
 
-For upload mode, set `destination` to `upload` in `ExportOptions.plist` and
-provide all three App Store Connect API key variables:
+For upload mode, set `destination` to `upload` in `ExportOptions.plist`.
+External TestFlight builds must not set `testFlightInternalTestingOnly=true`;
+that key makes the uploaded build internal-only and prevents external test group
+assignment. Provide all three App Store Connect API key variables when using the
+scripted upload path:
 
 - `PRIVATE_PINYIN_IOS_ASC_KEY_PATH`
 - `PRIVATE_PINYIN_IOS_ASC_KEY_ID`

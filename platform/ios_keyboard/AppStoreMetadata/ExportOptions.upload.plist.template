@@ -12,8 +12,6 @@
 	<true/>
 	<key>teamID</key>
 	<string>TEAMID1234</string>
-	<key>testFlightInternalTestingOnly</key>
-	<true/>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>provisioningProfiles</key>
