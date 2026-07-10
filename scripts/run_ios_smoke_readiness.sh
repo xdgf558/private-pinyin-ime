@@ -65,6 +65,14 @@ assert_equals "Keyboard extension bundle identifier" \
   "$keyboard_bundle_id" \
   "$(plist_value "$extension_path/Info.plist" "CFBundleIdentifier")"
 
+assert_equals "Container app display name" \
+  "猫栈拼音" \
+  "$(plist_value "$app_path/Info.plist" "CFBundleDisplayName")"
+
+assert_equals "Keyboard extension display name" \
+  "猫栈拼音" \
+  "$(plist_value "$extension_path/Info.plist" "CFBundleDisplayName")"
+
 assert_equals "Container app App Group identifier" \
   "$app_group_id" \
   "$(plist_value "$app_path/Info.plist" "PrivatePinyinAppGroupIdentifier")"
@@ -112,7 +120,8 @@ App Group ID: $app_group_id
 RequestsOpenAccess: false
 
 Manual smoke still required:
-- Add keyboard in Settings > General > Keyboard > Keyboards.
+- Tap 打开系统设置 and verify the public Settings entry opens.
+- Add 猫栈拼音 and verify that exact Chinese name appears in the keyboard list.
 - Verify Notes composition: nihao -> 你好.
 - Verify prediction retention: jintian -> 今天 keeps 天气.
 - Verify password and phone-number fields fall back to system keyboard.

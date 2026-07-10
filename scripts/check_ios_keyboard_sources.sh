@@ -10,6 +10,7 @@ required_files=(
   "platform/ios_keyboard/ContainerApp/PrivatePinyinApp.swift"
   "platform/ios_keyboard/ContainerApp/ContentView.swift"
   "platform/ios_keyboard/ContainerApp/IosSettingsStore.swift"
+  "platform/ios_keyboard/ContainerApp/Assets.xcassets/BrandMark.imageset/Contents.json"
   "platform/ios_keyboard/ContainerApp/Info.plist"
   "platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements"
   "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
@@ -62,6 +63,19 @@ grep -q "../../../ffi/c_api.h" platform/ios_keyboard/PrivatePinyinC/module.modul
 grep -q "crate-type = \\[\"cdylib\", \"staticlib\", \"rlib\"\\]" ffi/ime_ffi/Cargo.toml
 grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
 grep -q "com.apple.keyboard-service" platform/ios_keyboard/KeyboardExtension/Info.plist
+grep -q "猫栈拼音" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "UIApplication.openSettingsURLString" platform/ios_keyboard/ContainerApp/ContentView.swift
+if grep -q "App-Prefs" platform/ios_keyboard/ContainerApp/ContentView.swift; then
+  echo "iOS onboarding must use the public Settings URL, not App-Prefs." >&2
+  exit 1
+fi
+grep -A1 "CFBundleDisplayName" platform/ios_keyboard/ContainerApp/Info.plist | grep -q "猫栈拼音"
+grep -A1 "CFBundleDisplayName" platform/ios_keyboard/KeyboardExtension/Info.plist | grep -q "猫栈拼音"
+if grep -nE '"(PrivatePinyin|Keyboard|Privacy|Enable PrivatePinyin|Full Access|User learning|Learn selected candidates|Clear Local Lexicon)' \
+  platform/ios_keyboard/ContainerApp/ContentView.swift; then
+  echo "iOS container app user-facing copy must remain Chinese." >&2
+  exit 1
+fi
 
 network_pattern="URLSession|NWConnection|Network.framework|http://|https://"
 if command -v rg >/dev/null 2>&1; then

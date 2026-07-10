@@ -71,9 +71,9 @@ enum IosSettingsStore {
 
     static func storageDescription() -> String {
         if usesAppGroupStorage {
-            return "Learning data is stored locally in the shared App Group container."
+            return "学习数据仅保存在本机共享容器中。"
         }
-        return "App Group storage is unavailable in this build; learning stays disabled to avoid writing outside shared storage."
+        return "当前版本无法使用共享容器，用户学习将保持关闭。"
     }
 
     static func clearLocalLexiconArtifacts() throws -> Int {
