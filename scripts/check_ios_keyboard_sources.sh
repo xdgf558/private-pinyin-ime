@@ -55,10 +55,26 @@ grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyin
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "output.mode == IME_MODE_ENGLISH" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "let settingsPath = IosSettingsStore.ensureSettingsFile()" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 if grep -q "englishMode.toggle()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
   echo "iOS keyboard mode UI must derive from C ABI output mode." >&2
   exit 1
 fi
+grep -q "candidateButtons" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "rowHorizontalInset" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "widthWeight" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "togglePreferences" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "setPredictionEnabled" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "clearLearningData" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+if sed -n '/func feedCharacter/,/func handleTextKey/p' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then
+  echo "Character input must not rebuild the complete iOS keyboard." >&2
+  exit 1
+fi
+grep -q "isKeyboardExtension" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "canEnableLearning" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "repairRuntimePathsIfNeeded" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "setPredictionEnabled" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "../../../ffi/c_api.h" platform/ios_keyboard/PrivatePinyinC/module.modulemap
 grep -q "crate-type = \\[\"cdylib\", \"staticlib\", \"rlib\"\\]" ffi/ime_ffi/Cargo.toml
 grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
