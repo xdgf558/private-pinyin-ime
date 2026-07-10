@@ -19,7 +19,7 @@
 !endif
 
 Unicode true
-RequestExecutionLevel user
+RequestExecutionLevel admin
 Name "猫栈拼音"
 OutFile "${OUTPUT_PATH}"
 Icon "${ICON_PATH}"

@@ -44,7 +44,7 @@ grep -q "PrivatePinyinInstaller.ico" scripts/package_windows_tsf.ps1
 grep -q "Copy-Item \"config\\\\default_settings.json\"" scripts/package_windows_tsf.ps1
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
-grep -q "RequestExecutionLevel user" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "WindowStyle Hidden" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1

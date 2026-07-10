@@ -79,7 +79,7 @@
 
 ### Changed
 
-- Kept the per-user Windows installer and onboarding process unelevated, hid PowerShell host windows, and made component detection validate both HKCU and merged HKCR COM registration paths.
+- Kept administrator rights for Windows TSF registration, hid PowerShell host windows, and separated installed-DLL detection from HKCU/merged-HKCR COM registration checks.
 - Fixed Windows installer and TSF display-name mojibake by forcing UTF-8 for NSIS input, MSVC source compilation, and Windows PowerShell UI scripts; switched the NSIS interface to Simplified Chinese.
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.

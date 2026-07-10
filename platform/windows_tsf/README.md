@@ -54,10 +54,10 @@ dist\windows_tsf\PrivatePinyin-0.1.12.msi
 
 The `.exe` is generated when NSIS is available. It is the preferred unsigned
 internal-test installer because it does not depend on Windows Installer MSI
-custom actions, stays in the installing user's context for HKCU TSF profile
-registration, calls the 64-bit `regsvr32.exe` explicitly, and opens a setup
-guide after installation without showing a PowerShell console. The `.msi` is
-generated only when WiX is available.
+custom actions, requests administrator rights for TSF profile registration,
+calls the 64-bit `regsvr32.exe` explicitly, and opens a setup guide after
+installation without showing a PowerShell console. The `.msi` is generated only
+when WiX is available.
 The packaging script supports both WiX v4+ `wix build` and WiX v3
 `candle.exe`/`light.exe`. Both installers are per-user, install under
 `%LOCALAPPDATA%\PrivatePinyin`, and run TSF registration in the installing

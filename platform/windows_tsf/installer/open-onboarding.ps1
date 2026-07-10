@@ -24,6 +24,8 @@ function Test-InputMethodTip {
 }
 
 function Get-PrivatePinyinState {
+    $componentPath = Join-Path $PSScriptRoot "PrivatePinyinTsf.dll"
+    $componentInstalled = Test-Path $componentPath
     $registrationPaths = @(
         "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\$textServiceClsid\InprocServer32",
         "Registry::HKEY_CLASSES_ROOT\CLSID\$textServiceClsid\InprocServer32"
@@ -60,6 +62,7 @@ function Get-PrivatePinyinState {
     }
 
     [pscustomobject]@{
+        ComponentInstalled = $componentInstalled
         Registered = $registered
         Enabled = $enabled
         HasChineseLanguage = $hasChineseLanguage
@@ -71,8 +74,11 @@ function Get-PrivatePinyinState {
 
 function Add-PrivatePinyinInputMethod {
     $state = Get-PrivatePinyinState
-    if (-not $state.Registered) {
+    if (-not $state.ComponentInstalled) {
         throw "没有检测到猫栈拼音的 Windows 组件，请重新运行安装程序。"
+    }
+    if (-not $state.Registered -and -not $state.Enabled) {
+        throw "猫栈拼音组件尚未完成 Windows TSF 注册，请重新运行安装程序。"
     }
     if (-not $state.LanguageToolsAvailable) {
         throw "当前 Windows 系统不支持自动添加，请改用「打开语言设置」。"
@@ -322,9 +328,12 @@ $form.Controls.Add($doneButton)
 function Update-GuideState {
     $state = Get-PrivatePinyinState
 
-    if ($state.Registered) {
-        $step1Status.Text = "已完成：Windows 输入法组件已注册。"
+    if ($state.ComponentInstalled -and ($state.Registered -or $state.Enabled)) {
+        $step1Status.Text = "已完成：Windows 输入法组件已安装并注册。"
         $step1Status.ForeColor = $colors.Success
+    } elseif ($state.ComponentInstalled) {
+        $step1Status.Text = "组件文件已安装，但 Windows TSF 注册尚未完成。"
+        $step1Status.ForeColor = $colors.Warning
     } else {
         $step1Status.Text = "未检测到组件，请关闭此窗口并重新运行安装程序。"
         $step1Status.ForeColor = $colors.Warning
@@ -338,7 +347,7 @@ function Update-GuideState {
         $addButton.BackColor = [System.Drawing.Color]::FromArgb(214, 222, 220)
         $addButton.ForeColor = $colors.Muted
         $testButton.Enabled = $true
-    } elseif (-not $state.Registered) {
+    } elseif (-not $state.ComponentInstalled -or -not $state.Registered) {
         $step2Status.Text = "安装组件修复后，才能添加到输入法列表。"
         $step2Status.ForeColor = $colors.Warning
         $addButton.Enabled = $false
