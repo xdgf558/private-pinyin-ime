@@ -39,9 +39,7 @@ final class IosPinyinCoreBridge {
     private var session: OpaquePointer?
 
     init?() {
-        let settingsPath = IosSettingsStore.usesAppGroupStorage
-            ? IosSettingsStore.ensureSettingsFile()
-            : nil
+        let settingsPath = IosSettingsStore.ensureSettingsFile()
         let configuredEngine = settingsPath.flatMap { path in
             path.withCString { pathPointer in
                 ime_engine_new(pathPointer)

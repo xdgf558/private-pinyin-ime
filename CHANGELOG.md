@@ -72,9 +72,11 @@
 - Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
 - Added Stage 16 TestFlight upload scaffolding, including upload ExportOptions, App Store Connect API key gating, package summaries, and an iOS TestFlight upload record.
 - Added iOS AppIcon asset catalog resources required for App Store Connect/TestFlight validation.
+- Added Stage 17 external TestFlight evidence for build `0.1.10 (11)`, including upload success, App Store Connect processing status, and external Beta App Review state.
 - Added a Windows NSIS setup EXE path for internal testing, including 64-bit TSF registration and a post-install setup guide.
 - Added first-pass continuous-pinyin segmentation and shorthand-initial candidate lookup, so longer inputs such as `wojintianxiangquchifan` and initials such as `nh` can produce phrase candidates.
 - Added first-party common `lü` lexicon supplements such as `gailv -> 概率`, `xiaolv -> 效率`, and a higher-ranked `lv -> 率` fallback.
+- Added inline iOS keyboard preferences for prediction, local user learning, storage status, and clearing learned data.
 
 ### Changed
 
@@ -132,6 +134,12 @@
 - Changed iOS App Store packaging to require explicit app bundle ID, keyboard bundle ID, and App Group ID inputs and to verify matching export-options provisioning profiles.
 - Changed iOS App Group entitlements and runtime lookup to use a build-setting-provided App Group identifier with a local default fallback.
 - Changed the iOS app archive metadata to declare App Group capability, complete iPad interface orientations, and non-exempt encryption absence for TestFlight uploads.
+- Changed the iOS TestFlight upload template so external-testing uploads no longer force `testFlightInternalTestingOnly`.
+- Bumped the iOS container app and keyboard extension build number to `0.1.10 (11)` for the external TestFlight candidate.
+- Changed the iOS keyboard to reuse its key and candidate views during typing, removing per-keystroke view and constraint rebuilding.
+- Changed the iOS keyboard layout to use centered letter rows, wider edit keys, and a substantially wider space bar in portrait and landscape.
+- Changed iOS keyboard-local settings to repair stale sandbox paths after reinstall and to support learning without App Group access.
+- Bumped the iOS container app and keyboard extension to build `0.1.12 (13)` for the optimized TestFlight candidate.
 - Changed the Windows NSIS setup EXE to request administrator rights for TSF profile registration and pre-unregister stale DLL registrations before registering.
 - Bumped the Windows package version to `0.1.11` for the TSF registration hardening build.
 - Changed the Windows TSF display name, installer UI, onboarding, settings window, Start Menu shortcuts, and uninstall metadata to use the Chinese product name `猫栈拼音`.
