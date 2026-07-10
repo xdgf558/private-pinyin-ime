@@ -48,6 +48,7 @@ grep -q "GetTextExt" platform/windows_tsf/src/text_service.cpp
 grep -q "UnregisterClassW" platform/windows_tsf/src/candidate_window.cpp
 grep -q "GetDpiForWindow" platform/windows_tsf/src/candidate_window.cpp
 grep -q "AppsUseLightTheme" platform/windows_tsf/src/candidate_window.cpp
+grep -q "/utf-8" platform/windows_tsf/CMakeLists.txt
 grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
@@ -58,5 +59,15 @@ grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'regsvr32.exe" /u /s' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q ".onInstSuccess" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "IfSilent" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1
 grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1
-grep -q "猫栈拼音已安装" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "添加输入法" platform/windows_tsf/installer/open-onboarding.ps1
+
+onboarding_bom="$(od -An -tx1 -N3 platform/windows_tsf/installer/open-onboarding.ps1 | tr -d ' \n')"
+settings_bom="$(od -An -tx1 -N3 platform/windows_tsf/installer/open-settings.ps1 | tr -d ' \n')"
+test "$onboarding_bom" = "efbbbf"
+test "$settings_bom" = "efbbbf"

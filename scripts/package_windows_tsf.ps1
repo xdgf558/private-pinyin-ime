@@ -208,6 +208,8 @@ function Build-NsisInstaller {
     )
 
     & $NsisToolchain `
+        "/INPUTCHARSET" `
+        "UTF8" `
         "/DPRODUCT_VERSION=$ProductVersion" `
         "/DPACKAGE_SOURCE=$PackageSource" `
         "/DICON_PATH=$InstallerIcon" `

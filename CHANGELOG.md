@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a redesigned Windows post-install guide with TSF status detection, one-click current-user input-method enablement, language-settings recovery, and a Notepad smoke-test action.
 - Initialized the repository documentation and project skeleton.
 - Added the development specification, progress tracker, decision log, and open item tracker.
 - Added pull request workflow and privacy review checklist.
@@ -77,6 +78,8 @@
 - Added first-party common `lü` lexicon supplements such as `gailv -> 概率`, `xiaolv -> 效率`, and a higher-ranked `lv -> 率` fallback.
 
 ### Changed
+
+- Fixed Windows installer and TSF display-name mojibake by forcing UTF-8 for NSIS input, MSVC source compilation, and Windows PowerShell UI scripts; switched the NSIS interface to Simplified Chinese.
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.
 - Updated README instructions for the Rust workspace and CLI smoke test.

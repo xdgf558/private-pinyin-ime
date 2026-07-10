@@ -40,9 +40,6 @@ VIAddVersionKey "LegalCopyright" "All rights reserved."
 !define MUI_ABORTWARNING
 !define MUI_ICON "${ICON_PATH}"
 !define MUI_UNICON "${ICON_PATH}"
-!define MUI_FINISHPAGE_RUN "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
-!define MUI_FINISHPAGE_RUN_PARAMETERS "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\open-onboarding.ps1$\""
-!define MUI_FINISHPAGE_RUN_TEXT "打开安装引导"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -52,7 +49,7 @@ VIAddVersionKey "LegalCopyright" "All rights reserved."
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
-!insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "SimpChinese"
 
 Function .onInit
   ${IfNot} ${RunningX64}
@@ -61,6 +58,12 @@ Function .onInit
   ${EndIf}
   SetShellVarContext current
   SetRegView 64
+FunctionEnd
+
+Function .onInstSuccess
+  IfSilent onboarding_done
+  Exec '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\open-onboarding.ps1"'
+  onboarding_done:
 FunctionEnd
 
 Section "猫栈拼音" SecMain

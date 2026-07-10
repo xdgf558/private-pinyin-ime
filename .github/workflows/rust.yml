@@ -93,6 +93,26 @@ jobs:
         shell: pwsh
         run: cargo test --workspace
 
+      - name: Validate Windows onboarding compatibility
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path ".\platform\windows_tsf\installer\open-onboarding.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -ne 0) {
+            throw ($errors | ForEach-Object Message | Out-String)
+          }
+          $state = & powershell.exe -NoProfile -ExecutionPolicy Bypass `
+            -File .\platform\windows_tsf\installer\open-onboarding.ps1 `
+            -StatusOnly | ConvertFrom-Json
+          if ($state.InputMethodTip -ne "0804:{6A7D5301-42D7-41FB-9954-4F98A63F6210}{B6332FC3-833D-4F7E-A112-5895851CDA34}") {
+            throw "Unexpected PrivatePinyin input method TIP."
+          }
+
       - name: Build Windows TSF host
         shell: pwsh
         run: .\scripts\build_windows_tsf.ps1

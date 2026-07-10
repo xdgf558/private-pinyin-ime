@@ -106,16 +106,27 @@ The settings window edits `%LOCALAPPDATA%\PrivatePinyin\settings.json`. Clear/ex
 
 ## Post-install guide
 
-The NSIS `.exe` installer shows a finish-page checkbox that launches:
+After a successful interactive NSIS `.exe` installation, closing the installer
+automatically launches:
 
 ```powershell
 .\platform\windows_tsf\installer\open-onboarding.ps1
 ```
 
+Silent installations do not launch the guide.
+
 The guide links to Windows language settings, links to the preferences window,
-and reminds testers to use `Win+Space` and to sign out/in once if the TSF profile
-does not appear immediately. The MSI path does not yet have a custom onboarding
-UI; use the `.exe` installer for internal testing when onboarding matters.
+detects whether the TSF profile is already enabled, and offers a one-click action
+that appends `猫栈拼音` to the current user's Simplified Chinese input-method list.
+It preserves existing languages, keyboards, and the default input method. After
+setup, it can open Notepad for a `Win+Space` typing test. The MSI path does not
+yet launch the onboarding UI; use the `.exe` installer when onboarding matters.
+
+Both PowerShell UI scripts are stored with a UTF-8 BOM for Windows PowerShell 5.1.
+The package script also forces NSIS to read its source as UTF-8, and the TSF DLL
+is compiled with MSVC `/utf-8`; these settings keep the installer and registered
+input-method display name from being decoded through the build machine's ANSI
+code page.
 
 ## Manual Smoke Test
 

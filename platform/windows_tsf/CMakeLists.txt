@@ -33,6 +33,10 @@ target_compile_definitions(PrivatePinyinTsf PRIVATE
   WIN32_LEAN_AND_MEAN
 )
 
+if(MSVC)
+  target_compile_options(PrivatePinyinTsf PRIVATE /utf-8)
+endif()
+
 if(DEFINED PRIVATE_PINYIN_IME_LIB AND NOT "${PRIVATE_PINYIN_IME_LIB}" STREQUAL "")
   target_link_libraries(PrivatePinyinTsf PRIVATE "${PRIVATE_PINYIN_IME_LIB}")
 else()

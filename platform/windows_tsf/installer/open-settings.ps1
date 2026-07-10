@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$SettingsTool = (Join-Path $PSScriptRoot "private-pinyin-settings.exe")
 )
 
