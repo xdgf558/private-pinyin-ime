@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-10 18:55
+Last updated: 2026-07-10 22:33
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -31,6 +31,7 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 - Redesigned the macOS preferences window as a fixed dark Station Board with a branded header, privacy card, two-column prediction/learning controls, settings-file panel, and release information.
 - Added dynamic public-version display without the internal build number, plus bundled Simplified Chinese release notes for future package updates.
+- Bumped the macOS app and installer package to public version `0.1.13` for the redesigned preferences release.
 - Added an isolated `--show-preferences` visual-preview path and verified the complete window on macOS with no clipped or overlapping content.
 - Updated the Stage 11 privacy source gate to match the current localized iOS learning copy.
 - Created the initial repository skeleton.
@@ -323,6 +324,16 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Result: passed
 - Notes: Apple returned `import-status=VALID`, `build-audience-type=APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true`.
 
+### macOS 0.1.13 Signed Release Package
+
+- Command: signed `bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.13.pkg`; Apple notarization submission `edc25310-8b8f-4558-84c3-706bcad40dbb` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.13 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `9c17738382c030a87db4208ba456e1abcf73545af85bb63a451ea8147ca1451e`.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -332,7 +343,6 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Validate signed Windows MSI install/uninstall on Windows 11.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
 - Add TSF display attributes for preedit text.
-- Provide macOS Developer ID credentials and notarization evidence.
 - Validate signed/notarized macOS pkg install/uninstall and release uninstall guidance.
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.

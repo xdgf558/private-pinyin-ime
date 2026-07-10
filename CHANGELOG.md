@@ -149,6 +149,7 @@
 - Changed the Windows TSF display name, installer UI, onboarding, settings window, Start Menu shortcuts, and uninstall metadata to use the Chinese product name `猫栈拼音`.
 - Changed Chinese-mode punctuation commits to full-width punctuation for comma, period, minus, equal, and semicolon.
 - Bumped the Windows/core package version to `0.1.12` for the display-name and input-behavior build.
+- Bumped the macOS app and installer package to `0.1.13` for the Station Board preferences and release-information update.
 
 ### Fixed
 
