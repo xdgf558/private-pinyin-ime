@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-10 13:58
+Last updated: 2026-07-10 18:55
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,6 +29,10 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Redesigned the macOS preferences window as a fixed dark Station Board with a branded header, privacy card, two-column prediction/learning controls, settings-file panel, and release information.
+- Added dynamic public-version display without the internal build number, plus bundled Simplified Chinese release notes for future package updates.
+- Added an isolated `--show-preferences` visual-preview path and verified the complete window on macOS with no clipped or overlapping content.
+- Updated the Stage 11 privacy source gate to match the current localized iOS learning copy.
 - Created the initial repository skeleton.
 - Added the project development specification under `docs/`.
 - Added progress, changelog, decision, and open item tracking files.

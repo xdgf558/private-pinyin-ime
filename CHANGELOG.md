@@ -77,10 +77,14 @@
 - Added first-pass continuous-pinyin segmentation and shorthand-initial candidate lookup, so longer inputs such as `wojintianxiangquchifan` and initials such as `nh` can produce phrase candidates.
 - Added first-party common `lü` lexicon supplements such as `gailv -> 概率`, `xiaolv -> 效率`, and a higher-ranked `lv -> 率` fallback.
 - Added inline iOS keyboard preferences for prediction, local user learning, storage status, and clearing learned data.
+- Added a full Station Board-style macOS preferences layout with dedicated privacy, prediction, learning, settings-file, and release-information sections.
+- Added a bundled Simplified Chinese macOS release-notes resource and dynamic display of the public app version without exposing the internal build number.
+- Added a `--show-preferences` macOS visual-preview path that does not start the InputMethodKit server.
 
 ### Changed
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.
+- Updated the Stage 11 privacy scaffold check to follow the localized iOS learning copy instead of the removed English label.
 - Updated README instructions for the Rust workspace and CLI smoke test.
 - Updated the stage delivery workflow to use local review before GitHub push and merge.
 - Changed candidate ordering to rank exact matches before prefix matches, then sort within each group by frequency.

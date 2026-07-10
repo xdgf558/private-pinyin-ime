@@ -52,6 +52,7 @@ cp "$repo_root/platform/macos_imk/Resources/Info.plist" "$contents_dir/Info.plis
 cp "$repo_root/platform/macos_imk/Resources/InfoPlist.loctable" "$resources_dir/InfoPlist.loctable"
 cp "$repo_root/platform/macos_imk/Resources/PrivatePinyinMenuIcon.tif" "$resources_dir/PrivatePinyinMenuIcon.tif"
 cp "$repo_root/platform/macos_imk/Resources/PrivatePinyinAppIcon.icns" "$resources_dir/PrivatePinyinAppIcon.icns"
+cp "$repo_root/platform/macos_imk/Resources/ReleaseNotes.zh-Hans.txt" "$resources_dir/ReleaseNotes.zh-Hans.txt"
 cp -R "$repo_root/platform/macos_imk/Resources/en.lproj" "$resources_dir/en.lproj"
 cp -R "$repo_root/platform/macos_imk/Resources/zh-Hans.lproj" "$resources_dir/zh-Hans.lproj"
 cp "$repo_root/config/default_settings.json" "$resources_dir/default_settings.json"
