@@ -3,6 +3,7 @@
 #include <atomic>
 #include <optional>
 
+#include <ctffunc.h>
 #include <msctf.h>
 #include <windows.h>
 
@@ -15,7 +16,9 @@ struct KeyMessage;
 
 class TextService final : public ITfTextInputProcessorEx,
                           public ITfKeyEventSink,
-                          public ITfCompositionSink {
+                          public ITfCompositionSink,
+                          public ITfFunctionProvider,
+                          public ITfFnConfigure {
  public:
   TextService();
 
@@ -43,6 +46,15 @@ class TextService final : public ITfTextInputProcessorEx,
   HRESULT STDMETHODCALLTYPE OnCompositionTerminated(TfEditCookie cookie,
                                                     ITfComposition* composition) override;
 
+  HRESULT STDMETHODCALLTYPE GetType(GUID* guid) override;
+  HRESULT STDMETHODCALLTYPE GetDescription(BSTR* description) override;
+  HRESULT STDMETHODCALLTYPE GetFunction(REFGUID guid, REFIID iid,
+                                        IUnknown** object) override;
+
+  HRESULT STDMETHODCALLTYPE GetDisplayName(BSTR* name) override;
+  HRESULT STDMETHODCALLTYPE Show(HWND parent, LANGID language_id,
+                                 REFGUID profile_guid) override;
+
   HRESULT apply_output_in_edit_session(TfEditCookie cookie, ITfContext* context,
                                        const OutputSnapshot& output);
 
@@ -51,6 +63,8 @@ class TextService final : public ITfTextInputProcessorEx,
 
   HRESULT advise_key_sink();
   void unadvise_key_sink();
+  HRESULT advise_function_provider();
+  void unadvise_function_provider();
   HRESULT request_edit_session(ITfContext* context, const OutputSnapshot& output);
   HRESULT update_composition(TfEditCookie cookie, ITfContext* context,
                              const std::wstring& preedit);
@@ -70,6 +84,7 @@ class TextService final : public ITfTextInputProcessorEx,
   CoreBridge core_;
   CandidateWindow candidate_window_;
   bool has_active_input_ = false;
+  bool function_provider_advised_ = false;
 };
 
 }  // namespace private_pinyin

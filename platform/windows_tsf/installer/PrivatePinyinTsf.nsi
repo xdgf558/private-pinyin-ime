@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.12"
+!define PRODUCT_VERSION "0.1.13"
 !endif
 
 !ifndef PACKAGE_SOURCE

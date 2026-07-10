@@ -47,6 +47,8 @@ target_link_libraries(PrivatePinyinTsf PRIVATE
   advapi32
   gdi32
   ole32
+  oleaut32
+  shell32
   user32
   uuid
 )

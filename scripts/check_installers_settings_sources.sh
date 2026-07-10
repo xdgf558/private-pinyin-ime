@@ -50,5 +50,8 @@ grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyi
 grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1
 grep -q "打开语言设置" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "HasLegacyInputMethod" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "ITfFnConfigure" platform/windows_tsf/src/text_service.h
+grep -q "open-settings.ps1" platform/windows_tsf/src/text_service.cpp
 grep -q "猫栈拼音偏好设置" platform/windows_tsf/installer/open-settings.ps1
 grep -q "pkgbuild" scripts/package_macos_pkg.sh

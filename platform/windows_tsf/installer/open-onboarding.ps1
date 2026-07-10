@@ -8,19 +8,53 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2
 
 $textServiceClsid = "{6A7D5301-42D7-41FB-9954-4F98A63F6210}"
-$profileGuid = "{B6332FC3-833D-4F7E-A112-5895851CDA34}"
+$profileGuid = "{00286F63-195C-445D-AD40-C6D1A4C560AD}"
 $inputMethodTip = "0804:$textServiceClsid$profileGuid"
+$legacyInputMethodTips = @(
+    "0804:$textServiceClsid{B6332FC3-833D-4F7E-A112-5895851CDA34}"
+)
 $chineseLanguageTags = @("zh-Hans-CN", "zh-CN")
 
 function Test-InputMethodTip {
-    param([AllowNull()]$Tips)
+    param(
+        [AllowNull()]$Tips,
+        [Parameter(Mandatory = $true)][string]$ExpectedTip
+    )
 
     foreach ($tip in $Tips) {
-        if ([string]::Equals([string]$tip, $inputMethodTip, [System.StringComparison]::OrdinalIgnoreCase)) {
+        if ([string]::Equals([string]$tip, $ExpectedTip, [System.StringComparison]::OrdinalIgnoreCase)) {
             return $true
         }
     }
     return $false
+}
+
+function Test-LegacyInputMethodTip {
+    param([AllowNull()]$Tips)
+
+    foreach ($legacyTip in $legacyInputMethodTips) {
+        if (Test-InputMethodTip -Tips $Tips -ExpectedTip $legacyTip) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Remove-LegacyInputMethodTips {
+    param([AllowNull()]$Tips)
+
+    if ($null -eq $Tips) {
+        return
+    }
+
+    for ($index = $Tips.Count - 1; $index -ge 0; $index--) {
+        foreach ($legacyTip in $legacyInputMethodTips) {
+            if ([string]::Equals([string]$Tips[$index], $legacyTip, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $Tips.RemoveAt($index)
+                break
+            }
+        }
+    }
 }
 
 function Get-PrivatePinyinState {
@@ -47,6 +81,7 @@ function Get-PrivatePinyinState {
     $languageToolsAvailable = $null -ne (Get-Command Get-WinUserLanguageList -ErrorAction SilentlyContinue) -and
         $null -ne (Get-Command Set-WinUserLanguageList -ErrorAction SilentlyContinue)
     $enabled = $false
+    $hasLegacyInputMethod = $false
     $hasChineseLanguage = $false
 
     if ($languageToolsAvailable) {
@@ -54,8 +89,11 @@ function Get-PrivatePinyinState {
         foreach ($language in $languageList) {
             if ($chineseLanguageTags -contains [string]$language.LanguageTag) {
                 $hasChineseLanguage = $true
-                if (Test-InputMethodTip -Tips $language.InputMethodTips) {
+                if (Test-InputMethodTip -Tips $language.InputMethodTips -ExpectedTip $inputMethodTip) {
                     $enabled = $true
+                }
+                if (Test-LegacyInputMethodTip -Tips $language.InputMethodTips) {
+                    $hasLegacyInputMethod = $true
                 }
             }
         }
@@ -65,6 +103,7 @@ function Get-PrivatePinyinState {
         ComponentInstalled = $componentInstalled
         Registered = $registered
         Enabled = $enabled
+        HasLegacyInputMethod = $hasLegacyInputMethod
         HasChineseLanguage = $hasChineseLanguage
         LanguageToolsAvailable = $languageToolsAvailable
         InputMethodTip = $inputMethodTip
@@ -83,7 +122,7 @@ function Add-PrivatePinyinInputMethod {
     if (-not $state.LanguageToolsAvailable) {
         throw "当前 Windows 系统不支持自动添加，请改用「打开语言设置」。"
     }
-    if ($state.Enabled) {
+    if ($state.Enabled -and -not $state.HasLegacyInputMethod) {
         return $state
     }
 
@@ -110,7 +149,13 @@ function Add-PrivatePinyinInputMethod {
         throw "无法创建简体中文语言项，请先在 Windows 设置中添加简体中文。"
     }
 
-    if (-not (Test-InputMethodTip -Tips $chineseLanguage.InputMethodTips)) {
+    foreach ($language in $languageList) {
+        if ($chineseLanguageTags -contains [string]$language.LanguageTag) {
+            Remove-LegacyInputMethodTips -Tips $language.InputMethodTips
+        }
+    }
+
+    if (-not (Test-InputMethodTip -Tips $chineseLanguage.InputMethodTips -ExpectedTip $inputMethodTip)) {
         [void]$chineseLanguage.InputMethodTips.Add($inputMethodTip)
     }
     Set-WinUserLanguageList -LanguageList $languageList -Force
@@ -339,7 +384,15 @@ function Update-GuideState {
         $step1Status.ForeColor = $colors.Warning
     }
 
-    if ($state.Enabled) {
+    if ($state.HasLegacyInputMethod) {
+        $step2Status.Text = "检测到旧版本输入法。点击右侧按钮更新并清理乱码缓存。"
+        $step2Status.ForeColor = $colors.Warning
+        $addButton.Text = "更新输入法"
+        $addButton.Enabled = $true
+        $addButton.BackColor = $colors.Header
+        $addButton.ForeColor = $colors.White
+        $testButton.Enabled = $state.Enabled
+    } elseif ($state.Enabled) {
         $step2Status.Text = "已完成：猫栈拼音已在当前账户的输入法列表中。"
         $step2Status.ForeColor = $colors.Success
         $addButton.Text = "已添加"
@@ -371,15 +424,21 @@ function Update-GuideState {
 }
 
 $addButton.Add_Click({
+    $wasLegacyInputMethod = (Get-PrivatePinyinState).HasLegacyInputMethod
     $addButton.Enabled = $false
-    $addButton.Text = "正在添加..."
+    $addButton.Text = if ($wasLegacyInputMethod) { "正在更新..." } else { "正在添加..." }
     $form.Refresh()
 
     try {
         [void](Add-PrivatePinyinInputMethod)
         [void](Update-GuideState)
+        $completionMessage = if ($wasLegacyInputMethod) {
+            "猫栈拼音已更新，旧版乱码条目已清理。现在可以按 Win + 空格切换并开始输入。"
+        } else {
+            "猫栈拼音已添加。现在可以按 Win + 空格切换并开始输入。"
+        }
         [System.Windows.Forms.MessageBox]::Show(
-            "猫栈拼音已添加。现在可以按 Win + 空格切换并开始输入。",
+            $completionMessage,
             "添加完成",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Information

@@ -86,6 +86,8 @@ HRESULT register_tsf_profile() {
   category_mgr->UnregisterCategory(kTextServiceClsid, GUID_TFCAT_TIP_KEYBOARD,
                                    kTextServiceClsid);
   profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
+                                  kLegacyTextServiceProfileGuid);
+  profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
                                   kTextServiceProfileGuid);
   profiles->Unregister(kTextServiceClsid);
 
@@ -117,6 +119,8 @@ void unregister_tsf_profile() {
   ComPtr<ITfInputProcessorProfiles> profiles;
   if (SUCCEEDED(CoCreateInstance(CLSID_TF_InputProcessorProfiles, nullptr, CLSCTX_INPROC_SERVER,
                                  IID_PPV_ARGS(profiles.put())))) {
+    profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
+                                    kLegacyTextServiceProfileGuid);
     profiles->RemoveLanguageProfile(kTextServiceClsid, kTextServiceLangId,
                                     kTextServiceProfileGuid);
     profiles->Unregister(kTextServiceClsid);

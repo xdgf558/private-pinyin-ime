@@ -31,7 +31,11 @@ done
 grep -q "ITfTextInputProcessorEx" platform/windows_tsf/src/text_service.h
 grep -q "ITfKeyEventSink" platform/windows_tsf/src/text_service.h
 grep -q "ITfCompositionSink" platform/windows_tsf/src/text_service.h
+grep -q "ITfFunctionProvider" platform/windows_tsf/src/text_service.h
+grep -q "ITfFnConfigure" platform/windows_tsf/src/text_service.h
 grep -q "AdviseKeyEventSink" platform/windows_tsf/src/text_service.cpp
+grep -q "AdviseSingleSink" platform/windows_tsf/src/text_service.cpp
+grep -q "open-settings.ps1" platform/windows_tsf/src/text_service.cpp
 grep -q "DllRegisterServer" platform/windows_tsf/src/dllmain.cpp
 grep -q "DllUnregisterServer" platform/windows_tsf/src/dllmain.cpp
 grep -q "DllGetClassObject" platform/windows_tsf/PrivatePinyinTsf.def
@@ -66,6 +70,9 @@ grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyi
 grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1
 grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "00286F63-195C-445D-AD40-C6D1A4C560AD" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "HasLegacyInputMethod" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "kLegacyTextServiceProfileGuid" platform/windows_tsf/src/registration.cpp
 grep -q "HKEY_CLASSES_ROOT" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "ComponentInstalled" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "添加输入法" platform/windows_tsf/installer/open-onboarding.ps1
