@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.14"
+!define PRODUCT_VERSION "0.1.15"
 !endif
 
 !define APP_DIR_NAME "app-${PRODUCT_VERSION}"
@@ -81,7 +81,9 @@ Section "猫栈拼音" SecMain
   File "${PACKAGE_SOURCE}\open-settings.ps1"
   File "${PACKAGE_SOURCE}\open-onboarding.ps1"
   File "${PACKAGE_SOURCE}\PrivatePinyinInstaller.ico"
+  File "${PACKAGE_SOURCE}\PrivatePinyinLogo.png"
   File "${PACKAGE_SOURCE}\default_settings.json"
+  File "${PACKAGE_SOURCE}\version.txt"
 
   WriteRegStr HKCU "Software\PrivatePinyin\Installer" "InstallDir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\PrivatePinyin" "DisplayName" "猫栈拼音"
@@ -122,7 +124,9 @@ Section "猫栈拼音" SecMain
   Delete /REBOOTOK "$INSTDIR\open-settings.ps1"
   Delete /REBOOTOK "$INSTDIR\open-onboarding.ps1"
   Delete /REBOOTOK "$INSTDIR\PrivatePinyinInstaller.ico"
+  Delete /REBOOTOK "$INSTDIR\PrivatePinyinLogo.png"
   Delete /REBOOTOK "$INSTDIR\default_settings.json"
+  Delete /REBOOTOK "$INSTDIR\version.txt"
 
   FindFirst $1 $2 "$INSTDIR\app-*"
   cleanup_old_versions:
@@ -172,7 +176,9 @@ Section "Uninstall"
   Delete /REBOOTOK "$INSTDIR\open-settings.ps1"
   Delete /REBOOTOK "$INSTDIR\open-onboarding.ps1"
   Delete /REBOOTOK "$INSTDIR\PrivatePinyinInstaller.ico"
+  Delete /REBOOTOK "$INSTDIR\PrivatePinyinLogo.png"
   Delete /REBOOTOK "$INSTDIR\default_settings.json"
+  Delete /REBOOTOK "$INSTDIR\version.txt"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
 

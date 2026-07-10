@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.14",
+    [string]$Version = "0.1.15",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",
@@ -276,6 +276,7 @@ $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
 $msiPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.msi"
 $exePath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version-setup.exe"
 $installerIcon = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinInstaller.ico"
+$productLogo = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinLogo.png"
 
 Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -299,6 +300,9 @@ if (-not (Test-Path $settingsTool)) {
 if (-not (Test-Path $installerIcon)) {
     throw "Could not find Windows installer icon at $installerIcon."
 }
+if (-not (Test-Path $productLogo)) {
+    throw "Could not find Windows product logo at $productLogo."
+}
 
 Copy-Item $tsfDll.FullName -Destination $stageDir
 Copy-Item $ffiDll -Destination $stageDir
@@ -308,7 +312,9 @@ Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stag
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
 Copy-Item $installerIcon -Destination $stageDir
+Copy-Item $productLogo -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
+Set-Content -Path (Join-Path $stageDir "version.txt") -Value $Version -Encoding ASCII
 
 Get-ChildItem -Path $stageDir -File |
     Where-Object { $_.Extension -in ".dll", ".exe" } |

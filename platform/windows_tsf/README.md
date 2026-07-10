@@ -47,9 +47,9 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.14.zip
-dist\windows_tsf\PrivatePinyin-0.1.14-setup.exe
-dist\windows_tsf\PrivatePinyin-0.1.14.msi
+dist\windows_tsf\PrivatePinyin-0.1.15.zip
+dist\windows_tsf\PrivatePinyin-0.1.15-setup.exe
+dist\windows_tsf\PrivatePinyin-0.1.15.msi
 ```
 
 The `.exe` is generated when NSIS is available. It is the preferred unsigned
@@ -68,7 +68,7 @@ user's context so the existing HKCU registration path is visible to that user.
 Unsigned internal-test packages can also be built from GitHub Actions:
 
 1. Open the `Windows Unsigned Package` workflow.
-2. Run it manually with the desired version, such as `0.1.14`.
+2. Run it manually with the desired version, such as `0.1.15`.
 3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle, `.exe` setup installer, and `.msi`.
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
@@ -77,7 +77,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.14 `
+  -Version 0.1.15 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning

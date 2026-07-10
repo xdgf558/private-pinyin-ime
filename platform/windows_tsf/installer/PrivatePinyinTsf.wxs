@@ -71,7 +71,9 @@
         <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" />
         <File Id="UnregisterImeScript" Source="$(var.PackageSource)\unregister-ime.ps1" />
         <File Id="OpenSettingsScript" Source="$(var.PackageSource)\open-settings.ps1" />
+        <File Id="PrivatePinyinLogo" Source="$(var.PackageSource)\PrivatePinyinLogo.png" />
         <File Id="DefaultSettingsJson" Source="$(var.PackageSource)\default_settings.json" />
+        <File Id="VersionTxt" Source="$(var.PackageSource)\version.txt" />
       </Component>
     </ComponentGroup>
   </Fragment>

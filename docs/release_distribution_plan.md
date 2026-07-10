@@ -34,7 +34,7 @@ Signing:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.14 `
+  -Version 0.1.15 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning

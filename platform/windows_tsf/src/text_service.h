@@ -66,6 +66,7 @@ class TextService final : public ITfTextInputProcessorEx,
   HRESULT advise_function_provider();
   void unadvise_function_provider();
   HRESULT request_edit_session(ITfContext* context, const OutputSnapshot& output);
+  void apply_core_output(ITfContext* context, const OutputSnapshot& output);
   HRESULT update_composition(TfEditCookie cookie, ITfContext* context,
                              const std::wstring& preedit);
   HRESULT commit_text(TfEditCookie cookie, ITfContext* context, const std::wstring& text);
@@ -85,6 +86,8 @@ class TextService final : public ITfTextInputProcessorEx,
   CandidateWindow candidate_window_;
   bool has_active_input_ = false;
   bool function_provider_advised_ = false;
+  bool shift_pressed_ = false;
+  bool shift_used_as_modifier_ = false;
 };
 
 }  // namespace private_pinyin

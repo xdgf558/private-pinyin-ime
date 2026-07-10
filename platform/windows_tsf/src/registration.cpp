@@ -66,7 +66,26 @@ void delete_com_registration() {
   RegDeleteTreeW(HKEY_CURRENT_USER, clsid_key.c_str());
 }
 
-HRESULT register_tsf_profile() {
+std::wstring profile_icon_path(HINSTANCE module) {
+  wchar_t module_path[MAX_PATH]{};
+  const DWORD length =
+      GetModuleFileNameW(module, module_path, static_cast<DWORD>(std::size(module_path)));
+  if (length == 0 || length >= std::size(module_path)) {
+    return {};
+  }
+
+  std::wstring icon_path(module_path, length);
+  const std::wstring::size_type separator = icon_path.find_last_of(L"\\/");
+  if (separator == std::wstring::npos) {
+    return {};
+  }
+  icon_path.resize(separator + 1);
+  icon_path += L"PrivatePinyinInstaller.ico";
+  return GetFileAttributesW(icon_path.c_str()) != INVALID_FILE_ATTRIBUTES ? icon_path
+                                                                          : std::wstring{};
+}
+
+HRESULT register_tsf_profile(HINSTANCE module) {
   ComPtr<ITfInputProcessorProfiles> profiles;
   HRESULT hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, nullptr, CLSCTX_INPROC_SERVER,
                                 IID_PPV_ARGS(profiles.put()));
@@ -96,10 +115,12 @@ HRESULT register_tsf_profile() {
     return hr;
   }
 
-  hr = profiles->AddLanguageProfile(kTextServiceClsid, kTextServiceLangId,
-                                    kTextServiceProfileGuid, kTextServiceDescription,
-                                    static_cast<ULONG>(std::size(kTextServiceDescription) - 1),
-                                    nullptr, 0, 0);
+  const std::wstring icon_path = profile_icon_path(module);
+  const wchar_t* icon_file = icon_path.empty() ? nullptr : icon_path.c_str();
+  const ULONG icon_path_length = static_cast<ULONG>(icon_path.size());
+  hr = profiles->AddLanguageProfile(
+      kTextServiceClsid, kTextServiceLangId, kTextServiceProfileGuid, kTextServiceDescription,
+      static_cast<ULONG>(std::size(kTextServiceDescription) - 1), icon_file, icon_path_length, 0);
   if (FAILED(hr)) {
     return hr;
   }
@@ -141,7 +162,7 @@ HRESULT register_server(HINSTANCE module) {
 
   hr = write_com_registration(module);
   if (SUCCEEDED(hr)) {
-    hr = register_tsf_profile();
+    hr = register_tsf_profile(module);
   }
 
   if (did_initialize) {

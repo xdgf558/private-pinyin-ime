@@ -233,6 +233,8 @@ HRESULT TextService::Deactivate() {
   candidate_window_.hide();
   release_composition();
   has_active_input_ = false;
+  shift_pressed_ = false;
+  shift_used_as_modifier_ = false;
   core_.reset();
 
   if (thread_mgr_ != nullptr) {
@@ -247,6 +249,8 @@ HRESULT TextService::OnSetFocus(BOOL foreground) {
   if (!foreground) {
     candidate_window_.hide();
     has_active_input_ = false;
+    shift_pressed_ = false;
+    shift_used_as_modifier_ = false;
     core_.reset_session();
   }
   return S_OK;
@@ -256,6 +260,13 @@ HRESULT TextService::OnTestKeyDown(ITfContext* /*context*/, WPARAM key, LPARAM f
                                    BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
+  }
+  if (key == VK_SHIFT) {
+    *eaten = TRUE;
+    return S_OK;
+  }
+  if (shift_pressed_) {
+    shift_used_as_modifier_ = true;
   }
   const KeyMessage message = map_windows_key(key, flags);
   *eaten = should_handle_key(message) ? TRUE : FALSE;
@@ -268,6 +279,16 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   }
   *eaten = FALSE;
 
+  if (key == VK_SHIFT) {
+    shift_pressed_ = true;
+    shift_used_as_modifier_ = false;
+    *eaten = TRUE;
+    return S_OK;
+  }
+  if (shift_pressed_) {
+    shift_used_as_modifier_ = true;
+  }
+
   KeyMessage message = map_windows_key(key, flags);
   if (!should_handle_key(message)) {
     return S_OK;
@@ -279,42 +300,56 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
     return S_OK;
   }
 
-  if (context != nullptr) {
-    const HRESULT edit_result = request_edit_session(context, *output);
-    if (FAILED(edit_result)) {
-      if (output->should_show_candidates) {
-        candidate_window_.show(output->candidates);
-      } else {
-        candidate_window_.hide();
-      }
-    }
-  } else if (output->should_show_candidates) {
-    candidate_window_.show(output->candidates);
-  } else {
-    candidate_window_.hide();
-  }
-
+  apply_core_output(context, *output);
   update_input_state(*output);
 
   *eaten = TRUE;
   return S_OK;
 }
 
-HRESULT TextService::OnTestKeyUp(ITfContext* /*context*/, WPARAM /*key*/, LPARAM /*flags*/,
+HRESULT TextService::OnTestKeyUp(ITfContext* /*context*/, WPARAM key, LPARAM /*flags*/,
                                  BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
   }
-  *eaten = FALSE;
+  if (key != VK_SHIFT) {
+    *eaten = FALSE;
+    return S_OK;
+  }
+
+  const bool should_toggle = shift_pressed_ && !shift_used_as_modifier_;
+  *eaten = should_toggle ? TRUE : FALSE;
+  if (!should_toggle) {
+    shift_pressed_ = false;
+    shift_used_as_modifier_ = false;
+  }
   return S_OK;
 }
 
-HRESULT TextService::OnKeyUp(ITfContext* /*context*/, WPARAM /*key*/, LPARAM /*flags*/,
+HRESULT TextService::OnKeyUp(ITfContext* context, WPARAM key, LPARAM flags,
                              BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
   }
   *eaten = FALSE;
+  if (key != VK_SHIFT) {
+    return S_OK;
+  }
+
+  const bool should_toggle = shift_pressed_ && !shift_used_as_modifier_;
+  shift_pressed_ = false;
+  shift_used_as_modifier_ = false;
+  if (!should_toggle) {
+    return S_OK;
+  }
+
+  const KeyMessage message = map_windows_key(key, flags);
+  std::optional<OutputSnapshot> output = core_.feed_key(to_ime_key_event(message));
+  if (output.has_value()) {
+    apply_core_output(context, *output);
+    update_input_state(*output);
+  }
+  *eaten = TRUE;
   return S_OK;
 }
 
@@ -472,6 +507,21 @@ HRESULT TextService::request_edit_session(ITfContext* context, const OutputSnaps
                                   &edit_result);
   edit_session->Release();
   return FAILED(hr) ? hr : edit_result;
+}
+
+void TextService::apply_core_output(ITfContext* context, const OutputSnapshot& output) {
+  if (context != nullptr) {
+    const HRESULT edit_result = request_edit_session(context, output);
+    if (SUCCEEDED(edit_result)) {
+      return;
+    }
+  }
+
+  if (output.should_show_candidates) {
+    candidate_window_.show(output.candidates);
+  } else {
+    candidate_window_.hide();
+  }
 }
 
 HRESULT TextService::update_composition(TfEditCookie cookie, ITfContext* context,

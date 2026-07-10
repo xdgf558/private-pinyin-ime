@@ -20,6 +20,7 @@ required_files=(
   "platform/windows_tsf/installer/PrivatePinyinTsf.wxs"
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
+  "platform/windows_tsf/installer/PrivatePinyinLogo.png"
   "scripts/build_windows_tsf.ps1"
   "scripts/package_windows_tsf.ps1"
 )
@@ -47,6 +48,8 @@ grep -q "ime_engine_clear_user_lexicon" platform/windows_tsf/src/core_bridge.cpp
 grep -q "settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "猫栈拼音" platform/windows_tsf/src/guids.h
 grep -q "IME_KEY_SPACE" platform/windows_tsf/src/key_map.cpp
+grep -q "IME_KEY_SHIFT" platform/windows_tsf/src/key_map.cpp
+grep -q "shift_used_as_modifier_" platform/windows_tsf/src/text_service.cpp
 grep -q "SWP_NOACTIVATE" platform/windows_tsf/src/candidate_window.cpp
 grep -q "GetTextExt" platform/windows_tsf/src/text_service.cpp
 grep -q "UnregisterClassW" platform/windows_tsf/src/candidate_window.cpp
@@ -77,9 +80,20 @@ grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding
 grep -q "00286F63-195C-445D-AD40-C6D1A4C560AD" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "HasLegacyInputMethod" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "kLegacyTextServiceProfileGuid" platform/windows_tsf/src/registration.cpp
+grep -q "PrivatePinyinInstaller.ico" platform/windows_tsf/src/registration.cpp
+grep -q "icon_path_length" platform/windows_tsf/src/registration.cpp
 grep -q "HKEY_CLASSES_ROOT" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "ComponentInstalled" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "添加输入法" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "version.txt" platform/windows_tsf/installer/open-settings.ps1
+grep -q "PrivatePinyinLogo.png" platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Text = "关于"' platform/windows_tsf/installer/open-settings.ps1
+grep -q "本版更新" platform/windows_tsf/installer/open-settings.ps1
+grep -q 'version.txt' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'version.txt' platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q 'PrivatePinyinLogo.png' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'PrivatePinyinLogo.png' platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q 'Set-Content.*version.txt' scripts/package_windows_tsf.ps1
 
 onboarding_bom="$(od -An -tx1 -N3 platform/windows_tsf/installer/open-onboarding.ps1 | tr -d ' \n')"
 settings_bom="$(od -An -tx1 -N3 platform/windows_tsf/installer/open-settings.ps1 | tr -d ' \n')"
