@@ -242,7 +242,7 @@ final class KeyboardViewController: UIInputViewController {
     private func makeDivider() -> UIView {
         let divider = UIView()
         divider.backgroundColor = UIColor.separator
-        divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
+        divider.heightAnchor.constraint(equalToConstant: 1 / traitCollection.displayScale).isActive = true
         return divider
     }
 

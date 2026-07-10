@@ -336,7 +336,7 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Assign processed build `0.1.12 (13)` to the external TestFlight group after deciding how to handle build `11`'s pending Beta App Review, then enable the public link after approval.
 - Run real-device smoke tests in Notes, Safari, password, and phone fields, including Full Access-off App Group behavior and local learning persistence under distribution provisioning.
 - Expose sanitized core logging through host ABI callbacks.
-- Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
+- Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 - Add a retention policy for long-running `user_phrases`, `user_bigrams`, and `user_short_phrases` growth.
 
