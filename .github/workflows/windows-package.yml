@@ -6,7 +6,7 @@ on:
       version:
         description: Windows package version to build
         required: true
-        default: "0.1.13"
+        default: "0.1.14"
 
 permissions:
   contents: read

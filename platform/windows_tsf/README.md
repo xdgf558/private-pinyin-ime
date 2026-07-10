@@ -47,17 +47,19 @@ Run from a Windows Developer PowerShell with Rust, CMake, Visual Studio 2022, an
 The script writes:
 
 ```text
-dist\windows_tsf\PrivatePinyin-0.1.13.zip
-dist\windows_tsf\PrivatePinyin-0.1.13-setup.exe
-dist\windows_tsf\PrivatePinyin-0.1.13.msi
+dist\windows_tsf\PrivatePinyin-0.1.14.zip
+dist\windows_tsf\PrivatePinyin-0.1.14-setup.exe
+dist\windows_tsf\PrivatePinyin-0.1.14.msi
 ```
 
 The `.exe` is generated when NSIS is available. It is the preferred unsigned
 internal-test installer because it does not depend on Windows Installer MSI
 custom actions, requests administrator rights for TSF profile registration,
 calls the 64-bit `regsvr32.exe` explicitly, and opens a setup guide after
-installation without showing a PowerShell console. The `.msi` is generated only
-when WiX is available.
+installation without showing a PowerShell console. Each NSIS release uses an
+`app-<version>` runtime directory, so an upgrade never overwrites DLLs still
+loaded by Windows. Older runtime files are removed after their processes exit
+or at the next restart. The `.msi` is generated only when WiX is available.
 The packaging script supports both WiX v4+ `wix build` and WiX v3
 `candle.exe`/`light.exe`. Both installers are per-user, install under
 `%LOCALAPPDATA%\PrivatePinyin`, and run TSF registration in the installing
@@ -66,7 +68,7 @@ user's context so the existing HKCU registration path is visible to that user.
 Unsigned internal-test packages can also be built from GitHub Actions:
 
 1. Open the `Windows Unsigned Package` workflow.
-2. Run it manually with the desired version, such as `0.1.13`.
+2. Run it manually with the desired version, such as `0.1.14`.
 3. Download the `PrivatePinyin-Windows-<version>-unsigned` artifact, which contains the `.zip` bundle, `.exe` setup installer, and `.msi`.
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
@@ -75,7 +77,7 @@ Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
 .\scripts\package_windows_tsf.ps1 `
-  -Version 0.1.13 `
+  -Version 0.1.14 `
   -SignCertSubject "CN=Example Code Signing Certificate" `
   -TimestampUrl "http://timestamp.digicert.com" `
   -RequireSigning

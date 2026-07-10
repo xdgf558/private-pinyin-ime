@@ -57,6 +57,10 @@ grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q '!define APP_DIR_NAME "app-${PRODUCT_VERSION}"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'SetOutPath "$INSTDIR\\${APP_DIR_NAME}"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'RMDir /r /REBOOTOK "$INSTDIR\\$2"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q 'Delete /REBOOTOK "$INSTDIR\\PrivatePinyinTsf.dll"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "PrivatePinyinInstaller.ico" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "猫栈拼音" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
