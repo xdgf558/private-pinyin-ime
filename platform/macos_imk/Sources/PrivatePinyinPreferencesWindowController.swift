@@ -1,11 +1,14 @@
 import Cocoa
 
 private enum StationTheme {
-    static let windowBackground = NSColor(srgbRed: 0x13 / 255, green: 0x1A / 255, blue: 0x26 / 255, alpha: 1)
-    static let cardBackground = NSColor(srgbRed: 0x1B / 255, green: 0x24 / 255, blue: 0x34 / 255, alpha: 1)
-    static let pathField = NSColor(srgbRed: 0x10 / 255, green: 0x16 / 255, blue: 0x1F / 255, alpha: 1)
-    static let border = NSColor(srgbRed: 0x2A / 255, green: 0x35 / 255, blue: 0x47 / 255, alpha: 1)
-    static let divider = NSColor(srgbRed: 0x23 / 255, green: 0x2E / 255, blue: 0x41 / 255, alpha: 1)
+    static let windowBackground = NSColor(srgbRed: 0x14 / 255, green: 0x1B / 255, blue: 0x2D / 255, alpha: 1)
+    static let brandBackground = NSColor(srgbRed: 0x25 / 255, green: 0x2D / 255, blue: 0x47 / 255, alpha: 1)
+    static let cardBackground = NSColor(srgbRed: 0x1F / 255, green: 0x29 / 255, blue: 0x40 / 255, alpha: 1)
+    static let pathField = NSColor(srgbRed: 0x21 / 255, green: 0x2B / 255, blue: 0x42 / 255, alpha: 1)
+    static let border = NSColor(srgbRed: 0x31 / 255, green: 0x3B / 255, blue: 0x54 / 255, alpha: 1)
+    static let divider = NSColor(srgbRed: 0x2B / 255, green: 0x35 / 255, blue: 0x4D / 255, alpha: 1)
+    static let dot = NSColor(srgbRed: 0x2A / 255, green: 0x34 / 255, blue: 0x4A / 255, alpha: 0.38)
+    static let tape = NSColor(srgbRed: 0x9A / 255, green: 0x70 / 255, blue: 0x3C / 255, alpha: 0.86)
     static let lampYellow = NSColor(srgbRed: 0xF0 / 255, green: 0xB2 / 255, blue: 0x4E / 255, alpha: 1)
     static let lampYellowHover = NSColor(srgbRed: 0xFF / 255, green: 0xC4 / 255, blue: 0x64 / 255, alpha: 1)
     static let lampYellowPressed = NSColor(srgbRed: 0xD9 / 255, green: 0x9C / 255, blue: 0x3E / 255, alpha: 1)
@@ -19,6 +22,44 @@ private enum StationTheme {
     static let textFaint = NSColor(srgbRed: 0x5C / 255, green: 0x68 / 255, blue: 0x78 / 255, alpha: 1)
     static let ghostHover = NSColor(srgbRed: 0x20 / 255, green: 0x2B / 255, blue: 0x3D / 255, alpha: 1)
     static let ghostPressed = NSColor(srgbRed: 0x18 / 255, green: 0x21 / 255, blue: 0x31 / 255, alpha: 1)
+}
+
+private final class StationBoardBackgroundView: NSView {
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        StationTheme.windowBackground.setFill()
+        dirtyRect.fill()
+
+        StationTheme.dot.setFill()
+        let spacing: CGFloat = 16
+        let radius: CGFloat = 0.8
+        var y = floor(dirtyRect.minY / spacing) * spacing
+        while y <= dirtyRect.maxY {
+            var x = floor(dirtyRect.minX / spacing) * spacing
+            while x <= dirtyRect.maxX {
+                NSBezierPath(ovalIn: NSRect(x: x, y: y, width: radius * 2, height: radius * 2)).fill()
+                x += spacing
+            }
+            y += spacing
+        }
+    }
+}
+
+private final class StationTapeView: NSView {
+    init(angle: CGFloat) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+        layer?.backgroundColor = StationTheme.tape.cgColor
+        layer?.cornerRadius = 2
+        frameCenterRotation = angle
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
 }
 
 private final class StationToggle: NSView {
@@ -38,7 +79,7 @@ private final class StationToggle: NSView {
 
     private let trackLayer = CALayer()
     private let knobLayer = CALayer()
-    private let diameter: CGFloat = 20
+    private let diameter: CGFloat = 22
     private let edge: CGFloat = 3
 
     override init(frame frameRect: NSRect) {
@@ -58,9 +99,9 @@ private final class StationToggle: NSView {
     private func configure() {
         wantsLayer = true
         translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: 44).isActive = true
-        heightAnchor.constraint(equalToConstant: 26).isActive = true
-        trackLayer.cornerRadius = 13
+        widthAnchor.constraint(equalToConstant: 48).isActive = true
+        heightAnchor.constraint(equalToConstant: 28).isActive = true
+        trackLayer.cornerRadius = 14
         knobLayer.cornerRadius = diameter / 2
         layer?.addSublayer(trackLayer)
         layer?.addSublayer(knobLayer)
@@ -131,13 +172,13 @@ private final class StationButton: NSButton {
         self.action = action
         isBordered = false
         wantsLayer = true
-        layer?.cornerRadius = 8
+        layer?.cornerRadius = 9
         layer?.borderWidth = borderColor == nil ? 0 : 1
         layer?.borderColor = borderColor?.cgColor
-        font = .systemFont(ofSize: 14, weight: .medium)
+        font = .systemFont(ofSize: 15, weight: .semibold)
         setButtonType(.momentaryChange)
         translatesAutoresizingMaskIntoConstraints = false
-        heightAnchor.constraint(equalToConstant: 36).isActive = true
+        heightAnchor.constraint(equalToConstant: 44).isActive = true
         updateAppearance()
     }
 
@@ -183,7 +224,7 @@ private final class StationButton: NSButton {
             string: title,
             attributes: [
                 .foregroundColor: titleColor,
-                .font: font ?? NSFont.systemFont(ofSize: 14, weight: .medium),
+                .font: font ?? NSFont.systemFont(ofSize: 15, weight: .semibold),
             ]
         )
     }
@@ -196,21 +237,24 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
     private let predictionToggle = StationToggle()
     private let learningToggle = StationToggle()
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
-    private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，逐渐排得更靠前")
+    private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     private let settingsPathLabel = NSTextField(labelWithString: "")
 
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 468, height: 452),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 748),
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "猫栈拼音偏好设置"
+        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
         window.backgroundColor = StationTheme.windowBackground
+        window.contentView = StationBoardBackgroundView(frame: window.contentView?.bounds ?? .zero)
         super.init(window: window)
         buildContent()
         reloadFromSettings()
@@ -234,26 +278,38 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             return
         }
 
-        contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = StationTheme.windowBackground.cgColor
-
         strictPrivacyToggle.onToggle = { [weak self] in self?.commitSettings() }
         predictionToggle.onToggle = { [weak self] in self?.commitSettings() }
         learningToggle.onToggle = { [weak self] in self?.commitSettings() }
+        strictPrivacyToggle.setAccessibilityLabel("严格隐私模式")
+        predictionToggle.setAccessibilityLabel("显示预测候选")
+        learningToggle.setAccessibilityLabel("用户学习")
 
-        let brandRow = makeBrandRow()
-        let card = makeSettingsCard()
+        let topRail = makeTopRail()
+        let brandCard = makeBrandCard()
+        let privacyCard = makePrivacyCard()
+        let settingsGrid = makeSettingsGrid()
         let pathSection = makePathSection()
+        let versionSection = makeVersionSection()
         let footer = makeFooterRow()
 
-        let topInset: CGFloat = 24
-        let sideInset: CGFloat = 26
-        let bottomInset: CGFloat = 24
+        let topInset: CGFloat = 18
+        let sideInset: CGFloat = 28
+        let bottomInset: CGFloat = 22
 
-        let root = NSStackView(views: [brandRow, card, pathSection, footer])
+        let root = NSStackView(views: [
+            topRail,
+            hairline(),
+            brandCard,
+            privacyCard,
+            settingsGrid,
+            pathSection,
+            versionSection,
+            footer,
+        ])
         root.orientation = .vertical
         root.alignment = .leading
-        root.spacing = 20
+        root.spacing = 14
         root.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(root)
 
@@ -262,99 +318,164 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             root.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -sideInset),
             root.topAnchor.constraint(equalTo: contentView.topAnchor, constant: topInset),
             root.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -bottomInset),
-            brandRow.widthAnchor.constraint(equalTo: root.widthAnchor),
-            card.widthAnchor.constraint(equalTo: root.widthAnchor),
+            topRail.widthAnchor.constraint(equalTo: root.widthAnchor),
+            brandCard.widthAnchor.constraint(equalTo: root.widthAnchor),
+            privacyCard.widthAnchor.constraint(equalTo: root.widthAnchor),
+            settingsGrid.widthAnchor.constraint(equalTo: root.widthAnchor),
             pathSection.widthAnchor.constraint(equalTo: root.widthAnchor),
+            versionSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
 
         root.layoutSubtreeIfNeeded()
         let fitted = topInset + root.fittingSize.height + bottomInset
-        window?.setContentSize(NSSize(width: 468, height: ceil(fitted)))
+        window?.setContentSize(NSSize(width: 780, height: ceil(fitted)))
     }
 
-    private func makeBrandRow() -> NSView {
+    private func makeTopRail() -> NSView {
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let stationBoard = trackedLabel(
+            "STATION BOARD",
+            font: .monospacedSystemFont(ofSize: 11, weight: .semibold),
+            color: StationTheme.textFaint,
+            kerning: 3
+        )
+
+        let row = NSStackView(views: [spacer, stationBoard])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        return row
+    }
+
+    private func makeBrandCard() -> NSView {
         let mark = label(
             "拼",
-            font: .systemFont(ofSize: 17, weight: .semibold),
+            font: .systemFont(ofSize: 28, weight: .bold),
             color: StationTheme.onLamp
         )
         mark.alignment = .center
 
-        let markBox = roundedBox(background: StationTheme.lampYellow, cornerRadius: 10)
+        let markBox = roundedBox(background: StationTheme.lampYellow, cornerRadius: 14)
         mark.translatesAutoresizingMaskIntoConstraints = false
         markBox.addSubview(mark)
         NSLayoutConstraint.activate([
-            markBox.widthAnchor.constraint(equalToConstant: 40),
-            markBox.heightAnchor.constraint(equalToConstant: 40),
+            markBox.widthAnchor.constraint(equalToConstant: 64),
+            markBox.heightAnchor.constraint(equalToConstant: 64),
             mark.centerXAnchor.constraint(equalTo: markBox.centerXAnchor),
             mark.centerYAnchor.constraint(equalTo: markBox.centerYAnchor),
         ])
 
         let name = label(
-            "猫栈拼音",
-            font: .systemFont(ofSize: 13, weight: .medium),
+            "猫栈拼音偏好设置",
+            font: .systemFont(ofSize: 24, weight: .bold),
             color: StationTheme.textPrimary
         )
         let caption = label(
             "station cat · input method",
-            font: .systemFont(ofSize: 11, weight: .regular),
+            font: .monospacedSystemFont(ofSize: 13, weight: .medium),
             color: StationTheme.textSecondary
         )
 
         let nameColumn = NSStackView(views: [name, caption])
         nameColumn.orientation = .vertical
         nameColumn.alignment = .leading
-        nameColumn.spacing = 1
+        nameColumn.spacing = 5
 
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let row = NSStackView(views: [markBox, nameColumn, spacer, paddedBadge(text: "preferences")])
+        let row = NSStackView(views: [markBox, nameColumn, spacer, paddedBadge(text: "CAT")])
         row.orientation = .horizontal
         row.alignment = .centerY
-        row.spacing = 12
+        row.spacing = 18
         row.translatesAutoresizingMaskIntoConstraints = false
-        return row
-    }
 
-    private func makeSettingsCard() -> NSView {
-        let strictRow = makeSettingRow(
-            titleLabel: label("严格隐私模式", font: .systemFont(ofSize: 14, weight: .medium), color: StationTheme.textPrimary),
-            detailLabel: label("只在本机计算，开启后会自动关闭「用户学习」", font: .systemFont(ofSize: 12, weight: .regular), color: StationTheme.textSecondary),
-            toggle: strictPrivacyToggle
-        )
-        let predictionRow = makeSettingRow(
-            titleLabel: label("显示预测候选", font: .systemFont(ofSize: 14, weight: .medium), color: StationTheme.textPrimary),
-            detailLabel: label("在候选栏里显示下一词预测", font: .systemFont(ofSize: 12, weight: .regular), color: StationTheme.textSecondary),
-            toggle: predictionToggle
-        )
-        learningTitleLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        learningDetailLabel.font = .systemFont(ofSize: 12, weight: .regular)
-        let learningRow = makeSettingRow(
-            titleLabel: learningTitleLabel,
-            detailLabel: learningDetailLabel,
-            toggle: learningToggle
-        )
-
-        let stack = NSStackView(views: [strictRow, hairline(), predictionRow, hairline(), learningRow])
-        stack.orientation = .vertical
-        stack.alignment = .width
-        stack.spacing = 0
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12, border: StationTheme.border)
-        card.addSubview(stack)
+        let card = roundedBox(background: StationTheme.brandBackground, cornerRadius: 8)
+        card.addSubview(row)
+        let tape = StationTapeView(angle: -5)
+        card.addSubview(tape)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 2),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -2),
+            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 96),
+            tape.widthAnchor.constraint(equalToConstant: 72),
+            tape.heightAnchor.constraint(equalToConstant: 16),
+            tape.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 32),
+            tape.topAnchor.constraint(equalTo: card.topAnchor, constant: -7),
         ])
         return card
     }
 
-    private func makeSettingRow(titleLabel: NSTextField, detailLabel: NSTextField, toggle: StationToggle) -> NSView {
+    private func makePrivacyCard() -> NSView {
+        let card = makeSettingCard(
+            tag: "PRIVACY",
+            titleLabel: label("严格隐私模式", font: .systemFont(ofSize: 17, weight: .semibold), color: StationTheme.textPrimary),
+            detailLabel: wrappingLabel(
+                "只在本机计算，开启后会自动关闭「用户学习」。",
+                font: .systemFont(ofSize: 13, weight: .regular),
+                color: StationTheme.textSecondary
+            ),
+            toggle: strictPrivacyToggle,
+            minimumHeight: 118
+        )
+        let tape = StationTapeView(angle: 3)
+        card.addSubview(tape)
+        NSLayoutConstraint.activate([
+            tape.widthAnchor.constraint(equalToConstant: 62),
+            tape.heightAnchor.constraint(equalToConstant: 15),
+            tape.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -28),
+            tape.topAnchor.constraint(equalTo: card.topAnchor, constant: -6),
+        ])
+        return card
+    }
+
+    private func makeSettingsGrid() -> NSView {
+        let predictionCard = makeSettingCard(
+            tag: "PREDICT",
+            titleLabel: label("显示预测候选", font: .systemFont(ofSize: 17, weight: .semibold), color: StationTheme.textPrimary),
+            detailLabel: wrappingLabel(
+                "在候选栏里，先探个头再决定要不要蹦出来。",
+                font: .systemFont(ofSize: 13, weight: .regular),
+                color: StationTheme.textSecondary
+            ),
+            toggle: predictionToggle,
+            minimumHeight: 142
+        )
+        learningTitleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        learningDetailLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        learningDetailLabel.maximumNumberOfLines = 2
+        learningDetailLabel.lineBreakMode = .byWordWrapping
+        learningDetailLabel.cell?.wraps = true
+        let learningCard = makeSettingCard(
+            tag: "LEARN",
+            titleLabel: learningTitleLabel,
+            detailLabel: learningDetailLabel,
+            toggle: learningToggle,
+            minimumHeight: 142
+        )
+
+        let row = NSStackView(views: [predictionCard, learningCard])
+        row.orientation = .horizontal
+        row.alignment = .top
+        row.distribution = .fillEqually
+        row.spacing = 16
+        row.translatesAutoresizingMaskIntoConstraints = false
+        predictionCard.heightAnchor.constraint(equalTo: learningCard.heightAnchor).isActive = true
+        return row
+    }
+
+    private func makeSettingCard(
+        tag: String,
+        titleLabel: NSTextField,
+        detailLabel: NSTextField,
+        toggle: StationToggle,
+        minimumHeight: CGFloat
+    ) -> NSView {
         for field in [titleLabel, detailLabel] {
             field.backgroundColor = .clear
             field.isBezeled = false
@@ -364,36 +485,48 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         titleLabel.textColor = StationTheme.textPrimary
         detailLabel.textColor = StationTheme.textSecondary
 
-        let textColumn = NSStackView(views: [titleLabel, detailLabel])
-        textColumn.orientation = .vertical
-        textColumn.alignment = .leading
-        textColumn.spacing = 3
-
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let row = NSStackView(views: [textColumn, spacer, toggle])
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 16
-        row.edgeInsets = NSEdgeInsets(top: 14, left: 0, bottom: 14, right: 0)
-        return row
+        let titleRow = NSStackView(views: [titleLabel, spacer, toggle])
+        titleRow.orientation = .horizontal
+        titleRow.alignment = .centerY
+        titleRow.spacing = 14
+
+        let content = NSStackView(views: [paddedBadge(text: tag), titleRow, detailLabel])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 10
+        content.translatesAutoresizingMaskIntoConstraints = false
+        titleRow.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        detailLabel.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+
+        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
+        card.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight),
+        ])
+        return card
     }
 
     private func makePathSection() -> NSView {
-        let caption = label("设置文件", font: .systemFont(ofSize: 11, weight: .regular), color: StationTheme.textFaint)
+        let caption = label("设置文件", font: .systemFont(ofSize: 12, weight: .medium), color: StationTheme.textFaint)
 
         let icon = NSImageView()
         if #available(macOS 11.0, *) {
             icon.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "设置文件")
         }
-        icon.contentTintColor = StationTheme.lampYellow
+        icon.contentTintColor = StationTheme.textStep
         icon.translatesAutoresizingMaskIntoConstraints = false
         icon.setContentHuggingPriority(.required, for: .horizontal)
         icon.widthAnchor.constraint(equalToConstant: 16).isActive = true
 
-        settingsPathLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        settingsPathLabel.textColor = StationTheme.textSecondary
+        settingsPathLabel.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
+        settingsPathLabel.textColor = StationTheme.textStep
         settingsPathLabel.backgroundColor = .clear
         settingsPathLabel.isBezeled = false
         settingsPathLabel.isEditable = false
@@ -405,25 +538,66 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         let fieldRow = NSStackView(views: [icon, settingsPathLabel])
         fieldRow.orientation = .horizontal
         fieldRow.alignment = .centerY
-        fieldRow.spacing = 9
+        fieldRow.spacing = 12
         fieldRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let field = roundedBox(background: StationTheme.pathField, cornerRadius: 8, border: StationTheme.border)
+        let field = roundedBox(background: StationTheme.pathField, cornerRadius: 10)
         field.addSubview(fieldRow)
         NSLayoutConstraint.activate([
-            fieldRow.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 12),
-            fieldRow.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -12),
-            fieldRow.topAnchor.constraint(equalTo: field.topAnchor, constant: 9),
-            fieldRow.bottomAnchor.constraint(equalTo: field.bottomAnchor, constant: -9),
+            fieldRow.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 16),
+            fieldRow.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -16),
+            fieldRow.topAnchor.constraint(equalTo: field.topAnchor, constant: 12),
+            fieldRow.bottomAnchor.constraint(equalTo: field.bottomAnchor, constant: -12),
         ])
 
-        let column = NSStackView(views: [caption, field])
+        let column = NSStackView(views: [hairline(), caption, field])
         column.orientation = .vertical
         column.alignment = .leading
-        column.spacing = 7
+        column.spacing = 9
         column.translatesAutoresizingMaskIntoConstraints = false
+        column.arrangedSubviews[0].widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
         field.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
         return column
+    }
+
+    private func makeVersionSection() -> NSView {
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let version = label(
+            bundleVersionText,
+            font: .monospacedSystemFont(ofSize: 12, weight: .semibold),
+            color: StationTheme.lampYellow
+        )
+        let header = NSStackView(views: [paddedBadge(text: "VERSION"), spacer, version])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+
+        let title = label("本次更新", font: .systemFont(ofSize: 15, weight: .semibold), color: StationTheme.textPrimary)
+        let notes = wrappingLabel(
+            releaseNotesText,
+            font: .systemFont(ofSize: 12, weight: .regular),
+            color: StationTheme.textSecondary
+        )
+        notes.maximumNumberOfLines = 3
+
+        let content = NSStackView(views: [header, title, notes])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 8
+        content.translatesAutoresizingMaskIntoConstraints = false
+        header.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        notes.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+
+        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
+        card.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 116),
+        ])
+        return card
     }
 
     private func makeFooterRow() -> NSView {
@@ -436,7 +610,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             pressedBackground: StationTheme.lampYellowPressed,
             titleColor: StationTheme.onLamp
         )
-        openButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 132).isActive = true
+        openButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 142).isActive = true
 
         let reloadButton = StationButton(
             title: "重新载入",
@@ -448,14 +622,14 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             titleColor: StationTheme.textStep,
             borderColor: StationTheme.border
         )
-        reloadButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 92).isActive = true
+        reloadButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 104).isActive = true
 
         let buttons = NSStackView(views: [openButton, reloadButton])
         buttons.orientation = .horizontal
         buttons.alignment = .centerY
         buttons.spacing = 11
 
-        let signatureFont = NSFontManager.shared.convert(.systemFont(ofSize: 11, weight: .regular), toHaveTrait: .italicFontMask)
+        let signatureFont = NSFontManager.shared.convert(.systemFont(ofSize: 12, weight: .regular), toHaveTrait: .italicFontMask)
         let signature = label("a small station, still lit at night", font: signatureFont, color: StationTheme.textFaint)
         signature.alignment = .right
 
@@ -467,6 +641,24 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         row.alignment = .centerY
         row.spacing = 14
         return row
+    }
+
+    private var bundleVersionText: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "开发版本"
+        return "版本 \(version)"
+    }
+
+    private var releaseNotesText: String {
+        if let url = Bundle.main.url(forResource: "ReleaseNotes.zh-Hans", withExtension: "txt"),
+           let value = try? String(contentsOf: url, encoding: .utf8)
+        {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return "新增连续拼音与简拼输入；完善本地用户联想学习；优化词库覆盖、候选排序和跨平台输入体验。"
     }
 
     private func reloadFromSettings() {
@@ -528,15 +720,20 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
     }
 
     private func paddedBadge(text: String) -> NSView {
-        let badgeLabel = label(text, font: .systemFont(ofSize: 11, weight: .regular), color: StationTheme.lampYellow)
-        let box = roundedBox(background: StationTheme.badgeBackground, cornerRadius: 11, border: StationTheme.border)
+        let badgeLabel = trackedLabel(
+            text,
+            font: .monospacedSystemFont(ofSize: 11, weight: .semibold),
+            color: StationTheme.lampYellow,
+            kerning: 1.5
+        )
+        let box = roundedBox(background: .clear, cornerRadius: 12, border: StationTheme.lampYellow)
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
         box.addSubview(badgeLabel)
         NSLayoutConstraint.activate([
-            badgeLabel.topAnchor.constraint(equalTo: box.topAnchor, constant: 4),
-            badgeLabel.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -4),
-            badgeLabel.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
-            badgeLabel.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
+            badgeLabel.topAnchor.constraint(equalTo: box.topAnchor, constant: 5),
+            badgeLabel.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -5),
+            badgeLabel.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+            badgeLabel.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
         ])
         return box
     }
@@ -567,6 +764,37 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         let text = NSTextField(labelWithString: value)
         text.font = font
         text.textColor = color
+        text.backgroundColor = .clear
+        text.setContentCompressionResistancePriority(.required, for: .vertical)
+        return text
+    }
+
+    private func wrappingLabel(_ value: String, font: NSFont, color: NSColor) -> NSTextField {
+        let text = NSTextField(wrappingLabelWithString: value)
+        text.font = font
+        text.textColor = color
+        text.backgroundColor = .clear
+        text.maximumNumberOfLines = 0
+        text.lineBreakMode = .byWordWrapping
+        text.setContentCompressionResistancePriority(.required, for: .vertical)
+        return text
+    }
+
+    private func trackedLabel(
+        _ value: String,
+        font: NSFont,
+        color: NSColor,
+        kerning: CGFloat
+    ) -> NSTextField {
+        let text = NSTextField(labelWithString: "")
+        text.attributedStringValue = NSAttributedString(
+            string: value,
+            attributes: [
+                .font: font,
+                .foregroundColor: color,
+                .kern: kerning,
+            ]
+        )
         text.backgroundColor = .clear
         text.setContentCompressionResistancePriority(.required, for: .vertical)
         return text

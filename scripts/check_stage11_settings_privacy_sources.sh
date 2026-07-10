@@ -59,7 +59,7 @@ grep -q "PRIVATE_PINYIN_IOS_APP_GROUP_ID = group.com.privatepinyin.ios" platform
 grep -q "appGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "fallbackAppGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "settings\\[\"enable_user_learning\"\\] = false" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "Learn selected candidates" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "学习数据只留在本机" platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q "RequestsOpenAccess" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -A1 "RequestsOpenAccess" platform/ios_keyboard/KeyboardExtension/Info.plist | grep -q "<false/>"
 grep -q "ime_engine_new(pathPointer)" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
