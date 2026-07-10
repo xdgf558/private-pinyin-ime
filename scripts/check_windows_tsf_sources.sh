@@ -52,7 +52,7 @@ grep -q "/utf-8" platform/windows_tsf/CMakeLists.txt
 grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
-grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "RequestExecutionLevel user" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "PrivatePinyinInstaller.ico" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "猫栈拼音" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
@@ -61,10 +61,12 @@ grep -q 'regsvr32.exe" /u /s' platform/windows_tsf/installer/PrivatePinyinTsf.ns
 grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q ".onInstSuccess" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "IfSilent" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "WindowStyle Hidden" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1
 grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "HKEY_CLASSES_ROOT" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "添加输入法" platform/windows_tsf/installer/open-onboarding.ps1
 
 onboarding_bom="$(od -An -tx1 -N3 platform/windows_tsf/installer/open-onboarding.ps1 | tr -d ' \n')"

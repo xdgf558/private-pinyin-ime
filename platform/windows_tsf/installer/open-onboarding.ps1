@@ -24,8 +24,24 @@ function Test-InputMethodTip {
 }
 
 function Get-PrivatePinyinState {
-    $registrationPath = "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\$textServiceClsid\InprocServer32"
-    $registered = Test-Path $registrationPath
+    $registrationPaths = @(
+        "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\$textServiceClsid\InprocServer32",
+        "Registry::HKEY_CLASSES_ROOT\CLSID\$textServiceClsid\InprocServer32"
+    )
+    $registered = $false
+    $registeredServerPath = $null
+    foreach ($registrationPath in $registrationPaths) {
+        if (-not (Test-Path $registrationPath)) {
+            continue
+        }
+
+        $serverPath = (Get-Item $registrationPath).GetValue("")
+        if ($serverPath -and (Test-Path $serverPath)) {
+            $registered = $true
+            $registeredServerPath = $serverPath
+            break
+        }
+    }
     $languageToolsAvailable = $null -ne (Get-Command Get-WinUserLanguageList -ErrorAction SilentlyContinue) -and
         $null -ne (Get-Command Set-WinUserLanguageList -ErrorAction SilentlyContinue)
     $enabled = $false
@@ -49,6 +65,7 @@ function Get-PrivatePinyinState {
         HasChineseLanguage = $hasChineseLanguage
         LanguageToolsAvailable = $languageToolsAvailable
         InputMethodTip = $inputMethodTip
+        RegisteredServerPath = $registeredServerPath
     }
 }
 
@@ -288,7 +305,7 @@ $preferencesButton.Add_Click({
             "Bypass",
             "-File",
             "`"$settingsScript`""
-        )
+        ) -WindowStyle Hidden
     }
 })
 $form.Controls.Add($preferencesButton)

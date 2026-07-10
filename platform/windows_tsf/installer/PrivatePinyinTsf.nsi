@@ -19,7 +19,7 @@
 !endif
 
 Unicode true
-RequestExecutionLevel admin
+RequestExecutionLevel user
 Name "猫栈拼音"
 OutFile "${OUTPUT_PATH}"
 Icon "${ICON_PATH}"
@@ -62,7 +62,7 @@ FunctionEnd
 
 Function .onInstSuccess
   IfSilent onboarding_done
-  Exec '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\open-onboarding.ps1"'
+  Exec '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File "$INSTDIR\open-onboarding.ps1"'
   onboarding_done:
 FunctionEnd
 
@@ -97,8 +97,8 @@ Section "猫栈拼音" SecMain
   RMDir "$SMPROGRAMS\PrivatePinyin IME"
 
   CreateDirectory "$SMPROGRAMS\猫栈拼音"
-  CreateShortcut "$SMPROGRAMS\猫栈拼音\安装引导.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\open-onboarding.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
-  CreateShortcut "$SMPROGRAMS\猫栈拼音\偏好设置.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\open-settings.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
+  CreateShortcut "$SMPROGRAMS\猫栈拼音\安装引导.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File $\"$INSTDIR\open-onboarding.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
+  CreateShortcut "$SMPROGRAMS\猫栈拼音\偏好设置.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File $\"$INSTDIR\open-settings.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
   CreateShortcut "$SMPROGRAMS\猫栈拼音\卸载.lnk" "$INSTDIR\uninstall.exe"
 
   ${DisableX64FSRedirection}
@@ -106,7 +106,7 @@ Section "猫栈拼音" SecMain
   ExecWait '"$WINDIR\System32\regsvr32.exe" /s "$INSTDIR\PrivatePinyinTsf.dll"' $0
   ${EnableX64FSRedirection}
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "猫栈拼音文件已复制，但 Windows TSF 注册失败，regsvr32 退出码为 $0。请关闭正在使用旧输入法的应用，然后在 64 位 Windows 上以管理员身份重新运行安装器。如果仍失败，请先卸载旧版本，注销并重新登录后再安装。"
+    MessageBox MB_ICONSTOP "猫栈拼音文件已复制，但 Windows TSF 注册失败，regsvr32 退出码为 $0。请关闭正在使用旧输入法的应用，然后重新运行安装器。如果仍失败，请先卸载旧版本，注销并重新登录后再安装。"
     Abort
   ${EndIf}
 
