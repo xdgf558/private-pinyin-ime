@@ -153,9 +153,11 @@
 - Bumped the Windows/core package version to `0.1.12` for the display-name and input-behavior build.
 - Bumped the macOS app and installer package to `0.1.13` for the Station Board preferences and release-information update.
 - Bumped the macOS app and installer package to `0.1.14` for second-generation continuous-pinyin decoding and local transition learning.
+- Bumped the macOS app and installer package to `0.1.15` for the InputMethodKit candidate-panel lifecycle crash fix.
 
 ### Fixed
 
+- Fixed intermittent macOS input loss by retaining the server-attached `IMKCandidates` panel for the input method process lifetime instead of releasing it with each client input controller.
 - Fixed the Stage 15 source gate to follow the current `Host composition` and `App Group fallback` iOS smoke-record labels.
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
 - Fixed user bigram learning so prediction candidates without pinyin no longer create empty-pinyin `user_bigrams` rows.

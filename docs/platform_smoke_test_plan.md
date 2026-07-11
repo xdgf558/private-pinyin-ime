@@ -79,6 +79,7 @@ Checklist:
 | Number selection | Number-key selection does not double-select through `IMKCandidates` | | |
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |
+| Candidate panel lifecycle | Switch repeatedly among TextEdit, Safari, and Chrome with candidates visible/hidden at least 20 times; typing keeps working and no new `PrivatePinyin` crash report appears | | |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After upgrade install, no old PrivatePinyin process keeps the previous binary loaded before smoke testing | | |

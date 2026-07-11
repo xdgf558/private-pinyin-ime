@@ -183,3 +183,11 @@ Status: accepted
 Decision: Decode continuous pinyin as a bounded word lattice over normalized raw-character offsets, score paths with logarithmic unigram frequency plus base and local-user bigram transitions, and retain the chosen word segments for local transition learning.
 Reason: The first implementation selected a small set of syllable parses before a separate phrase DP and summed raw frequencies, so an early syllable prune or several individually frequent words could defeat a more natural sentence. The shared Rust core must resolve pinyin and word boundaries together without adding network processing or changing the platform ABI.
 Consequences: macOS, Windows, and iOS receive the same beam decoder through the existing C ABI. Selected continuous candidates teach their internal adjacent word transitions only when learning is enabled and strict privacy mode is off. The active base bigram remains the licensed-data follow-up in `OI-043`; incremental prefix caching and mixed full-pinyin/initial input remain in `OI-045`.
+
+## Decision 024: macOS candidate-panel ownership
+
+Date: 2026-07-11
+Status: accepted
+Decision: Own the server-attached `IMKCandidates` panel at process scope and share it across all `IMKInputController` client sessions.
+Reason: InputMethodKit creates a controller for each client session but retains candidate-panel integration at the `IMKServer` level. Releasing a controller-owned panel during focus changes left the server with a stale Objective-C reference; repeated deactivation crashed in `objc_msgSend` while querying `isVisible`, causing intermittent input loss until macOS restarted the input method.
+Consequences: Controllers may hide the shared panel and reset their own composition state, but they must not determine its lifetime. macOS smoke testing must repeatedly switch among clients with both visible and hidden candidates and verify that no new crash report appears.
