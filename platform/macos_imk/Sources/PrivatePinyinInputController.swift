@@ -2,6 +2,8 @@ import Cocoa
 import InputMethodKit
 
 private enum PrivatePinyinCandidatePanelStore {
+    private static let selectionKeyCodes = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+        .map(NSNumber.init(value:))
     private static var panel: IMKCandidates?
 
     static func sharedPanel(for server: IMKServer!) -> IMKCandidates? {
@@ -14,8 +16,10 @@ private enum PrivatePinyinCandidatePanelStore {
 
         let panel = IMKCandidates(
             server: server,
-            panelType: kIMKSingleColumnScrollingCandidatePanel
+            panelType: kIMKSingleRowSteppingCandidatePanel
         )
+        panel?.setSelectionKeys(selectionKeyCodes)
+        panel?.setAttributes([IMKCandidatesSendServerKeyEventFirst: true])
         panel?.setDismissesAutomatically(true)
         self.panel = panel
         return panel

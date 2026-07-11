@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-11 15:36
+Last updated: 2026-07-12 04:16
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,6 +29,9 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Changed the macOS candidate panel to InputMethodKit's horizontal 9-column stepping layout, made nine candidates the macOS default, and added a targeted migration from the previous default page size of five.
+- Routed native candidate selection keys through the macOS controller first, keeping digit selection on one core-owned path while retaining four-host manual verification as a release gate.
+- Bumped the macOS app metadata to `0.1.16 (16)` and added horizontal-layout source gates and smoke coverage.
 - Diagnosed intermittent macOS input loss as repeated `EXC_BAD_ACCESS` crashes in InputMethodKit server deactivation while calling `isVisible` on a released candidate panel.
 - Retained the server-attached `IMKCandidates` panel for the input-method process lifetime, added host palette cleanup, and bumped the signed macOS release to `0.1.15`.
 - Installed `0.1.15` over the existing build and completed 20 TextEdit/Chrome focus switches with active and committed compositions; the process stayed alive and the existing 17 crash reports did not increase.
