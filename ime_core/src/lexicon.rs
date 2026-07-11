@@ -1,15 +1,15 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use crate::candidate::{Candidate, CandidateSource};
+use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
 use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
 
 const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon.tsv");
 pub const MAX_LOOKUP_CANDIDATES: usize = 50;
-const MAX_SEGMENT_CANDIDATES: usize = 8;
-const MAX_SEGMENT_SYLLABLES: usize = 4;
-const MAX_SEGMENT_OPTIONS_PER_SLICE: usize = 3;
+const CONTINUOUS_BEAM_WIDTH: usize = 32;
+const MAX_CONTINUOUS_CANDIDATES: usize = 12;
+const MAX_CONTINUOUS_OPTIONS_PER_EDGE: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LexiconEntry {
@@ -23,6 +23,7 @@ pub struct Lexicon {
     entries: Vec<LexiconEntry>,
     compact_index: Vec<CompactLexiconIndexEntry>,
     initial_index: Vec<InitialLexiconIndexEntry>,
+    max_compact_pinyin_chars: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,11 +39,11 @@ struct InitialLexiconIndexEntry {
 }
 
 #[derive(Debug, Clone)]
-struct SegmentPath {
+struct ContinuousPath {
     text: String,
     pinyin: String,
     score: f64,
-    segment_count: usize,
+    segments: Vec<CandidateSegment>,
 }
 
 impl Lexicon {
@@ -90,11 +91,17 @@ impl Lexicon {
 
         let compact_index = build_compact_index(&entries);
         let initial_index = build_initial_index(&entries);
+        let max_compact_pinyin_chars = compact_index
+            .iter()
+            .map(|entry| entry.compact_pinyin.chars().count())
+            .max()
+            .unwrap_or_default();
 
         Ok(Self {
             entries,
             compact_index,
             initial_index,
+            max_compact_pinyin_chars,
         })
     }
 
@@ -103,6 +110,16 @@ impl Lexicon {
     }
 
     pub fn lookup(&self, raw_input: &str, parses: &[PinyinParse]) -> Vec<Candidate> {
+        self.lookup_with_context(raw_input, parses, None, |_, _| 0.0)
+    }
+
+    pub fn lookup_with_context(
+        &self,
+        raw_input: &str,
+        parses: &[PinyinParse],
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+    ) -> Vec<Candidate> {
         if raw_input.trim().is_empty() {
             return Vec::new();
         }
@@ -116,7 +133,7 @@ impl Lexicon {
 
         let mut candidates = Vec::new();
         let mut exact_candidates = Vec::new();
-        let mut segmented_candidates = Vec::new();
+        let mut continuous_candidates = Vec::new();
         let mut initial_exact_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
         let mut initial_prefix_candidates = Vec::new();
@@ -152,7 +169,12 @@ impl Lexicon {
             }
         }
 
-        segmented_candidates.extend(self.segmented_candidates(parses, &mut seen));
+        continuous_candidates.extend(self.continuous_candidates(
+            raw_input,
+            previous_context,
+            &transition_score,
+            &mut seen,
+        ));
         initial_exact_candidates.extend(self.initial_candidates(
             &normalized_input,
             &mut seen,
@@ -165,12 +187,12 @@ impl Lexicon {
         ));
 
         Ranker::sort_candidates(&mut exact_candidates);
-        Ranker::sort_candidates(&mut segmented_candidates);
+        Ranker::sort_candidates(&mut continuous_candidates);
         Ranker::sort_candidates(&mut initial_exact_candidates);
         Ranker::sort_candidates(&mut prefix_candidates);
         Ranker::sort_candidates(&mut initial_prefix_candidates);
         candidates.extend(exact_candidates);
-        candidates.extend(segmented_candidates);
+        candidates.extend(continuous_candidates);
         candidates.extend(initial_exact_candidates);
         candidates.extend(prefix_candidates);
         candidates.extend(initial_prefix_candidates);
@@ -238,93 +260,117 @@ impl Lexicon {
         candidates
     }
 
-    fn segmented_candidates(
+    fn continuous_candidates(
         &self,
-        parses: &[PinyinParse],
+        raw_input: &str,
+        previous_context: Option<&str>,
+        transition_score: &impl Fn(&str, &str) -> f64,
         seen: &mut HashSet<String>,
     ) -> Vec<Candidate> {
-        let mut candidates = Vec::new();
-
-        for parse in parses.iter().filter(|parse| parse.is_complete()) {
-            let syllables = parse.syllable_texts();
-            if syllables.len() < 2 {
-                continue;
-            }
-
-            for path in self.segment_parse(&syllables) {
-                if !seen.insert(path.text.clone()) {
-                    continue;
-                }
-                candidates.push(
-                    Candidate::new(path.text, path.pinyin, CandidateSource::Base)
-                        .with_score(path.score)
-                        .with_rank_score(Ranker::score_match(
-                            path.score.min(u32::MAX as f64) as u32,
-                            CandidateMatchKind::Segmented,
-                            CandidateSource::Base,
-                        )),
-                );
-            }
+        let Some((compact, forced_boundaries)) = compact_input_with_boundaries(raw_input) else {
+            return Vec::new();
+        };
+        let chars = compact.chars().collect::<Vec<_>>();
+        if chars.len() < 2 {
+            return Vec::new();
         }
 
-        candidates.truncate(MAX_LOOKUP_CANDIDATES);
-        candidates
-    }
-
-    fn segment_parse(&self, syllables: &[String]) -> Vec<SegmentPath> {
-        let mut dp = vec![Vec::<SegmentPath>::new(); syllables.len() + 1];
-        dp[0].push(SegmentPath {
+        let mut lattice = vec![Vec::<ContinuousPath>::new(); chars.len() + 1];
+        lattice[0].push(ContinuousPath {
             text: String::new(),
             pinyin: String::new(),
             score: 0.0,
-            segment_count: 0,
+            segments: Vec::new(),
         });
 
-        for start in 0..syllables.len() {
-            if dp[start].is_empty() {
+        for start in 0..chars.len() {
+            if lattice[start].is_empty() {
                 continue;
             }
 
-            let end_limit = syllables.len().min(start + MAX_SEGMENT_SYLLABLES);
+            let end_limit = chars
+                .len()
+                .min(start.saturating_add(self.max_compact_pinyin_chars));
             for end in (start + 1)..=end_limit {
-                let pinyin = syllables[start..end].join(" ");
-                let segment_candidates =
-                    self.exact_candidates_for_pinyin(&pinyin, MAX_SEGMENT_OPTIONS_PER_SLICE);
-                if segment_candidates.is_empty() {
+                let compact_edge = chars[start..end].iter().collect::<String>();
+                let entries = self.exact_entries_for_compact(
+                    &compact_edge,
+                    start,
+                    end,
+                    &forced_boundaries,
+                    MAX_CONTINUOUS_OPTIONS_PER_EDGE,
+                );
+                if entries.is_empty() {
                     continue;
                 }
 
-                let previous_paths = dp[start].clone();
+                let previous_paths = lattice[start].clone();
                 for previous in previous_paths {
-                    for candidate in &segment_candidates {
+                    for entry in &entries {
+                        let left = previous
+                            .segments
+                            .last()
+                            .map(|segment| segment.text.as_str())
+                            .or(previous_context);
+                        let transition = left
+                            .map(|left| transition_score(left, &entry.phrase))
+                            .unwrap_or_default();
                         let mut text = previous.text.clone();
-                        text.push_str(&candidate.text);
-                        let combined_pinyin = if previous.pinyin.is_empty() {
-                            candidate.pinyin.clone()
+                        text.push_str(&entry.phrase);
+                        let pinyin = if previous.pinyin.is_empty() {
+                            entry.pinyin.clone()
                         } else {
-                            format!("{} {}", previous.pinyin, candidate.pinyin)
+                            format!("{} {}", previous.pinyin, entry.pinyin)
                         };
-                        dp[end].push(SegmentPath {
+                        let mut segments = previous.segments.clone();
+                        segments.push(CandidateSegment {
+                            text: entry.phrase.clone(),
+                            pinyin: entry.pinyin.clone(),
+                        });
+                        lattice[end].push(ContinuousPath {
                             text,
-                            pinyin: combined_pinyin,
-                            score: previous.score + candidate.score,
-                            segment_count: previous.segment_count + 1,
+                            pinyin,
+                            score: previous.score
+                                + Ranker::score_continuous_token(
+                                    entry.frequency,
+                                    entry.phrase.chars().count(),
+                                )
+                                + transition,
+                            segments,
                         });
                     }
                 }
 
-                sort_segment_paths(&mut dp[end]);
+                sort_continuous_paths(&mut lattice[end], CONTINUOUS_BEAM_WIDTH);
             }
         }
 
-        sort_segment_paths(&mut dp[syllables.len()]);
-        dp[syllables.len()].clone()
+        sort_continuous_paths(&mut lattice[chars.len()], MAX_CONTINUOUS_CANDIDATES);
+        let mut candidates = Vec::new();
+        for path in &lattice[chars.len()] {
+            if path.segments.len() < 2 || !seen.insert(path.text.clone()) {
+                continue;
+            }
+            candidates.push(
+                Candidate::new(&path.text, &path.pinyin, CandidateSource::Base)
+                    .with_score(path.score)
+                    .with_rank_score(Ranker::score_continuous_match(path.score))
+                    .with_segments(path.segments.clone()),
+            );
+        }
+        candidates
     }
 
-    fn exact_candidates_for_pinyin(&self, pinyin: &str, limit: usize) -> Vec<Candidate> {
-        let compact = compact_pinyin(pinyin);
-        let range = self.compact_prefix_range(&compact);
-        let mut candidates = Vec::new();
+    fn exact_entries_for_compact(
+        &self,
+        compact: &str,
+        start: usize,
+        end: usize,
+        forced_boundaries: &HashSet<usize>,
+        limit: usize,
+    ) -> Vec<&LexiconEntry> {
+        let range = self.compact_prefix_range(compact);
+        let mut entries = Vec::new();
         let mut seen = HashSet::<&str>::new();
 
         for indexed_entry in &self.compact_index[range] {
@@ -333,24 +379,23 @@ impl Lexicon {
             }
 
             let entry = &self.entries[indexed_entry.entry_index];
-            if entry.pinyin != pinyin || !seen.insert(entry.phrase.as_str()) {
+            if !edge_respects_forced_boundaries(&entry.pinyin, start, end, forced_boundaries)
+                || !seen.insert(entry.phrase.as_str())
+            {
                 continue;
             }
-
-            candidates.push(
-                Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
-                    .with_score(Ranker::score(entry.frequency))
-                    .with_rank_score(Ranker::score_match(
-                        entry.frequency,
-                        CandidateMatchKind::Exact,
-                        CandidateSource::Base,
-                    )),
-            );
+            entries.push(entry);
         }
 
-        Ranker::sort_candidates(&mut candidates);
-        candidates.truncate(limit);
-        candidates
+        entries.sort_by(|left, right| {
+            right
+                .frequency
+                .cmp(&left.frequency)
+                .then_with(|| left.phrase.cmp(&right.phrase))
+                .then_with(|| left.pinyin.cmp(&right.pinyin))
+        });
+        entries.truncate(limit);
+        entries
     }
 }
 
@@ -358,6 +403,11 @@ pub fn merge_user_and_base_candidates(
     user_candidates: Vec<Candidate>,
     base_candidates: Vec<Candidate>,
 ) -> Vec<Candidate> {
+    let segment_paths = base_candidates
+        .iter()
+        .filter(|candidate| !candidate.segments.is_empty())
+        .map(|candidate| (candidate.text.clone(), candidate.segments.clone()))
+        .collect::<HashMap<_, _>>();
     let mut combined = user_candidates
         .into_iter()
         .chain(base_candidates)
@@ -367,7 +417,12 @@ pub fn merge_user_and_base_candidates(
     let mut merged = Vec::new();
     let mut seen = HashSet::new();
 
-    for candidate in combined {
+    for mut candidate in combined {
+        if candidate.segments.is_empty() {
+            if let Some(segments) = segment_paths.get(&candidate.text) {
+                candidate.segments = segments.clone();
+            }
+        }
         if seen.insert(candidate.text.clone()) {
             merged.push(candidate);
         }
@@ -425,15 +480,70 @@ fn pinyin_initials(pinyin: &str) -> String {
         .collect()
 }
 
-fn sort_segment_paths(paths: &mut Vec<SegmentPath>) {
+fn compact_input_with_boundaries(raw_input: &str) -> Option<(String, HashSet<usize>)> {
+    let normalized = PinyinParser::normalize_raw(raw_input);
+    if normalized.is_empty()
+        || normalized.starts_with('\'')
+        || normalized.ends_with('\'')
+        || normalized.contains("''")
+    {
+        return None;
+    }
+
+    let mut compact = String::new();
+    let mut compact_chars = 0;
+    let mut forced_boundaries = HashSet::new();
+    for ch in normalized.chars() {
+        if ch == '\'' {
+            forced_boundaries.insert(compact_chars);
+        } else {
+            compact.push(ch);
+            compact_chars += 1;
+        }
+    }
+    Some((compact, forced_boundaries))
+}
+
+fn edge_respects_forced_boundaries(
+    pinyin: &str,
+    start: usize,
+    end: usize,
+    forced_boundaries: &HashSet<usize>,
+) -> bool {
+    let internal_boundaries = forced_boundaries
+        .iter()
+        .filter(|position| start < **position && **position < end)
+        .map(|position| *position - start)
+        .collect::<Vec<_>>();
+    if internal_boundaries.is_empty() {
+        return true;
+    }
+
+    let mut offset = 0;
+    let mut syllable_boundaries = HashSet::new();
+    let syllables = pinyin.split_whitespace().collect::<Vec<_>>();
+    for syllable in syllables.iter().take(syllables.len().saturating_sub(1)) {
+        offset += syllable.chars().count();
+        syllable_boundaries.insert(offset);
+    }
+    internal_boundaries
+        .iter()
+        .all(|position| syllable_boundaries.contains(position))
+}
+
+fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
     paths.sort_by(|left, right| {
         right
             .score
             .total_cmp(&left.score)
-            .then_with(|| left.segment_count.cmp(&right.segment_count))
+            .then_with(|| left.segments.len().cmp(&right.segments.len()))
             .then_with(|| left.text.cmp(&right.text))
             .then_with(|| left.pinyin.cmp(&right.pinyin))
     });
-    paths.dedup_by(|left, right| left.text == right.text);
-    paths.truncate(MAX_SEGMENT_CANDIDATES);
+    paths.dedup_by(|left, right| {
+        left.text == right.text
+            && left.segments.last().map(|segment| &segment.text)
+                == right.segments.last().map(|segment| &segment.text)
+    });
+    paths.truncate(limit);
 }

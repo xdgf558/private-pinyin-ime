@@ -75,6 +75,7 @@
 - Added Stage 17 external TestFlight evidence for build `0.1.10 (11)`, including upload success, App Store Connect processing status, and external Beta App Review state.
 - Added a Windows NSIS setup EXE path for internal testing, including 64-bit TSF registration and a post-install setup guide.
 - Added first-pass continuous-pinyin segmentation and shorthand-initial candidate lookup, so longer inputs such as `wojintianxiangquchifan` and initials such as `nh` can produce phrase candidates.
+- Added second-generation continuous-pinyin decoding with a raw-character lattice, bounded beam search, phrase-segment metadata, base/user bigram scoring, apostrophe-boundary enforcement, and internal word-transition learning after sentence selection.
 - Added first-party common `lü` lexicon supplements such as `gailv -> 概率`, `xiaolv -> 效率`, and a higher-ranked `lv -> 率` fallback.
 - Added inline iOS keyboard preferences for prediction, local user learning, storage status, and clearing learned data.
 - Added a full Station Board-style macOS preferences layout with dedicated privacy, prediction, learning, settings-file, and release-information sections.
@@ -148,10 +149,13 @@
 - Bumped the Windows package version to `0.1.11` for the TSF registration hardening build.
 - Changed the Windows TSF display name, installer UI, onboarding, settings window, Start Menu shortcuts, and uninstall metadata to use the Chinese product name `猫栈拼音`.
 - Changed Chinese-mode punctuation commits to full-width punctuation for comma, period, minus, equal, and semicolon.
+- Changed continuous-pinyin ranking from separate syllable and phrase dynamic programs with raw frequency sums to joint word-path decoding with logarithmic unigram and contextual transition scores.
 - Bumped the Windows/core package version to `0.1.12` for the display-name and input-behavior build.
+- Bumped the macOS app and installer package to `0.1.13` for the Station Board preferences and release-information update.
 
 ### Fixed
 
+- Fixed the Stage 15 source gate to follow the current `Host composition` and `App Group fallback` iOS smoke-record labels.
 - Fixed idle Space so prediction candidates no longer hijack normal space input.
 - Fixed user bigram learning so prediction candidates without pinyin no longer create empty-pinyin `user_bigrams` rows.
 - Fixed unhandled keys during active composition so hosts keep the current preedit and candidates instead of treating idle output as cleared state.
@@ -183,6 +187,7 @@
 - Clarified that error logs must not embed user input, pinyin input, candidates, or committed text.
 - Ensured strict privacy mode and disabled learning skip SQLite learning writes.
 - Ensured strict privacy mode disables user learning when settings snapshots are loaded or written.
+- Kept continuous-sentence transition learning in the existing local SQLite lexicon and capped each session's in-memory transition snapshot at 5,000 rows.
 - Kept iOS `RequestsOpenAccess=false` while adding local App Group storage and user-controlled learning opt-in.
 - Kept CapsLock toggle hidden from platform settings UI until host semantics are implemented.
 - Kept automatic updates out of the first public release plan until signing, update-channel semantics, rollback policy, and privacy copy are ready.
