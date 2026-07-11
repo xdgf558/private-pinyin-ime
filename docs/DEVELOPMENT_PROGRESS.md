@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 04:16
+Last updated: 2026-07-12 04:38
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -368,6 +368,16 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Command: installed-upgrade TextEdit/Chrome focus-switch smoke
 - Result: passed
 - Notes: Verified installed version `0.1.15 (15)`, committed `nihao -> 你好` in Chrome, switched between TextEdit and Chrome 20 times with candidates active or committed, confirmed the process remained alive, and observed no new `PrivatePinyin-*.ips` report beyond the 17-report pre-test baseline.
+
+### macOS 0.1.16 Horizontal Candidate Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.16 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.16.pkg`; Apple notarization submission `37ddc538-0be0-4f11-b24c-8ba9968e4220` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.16 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`. Four-host horizontal layout and number-selection smoke remains required before public release.
 
 ## Open Items
 

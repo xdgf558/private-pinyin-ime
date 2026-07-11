@@ -12,17 +12,18 @@ The project can already build a local package:
 bash scripts/package_macos_pkg.sh
 ```
 
-The `0.1.15` release candidate is signed with Developer ID Application and
+The `0.1.16` release candidate is signed with Developer ID Application and
 Developer ID Installer, accepted by Apple notarization, stapled, and accepted
 by Gatekeeper. It still needs a clean-user install/upgrade/uninstall smoke test
-and website checksum publication before public distribution.
+plus four-host horizontal-candidate interaction validation and website checksum
+publication before public distribution.
 
 Current artifact evidence:
 
-- Package: `dist/macos_imk/PrivatePinyin-0.1.15.pkg`
-- Notarization submission: `e413d75d-d53e-49b5-9918-0c40f20ac5ba` (`Accepted`)
-- SHA256: `cb48d25bfd31345ba91f9a9d073a9cf49cabb407d376edaa304b04cffdf59211`
-- Installed-upgrade smoke: passed on 2026-07-11; TextEdit/Chrome focus was switched 20 times with active and committed compositions, the input-method process stayed alive, and no new crash report was created.
+- Package: `dist/macos_imk/PrivatePinyin-0.1.16.pkg`
+- Notarization submission: `37ddc538-0be0-4f11-b24c-8ba9968e4220` (`Accepted`)
+- SHA256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`
+- Previous installed-upgrade smoke: `0.1.15` passed on 2026-07-11; the `0.1.16` horizontal layout, stepping, overflow, and `1` through `9` selection still require TextEdit/Safari/Chrome/VS Code validation before release.
 
 ## One-Time Owner Setup
 
