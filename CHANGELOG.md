@@ -152,6 +152,7 @@
 - Changed continuous-pinyin ranking from separate syllable and phrase dynamic programs with raw frequency sums to joint word-path decoding with logarithmic unigram and contextual transition scores.
 - Bumped the Windows/core package version to `0.1.12` for the display-name and input-behavior build.
 - Bumped the macOS app and installer package to `0.1.13` for the Station Board preferences and release-information update.
+- Bumped the macOS app and installer package to `0.1.14` for second-generation continuous-pinyin decoding and local transition learning.
 
 ### Fixed
 

@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-11 13:41
+Last updated: 2026-07-11 14:41
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -32,6 +32,7 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Replaced first-pass continuous-pinyin segmentation with a joint raw-character lattice and bounded beam decoder shared by macOS, Windows, and iOS.
 - Added logarithmic phrase scoring, starter/base bigram transitions, local user-bigram reranking, apostrophe-boundary enforcement, and internal segment learning for selected sentence candidates.
 - Added ambiguity, learned-reranking, common-sentence, apostrophe, and under-60-ms lookup regression tests for the second-generation decoder.
+- Bumped the macOS app and installer to `0.1.14`, updated its bundled release notes, and produced a signed, notarized, stapled package for the second-generation decoder.
 - Updated the Stage 15 source gate to match the current `Host composition` and `App Group fallback` smoke-record labels so CI can validate the merged iOS record again.
 - Redesigned the macOS preferences window as a fixed dark Station Board with a branded header, privacy card, two-column prediction/learning controls, settings-file panel, and release information.
 - Added dynamic public-version display without the internal build number, plus bundled Simplified Chinese release notes for future package updates.
@@ -337,6 +338,16 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Command: `PRIVATE_PINYIN_VERSION=0.1.13 bash scripts/check_macos_public_release.sh`
 - Result: passed
 - Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `9c17738382c030a87db4208ba456e1abcf73545af85bb63a451ea8147ca1451e`.
+
+### macOS 0.1.14 Signed Release Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.14 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.14.pkg`; Apple notarization submission `9a037028-fae7-46d8-b7ef-8a9801f92571` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.14 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `30c75e24d8ad9b3356acfc6aa7e50e47fb30e9363f23ac2aad06dbd61b40cd79`.
 
 ## Open Items
 
