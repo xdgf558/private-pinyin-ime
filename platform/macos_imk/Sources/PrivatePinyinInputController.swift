@@ -14,7 +14,7 @@ private enum PrivatePinyinCandidatePanelStore {
 
         let panel = IMKCandidates(
             server: server,
-            panelType: kIMKSingleColumnScrollingCandidatePanel
+            panelType: kIMKSingleRowSteppingCandidatePanel
         )
         panel?.setDismissesAutomatically(true)
         self.panel = panel

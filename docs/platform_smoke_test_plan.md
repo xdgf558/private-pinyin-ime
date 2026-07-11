@@ -76,6 +76,7 @@ Checklist:
 | TextEdit composition | Typing `nihao` shows composition and candidate `你好`; typing `zhongguo` shows candidate `中国` | | |
 | Commit | `Space` commits `你好` for `nihao` and `中国` for `zhongguo` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
+| Horizontal candidate layout | A pinyin query with at least nine matches displays candidates `1` through `9` in one horizontal row; number keys select the matching visible entry | | macOS `0.1.16` uses the native 9-column stepping panel and migrates the previous default page size from 5 to 9 |
 | Number selection | Number-key selection does not double-select through `IMKCandidates` | | |
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |

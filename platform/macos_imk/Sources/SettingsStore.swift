@@ -1,6 +1,9 @@
 import Foundation
 
 enum PrivatePinyinSettingsStore {
+    private static let macOSCandidatePageSize = 9
+    private static let previousDefaultCandidatePageSize = 5
+
     static var supportDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library", isDirectory: true)
@@ -23,7 +26,9 @@ enum PrivatePinyinSettingsStore {
                 withIntermediateDirectories: true
             )
 
-            if !FileManager.default.fileExists(atPath: settingsURL.path) {
+            if FileManager.default.fileExists(atPath: settingsURL.path) {
+                try migrateCandidatePageSizeIfNeeded()
+            } else {
                 try write(settings: defaultSettings())
             }
 
@@ -67,20 +72,39 @@ enum PrivatePinyinSettingsStore {
             "enable_user_learning": true,
             "strict_privacy_mode": false,
         ]
+        settings["candidate_page_size"] = macOSCandidatePageSize
         settings["user_lexicon_path"] = userLexiconURL.path
         return settings
     }
 
     private static func readSettings() -> [String: Any] {
+        readSettingsFile() ?? defaultSettings()
+    }
+
+    private static func readSettingsFile() -> [String: Any]? {
         guard
             let data = try? Data(contentsOf: settingsURL),
             let object = try? JSONSerialization.jsonObject(with: data),
             let settings = object as? [String: Any]
         else {
-            return defaultSettings()
+            return nil
         }
 
         return settings
+    }
+
+    private static func migrateCandidatePageSizeIfNeeded() throws {
+        guard var settings = readSettingsFile() else {
+            return
+        }
+
+        let pageSize = (settings["candidate_page_size"] as? NSNumber)?.intValue
+        guard pageSize == nil || pageSize == previousDefaultCandidatePageSize else {
+            return
+        }
+
+        settings["candidate_page_size"] = macOSCandidatePageSize
+        try write(settings: settings)
     }
 
     private static func write(settings: [String: Any]) throws {
