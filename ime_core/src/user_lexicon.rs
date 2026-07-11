@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -17,6 +18,8 @@ const EXPORT_HEADER: &[u8] = b"phrase\tpinyin\tfrequency\tupdated_at_ms\n";
 const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 const MAX_USER_SHORT_PHRASE_CHARS: usize = 12;
 const USER_SHORT_PHRASE_TOKEN_COUNT: i64 = 2;
+pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
+pub type UserTransitionSnapshot = HashMap<String, HashMap<String, u32>>;
 
 pub struct UserLexicon {
     db_path: PathBuf,
@@ -224,6 +227,37 @@ impl UserLexicon {
         Ranker::sort_candidates(&mut candidates);
         candidates.truncate(MAX_LOOKUP_CANDIDATES);
         Ok(candidates)
+    }
+
+    pub fn transition_snapshot(&self) -> ImeResult<UserTransitionSnapshot> {
+        let connection = self.connection()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT left_phrase, right_phrase, frequency
+                 FROM user_bigrams
+                 ORDER BY frequency DESC, updated_at_ms DESC
+                 LIMIT ?1",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let rows = statement
+            .query_map(params![MAX_USER_TRANSITION_SNAPSHOT as i64], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let mut snapshot = UserTransitionSnapshot::new();
+        for row in rows {
+            let (left, right, frequency) = row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            snapshot
+                .entry(left)
+                .or_default()
+                .insert(right, u32::try_from(frequency).unwrap_or(u32::MAX));
+        }
+        Ok(snapshot)
     }
 
     pub fn record_short_phrase_prediction(

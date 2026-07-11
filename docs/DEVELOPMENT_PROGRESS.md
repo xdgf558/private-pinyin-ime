@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-10 22:33
+Last updated: 2026-07-11 13:41
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,6 +29,10 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Replaced first-pass continuous-pinyin segmentation with a joint raw-character lattice and bounded beam decoder shared by macOS, Windows, and iOS.
+- Added logarithmic phrase scoring, starter/base bigram transitions, local user-bigram reranking, apostrophe-boundary enforcement, and internal segment learning for selected sentence candidates.
+- Added ambiguity, learned-reranking, common-sentence, apostrophe, and under-60-ms lookup regression tests for the second-generation decoder.
+- Updated the Stage 15 source gate to match the current `Host composition` and `App Group fallback` smoke-record labels so CI can validate the merged iOS record again.
 - Redesigned the macOS preferences window as a fixed dark Station Board with a branded header, privacy card, two-column prediction/learning controls, settings-file panel, and release information.
 - Added dynamic public-version display without the internal build number, plus bundled Simplified Chinese release notes for future package updates.
 - Bumped the macOS app and installer package to public version `0.1.13` for the redesigned preferences release.

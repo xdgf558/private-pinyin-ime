@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
@@ -17,6 +17,7 @@ pub struct BigramEntry {
 #[derive(Debug, Clone, Default)]
 pub struct Predictor {
     bigrams: Vec<BigramEntry>,
+    transition_index: HashMap<String, HashMap<String, u32>>,
 }
 
 impl Predictor {
@@ -62,7 +63,26 @@ impl Predictor {
             });
         }
 
-        Ok(Self { bigrams })
+        let mut transition_index = HashMap::<String, HashMap<String, u32>>::new();
+        for entry in &bigrams {
+            transition_index
+                .entry(entry.left.clone())
+                .or_default()
+                .insert(entry.right.clone(), entry.frequency);
+        }
+
+        Ok(Self {
+            bigrams,
+            transition_index,
+        })
+    }
+
+    pub fn transition_frequency(&self, left: &str, right: &str) -> u32 {
+        self.transition_index
+            .get(left)
+            .and_then(|right_entries| right_entries.get(right))
+            .copied()
+            .unwrap_or_default()
     }
 
     pub fn predict_next(&self, context_tokens: &[String]) -> Vec<Candidate> {

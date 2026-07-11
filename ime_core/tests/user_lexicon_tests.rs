@@ -1,7 +1,10 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ime_core::lexicon::Lexicon;
 use ime_core::pinyin_parser::compact_pinyin;
+use ime_core::predictor::Predictor;
 use ime_core::user_lexicon::UserLexicon;
 use ime_core::{
     CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyEvent, PinyinParser,
@@ -139,6 +142,92 @@ fn sequential_candidate_commits_learn_user_bigram_prediction() {
     assert_eq!(
         output.candidates.first().map(|candidate| candidate.source),
         Some(CandidateSource::Prediction)
+    );
+}
+
+#[test]
+fn learned_bigram_reranks_ambiguous_continuous_sentence() {
+    let temp_db = TempDb::new("continuous_bigram_rerank");
+    let user_lexicon = Arc::new(UserLexicon::open(&temp_db.path).expect("user lexicon opens"));
+    user_lexicon
+        .record_transition("今天", "天气", "tian qi")
+        .expect("transition records");
+    let lexicon = Arc::new(
+        Lexicon::from_tsv(
+            "今天\tjin tian\t1000\n天气\ttian qi\t1000\n今\tjin\t100000\n天天\ttian tian\t100000\n期\tqi\t100000\n",
+        )
+        .expect("test lexicon loads"),
+    );
+    let predictor =
+        Arc::new(Predictor::from_tsv("left\tright\tfrequency\n").expect("empty predictor loads"));
+    let mut session = InputSession::new(
+        lexicon,
+        predictor,
+        Some(user_lexicon),
+        ImeSettings::default(),
+    );
+
+    let mut output = ImeOutput::idle(session.mode());
+    for ch in "jintiantianqi".chars() {
+        output = session.feed_key(KeyEvent::from_char(ch));
+    }
+
+    assert_eq!(
+        output
+            .candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("今天天气")
+    );
+}
+
+#[test]
+fn selecting_continuous_sentence_learns_internal_word_transitions() {
+    let temp_db = TempDb::new("continuous_internal_learning");
+    let user_lexicon = Arc::new(UserLexicon::open(&temp_db.path).expect("user lexicon opens"));
+    let lexicon = Arc::new(
+        Lexicon::from_tsv(
+            "今天\tjin tian\t1000\n天气\ttian qi\t1000\n今\tjin\t100000\n天天\ttian tian\t100000\n期\tqi\t100000\n",
+        )
+        .expect("test lexicon loads"),
+    );
+    let predictor =
+        Arc::new(Predictor::from_tsv("今天\t天气\t1000000\n").expect("predictor loads"));
+    let mut session = InputSession::new(
+        lexicon,
+        predictor,
+        Some(user_lexicon.clone()),
+        ImeSettings::default(),
+    );
+
+    let commit = commit_first_candidate_in_session(&mut session, "jintiantianqi");
+
+    assert_eq!(commit.commit_text, "今天天气");
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 1);
+    assert_eq!(
+        session.context_tokens.last().map(String::as_str),
+        Some("天气")
+    );
+    assert_eq!(
+        user_lexicon
+            .transition_snapshot()
+            .expect("transition snapshot")
+            .get("今天")
+            .and_then(|entries| entries.get("天气"))
+            .copied(),
+        Some(1)
+    );
+
+    let second_commit = commit_first_candidate_in_session(&mut session, "jintiantianqi");
+    assert_eq!(second_commit.commit_text, "今天天气");
+    assert_eq!(
+        user_lexicon
+            .transition_snapshot()
+            .expect("updated transition snapshot")
+            .get("今天")
+            .and_then(|entries| entries.get("天气"))
+            .copied(),
+        Some(2)
     );
 }
 
