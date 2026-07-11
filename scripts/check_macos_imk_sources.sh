@@ -57,6 +57,9 @@ fi
 grep -q "IMKServer" platform/macos_imk/Sources/main.swift
 grep -q "IMKInputController" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "PrivatePinyinCandidatePanelStore" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "static var panel: IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "sharedPanel(for: server)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_session_reset" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.swift

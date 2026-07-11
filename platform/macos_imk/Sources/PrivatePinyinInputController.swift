@@ -1,6 +1,27 @@
 import Cocoa
 import InputMethodKit
 
+private enum PrivatePinyinCandidatePanelStore {
+    private static var panel: IMKCandidates?
+
+    static func sharedPanel(for server: IMKServer!) -> IMKCandidates? {
+        if let panel {
+            return panel
+        }
+        guard let server else {
+            return nil
+        }
+
+        let panel = IMKCandidates(
+            server: server,
+            panelType: kIMKSingleColumnScrollingCandidatePanel
+        )
+        panel?.setDismissesAutomatically(true)
+        self.panel = panel
+        return panel
+    }
+}
+
 @objc(PrivatePinyinInputController)
 final class PrivatePinyinInputController: IMKInputController {
     private let core = PinyinCoreBridge()
@@ -12,11 +33,7 @@ final class PrivatePinyinInputController: IMKInputController {
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         super.init(server: server, delegate: delegate, client: inputClient)
-        candidatePanel = IMKCandidates(
-            server: server,
-            panelType: kIMKSingleColumnScrollingCandidatePanel
-        )
-        candidatePanel?.setDismissesAutomatically(true)
+        candidatePanel = PrivatePinyinCandidatePanelStore.sharedPanel(for: server)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(settingsChanged(_:)),
@@ -152,6 +169,10 @@ final class PrivatePinyinInputController: IMKInputController {
 
     override func inputControllerWillClose() {
         resetComposition()
+    }
+
+    override func hidePalettes() {
+        candidatePanel?.hide()
     }
 
     private func handleFlagsChanged(_ event: NSEvent) -> Bool {
