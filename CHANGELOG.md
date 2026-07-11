@@ -156,6 +156,7 @@
 - Bumped the macOS app and installer package to `0.1.15` for the InputMethodKit candidate-panel lifecycle crash fix.
 - Bumped the macOS app and installer package to `0.1.16` for the horizontal nine-candidate layout.
 - Changed the macOS candidate panel from a vertical scrolling column to a horizontal single row with nine visible candidates and direct `1` through `9` selection.
+- Routed macOS candidate key events through the input controller first so each `1` through `9` key follows one core-owned selection path instead of also reaching the native panel.
 - Migrated the previous macOS default page size of five candidates to nine while preserving other explicit page-size customizations.
 
 ### Fixed

@@ -58,6 +58,8 @@ grep -q "IMKServer" platform/macos_imk/Sources/main.swift
 grep -q "IMKInputController" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "kIMKSingleRowSteppingCandidatePanel" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "setSelectionKeys(selectionKeyCodes)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "IMKCandidatesSendServerKeyEventFirst: true" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "PrivatePinyinCandidatePanelStore" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "static var panel: IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "sharedPanel(for: server)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
