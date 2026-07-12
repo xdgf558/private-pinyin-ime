@@ -31,6 +31,13 @@ pub struct Candidate {
     pub rank_score: f64,
     pub source: CandidateSource,
     pub comment: Option<String>,
+    pub segments: Vec<CandidateSegment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CandidateSegment {
+    pub text: String,
+    pub pinyin: String,
 }
 
 impl Candidate {
@@ -49,6 +56,7 @@ impl Candidate {
             rank_score: 0.0,
             source,
             comment: None,
+            segments: Vec::new(),
         }
     }
 
@@ -60,6 +68,11 @@ impl Candidate {
 
     pub fn with_rank_score(mut self, rank_score: f64) -> Self {
         self.rank_score = rank_score;
+        self
+    }
+
+    pub fn with_segments(mut self, segments: Vec<CandidateSegment>) -> Self {
+        self.segments = segments;
         self
     }
 }

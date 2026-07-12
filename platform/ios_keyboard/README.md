@@ -70,9 +70,13 @@ with the App Store Connect build number and processing status after upload.
 Use the shared record template in `../../docs/platform_smoke_test_plan.md` when validating release-readiness behavior.
 
 1. Install and run the container app on an iOS simulator.
-2. Open Settings > General > Keyboard > Keyboards.
-3. Add PrivatePinyin.
-4. Open Notes, switch to PrivatePinyin with the Globe key, type `nihao`, and tap `你好` in the candidate bar.
+2. Tap `打开系统设置` in the container app.
+3. Open `通用 > 键盘 > 键盘 > 添加新键盘` and select `猫栈拼音`.
+4. Open Notes, switch to `猫栈拼音` with the Globe key, type `nihao`, and tap `你好` in the candidate bar.
+
+The container app deliberately uses `UIApplication.openSettingsURLString`. Do
+not replace it with a private `App-Prefs` URL: private Settings deep links may
+break across iOS releases and create App Store review risk.
 5. Type `jintian`, tap `今天`, and confirm prediction candidates such as `天气` remain visible after commit.
 6. Confirm Full Access remains off.
 7. In the container app, enable Learn selected candidates, type/select a candidate again, and confirm the keyboard still works with the shared settings path.

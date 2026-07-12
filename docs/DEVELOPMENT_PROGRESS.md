@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-09 18:58
+Last updated: 2026-07-12 04:38
 Current stage: Stage 17 Device keyboard behavior and privacy closure
-Current status: TestFlight build ready for internal testing
+Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
 ## Stage Status
 
@@ -22,13 +22,29 @@ Current status: TestFlight build ready for internal testing
 | 12 | Release packaging and distribution | completed | 2026-07-07 08:35 | Release distribution plan, Windows signing hooks, macOS Developer ID/notarization hooks, iOS App Store archive/export templates, automatic update strategy, and Stage 12 checks are ready for local review |
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
-| 15 | iOS simulator/local development build | completed | 2026-07-09 12:40 | Merged to local `main`; automated iOS smoke-readiness script, smoke record, source gates, and CI wiring passed locally; simulator install/add-keyboard/typing smoke remains to be recorded |
-| 16 | TestFlight archive and upload | completed | 2026-07-09 18:58 | App Store Connect app record `6789098978` created; build `0.1.10 (10)` uploaded with Xcode 26.6 and marked `准备测试` after export-compliance declaration |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-09 18:58 | TestFlight build is ready for internal testing; next step is internal tester group/install and real-device Notes/Safari/password/phone smoke evidence |
+| 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
+| 16 | TestFlight archive and upload | completed | 2026-07-10 13:56 | App Store Connect app `6789098978` has processed build `0.1.12 (13)` with `VALID` and `APP_STORE_ELIGIBLE` status |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-10 13:58 | Optimized keyboard UI and inline settings passed iOS 27 Simulator smoke; build `13` is ready for group assignment while real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Completed Work
 
+- Changed the macOS candidate panel to InputMethodKit's horizontal 9-column stepping layout, made nine candidates the macOS default, and added a targeted migration from the previous default page size of five.
+- Routed native candidate selection keys through the macOS controller first, keeping digit selection on one core-owned path while retaining four-host manual verification as a release gate.
+- Bumped the macOS app metadata to `0.1.16 (16)` and added horizontal-layout source gates and smoke coverage.
+- Diagnosed intermittent macOS input loss as repeated `EXC_BAD_ACCESS` crashes in InputMethodKit server deactivation while calling `isVisible` on a released candidate panel.
+- Retained the server-attached `IMKCandidates` panel for the input-method process lifetime, added host palette cleanup, and bumped the signed macOS release to `0.1.15`.
+- Installed `0.1.15` over the existing build and completed 20 TextEdit/Chrome focus switches with active and committed compositions; the process stayed alive and the existing 17 crash reports did not increase.
+- Replaced first-pass continuous-pinyin segmentation with a joint raw-character lattice and bounded beam decoder shared by macOS, Windows, and iOS.
+- Added logarithmic phrase scoring, starter/base bigram transitions, local user-bigram reranking, apostrophe-boundary enforcement, and internal segment learning for selected sentence candidates.
+- Added ambiguity, learned-reranking, common-sentence, apostrophe, and under-60-ms lookup regression tests for the second-generation decoder.
+- Bumped the macOS app and installer to `0.1.14`, updated its bundled release notes, and produced a signed, notarized, stapled package for the second-generation decoder.
+- Updated the Stage 15 source gate to match the current `Host composition` and `App Group fallback` smoke-record labels so CI can validate the merged iOS record again.
+- Redesigned the macOS preferences window as a fixed dark Station Board with a branded header, privacy card, two-column prediction/learning controls, settings-file panel, and release information.
+- Added dynamic public-version display without the internal build number, plus bundled Simplified Chinese release notes for future package updates.
+- Bumped the macOS app and installer package to public version `0.1.13` for the redesigned preferences release.
+- Added an isolated `--show-preferences` visual-preview path and verified the complete window on macOS with no clipped or overlapping content.
+- Updated the Stage 11 privacy source gate to match the current localized iOS learning copy.
 - Created the initial repository skeleton.
 - Added the project development specification under `docs/`.
 - Added progress, changelog, decision, and open item tracking files.
@@ -193,8 +209,11 @@ Current status: TestFlight build ready for internal testing
 
 ## Current Work
 
-- The local `main` branch contains Stage 17/TestFlight follow-up changes: App Group capability metadata, iOS AppIcon assets, iPad orientation compliance, and export-compliance plist declarations.
-- App Store Connect has build `0.1.10 (10)` in TestFlight with status `准备测试`; internal tester group/device install remains to be performed.
+- The Stage 17 branch includes the approved Chinese onboarding, stable per-key rendering, weighted keyboard layout, inline prediction/learning preferences, and extension-local storage fallback.
+- iOS 27 Simulator smoke passed for `nihao -> 你好`, `wojintian -> 我今天`, retained prediction candidates, local learning opt-in, Globe switching, and portrait/landscape layout.
+- Build `0.1.12 (13)` was archived with Beta Xcode and uploaded through Xcode's App Store Connect export path.
+- Apple processing returned `VALID`, `APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true` for delivery `0ba67b28-a10c-437c-9968-456d8ee8d95b`.
+- Existing external Beta App Review/public-link state remains on build `11`; build `13` has not been assigned to the external group yet.
 
 ## Validation Results
 
@@ -280,7 +299,7 @@ Current status: TestFlight build ready for internal testing
 ### Stage 16 - TestFlight Archive And Upload
 
 - Added upload-aware `scripts/package_ios_app_store.sh` validation for `ExportOptions.plist` destination, App Store Connect API key inputs, and package summary output.
-- Added `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template` for TestFlight upload with `testFlightInternalTestingOnly=true`.
+- Added `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template` for App Store-eligible TestFlight uploads without forcing internal-only distribution.
 - Extended `Signing.env.example` and iOS platform docs with App Store Connect API key variables.
 - Added `docs/ios_testflight_upload_record.md` to track signed archive/export, uploaded build number, processing status, and TestFlight distribution status.
 - Added `scripts/check_stage16_ios_testflight_sources.sh` and wired it into CI.
@@ -292,7 +311,73 @@ Current status: TestFlight build ready for internal testing
 
 - Command: `bash -n scripts/package_ios_app_store.sh`
 - Result: passed
-- Notes: Shell syntax is valid. Early validation was exercised with template signing values: upload mode fails before build when App Store Connect API key variables are absent, and export mode reaches the expected missing local `aarch64-apple-ios` target gate. Full archive/upload still requires Owner provisioning profiles and App Store Connect API key values.
+- Notes: Shell syntax is valid. The scripted API-key path remains available; build 13 used the signed-in Xcode account, automatic provisioning, and direct `xcodebuild -exportArchive` upload instead.
+
+### Stage 17 - Optimized iOS Keyboard Build 13
+
+- Command: `cargo test --workspace && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+- Notes: All 70 Rust tests passed; formatting and clippy were clean.
+
+- Command: `env DEVELOPER_DIR=/Users/shaola/Downloads/软件/Xcode.app/Contents/Developer bash scripts/run_ios_smoke_readiness.sh`
+- Result: passed
+- Notes: Beta Xcode reported `BUILD SUCCEEDED`; Stage 14-16 source gates, bundle IDs, App Group expansion, `RequestsOpenAccess=false`, bundled settings, and no-network checks passed.
+
+- Command: iOS 27.0 iPhone 17 Pro Simulator manual smoke
+- Result: passed
+- Notes: Added `猫栈拼音`, kept Full Access off, verified `nihao -> 你好`, `wojintian -> 我今天`, retained prediction, inline learning opt-in, current-container path repair, Globe switching, and non-overlapping portrait/landscape layouts.
+
+- Command: Beta Xcode Release archive and App Store Connect upload
+- Result: passed
+- Notes: `dist/ios/PrivatePinyin-build13.xcarchive` reports `0.1.12 (13)` arm64; Xcode reported `Upload succeeded` with delivery UUID `0ba67b28-a10c-437c-9968-456d8ee8d95b`.
+
+- Command: `xcrun altool --build-status --delivery-id 0ba67b28-a10c-437c-9968-456d8ee8d95b --wait ...`
+- Result: passed
+- Notes: Apple returned `import-status=VALID`, `build-audience-type=APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true`.
+
+### macOS 0.1.13 Signed Release Package
+
+- Command: signed `bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.13.pkg`; Apple notarization submission `edc25310-8b8f-4558-84c3-706bcad40dbb` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.13 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `9c17738382c030a87db4208ba456e1abcf73545af85bb63a451ea8147ca1451e`.
+
+### macOS 0.1.14 Signed Release Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.14 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.14.pkg`; Apple notarization submission `9a037028-fae7-46d8-b7ef-8a9801f92571` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.14 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `30c75e24d8ad9b3356acfc6aa7e50e47fb30e9363f23ac2aad06dbd61b40cd79`.
+
+### macOS 0.1.15 Candidate-Panel Lifetime Fix
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.15 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.15.pkg`; Apple notarization submission `e413d75d-d53e-49b5-9918-0c40f20ac5ba` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.15 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `cb48d25bfd31345ba91f9a9d073a9cf49cabb407d376edaa304b04cffdf59211`.
+
+- Command: installed-upgrade TextEdit/Chrome focus-switch smoke
+- Result: passed
+- Notes: Verified installed version `0.1.15 (15)`, committed `nihao -> 你好` in Chrome, switched between TextEdit and Chrome 20 times with candidates active or committed, confirmed the process remained alive, and observed no new `PrivatePinyin-*.ips` report beyond the 17-report pre-test baseline.
+
+### macOS 0.1.16 Horizontal Candidate Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.16 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and `private-pinyin-notary`
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.16.pkg`; Apple notarization submission `37ddc538-0be0-4f11-b24c-8ba9968e4220` returned `Accepted`, and stapling succeeded.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.16 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`. Four-host horizontal layout and number-selection smoke remains required before public release.
 
 ## Open Items
 
@@ -303,15 +388,14 @@ Current status: TestFlight build ready for internal testing
 - Validate signed Windows MSI install/uninstall on Windows 11.
 - Validate TSF DLL loading and Notepad smoke test on Windows 11.
 - Add TSF display attributes for preedit text.
-- Provide macOS Developer ID credentials and notarization evidence.
 - Validate signed/notarized macOS pkg install/uninstall and release uninstall guidance.
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
-- Configure iOS App Store signing, provisioning, App Store Connect API key, App Store metadata, and TestFlight evidence.
-- Run iOS simulator smoke tests in Notes, Safari, and password fields, including whether `jintian -> 今天` keeps prediction candidates after commit and whether learning opt-in/App Group storage work under provisioning.
+- Assign processed build `0.1.12 (13)` to the external TestFlight group after deciding how to handle build `11`'s pending Beta App Review, then enable the public link after approval.
+- Run real-device smoke tests in Notes, Safari, password, and phone fields, including Full Access-off App Group behavior and local learning persistence under distribution provisioning.
 - Expose sanitized core logging through host ABI callbacks.
-- Measure production lexicon engine initialization latency on macOS and Windows TSF before deciding whether precompiled or lazy lexicon loading is needed.
+- Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 - Add a retention policy for long-running `user_phrases`, `user_bigrams`, and `user_short_phrases` growth.
 
@@ -335,4 +419,4 @@ Current status: TestFlight build ready for internal testing
 
 ## Next Step
 
-- Owner fills real iOS signing/provisioning values and App Store Connect API key variables, then runs `scripts/package_ios_app_store.sh` with upload ExportOptions and updates `docs/ios_testflight_upload_record.md` with the App Store Connect build number and TestFlight status.
+- Assign build `0.1.12 (13)` to the external TestFlight group when the current Beta App Review state permits it, then install that exact build on the iPhone and complete the remaining real-device privacy/input smoke record.

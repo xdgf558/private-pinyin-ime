@@ -175,3 +175,19 @@ Status: accepted
 Decision: Support both local App Store export and App Store Connect upload through the same package script, with upload mode requiring explicit App Store Connect API key inputs and an owner-updated TestFlight record.
 Reason: TestFlight upload is release-sensitive and should not depend on whatever Xcode account happens to be logged into a developer machine. The repository can validate script wiring and required inputs, but only the owner can provide provisioning profiles, App Store Connect credentials, and post-upload build status.
 Consequences: `scripts/package_ios_app_store.sh` validates `ExportOptions.plist` destination, team ID, provisioning profile mappings, and App Store Connect API key variables before upload. `docs/ios_testflight_upload_record.md` remains pending until a signed archive is uploaded and the build appears in App Store Connect.
+
+## Decision 023: Second-generation continuous-pinyin decoding
+
+Date: 2026-07-11
+Status: accepted
+Decision: Decode continuous pinyin as a bounded word lattice over normalized raw-character offsets, score paths with logarithmic unigram frequency plus base and local-user bigram transitions, and retain the chosen word segments for local transition learning.
+Reason: The first implementation selected a small set of syllable parses before a separate phrase DP and summed raw frequencies, so an early syllable prune or several individually frequent words could defeat a more natural sentence. The shared Rust core must resolve pinyin and word boundaries together without adding network processing or changing the platform ABI.
+Consequences: macOS, Windows, and iOS receive the same beam decoder through the existing C ABI. Selected continuous candidates teach their internal adjacent word transitions only when learning is enabled and strict privacy mode is off. The active base bigram remains the licensed-data follow-up in `OI-043`; incremental prefix caching and mixed full-pinyin/initial input remain in `OI-045`.
+
+## Decision 024: macOS candidate-panel ownership
+
+Date: 2026-07-11
+Status: accepted
+Decision: Own the server-attached `IMKCandidates` panel at process scope and share it across all `IMKInputController` client sessions.
+Reason: InputMethodKit creates a controller for each client session but retains candidate-panel integration at the `IMKServer` level. Releasing a controller-owned panel during focus changes left the server with a stale Objective-C reference; repeated deactivation crashed in `objc_msgSend` while querying `isVisible`, causing intermittent input loss until macOS restarted the input method.
+Consequences: Controllers may hide the shared panel and reset their own composition state, but they must not determine its lifetime. macOS smoke testing must repeatedly switch among clients with both visible and hidden candidates and verify that no new crash report appears.

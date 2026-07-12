@@ -76,9 +76,11 @@ Checklist:
 | TextEdit composition | Typing `nihao` shows composition and candidate `你好`; typing `zhongguo` shows candidate `中国` | | |
 | Commit | `Space` commits `你好` for `nihao` and `中国` for `zhongguo` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
-| Number selection | Number-key selection does not double-select through `IMKCandidates` | | |
+| Horizontal candidate layout | A pinyin query with at least nine matches displays candidates `1` through `9` in one horizontal row; number keys select the matching visible entry | | macOS `0.1.16` uses the native 9-column stepping panel and migrates the previous default page size from 5 to 9 |
+| Number-key selection | In TextEdit, Safari, Chrome, and VS Code, each key `1` through `9` selects exactly the matching visible candidate once | | `IMKCandidatesSendServerKeyEventFirst=true` makes the controller/core the first and only handling path for consumed digit keys |
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |
+| Candidate panel lifecycle | Switch repeatedly among TextEdit, Safari, and Chrome with candidates visible/hidden at least 20 times; typing keeps working and no new `PrivatePinyin` crash report appears | | |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After upgrade install, no old PrivatePinyin process keeps the previous binary loaded before smoke testing | | |

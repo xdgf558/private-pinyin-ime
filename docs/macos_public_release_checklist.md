@@ -12,8 +12,18 @@ The project can already build a local package:
 bash scripts/package_macos_pkg.sh
 ```
 
-The public website package still needs Developer ID signing, notarization,
-stapling, checksum publication, and a clean-user smoke test.
+The `0.1.16` release candidate is signed with Developer ID Application and
+Developer ID Installer, accepted by Apple notarization, stapled, and accepted
+by Gatekeeper. It still needs a clean-user install/upgrade/uninstall smoke test
+plus four-host horizontal-candidate interaction validation and website checksum
+publication before public distribution.
+
+Current artifact evidence:
+
+- Package: `dist/macos_imk/PrivatePinyin-0.1.16.pkg`
+- Notarization submission: `37ddc538-0be0-4f11-b24c-8ba9968e4220` (`Accepted`)
+- SHA256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`
+- Previous installed-upgrade smoke: `0.1.15` passed on 2026-07-11; the `0.1.16` horizontal layout, stepping, overflow, and `1` through `9` selection still require TextEdit/Safari/Chrome/VS Code validation before release.
 
 ## One-Time Owner Setup
 

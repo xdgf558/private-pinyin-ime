@@ -7,8 +7,9 @@ use crate::lexicon::{merge_user_and_base_candidates, Lexicon};
 use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::{merge_prediction_candidates, Predictor};
+use crate::ranker::Ranker;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
-use crate::user_lexicon::UserLexicon;
+use crate::user_lexicon::{UserLexicon, UserTransitionSnapshot};
 
 pub const MAX_RAW_INPUT_CHARS: usize = 64;
 
@@ -26,6 +27,7 @@ pub struct InputSession {
     lexicon: Arc<Lexicon>,
     predictor: Arc<Predictor>,
     user_lexicon: Option<Arc<UserLexicon>>,
+    user_transitions: UserTransitionSnapshot,
 }
 
 impl InputSession {
@@ -36,6 +38,16 @@ impl InputSession {
         settings_snapshot: ImeSettings,
     ) -> Self {
         let privacy_mode = settings_snapshot.strict_privacy_mode;
+        let user_transitions = user_lexicon
+            .as_ref()
+            .map(|lexicon| match lexicon.transition_snapshot() {
+                Ok(snapshot) => snapshot,
+                Err(error) => {
+                    logger::emit_error(error);
+                    UserTransitionSnapshot::new()
+                }
+            })
+            .unwrap_or_default();
         Self {
             mode: settings_snapshot.default_mode,
             raw_input: String::new(),
@@ -49,6 +61,7 @@ impl InputSession {
             lexicon,
             predictor,
             user_lexicon,
+            user_transitions,
         }
     }
 
@@ -146,7 +159,8 @@ impl InputSession {
         };
 
         self.learn_candidate(&candidate);
-        self.context_tokens.push(candidate.text.clone());
+        self.context_tokens
+            .push(candidate_context_token(&candidate));
         self.clear_composition();
         self.candidates = self.predict_next();
         let candidates = self.current_page_candidates();
@@ -174,7 +188,8 @@ impl InputSession {
         } else if let Some(actual_index) = self.actual_candidate_index(0) {
             if let Some(candidate) = self.candidates.get(actual_index).cloned() {
                 self.learn_candidate(&candidate);
-                self.context_tokens.push(candidate.text.clone());
+                self.context_tokens
+                    .push(candidate_context_token(&candidate));
                 let commit_text = format!("{}{}", candidate.text, punctuation);
                 self.clear_composition();
                 self.committed_output(commit_text)
@@ -275,7 +290,18 @@ impl InputSession {
             .first()
             .map(|parse| parse.syllable_texts())
             .unwrap_or_default();
-        let base_candidates = self.lexicon.lookup(&self.raw_input, &parses);
+        let previous_context = self.context_tokens.last().map(String::as_str);
+        let base_candidates = self.lexicon.lookup_with_context(
+            &self.raw_input,
+            &parses,
+            previous_context,
+            |left, right| {
+                Ranker::score_continuous_transition(
+                    self.predictor.transition_frequency(left, right),
+                    user_transition_frequency(&self.user_transitions, left, right),
+                )
+            },
+        );
         let user_candidates = self
             .user_lexicon
             .as_ref()
@@ -408,25 +434,76 @@ impl InputSession {
         self.candidates[start..end].to_vec()
     }
 
-    fn learn_candidate(&self, candidate: &Candidate) {
+    fn learn_candidate(&mut self, candidate: &Candidate) {
         if self.privacy_mode || !self.settings_snapshot.enable_user_learning {
             return;
         }
 
-        if let Some(user_lexicon) = &self.user_lexicon {
-            if let Err(error) = user_lexicon.record_selection(&candidate.text, &candidate.pinyin) {
-                logger::emit_error(error);
+        let Some(user_lexicon) = self.user_lexicon.clone() else {
+            return;
+        };
+        if let Err(error) = user_lexicon.record_selection(&candidate.text, &candidate.pinyin) {
+            logger::emit_error(error);
+        }
+        let segments = candidate_segments(candidate);
+        let previous = self.context_tokens.last().cloned();
+        if let (Some(previous), Some(first)) = (previous, segments.first()) {
+            self.record_learned_transition(&previous, first);
+        }
+        for pair in segments.windows(2) {
+            self.record_learned_transition(&pair[0].text, &pair[1]);
+        }
+        self.learn_short_phrase_prediction(candidate, &user_lexicon);
+    }
+
+    fn record_learned_transition(
+        &mut self,
+        left: &str,
+        right: &crate::candidate::CandidateSegment,
+    ) {
+        let Some(user_lexicon) = self.user_lexicon.clone() else {
+            return;
+        };
+        match user_lexicon.record_transition(left, &right.text, &right.pinyin) {
+            Ok(()) => {
+                let frequency = self
+                    .user_transitions
+                    .entry(left.to_owned())
+                    .or_default()
+                    .entry(right.text.clone())
+                    .or_default();
+                *frequency = frequency.saturating_add(1);
             }
-            if let Some(previous) = self.context_tokens.last() {
-                if let Err(error) =
-                    user_lexicon.record_transition(previous, &candidate.text, &candidate.pinyin)
-                {
-                    logger::emit_error(error);
-                }
-            }
-            self.learn_short_phrase_prediction(candidate, user_lexicon);
+            Err(error) => logger::emit_error(error),
         }
     }
+}
+
+fn candidate_segments(candidate: &Candidate) -> Vec<crate::candidate::CandidateSegment> {
+    if candidate.segments.is_empty() {
+        vec![crate::candidate::CandidateSegment {
+            text: candidate.text.clone(),
+            pinyin: candidate.pinyin.clone(),
+        }]
+    } else {
+        candidate.segments.clone()
+    }
+}
+
+fn candidate_context_token(candidate: &Candidate) -> String {
+    candidate
+        .segments
+        .last()
+        .map(|segment| segment.text.clone())
+        .unwrap_or_else(|| candidate.text.clone())
+}
+
+fn user_transition_frequency(transitions: &UserTransitionSnapshot, left: &str, right: &str) -> u32 {
+    transitions
+        .get(left)
+        .and_then(|right_entries| right_entries.get(right))
+        .copied()
+        .unwrap_or_default()
 }
 
 fn has_passthrough_modifier(event: &KeyEvent) -> bool {

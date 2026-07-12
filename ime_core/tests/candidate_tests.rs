@@ -1,9 +1,11 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use ime_core::lexicon::Lexicon;
 use ime_core::predictor::Predictor;
+use ime_core::ranker::Ranker;
 use ime_core::session::MAX_RAW_INPUT_CHARS;
-use ime_core::{ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifiers};
+use ime_core::{ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifiers, PinyinParser};
 
 #[test]
 fn nihao_returns_expected_candidates() {
@@ -35,6 +37,81 @@ fn long_continuous_pinyin_can_segment_common_sentence() {
     assert!(candidates
         .iter()
         .any(|candidate| candidate.text == "我今天想去吃饭"));
+}
+
+#[test]
+fn joint_decoder_uses_bigram_context_to_resolve_ambiguous_boundaries() {
+    let lexicon = Lexicon::from_tsv(
+        "今天\tjin tian\t1000\n天气\ttian qi\t1000\n今\tjin\t100000\n天天\ttian tian\t100000\n期\tqi\t100000\n",
+    )
+    .expect("test lexicon loads");
+    let predictor = Predictor::from_tsv("今天\t天气\t1000000\n").expect("bigram loads");
+    let raw_input = "jintiantianqi";
+    let parses = PinyinParser.parse(raw_input);
+    let candidates = lexicon.lookup_with_context(raw_input, &parses, None, |left, right| {
+        Ranker::score_continuous_transition(predictor.transition_frequency(left, right), 0)
+    });
+
+    let first = candidates.first().expect("continuous candidate exists");
+    assert_eq!(first.text, "今天天气");
+    assert_eq!(
+        first
+            .segments
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["今天", "天气"]
+    );
+}
+
+#[test]
+fn joint_decoder_respects_apostrophe_syllable_boundaries() {
+    let lexicon = Lexicon::from_tsv("先\txian\t1000000\n西\txi\t100\n安\tan\t100\n好\thao\t100\n")
+        .expect("test lexicon loads");
+    let raw_input = "xi'anhao";
+    let parses = PinyinParser.parse(raw_input);
+    let candidates = lexicon.lookup(raw_input, &parses);
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("西安好")
+    );
+    assert!(candidates.iter().all(|candidate| candidate.text != "先好"));
+}
+
+#[test]
+fn second_generation_continuous_pinyin_handles_common_sentences() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+
+    for (raw_input, expected) in [
+        ("jintiantianqibucuo", "今天天气不错"),
+        ("gailvhenxiao", "概率很小"),
+        ("wojintianxiangquchifan", "我今天想去吃饭"),
+    ] {
+        let candidates = engine.candidates_for_raw(raw_input);
+        assert_eq!(
+            candidates.first().map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "{raw_input} should rank {expected} first"
+        );
+    }
+}
+
+#[test]
+fn joint_decoder_stays_within_interactive_lookup_budget() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let iterations = 20;
+    let started = Instant::now();
+    for _ in 0..iterations {
+        let candidates = engine.candidates_for_raw("wojintianxiangquchifan");
+        assert!(!candidates.is_empty());
+    }
+    let average = started.elapsed() / iterations;
+
+    assert!(
+        average < Duration::from_millis(60),
+        "average continuous lookup took {average:?}"
+    );
 }
 
 #[test]

@@ -8,6 +8,7 @@ use crate::lexicon::Lexicon;
 use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
+use crate::ranker::Ranker;
 use crate::session::InputSession;
 use crate::settings::{ImeMode, ImeSettings};
 use crate::user_lexicon::UserLexicon;
@@ -101,7 +102,14 @@ impl ImeEngine {
     pub fn candidates_for_raw(&self, raw_input: &str) -> Vec<Candidate> {
         let parser = PinyinParser;
         let parses = parser.parse(raw_input);
-        let base_candidates = self.lexicon.lookup(raw_input, &parses);
+        let base_candidates =
+            self.lexicon
+                .lookup_with_context(raw_input, &parses, None, |left, right| {
+                    Ranker::score_continuous_transition(
+                        self.predictor.transition_frequency(left, right),
+                        0,
+                    )
+                });
         let user_candidates = self
             .user_lexicon
             .as_ref()

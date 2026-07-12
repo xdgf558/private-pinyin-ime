@@ -19,6 +19,14 @@ enum IosSettingsStore {
         appGroupContainerURL != nil
     }
 
+    static let isKeyboardExtension = Bundle.main.object(
+        forInfoDictionaryKey: "NSExtension"
+    ) != nil
+
+    static var canEnableLearning: Bool {
+        usesAppGroupStorage || isKeyboardExtension
+    }
+
     static var supportDirectory: URL {
         let root = appGroupContainerURL ?? FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -42,7 +50,9 @@ enum IosSettingsStore {
                 withIntermediateDirectories: true
             )
 
-            if !FileManager.default.fileExists(atPath: settingsURL.path) {
+            if FileManager.default.fileExists(atPath: settingsURL.path) {
+                try repairRuntimePathsIfNeeded()
+            } else {
                 try write(settings: defaultSettings())
             }
 
@@ -57,7 +67,7 @@ enum IosSettingsStore {
     }
 
     static func setLearningEnabled(_ enabled: Bool) -> Bool {
-        if enabled && !usesAppGroupStorage {
+        if enabled && !canEnableLearning {
             return false
         }
 
@@ -69,11 +79,27 @@ enum IosSettingsStore {
         }
     }
 
+    static func isPredictionEnabled() -> Bool {
+        readSettings()["enable_prediction"] as? Bool ?? true
+    }
+
+    static func setPredictionEnabled(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            settings["enable_prediction"] = enabled
+        }
+    }
+
     static func storageDescription() -> String {
         if usesAppGroupStorage {
-            return "Learning data is stored locally in the shared App Group container."
+            return "学习数据仅保存在本机共享容器中。"
         }
-        return "App Group storage is unavailable in this build; learning stays disabled to avoid writing outside shared storage."
+        return "当前版本无法使用共享容器，用户学习将保持关闭。"
+    }
+
+    static func keyboardStorageDescription(hasFullAccess: Bool) -> String {
+        let access = hasFullAccess ? "完全访问已开启" : "完全访问已关闭"
+        let storage = usesAppGroupStorage ? "本机共享存储" : "键盘本机存储"
+        return "\(access) · \(storage)\n猫栈拼音不连接网络"
     }
 
     static func clearLocalLexiconArtifacts() throws -> Int {
@@ -91,8 +117,26 @@ enum IosSettingsStore {
         return removed
     }
 
-    private static var appGroupContainerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+    private static let appGroupContainerURL = FileManager.default.containerURL(
+        forSecurityApplicationGroupIdentifier: appGroupIdentifier
+    )
+
+    private static func repairRuntimePathsIfNeeded() throws {
+        guard
+            let data = try? Data(contentsOf: settingsURL),
+            let object = try? JSONSerialization.jsonObject(with: data),
+            var settings = object as? [String: Any]
+        else {
+            try write(settings: defaultSettings())
+            return
+        }
+
+        let expectedPath = userLexiconURL.path
+        guard settings["user_lexicon_path"] as? String != expectedPath else {
+            return
+        }
+        settings["user_lexicon_path"] = expectedPath
+        try write(settings: settings)
     }
 
     private static func defaultSettings() -> [String: Any] {

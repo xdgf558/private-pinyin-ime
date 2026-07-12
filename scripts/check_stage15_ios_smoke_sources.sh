@@ -35,10 +35,10 @@ fi
 grep -q "Stage 15" docs/ios_keyboard_smoke_record.md
 grep -q "Automated Readiness" docs/ios_keyboard_smoke_record.md
 grep -q "Manual Smoke Checklist" docs/ios_keyboard_smoke_record.md
-grep -q "Notes composition" docs/ios_keyboard_smoke_record.md
+grep -q "Host composition" docs/ios_keyboard_smoke_record.md
 grep -q "Prediction retention" docs/ios_keyboard_smoke_record.md
 grep -q "Password fallback" docs/ios_keyboard_smoke_record.md
-grep -q "App Group storage" docs/ios_keyboard_smoke_record.md
+grep -q "App Group fallback" docs/ios_keyboard_smoke_record.md
 
 grep -q "run_ios_smoke_readiness.sh" docs/platform_smoke_test_plan.md
 

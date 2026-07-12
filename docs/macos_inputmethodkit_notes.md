@@ -26,7 +26,7 @@ Stage 5 implements the macOS InputMethodKit host prototype.
 - `IMKInputController` subclass for key handling, composition updates, candidate selection, activation/deactivation cleanup, and external composition commits.
 - Swift C ABI bridge around `ime_engine_new`, `ime_session_feed_key`, `ime_session_commit_candidate`, and `ime_session_reset`.
 - IMK marked text via `updateComposition()` and committed text through the active `IMKTextInput` client.
-- `IMKCandidates` panel with numeric candidate selection through the Rust core.
+- One process-scoped, horizontal `IMKCandidates` panel shared by all client controllers, with nine visible candidates and numeric selection through the Rust core. The panel is attached to the process-level `IMKServer` and must outlive individual client sessions.
 - Standalone app bundle build script plus local install/uninstall scripts.
 
 ## Manual macOS Smoke Test
@@ -37,3 +37,5 @@ Stage 5 implements the macOS InputMethodKit host prototype.
 4. In TextEdit, type `zhongguo`, press `Space`, and confirm `中国` commits.
 5. Type `nihao`, confirm candidates follow the insertion point, and select a candidate with a number key.
 6. Press standalone `Shift` to toggle mode, then press `Shift+A` and confirm uppercase input passes through.
+7. With candidates alternately visible and committed, switch among TextEdit, Safari, and Chrome at least 20 times; confirm input still works and no new `PrivatePinyin-*.ips` crash report appears.
+8. Type a pinyin sequence with at least nine matches; confirm candidates appear in one horizontal row, entries `1` through `9` are visible, and each corresponding number key selects the expected candidate.
