@@ -157,6 +157,8 @@
 - Bumped the macOS app and installer package to `0.1.14` for second-generation continuous-pinyin decoding and local transition learning.
 - Bumped the macOS app and installer package to `0.1.15` for the InputMethodKit candidate-panel lifecycle crash fix.
 - Bumped the macOS app and installer package to `0.1.16` for the horizontal nine-candidate layout.
+- Bumped the Windows/core package version to `0.1.13` for bounded local trigram learning.
+- Bumped the macOS app and installer package to `0.1.17` for bounded local trigram learning.
 - Changed the macOS candidate panel from a vertical scrolling column to a horizontal single row with nine visible candidates and direct `1` through `9` selection.
 - Routed macOS candidate key events through the input controller first so each `1` through `9` key follows one core-owned selection path instead of also reaching the native panel.
 - Migrated the previous macOS default page size of five candidates to nine while preserving other explicit page-size customizations.
@@ -167,6 +169,8 @@
 
 ### Fixed
 
+- Fixed transient SQLite BUSY/LOCKED learning-write failures with per-database in-process serialization and bounded cross-process retries, including concurrent Windows TSF host writes.
+- Fixed the Stage 16 plist source gate so it uses cross-platform `plistlib` validation instead of requiring macOS `plutil` on Ubuntu CI.
 - Fixed intermittent macOS input loss by retaining the server-attached `IMKCandidates` panel for the input method process lifetime instead of releasing it with each client input controller.
 - Fixed the Stage 15 source gate to follow the current `Host composition` and `App Group fallback` iOS smoke-record labels.
 - Fixed idle Space so prediction candidates no longer hijack normal space input.

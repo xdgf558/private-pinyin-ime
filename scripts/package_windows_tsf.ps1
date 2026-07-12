@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.12",
+    [string]$Version = "0.1.13",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",
@@ -305,6 +305,7 @@ Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageD
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
+Copy-Item "platform\windows_tsf\installer\ReleaseNotes.zh-Hans.txt" -Destination $stageDir
 Copy-Item $installerIcon -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
 

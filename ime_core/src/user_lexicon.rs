@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::functions::FunctionFlags;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Error as SqliteError, ErrorCode};
 use rusqlite::{Transaction, TransactionBehavior};
 
 use crate::atomic_file::AtomicFile;
@@ -21,8 +21,13 @@ const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 const MAX_USER_SHORT_PHRASE_CHARS: usize = 12;
 const USER_SHORT_PHRASE_TOKEN_COUNT: i64 = 2;
 const USER_LEARNING_HALF_LIFE_MS: f64 = 30.0 * 24.0 * 60.0 * 60.0 * 1_000.0;
+const SQLITE_BUSY_RETRY_LIMIT: usize = 4;
+const SQLITE_BUSY_RETRY_DELAY_MS: u64 = 10;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
 pub type UserTransitionSnapshot = HashMap<String, HashMap<String, f64>>;
+type UserLexiconWriteLocks = Mutex<HashMap<PathBuf, Weak<Mutex<()>>>>;
+
+static USER_LEXICON_WRITE_LOCKS: OnceLock<UserLexiconWriteLocks> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UserLearningLimits {
@@ -46,6 +51,7 @@ impl Default for UserLearningLimits {
 pub struct UserLexicon {
     db_path: PathBuf,
     connection: Mutex<Connection>,
+    write_lock: Arc<Mutex<()>>,
     limits: UserLearningLimits,
 }
 
@@ -70,11 +76,18 @@ impl UserLexicon {
             std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
         }
 
+        let write_lock = shared_user_lexicon_write_lock(&db_path)?;
         let connection = Connection::open(&db_path).map_err(|_| ImeError::UserLexiconDatabase)?;
-        configure_connection(&connection)?;
+        {
+            let _write_guard = write_lock
+                .lock()
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            configure_connection(&connection)?;
+        }
         let lexicon = Self {
             db_path,
             connection: Mutex::new(connection),
+            write_lock,
             limits,
         };
         lexicon.ensure_schema()?;
@@ -183,6 +196,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -194,8 +208,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_phrases
                    (phrase, pinyin, compact_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -210,7 +224,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![text, pinyin, compact_pinyin(pinyin), reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
         }
@@ -227,6 +242,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -239,8 +255,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_bigrams
                    (left_phrase, right_phrase, right_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -255,7 +271,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![left, right, right_pinyin, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
         }
@@ -358,6 +375,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -370,8 +388,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_trigrams
                    (first_phrase, second_phrase, next_phrase, next_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, ?4, 1, 1.0, ?5)
@@ -386,7 +404,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![first, second, next, next_pinyin, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Trigrams, self.limits.trigrams)?;
         }
@@ -444,6 +463,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -456,8 +476,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_short_phrases
                    (left_phrase, phrase, token_count, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -472,7 +492,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![left, phrase, token_count, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(
                 &connection,
@@ -524,6 +545,7 @@ impl UserLexicon {
     }
 
     pub fn clear(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         connection
             .execute_batch(
@@ -743,6 +765,7 @@ impl UserLexicon {
     }
 
     fn ensure_schema(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         connection
             .execute_batch(
@@ -812,6 +835,7 @@ impl UserLexicon {
     }
 
     fn enforce_capacity_limits(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
         prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
@@ -828,6 +852,26 @@ impl UserLexicon {
             .lock()
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
+
+    fn write_guard(&self) -> ImeResult<MutexGuard<'_, ()>> {
+        self.write_lock
+            .lock()
+            .map_err(|_| ImeError::UserLexiconDatabase)
+    }
+}
+
+fn shared_user_lexicon_write_lock(path: &Path) -> ImeResult<Arc<Mutex<()>>> {
+    let registry = USER_LEXICON_WRITE_LOCKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut locks = registry.lock().map_err(|_| ImeError::UserLexiconDatabase)?;
+    locks.retain(|_, lock| lock.strong_count() > 0);
+
+    if let Some(lock) = locks.get(path).and_then(Weak::upgrade) {
+        return Ok(lock);
+    }
+
+    let lock = Arc::new(Mutex::new(()));
+    locks.insert(path.to_path_buf(), Arc::downgrade(&lock));
+    Ok(lock)
 }
 
 fn create_export_file(path: &Path) -> ImeResult<AtomicFile> {
@@ -870,6 +914,36 @@ fn configure_connection(connection: &Connection) -> ImeResult<()> {
         )
         .map_err(|_| ImeError::UserLexiconDatabase)?;
     Ok(())
+}
+
+fn with_sqlite_busy_retry<T>(
+    mut operation: impl FnMut() -> rusqlite::Result<T>,
+) -> rusqlite::Result<T> {
+    let mut retry_count = 0;
+    loop {
+        match operation() {
+            Err(error)
+                if is_sqlite_busy_or_locked(&error) && retry_count < SQLITE_BUSY_RETRY_LIMIT =>
+            {
+                retry_count += 1;
+                std::thread::sleep(Duration::from_millis(
+                    SQLITE_BUSY_RETRY_DELAY_MS * retry_count as u64,
+                ));
+            }
+            result => return result,
+        }
+    }
+}
+
+fn is_sqlite_busy_or_locked(error: &SqliteError) -> bool {
+    matches!(
+        error,
+        SqliteError::SqliteFailure(sqlite_error, _)
+            if matches!(
+                sqlite_error.code,
+                ErrorCode::DatabaseBusy | ErrorCode::DatabaseLocked
+            )
+    )
 }
 
 fn now_ms() -> i64 {
