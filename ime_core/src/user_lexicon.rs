@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::functions::FunctionFlags;
@@ -25,6 +25,9 @@ const SQLITE_BUSY_RETRY_LIMIT: usize = 4;
 const SQLITE_BUSY_RETRY_DELAY_MS: u64 = 10;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
 pub type UserTransitionSnapshot = HashMap<String, HashMap<String, f64>>;
+type UserLexiconWriteLocks = Mutex<HashMap<PathBuf, Weak<Mutex<()>>>>;
+
+static USER_LEXICON_WRITE_LOCKS: OnceLock<UserLexiconWriteLocks> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UserLearningLimits {
@@ -48,6 +51,7 @@ impl Default for UserLearningLimits {
 pub struct UserLexicon {
     db_path: PathBuf,
     connection: Mutex<Connection>,
+    write_lock: Arc<Mutex<()>>,
     limits: UserLearningLimits,
 }
 
@@ -72,11 +76,18 @@ impl UserLexicon {
             std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
         }
 
+        let write_lock = shared_user_lexicon_write_lock(&db_path)?;
         let connection = Connection::open(&db_path).map_err(|_| ImeError::UserLexiconDatabase)?;
-        configure_connection(&connection)?;
+        {
+            let _write_guard = write_lock
+                .lock()
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            configure_connection(&connection)?;
+        }
         let lexicon = Self {
             db_path,
             connection: Mutex::new(connection),
+            write_lock,
             limits,
         };
         lexicon.ensure_schema()?;
@@ -185,6 +196,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -230,6 +242,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -362,6 +375,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -449,6 +463,7 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let _write_guard = self.write_guard()?;
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let is_new = connection
@@ -530,6 +545,7 @@ impl UserLexicon {
     }
 
     pub fn clear(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         connection
             .execute_batch(
@@ -749,6 +765,7 @@ impl UserLexicon {
     }
 
     fn ensure_schema(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         connection
             .execute_batch(
@@ -818,6 +835,7 @@ impl UserLexicon {
     }
 
     fn enforce_capacity_limits(&self) -> ImeResult<()> {
+        let _write_guard = self.write_guard()?;
         let connection = self.connection()?;
         prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
         prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
@@ -834,6 +852,26 @@ impl UserLexicon {
             .lock()
             .map_err(|_| ImeError::UserLexiconDatabase)
     }
+
+    fn write_guard(&self) -> ImeResult<MutexGuard<'_, ()>> {
+        self.write_lock
+            .lock()
+            .map_err(|_| ImeError::UserLexiconDatabase)
+    }
+}
+
+fn shared_user_lexicon_write_lock(path: &Path) -> ImeResult<Arc<Mutex<()>>> {
+    let registry = USER_LEXICON_WRITE_LOCKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut locks = registry.lock().map_err(|_| ImeError::UserLexiconDatabase)?;
+    locks.retain(|_, lock| lock.strong_count() > 0);
+
+    if let Some(lock) = locks.get(path).and_then(Weak::upgrade) {
+        return Ok(lock);
+    }
+
+    let lock = Arc::new(Mutex::new(()));
+    locks.insert(path.to_path_buf(), Arc::downgrade(&lock));
+    Ok(lock)
 }
 
 fn create_export_file(path: &Path) -> ImeResult<AtomicFile> {
