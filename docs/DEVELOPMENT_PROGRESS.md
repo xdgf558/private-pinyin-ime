@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 11:59
+Last updated: 2026-07-12 12:52
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -406,28 +406,32 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Command: stage 09/11, platform-validation, macOS, iOS, and Windows source gates
 - Result: passed
 
+- Command: GitHub Actions CI run `29180012276` on PR #15
+- Result: passed
+- Notes: Ubuntu Rust/source gates and the `windows-2022` Rust/TSF job both passed; the Windows job includes the concurrent trigram learning regression that originally exposed SQLite writer starvation.
+
 ### macOS 0.1.17 Bounded Trigram Package
 
 - Command: signed `PRIVATE_PINYIN_VERSION=0.1.17 bash scripts/package_macos_pkg.sh` with Developer ID Application and Developer ID Installer, followed by direct `notarytool submit` using the existing local Apple credential
 - Result: passed
-- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.17.pkg`; Apple notarization submission `24d53cdb-0e42-48fb-ae82-d2f01b595b74` returned `Accepted`, and stapling succeeded.
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.17.pkg`; Apple notarization submission `90edbce9-e28f-40a9-9f98-71830dad8839` returned `Accepted`, and stapling succeeded.
 
 - Command: trusted-system `pkgutil --check-signature`, `spctl --assess --type install`, `xcrun stapler validate`, and `codesign --verify --deep --strict`
 - Result: passed
-- Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `36698c54bbde96e5a37d8f4cbbf6d14f07f5429ab8dee88b0fb7e39b90e39b42`.
+- Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `43bcec63708a16098dec51a6a0d7533795a0cf7b7d459040eb1e9abf449bdb79`.
 
 ### Windows 0.1.13 Unsigned Internal-Test Package
 
-- Command: GitHub Actions `Windows Unsigned Package`, run `29178813702`, version input `0.1.13`
+- Command: GitHub Actions `Windows Unsigned Package`, run `29180177697`, version input `0.1.13`
 - Result: passed
-- Notes: The `windows-2022` job built and uploaded the NSIS EXE, WiX MSI, and ZIP from commit `91772288cb78d235095ff0e57da1d90b64d75cca`; the ZIP contains `ReleaseNotes.zh-Hans.txt` and all TSF runtime files.
+- Notes: The `windows-2022` job built and uploaded the NSIS EXE, WiX MSI, and ZIP from commit `91b37fa02843b4594a5d043b24675ba4a0912787`; the ZIP contains `ReleaseNotes.zh-Hans.txt` and all TSF runtime files.
 
 - Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13-setup.exe`
-- SHA-256: `2131c35c98b4b2149b147dafd764b9d4740ba12ea3390f9ff3e38926aedb4e3e`
+- SHA-256: `7bcc0125b1e57aa129a85f773aa5feca543c70a852704b80762440d4615c9b88`
 - Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.msi`
-- SHA-256: `245a50e52ec2a68c216ef266a6793aa861d94ea659b1c117d8eb9e4e76eced0b`
+- SHA-256: `992141e002b895b9b4c422f835b9261ccb0ae3dba6e22b01111e65efc7aa5bc8`
 - Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.zip`
-- SHA-256: `1c1fcad0823dc40613f95c126749bf02fccb6c3fdea72f1a7b87c64727a89e5a`
+- SHA-256: `0f167ca8e923f50c89b89723fa1192b407ce5e69bb4a73b8f3a88bf40211f6a1`
 - Distribution note: these Windows artifacts are unsigned and remain for internal testing only.
 
 ## Open Items

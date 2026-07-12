@@ -21,8 +21,8 @@ publication before public distribution.
 Current artifact evidence:
 
 - Package: `dist/macos_imk/PrivatePinyin-0.1.17.pkg`
-- Notarization submission: `24d53cdb-0e42-48fb-ae82-d2f01b595b74` (`Accepted`)
-- SHA256: `36698c54bbde96e5a37d8f4cbbf6d14f07f5429ab8dee88b0fb7e39b90e39b42`
+- Notarization submission: `90edbce9-e28f-40a9-9f98-71830dad8839` (`Accepted`)
+- SHA256: `43bcec63708a16098dec51a6a0d7533795a0cf7b7d459040eb1e9abf449bdb79`
 - Previous installed-upgrade smoke: `0.1.15` passed on 2026-07-11; the `0.1.17` horizontal layout, stepping, overflow, `1` through `9` selection, and bounded trigram learning still require TextEdit/Safari/Chrome/VS Code validation before release.
 
 ## One-Time Owner Setup
