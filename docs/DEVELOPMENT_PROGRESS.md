@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 04:38
+Last updated: 2026-07-12 09:55
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,6 +29,9 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Added local trigram learning so the last two selected tokens can produce context-specific next-token predictions across macOS, Windows, and iOS through the shared Rust core.
+- Added 30-day-half-life ranking decay, an eight-token in-memory context bound, and decayed-weight capacity eviction for all four local learning tables.
+- Added user-learning regression tests for trigram context, inactivity decay, privacy write guards, export/clear behavior, bounded context, and low-weight eviction.
 - Changed the macOS candidate panel to InputMethodKit's horizontal 9-column stepping layout, made nine candidates the macOS default, and added a targeted migration from the previous default page size of five.
 - Routed native candidate selection keys through the macOS controller first, keeping digit selection on one core-owned path while retaining four-host manual verification as a release gate.
 - Bumped the macOS app metadata to `0.1.16 (16)` and added horizontal-layout source gates and smoke coverage.
@@ -379,6 +382,29 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Result: passed
 - Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`. Four-host horizontal layout and number-selection smoke remains required before public release.
 
+### Local Trigram Learning Validation
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: All Rust, C ABI, layout, settings, prediction, privacy, lexicon-builder, and 28 user-lexicon tests passed, including legacy-schema migration and concurrent SQLite learning updates.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: C ABI demo returned `你好` and committed it successfully.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+
+- Command: `bash scripts/build_ios_keyboard.sh`
+- Result: passed
+- Notes: Xcode 27 Simulator build completed with `BUILD SUCCEEDED` after running with CoreSimulator access.
+
+- Command: stage 09/11, platform-validation, macOS, iOS, and Windows source gates
+- Result: passed
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -397,26 +423,20 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
-- Add a retention policy for long-running `user_phrases`, `user_bigrams`, and `user_short_phrases` growth.
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
 - `CHANGELOG.md`
 - `README.md`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/ios_testflight_upload_record.md`
-- `docs/release_distribution_plan.md`
-- `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template`
-- `platform/ios_keyboard/AppStoreMetadata/README.md`
-- `platform/ios_keyboard/AppStoreMetadata/Signing.env.example`
-- `platform/ios_keyboard/README.md`
-- `scripts/README.md`
-- `scripts/check_stage16_ios_testflight_sources.sh`
-- `scripts/package_ios_app_store.sh`
+- `docs/privacy_spec.md`
+- `ime_core/src/ranker.rs`
+- `ime_core/src/session.rs`
+- `ime_core/src/user_lexicon.rs`
+- `ime_core/tests/user_lexicon_tests.rs`
 
 ## Next Step
 
-- Assign build `0.1.12 (13)` to the external TestFlight group when the current Beta App Review state permits it, then install that exact build on the iPhone and complete the remaining real-device privacy/input smoke record.
+- Review the local trigram-learning branch, then merge it before producing new platform packages or TestFlight builds.

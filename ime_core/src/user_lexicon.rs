@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use rusqlite::functions::FunctionFlags;
 use rusqlite::{params, Connection};
+use rusqlite::{Transaction, TransactionBehavior};
 
 use crate::atomic_file::AtomicFile;
 use crate::candidate::{Candidate, CandidateSource};
@@ -18,12 +20,33 @@ const EXPORT_HEADER: &[u8] = b"phrase\tpinyin\tfrequency\tupdated_at_ms\n";
 const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 const MAX_USER_SHORT_PHRASE_CHARS: usize = 12;
 const USER_SHORT_PHRASE_TOKEN_COUNT: i64 = 2;
+const USER_LEARNING_HALF_LIFE_MS: f64 = 30.0 * 24.0 * 60.0 * 60.0 * 1_000.0;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
-pub type UserTransitionSnapshot = HashMap<String, HashMap<String, u32>>;
+pub type UserTransitionSnapshot = HashMap<String, HashMap<String, f64>>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UserLearningLimits {
+    pub phrases: usize,
+    pub bigrams: usize,
+    pub short_phrases: usize,
+    pub trigrams: usize,
+}
+
+impl Default for UserLearningLimits {
+    fn default() -> Self {
+        Self {
+            phrases: 20_000,
+            bigrams: 20_000,
+            short_phrases: 10_000,
+            trigrams: 20_000,
+        }
+    }
+}
 
 pub struct UserLexicon {
     db_path: PathBuf,
     connection: Mutex<Connection>,
+    limits: UserLearningLimits,
 }
 
 impl fmt::Debug for UserLexicon {
@@ -31,12 +54,17 @@ impl fmt::Debug for UserLexicon {
         formatter
             .debug_struct("UserLexicon")
             .field("db_path", &self.db_path)
+            .field("limits", &self.limits)
             .finish_non_exhaustive()
     }
 }
 
 impl UserLexicon {
     pub fn open(path: impl AsRef<Path>) -> ImeResult<Self> {
+        Self::open_with_limits(path, UserLearningLimits::default())
+    }
+
+    pub fn open_with_limits(path: impl AsRef<Path>, limits: UserLearningLimits) -> ImeResult<Self> {
         let db_path = path.as_ref().to_path_buf();
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).map_err(|_| ImeError::UserLexiconDatabase)?;
@@ -47,8 +75,10 @@ impl UserLexicon {
         let lexicon = Self {
             db_path,
             connection: Mutex::new(connection),
+            limits,
         };
         lexicon.ensure_schema()?;
+        lexicon.enforce_capacity_limits()?;
         Ok(lexicon)
     }
 
@@ -67,36 +97,39 @@ impl UserLexicon {
         let mut exact_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
         let mut seen_phrases = std::collections::HashSet::new();
+        let reference_time_ms = now_ms();
 
         let connection = self.connection()?;
         for exact_pinyin in &exact_pinyins {
             let rows = {
                 let mut statement = connection
                     .prepare(
-                        "SELECT phrase, pinyin, frequency
+                        "SELECT phrase, pinyin, weight, updated_at_ms
                          FROM user_phrases
                          WHERE pinyin = ?1
-                         ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
-                         LIMIT ?2",
+                         ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
                     )
                     .map_err(|_| ImeError::UserLexiconDatabase)?;
                 let mapped_rows = statement
-                    .query_map(params![exact_pinyin, MAX_LOOKUP_CANDIDATES as i64], |row| {
+                    .query_map(params![exact_pinyin], |row| {
                         let phrase: String = row.get(0)?;
                         let pinyin: String = row.get(1)?;
-                        let frequency: i64 = row.get(2)?;
-                        Ok((phrase, pinyin, frequency))
+                        let weight: f64 = row.get(2)?;
+                        let updated_at_ms: i64 = row.get(3)?;
+                        Ok((phrase, pinyin, weight, updated_at_ms))
                     })
                     .map_err(|_| ImeError::UserLexiconDatabase)?;
-                collect_user_rows(mapped_rows)?
+                collect_user_lookup_rows(mapped_rows)?
             };
 
-            for (phrase, pinyin, frequency) in rows {
+            for (phrase, pinyin, weight, updated_at_ms) in rows {
                 if seen_phrases.insert(phrase.clone()) {
                     exact_candidates.push(user_candidate(
                         phrase,
                         pinyin,
-                        frequency,
+                        weight,
+                        updated_at_ms,
+                        reference_time_ms,
                         CandidateMatchKind::Exact,
                     ));
                 }
@@ -107,33 +140,32 @@ impl UserLexicon {
         let rows = {
             let mut statement = connection
                 .prepare(
-                    "SELECT phrase, pinyin, frequency
+                    "SELECT phrase, pinyin, weight, updated_at_ms
                      FROM user_phrases
                      WHERE compact_pinyin >= ?1 AND compact_pinyin < ?2
-                     ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
-                     LIMIT ?3",
+                     ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
                 )
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
             let mapped_rows = statement
-                .query_map(
-                    params![normalized_input, upper_bound, MAX_LOOKUP_CANDIDATES as i64],
-                    |row| {
-                        let phrase: String = row.get(0)?;
-                        let pinyin: String = row.get(1)?;
-                        let frequency: i64 = row.get(2)?;
-                        Ok((phrase, pinyin, frequency))
-                    },
-                )
+                .query_map(params![normalized_input, upper_bound], |row| {
+                    let phrase: String = row.get(0)?;
+                    let pinyin: String = row.get(1)?;
+                    let weight: f64 = row.get(2)?;
+                    let updated_at_ms: i64 = row.get(3)?;
+                    Ok((phrase, pinyin, weight, updated_at_ms))
+                })
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
-            collect_user_rows(mapped_rows)?
+            collect_user_lookup_rows(mapped_rows)?
         };
 
-        for (phrase, pinyin, frequency) in rows {
+        for (phrase, pinyin, weight, updated_at_ms) in rows {
             if !exact_pinyins.contains(&pinyin) && seen_phrases.insert(phrase.clone()) {
                 prefix_candidates.push(user_candidate(
                     phrase,
                     pinyin,
-                    frequency,
+                    weight,
+                    updated_at_ms,
+                    reference_time_ms,
                     CandidateMatchKind::Prefix,
                 ));
             }
@@ -151,19 +183,37 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
+        let is_new = connection
+            .query_row(
+                "SELECT NOT EXISTS(
+                   SELECT 1 FROM user_phrases WHERE phrase = ?1 AND pinyin = ?2
+                 )",
+                params![text, pinyin],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
         connection
             .execute(
                 "INSERT INTO user_phrases
-                   (phrase, pinyin, compact_pinyin, frequency, updated_at_ms)
-                 VALUES (?1, ?2, ?3, 1, ?4)
+                   (phrase, pinyin, compact_pinyin, frequency, weight, updated_at_ms)
+                 VALUES (?1, ?2, ?3, 1, 1.0, ?4)
                  ON CONFLICT(phrase, pinyin) DO UPDATE SET
                    frequency = frequency + 1,
+                   weight = private_pinyin_decay_weight(
+                     weight,
+                     updated_at_ms,
+                     excluded.updated_at_ms
+                   ) + 1.0,
                    compact_pinyin = excluded.compact_pinyin,
                    updated_at_ms = excluded.updated_at_ms",
-                params![text, pinyin, compact_pinyin(pinyin), now_ms()],
+                params![text, pinyin, compact_pinyin(pinyin), reference_time_ms],
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
+        if is_new {
+            prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
+        }
         Ok(())
     }
 
@@ -177,19 +227,38 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
+        let is_new = connection
+            .query_row(
+                "SELECT NOT EXISTS(
+                   SELECT 1 FROM user_bigrams
+                   WHERE left_phrase = ?1 AND right_phrase = ?2
+                 )",
+                params![left, right],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
         connection
             .execute(
                 "INSERT INTO user_bigrams
-                   (left_phrase, right_phrase, right_pinyin, frequency, updated_at_ms)
-                 VALUES (?1, ?2, ?3, 1, ?4)
+                   (left_phrase, right_phrase, right_pinyin, frequency, weight, updated_at_ms)
+                 VALUES (?1, ?2, ?3, 1, 1.0, ?4)
                  ON CONFLICT(left_phrase, right_phrase) DO UPDATE SET
                    right_pinyin = excluded.right_pinyin,
                    frequency = frequency + 1,
+                   weight = private_pinyin_decay_weight(
+                     weight,
+                     updated_at_ms,
+                     excluded.updated_at_ms
+                   ) + 1.0,
                    updated_at_ms = excluded.updated_at_ms",
-                params![left, right, right_pinyin, now_ms()],
+                params![left, right, right_pinyin, reference_time_ms],
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
+        if is_new {
+            prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
+        }
         Ok(())
     }
 
@@ -198,31 +267,32 @@ impl UserLexicon {
             return Ok(Vec::new());
         }
 
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let rows = {
             let mut statement = connection
                 .prepare(
-                    "SELECT right_phrase, right_pinyin, frequency
+                    "SELECT right_phrase, right_pinyin, weight, updated_at_ms
                      FROM user_bigrams
                      WHERE left_phrase = ?1
-                     ORDER BY frequency DESC, updated_at_ms DESC, right_phrase ASC
-                     LIMIT ?2",
+                     ORDER BY updated_at_ms DESC, frequency DESC, right_phrase ASC",
                 )
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
             let mapped_rows = statement
-                .query_map(params![left, MAX_LOOKUP_CANDIDATES as i64], |row| {
+                .query_map(params![left], |row| {
                     let phrase: String = row.get(0)?;
                     let pinyin: String = row.get(1)?;
-                    let frequency: i64 = row.get(2)?;
-                    Ok((phrase, pinyin, frequency))
+                    let weight: f64 = row.get(2)?;
+                    let updated_at_ms: i64 = row.get(3)?;
+                    Ok((phrase, pinyin, weight, updated_at_ms))
                 })
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
-            collect_user_rows(mapped_rows)?
+            collect_user_lookup_rows(mapped_rows)?
         };
 
         let mut candidates = rows
             .into_iter()
-            .map(user_prediction_candidate)
+            .map(|row| user_prediction_candidate(row, reference_time_ms))
             .collect::<Vec<_>>();
         Ranker::sort_candidates(&mut candidates);
         candidates.truncate(MAX_LOOKUP_CANDIDATES);
@@ -230,34 +300,133 @@ impl UserLexicon {
     }
 
     pub fn transition_snapshot(&self) -> ImeResult<UserTransitionSnapshot> {
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let mut statement = connection
             .prepare(
-                "SELECT left_phrase, right_phrase, frequency
+                "SELECT left_phrase, right_phrase, weight, updated_at_ms
                  FROM user_bigrams
-                 ORDER BY frequency DESC, updated_at_ms DESC
-                 LIMIT ?1",
+                 ORDER BY updated_at_ms DESC, frequency DESC",
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         let rows = statement
-            .query_map(params![MAX_USER_TRANSITION_SNAPSHOT as i64], |row| {
+            .query_map([], |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, String>(1)?,
-                    row.get::<_, i64>(2)?,
+                    row.get::<_, f64>(2)?,
+                    row.get::<_, i64>(3)?,
                 ))
             })
             .map_err(|_| ImeError::UserLexiconDatabase)?;
 
-        let mut snapshot = UserTransitionSnapshot::new();
+        let mut weighted_rows = Vec::new();
         for row in rows {
-            let (left, right, frequency) = row.map_err(|_| ImeError::UserLexiconDatabase)?;
-            snapshot
-                .entry(left)
-                .or_default()
-                .insert(right, u32::try_from(frequency).unwrap_or(u32::MAX));
+            let (left, right, weight, updated_at_ms) =
+                row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            weighted_rows.push((
+                left,
+                right,
+                decayed_weight(weight, updated_at_ms, reference_time_ms),
+            ));
+        }
+        weighted_rows.sort_by(|left, right| right.2.total_cmp(&left.2));
+        weighted_rows.truncate(MAX_USER_TRANSITION_SNAPSHOT);
+
+        let mut snapshot = UserTransitionSnapshot::new();
+        for (left, right, weight) in weighted_rows {
+            snapshot.entry(left).or_default().insert(right, weight);
         }
         Ok(snapshot)
+    }
+
+    pub fn record_trigram(
+        &self,
+        first: &str,
+        second: &str,
+        next: &str,
+        next_pinyin: &str,
+    ) -> ImeResult<()> {
+        if first.is_empty()
+            || second.is_empty()
+            || next.is_empty()
+            || next_pinyin.is_empty()
+            || exceeds_user_bigram_phrase_limit(first)
+            || exceeds_user_bigram_phrase_limit(second)
+            || exceeds_user_bigram_phrase_limit(next)
+        {
+            return Ok(());
+        }
+
+        let reference_time_ms = now_ms();
+        let connection = self.connection()?;
+        let is_new = connection
+            .query_row(
+                "SELECT NOT EXISTS(
+                   SELECT 1 FROM user_trigrams
+                   WHERE first_phrase = ?1 AND second_phrase = ?2 AND next_phrase = ?3
+                 )",
+                params![first, second, next],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        connection
+            .execute(
+                "INSERT INTO user_trigrams
+                   (first_phrase, second_phrase, next_phrase, next_pinyin, frequency, weight, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, 1, 1.0, ?5)
+                 ON CONFLICT(first_phrase, second_phrase, next_phrase) DO UPDATE SET
+                   next_pinyin = excluded.next_pinyin,
+                   frequency = frequency + 1,
+                   weight = private_pinyin_decay_weight(
+                     weight,
+                     updated_at_ms,
+                     excluded.updated_at_ms
+                   ) + 1.0,
+                   updated_at_ms = excluded.updated_at_ms",
+                params![first, second, next, next_pinyin, reference_time_ms],
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        if is_new {
+            prune_table_to_limit(&connection, LearningTable::Trigrams, self.limits.trigrams)?;
+        }
+        Ok(())
+    }
+
+    pub fn predict_trigram(&self, first: &str, second: &str) -> ImeResult<Vec<Candidate>> {
+        if first.is_empty() || second.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let reference_time_ms = now_ms();
+        let connection = self.connection()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT next_phrase, next_pinyin, weight, updated_at_ms
+                 FROM user_trigrams
+                 WHERE first_phrase = ?1 AND second_phrase = ?2
+                 ORDER BY updated_at_ms DESC, frequency DESC, next_phrase ASC",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let rows = statement
+            .query_map(params![first, second], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, f64>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let mut candidates = Vec::new();
+        for row in rows {
+            let row = row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            candidates.push(user_trigram_prediction_candidate(row, reference_time_ms));
+        }
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        Ok(candidates)
     }
 
     pub fn record_short_phrase_prediction(
@@ -275,19 +444,42 @@ impl UserLexicon {
             return Ok(());
         }
 
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
+        let is_new = connection
+            .query_row(
+                "SELECT NOT EXISTS(
+                   SELECT 1 FROM user_short_phrases
+                   WHERE left_phrase = ?1 AND phrase = ?2
+                 )",
+                params![left, phrase],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
         connection
             .execute(
                 "INSERT INTO user_short_phrases
-                   (left_phrase, phrase, token_count, frequency, updated_at_ms)
-                 VALUES (?1, ?2, ?3, 1, ?4)
+                   (left_phrase, phrase, token_count, frequency, weight, updated_at_ms)
+                 VALUES (?1, ?2, ?3, 1, 1.0, ?4)
                  ON CONFLICT(left_phrase, phrase) DO UPDATE SET
                    token_count = excluded.token_count,
                    frequency = frequency + 1,
+                   weight = private_pinyin_decay_weight(
+                     weight,
+                     updated_at_ms,
+                     excluded.updated_at_ms
+                   ) + 1.0,
                    updated_at_ms = excluded.updated_at_ms",
-                params![left, phrase, token_count, now_ms()],
+                params![left, phrase, token_count, reference_time_ms],
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
+        if is_new {
+            prune_table_to_limit(
+                &connection,
+                LearningTable::ShortPhrases,
+                self.limits.short_phrases,
+            )?;
+        }
         Ok(())
     }
 
@@ -296,28 +488,34 @@ impl UserLexicon {
             return Ok(Vec::new());
         }
 
+        let reference_time_ms = now_ms();
         let connection = self.connection()?;
         let mut statement = connection
             .prepare(
-                "SELECT phrase, frequency
+                "SELECT phrase, weight, updated_at_ms
                  FROM user_short_phrases
                  WHERE left_phrase = ?1
-                 ORDER BY frequency DESC, updated_at_ms DESC, phrase ASC
-                 LIMIT ?2",
+                 ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         let rows = statement
-            .query_map(params![left, MAX_LOOKUP_CANDIDATES as i64], |row| {
+            .query_map(params![left], |row| {
                 let phrase: String = row.get(0)?;
-                let frequency: i64 = row.get(1)?;
-                Ok((phrase, frequency))
+                let weight: f64 = row.get(1)?;
+                let updated_at_ms: i64 = row.get(2)?;
+                Ok((phrase, weight, updated_at_ms))
             })
             .map_err(|_| ImeError::UserLexiconDatabase)?;
 
         let mut candidates = Vec::new();
         for row in rows {
-            let (phrase, frequency) = row.map_err(|_| ImeError::UserLexiconDatabase)?;
-            candidates.push(user_short_prediction_candidate(phrase, frequency));
+            let (phrase, weight, updated_at_ms) = row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            candidates.push(user_short_prediction_candidate(
+                phrase,
+                weight,
+                updated_at_ms,
+                reference_time_ms,
+            ));
         }
 
         Ranker::sort_candidates(&mut candidates);
@@ -331,7 +529,8 @@ impl UserLexicon {
             .execute_batch(
                 "DELETE FROM user_phrases;
                  DELETE FROM user_bigrams;
-                 DELETE FROM user_short_phrases;",
+                 DELETE FROM user_short_phrases;
+                 DELETE FROM user_trigrams;",
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         Ok(())
@@ -366,6 +565,48 @@ impl UserLexicon {
                 row.map_err(|_| ImeError::UserLexiconDatabase)?;
             writeln!(file, "{phrase}\t{pinyin}\t{frequency}\t{updated_at_ms}")
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
+            count += 1;
+        }
+
+        let mut statement = connection
+            .prepare(
+                "SELECT first_phrase, second_phrase, next_phrase, next_pinyin, frequency, updated_at_ms
+                 FROM user_trigrams
+                 ORDER BY updated_at_ms DESC, frequency DESC,
+                          first_phrase ASC, second_phrase ASC, next_phrase ASC",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                ))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+        let mut wrote_trigram_header = false;
+        for row in rows {
+            let (first, second, next, next_pinyin, frequency, updated_at_ms) =
+                row.map_err(|_| ImeError::UserLexiconDatabase)?;
+            if !wrote_trigram_header {
+                writeln!(file, "\n# user_trigrams").map_err(|_| ImeError::UserLexiconDatabase)?;
+                writeln!(
+                    file,
+                    "first_phrase\tsecond_phrase\tnext_phrase\tnext_pinyin\tfrequency\tupdated_at_ms"
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+                wrote_trigram_header = true;
+            }
+            writeln!(
+                file,
+                "{first}\t{second}\t{next}\t{next_pinyin}\t{frequency}\t{updated_at_ms}"
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
             count += 1;
         }
 
@@ -491,6 +732,16 @@ impl UserLexicon {
         usize::try_from(count).map_err(|_| ImeError::UserLexiconDatabase)
     }
 
+    pub fn trigram_count(&self) -> ImeResult<usize> {
+        let connection = self.connection()?;
+        let count = connection
+            .query_row("SELECT COUNT(*) FROM user_trigrams", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        usize::try_from(count).map_err(|_| ImeError::UserLexiconDatabase)
+    }
+
     fn ensure_schema(&self) -> ImeResult<()> {
         let connection = self.connection()?;
         connection
@@ -500,6 +751,7 @@ impl UserLexicon {
                    pinyin TEXT NOT NULL,
                    compact_pinyin TEXT NOT NULL,
                    frequency INTEGER NOT NULL,
+                   weight REAL NOT NULL DEFAULT 1.0,
                    updated_at_ms INTEGER NOT NULL,
                    PRIMARY KEY (phrase, pinyin)
                  );
@@ -512,6 +764,7 @@ impl UserLexicon {
                    right_phrase TEXT NOT NULL,
                    right_pinyin TEXT NOT NULL,
                    frequency INTEGER NOT NULL,
+                   weight REAL NOT NULL DEFAULT 1.0,
                    updated_at_ms INTEGER NOT NULL,
                    PRIMARY KEY (left_phrase, right_phrase)
                  );
@@ -522,13 +775,52 @@ impl UserLexicon {
                    phrase TEXT NOT NULL,
                    token_count INTEGER NOT NULL,
                    frequency INTEGER NOT NULL,
+                   weight REAL NOT NULL DEFAULT 1.0,
                    updated_at_ms INTEGER NOT NULL,
                    PRIMARY KEY (left_phrase, phrase)
                  );
                  CREATE INDEX IF NOT EXISTS idx_user_short_phrases_left_phrase
-                   ON user_short_phrases(left_phrase, frequency DESC, updated_at_ms DESC);",
+                   ON user_short_phrases(left_phrase, frequency DESC, updated_at_ms DESC);
+                 CREATE TABLE IF NOT EXISTS user_trigrams (
+                   first_phrase TEXT NOT NULL,
+                   second_phrase TEXT NOT NULL,
+                   next_phrase TEXT NOT NULL,
+                   next_pinyin TEXT NOT NULL,
+                   frequency INTEGER NOT NULL,
+                   weight REAL NOT NULL DEFAULT 1.0,
+                   updated_at_ms INTEGER NOT NULL,
+                   PRIMARY KEY (first_phrase, second_phrase, next_phrase)
+                 );
+                 CREATE INDEX IF NOT EXISTS idx_user_trigrams_context
+                   ON user_trigrams(
+                     first_phrase,
+                     second_phrase,
+                     frequency DESC,
+                     updated_at_ms DESC
+                   );",
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        for table in [
+            LearningTable::Phrases,
+            LearningTable::Bigrams,
+            LearningTable::ShortPhrases,
+            LearningTable::Trigrams,
+        ] {
+            ensure_weight_column(&connection, table)?;
+        }
+        Ok(())
+    }
+
+    fn enforce_capacity_limits(&self) -> ImeResult<()> {
+        let connection = self.connection()?;
+        prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
+        prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
+        prune_table_to_limit(
+            &connection,
+            LearningTable::ShortPhrases,
+            self.limits.short_phrases,
+        )?;
+        prune_table_to_limit(&connection, LearningTable::Trigrams, self.limits.trigrams)
     }
 
     fn connection(&self) -> ImeResult<MutexGuard<'_, Connection>> {
@@ -552,6 +844,23 @@ fn finish_export_file(_path: &Path, file: AtomicFile) -> ImeResult<()> {
 
 fn configure_connection(connection: &Connection) -> ImeResult<()> {
     connection
+        .create_scalar_function(
+            "private_pinyin_decay_weight",
+            3,
+            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+            |context| {
+                let stored_weight = context.get::<f64>(0)?;
+                let updated_at_ms = context.get::<i64>(1)?;
+                let reference_time_ms = context.get::<i64>(2)?;
+                Ok(decayed_weight(
+                    stored_weight,
+                    updated_at_ms,
+                    reference_time_ms,
+                ))
+            },
+        )
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    connection
         .busy_timeout(Duration::from_millis(250))
         .map_err(|_| ImeError::UserLexiconDatabase)?;
     connection
@@ -573,31 +882,47 @@ fn now_ms() -> i64 {
 fn user_candidate(
     phrase: String,
     pinyin: String,
-    frequency: i64,
+    stored_weight: f64,
+    updated_at_ms: i64,
+    reference_time_ms: i64,
     match_kind: CandidateMatchKind,
 ) -> Candidate {
-    let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
+    let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, pinyin, CandidateSource::User)
-        .with_score(Ranker::score(frequency))
-        .with_rank_score(Ranker::score_match(
-            frequency,
-            match_kind,
-            CandidateSource::User,
-        ))
+        .with_score(Ranker::score_weight(weight))
+        .with_rank_score(Ranker::score_user_match(weight, match_kind))
 }
 
-fn user_prediction_candidate((phrase, pinyin, frequency): (String, String, i64)) -> Candidate {
-    let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
+fn user_prediction_candidate(
+    (phrase, pinyin, stored_weight, updated_at_ms): (String, String, f64, i64),
+    reference_time_ms: i64,
+) -> Candidate {
+    let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, pinyin, CandidateSource::Prediction)
-        .with_score(Ranker::score(frequency))
-        .with_rank_score(Ranker::score_user_prediction(frequency))
+        .with_score(Ranker::score_weight(weight))
+        .with_rank_score(Ranker::score_user_prediction_weight(weight))
 }
 
-fn user_short_prediction_candidate(phrase: String, frequency: i64) -> Candidate {
-    let frequency = u32::try_from(frequency).unwrap_or(u32::MAX);
+fn user_short_prediction_candidate(
+    phrase: String,
+    stored_weight: f64,
+    updated_at_ms: i64,
+    reference_time_ms: i64,
+) -> Candidate {
+    let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, "", CandidateSource::Prediction)
-        .with_score(Ranker::score(frequency))
-        .with_rank_score(Ranker::score_user_short_prediction(frequency))
+        .with_score(Ranker::score_weight(weight))
+        .with_rank_score(Ranker::score_user_short_prediction_weight(weight))
+}
+
+fn user_trigram_prediction_candidate(
+    (phrase, pinyin, stored_weight, updated_at_ms): (String, String, f64, i64),
+    reference_time_ms: i64,
+) -> Candidate {
+    let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
+    Candidate::new(phrase, pinyin, CandidateSource::Prediction)
+        .with_score(Ranker::score_weight(weight))
+        .with_rank_score(Ranker::score_user_trigram_prediction_weight(weight))
 }
 
 fn exceeds_user_bigram_phrase_limit(phrase: &str) -> bool {
@@ -608,15 +933,142 @@ fn exceeds_user_short_phrase_limit(phrase: &str) -> bool {
     phrase.chars().count() > MAX_USER_SHORT_PHRASE_CHARS
 }
 
-fn collect_user_rows(
+fn collect_user_lookup_rows(
     rows: rusqlite::MappedRows<
         '_,
-        impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<(String, String, i64)>,
+        impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<(String, String, f64, i64)>,
     >,
-) -> ImeResult<Vec<(String, String, i64)>> {
+) -> ImeResult<Vec<(String, String, f64, i64)>> {
     let mut collected = Vec::new();
     for row in rows {
         collected.push(row.map_err(|_| ImeError::UserLexiconDatabase)?);
     }
     Ok(collected)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LearningTable {
+    Phrases,
+    Bigrams,
+    ShortPhrases,
+    Trigrams,
+}
+
+impl LearningTable {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Phrases => "user_phrases",
+            Self::Bigrams => "user_bigrams",
+            Self::ShortPhrases => "user_short_phrases",
+            Self::Trigrams => "user_trigrams",
+        }
+    }
+}
+
+fn ensure_weight_column(connection: &Connection, table: LearningTable) -> ImeResult<()> {
+    if table_has_weight_column(connection, table)? {
+        return Ok(());
+    }
+
+    let transaction = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    if !table_has_weight_column(&transaction, table)? {
+        let table_name = table.name();
+        let alter_sql =
+            format!("ALTER TABLE {table_name} ADD COLUMN weight REAL NOT NULL DEFAULT 1.0");
+        transaction
+            .execute_batch(&alter_sql)
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let migrate_sql = format!("UPDATE {table_name} SET weight = CAST(frequency AS REAL)");
+        transaction
+            .execute(&migrate_sql, [])
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+    transaction
+        .commit()
+        .map_err(|_| ImeError::UserLexiconDatabase)
+}
+
+fn table_has_weight_column(connection: &Connection, table: LearningTable) -> ImeResult<bool> {
+    let table_name = table.name();
+    let pragma_sql = format!("PRAGMA table_info({table_name})");
+    let mut statement = connection
+        .prepare(&pragma_sql)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    for column in columns {
+        if column.map_err(|_| ImeError::UserLexiconDatabase)? == "weight" {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn decayed_weight(stored_weight: f64, updated_at_ms: i64, reference_time_ms: i64) -> f64 {
+    let stored_weight = stored_weight.max(0.0);
+    let age_ms = reference_time_ms.saturating_sub(updated_at_ms).max(0) as f64;
+    stored_weight * 2.0_f64.powf(-age_ms / USER_LEARNING_HALF_LIFE_MS)
+}
+
+fn prune_table_to_limit(
+    connection: &Connection,
+    table: LearningTable,
+    limit: usize,
+) -> ImeResult<()> {
+    let table_name = table.name();
+    let count_sql = format!("SELECT COUNT(*) FROM {table_name}");
+    let count = connection
+        .query_row(&count_sql, [], |row| row.get::<_, i64>(0))
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    let count = usize::try_from(count).map_err(|_| ImeError::UserLexiconDatabase)?;
+    if count <= limit {
+        return Ok(());
+    }
+
+    let target = limit.saturating_sub(limit / 10);
+    let remove_count = count.saturating_sub(target);
+    let reference_time_ms = now_ms();
+    let select_sql = format!("SELECT rowid, weight, updated_at_ms FROM {table_name}");
+    let mut statement = connection
+        .prepare(&select_sql)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, f64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+
+    let mut entries = Vec::with_capacity(count);
+    for row in rows {
+        let (rowid, stored_weight, updated_at_ms) =
+            row.map_err(|_| ImeError::UserLexiconDatabase)?;
+        entries.push((
+            rowid,
+            decayed_weight(stored_weight, updated_at_ms, reference_time_ms),
+            updated_at_ms,
+        ));
+    }
+    entries.sort_by(|left, right| {
+        left.1
+            .total_cmp(&right.1)
+            .then_with(|| left.2.cmp(&right.2))
+            .then_with(|| left.0.cmp(&right.0))
+    });
+
+    let delete_sql = format!("DELETE FROM {table_name} WHERE rowid = ?1");
+    let mut delete_statement = connection
+        .prepare_cached(&delete_sql)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    for (rowid, _, _) in entries.into_iter().take(remove_count) {
+        delete_statement
+            .execute(params![rowid])
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+    Ok(())
 }

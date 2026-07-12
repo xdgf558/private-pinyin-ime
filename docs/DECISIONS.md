@@ -191,3 +191,11 @@ Status: accepted
 Decision: Own the server-attached `IMKCandidates` panel at process scope and share it across all `IMKInputController` client sessions.
 Reason: InputMethodKit creates a controller for each client session but retains candidate-panel integration at the `IMKServer` level. Releasing a controller-owned panel during focus changes left the server with a stale Objective-C reference; repeated deactivation crashed in `objc_msgSend` while querying `isVisible`, causing intermittent input loss until macOS restarted the input method.
 Consequences: Controllers may hide the shared panel and reset their own composition state, but they must not determine its lifetime. macOS smoke testing must repeatedly switch among clients with both visible and hidden candidates and verify that no new crash report appears.
+
+## Decision 025: Bounded local trigram learning
+
+Date: 2026-07-12
+Status: accepted
+Decision: Learn selected-token trigrams in the existing local SQLite user lexicon, rank all learned signals with a 30-day inactivity half-life, retain only the eight most recent session tokens, and enforce fixed row limits with decayed-weight eviction.
+Reason: Two-token context distinguishes common continuations that a one-step bigram cannot, while local decay and bounded storage keep stale habits from dominating forever and prevent long-running installations from growing without limit. The feature must preserve the no-network and no-full-sentence privacy boundary.
+Consequences: macOS, Windows, and iOS receive the same trigram behavior through the existing Rust core and C ABI. The database may store a bounded `(first, second, next)` selected-token relation and next-token pinyin, but never raw keys, surrounding document text, or an unbounded sentence. Default limits are 20,000 phrases, 20,000 bigrams, 10,000 short phrases, and 20,000 trigrams; `OI-044` is closed.

@@ -1,11 +1,12 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Barrier};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ime_core::lexicon::Lexicon;
 use ime_core::pinyin_parser::compact_pinyin;
 use ime_core::predictor::Predictor;
-use ime_core::user_lexicon::UserLexicon;
+use ime_core::session::MAX_CONTEXT_TOKENS;
+use ime_core::user_lexicon::{UserLearningLimits, UserLexicon};
 use ime_core::{
     CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyEvent, PinyinParser,
 };
@@ -68,6 +69,13 @@ fn settings_with_user_lexicon(path: PathBuf) -> ImeSettings {
         user_lexicon_path: Some(path),
         ..ImeSettings::default()
     }
+}
+
+fn current_time_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
+        .unwrap_or_default()
 }
 
 fn commit_first_candidate(engine: &ImeEngine, raw_input: &str) {
@@ -204,31 +212,30 @@ fn selecting_continuous_sentence_learns_internal_word_transitions() {
 
     assert_eq!(commit.commit_text, "今天天气");
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 1);
+    assert_eq!(session.context_tokens, vec!["今天", "天气"]);
     assert_eq!(
         session.context_tokens.last().map(String::as_str),
         Some("天气")
     );
-    assert_eq!(
-        user_lexicon
-            .transition_snapshot()
-            .expect("transition snapshot")
-            .get("今天")
-            .and_then(|entries| entries.get("天气"))
-            .copied(),
-        Some(1)
-    );
+    let first_weight = user_lexicon
+        .transition_snapshot()
+        .expect("transition snapshot")
+        .get("今天")
+        .and_then(|entries| entries.get("天气"))
+        .copied()
+        .expect("learned transition exists");
+    assert!((first_weight - 1.0).abs() < 0.001);
 
     let second_commit = commit_first_candidate_in_session(&mut session, "jintiantianqi");
     assert_eq!(second_commit.commit_text, "今天天气");
-    assert_eq!(
-        user_lexicon
-            .transition_snapshot()
-            .expect("updated transition snapshot")
-            .get("今天")
-            .and_then(|entries| entries.get("天气"))
-            .copied(),
-        Some(2)
-    );
+    let second_weight = user_lexicon
+        .transition_snapshot()
+        .expect("updated transition snapshot")
+        .get("今天")
+        .and_then(|entries| entries.get("天气"))
+        .copied()
+        .expect("updated transition exists");
+    assert!((second_weight - 2.0).abs() < 0.001);
 }
 
 #[test]
@@ -248,6 +255,7 @@ fn sequential_candidate_commits_learn_short_phrase_prediction() {
 
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 1);
     assert_eq!(
         user_lexicon
             .short_phrase_count()
@@ -277,6 +285,238 @@ fn sequential_candidate_commits_learn_short_phrase_prediction() {
 }
 
 #[test]
+fn trigram_prediction_uses_two_token_context_before_bigram_fallback() {
+    let temp_db = TempDb::new("trigram_context");
+    let user_lexicon = Arc::new(UserLexicon::open(&temp_db.path).expect("user lexicon opens"));
+    user_lexicon
+        .record_transition("天气", "很好", "hen hao")
+        .expect("bigram records");
+    user_lexicon
+        .record_trigram("今天", "天气", "不错", "bu cuo")
+        .expect("today trigram records");
+    user_lexicon
+        .record_trigram("昨天", "天气", "很冷", "hen leng")
+        .expect("yesterday trigram records");
+
+    let lexicon = Arc::new(Lexicon::from_tsv("你好\tni hao\t1\n").expect("lexicon loads"));
+    let predictor =
+        Arc::new(Predictor::from_tsv("left\tright\tfrequency\n").expect("empty predictor loads"));
+    let mut session = InputSession::new(
+        lexicon,
+        predictor,
+        Some(user_lexicon),
+        ImeSettings::default(),
+    );
+
+    session.context_tokens = vec!["今天".to_owned(), "天气".to_owned()];
+    assert_eq!(
+        session
+            .predict_next()
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("不错")
+    );
+
+    session.context_tokens = vec!["昨天".to_owned(), "天气".to_owned()];
+    assert_eq!(
+        session
+            .predict_next()
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("很冷")
+    );
+}
+
+#[test]
+fn inactive_trigram_weight_decays_below_recent_learning() {
+    let temp_db = TempDb::new("trigram_decay");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    let one_year_ms = 365_i64 * 24 * 60 * 60 * 1_000;
+
+    connection
+        .execute(
+            "INSERT INTO user_trigrams
+               (first_phrase, second_phrase, next_phrase, next_pinyin, frequency, weight, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                "今天",
+                "天气",
+                "旧候选",
+                "jiu hou xuan",
+                128_i64,
+                128.0_f64,
+                current_time_ms().saturating_sub(one_year_ms)
+            ],
+        )
+        .expect("insert inactive trigram");
+    user_lexicon
+        .record_trigram("今天", "天气", "新候选", "xin hou xuan")
+        .expect("record recent trigram");
+
+    assert_eq!(
+        user_lexicon
+            .predict_trigram("今天", "天气")
+            .expect("predict trigram")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("新候选")
+    );
+}
+
+#[test]
+fn reusing_inactive_trigram_does_not_restore_its_raw_lifetime_count() {
+    let temp_db = TempDb::new("trigram_decay_update");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    let one_year_ms = 365_i64 * 24 * 60 * 60 * 1_000;
+
+    connection
+        .execute(
+            "INSERT INTO user_trigrams
+               (first_phrase, second_phrase, next_phrase, next_pinyin, frequency, weight, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                "今天",
+                "天气",
+                "旧候选",
+                "jiu hou xuan",
+                128_i64,
+                128.0_f64,
+                current_time_ms().saturating_sub(one_year_ms)
+            ],
+        )
+        .expect("insert inactive trigram");
+
+    user_lexicon
+        .record_trigram("今天", "天气", "旧候选", "jiu hou xuan")
+        .expect("reuse inactive trigram");
+    let stored_weight: f64 = connection
+        .query_row(
+            "SELECT weight FROM user_trigrams WHERE next_phrase = '旧候选'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("query updated weight");
+
+    assert!(stored_weight > 1.0);
+    assert!(stored_weight < 1.1);
+}
+
+#[test]
+fn concurrent_trigram_learning_keeps_every_local_update() {
+    let temp_db = TempDb::new("trigram_concurrent");
+    drop(UserLexicon::open(&temp_db.path).expect("initialize user lexicon"));
+    let worker_count = 4;
+    let writes_per_worker = 20;
+    let barrier = Arc::new(Barrier::new(worker_count));
+    let mut workers = Vec::new();
+
+    for _ in 0..worker_count {
+        let db_path = temp_db.path.clone();
+        let barrier = barrier.clone();
+        workers.push(std::thread::spawn(move || {
+            let user_lexicon = UserLexicon::open(db_path).expect("worker opens user lexicon");
+            barrier.wait();
+            for _ in 0..writes_per_worker {
+                user_lexicon
+                    .record_trigram("今天", "天气", "不错", "bu cuo")
+                    .expect("concurrent trigram records");
+            }
+        }));
+    }
+    for worker in workers {
+        worker.join().expect("worker completes");
+    }
+
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    let (frequency, weight): (i64, f64) = connection
+        .query_row(
+            "SELECT frequency, weight FROM user_trigrams
+             WHERE first_phrase = '今天' AND second_phrase = '天气' AND next_phrase = '不错'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .expect("query concurrent trigram");
+
+    let expected_writes =
+        i64::try_from(worker_count * writes_per_worker).expect("write count fits i64");
+    assert_eq!(frequency, expected_writes);
+    assert!(weight > expected_writes as f64 - 0.01);
+    assert!(weight <= expected_writes as f64);
+}
+
+#[test]
+fn user_learning_capacity_evicts_low_weight_old_rows() {
+    let temp_db = TempDb::new("learning_capacity");
+    let limits = UserLearningLimits {
+        phrases: 2,
+        bigrams: 2,
+        short_phrases: 2,
+        trigrams: 2,
+    };
+    let user_lexicon =
+        UserLexicon::open_with_limits(&temp_db.path, limits).expect("user lexicon opens");
+
+    user_lexicon
+        .record_selection("保留", "bao liu")
+        .expect("record favored phrase");
+    user_lexicon
+        .record_selection("保留", "bao liu")
+        .expect("reinforce favored phrase");
+    user_lexicon
+        .record_selection("较旧", "jiao jiu")
+        .expect("record older phrase");
+    user_lexicon
+        .record_selection("最新", "zui xin")
+        .expect("record newest phrase");
+
+    for index in 0..3 {
+        user_lexicon
+            .record_transition("左", &format!("右{index}"), "you")
+            .expect("record bigram");
+        user_lexicon
+            .record_short_phrase_prediction("左", &format!("短句{index}"), 2)
+            .expect("record short phrase");
+        user_lexicon
+            .record_trigram("甲", "乙", &format!("丙{index}"), "bing")
+            .expect("record trigram");
+    }
+
+    assert_eq!(user_lexicon.entry_count().expect("phrase count"), 2);
+    assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
+    assert_eq!(
+        user_lexicon
+            .short_phrase_count()
+            .expect("short phrase count"),
+        2
+    );
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 2);
+
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    let favored_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM user_phrases WHERE phrase = '保留'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("query retained phrase");
+    assert_eq!(favored_count, 1);
+}
+
+#[test]
+fn session_context_is_bounded_for_long_running_hosts() {
+    let engine = ImeEngine::new().expect("engine loads");
+    let mut session = engine.create_session();
+
+    for _ in 0..(MAX_CONTEXT_TOKENS + 4) {
+        commit_first_candidate_in_session(&mut session, "nihao");
+    }
+
+    assert_eq!(session.context_tokens.len(), MAX_CONTEXT_TOKENS);
+}
+
+#[test]
 fn disabled_user_learning_does_not_write_user_lexicon() {
     let temp_db = TempDb::new("learn_disabled");
     let mut settings = settings_with_user_lexicon(temp_db.path.clone());
@@ -303,6 +543,7 @@ fn disabled_user_learning_does_not_write_user_bigram() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 0);
 }
 
 #[test]
@@ -320,6 +561,7 @@ fn disabled_user_learning_does_not_write_short_phrase_prediction() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 0);
     assert_eq!(
         user_lexicon
             .short_phrase_count()
@@ -355,6 +597,7 @@ fn strict_privacy_mode_does_not_write_user_bigram() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 0);
 }
 
 #[test]
@@ -372,6 +615,7 @@ fn strict_privacy_mode_does_not_write_short_phrase_prediction() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 0);
     assert_eq!(
         user_lexicon
             .short_phrase_count()
@@ -449,6 +693,7 @@ fn clear_user_lexicon_removes_short_phrase_predictions() {
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 3);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 1);
     assert_eq!(
         user_lexicon
             .short_phrase_count()
@@ -459,16 +704,22 @@ fn clear_user_lexicon_removes_short_phrase_predictions() {
         engine
             .export_user_lexicon(&temp_export.path)
             .expect("export lexicon"),
-        6
+        7
     );
     let exported = std::fs::read_to_string(&temp_export.path).expect("read export");
     assert!(exported.contains("# user_short_phrases"));
     assert!(exported.contains("left_phrase\tphrase\ttoken_count\tfrequency\tupdated_at_ms"));
     assert!(exported.contains("今天\t天气不错\t2\t1\t"));
+    assert!(exported.contains("# user_trigrams"));
+    assert!(exported.contains(
+        "first_phrase\tsecond_phrase\tnext_phrase\tnext_pinyin\tfrequency\tupdated_at_ms"
+    ));
+    assert!(exported.contains("今天\t天气\t不错\tbu cuo\t1\t"));
 
     engine.clear_user_lexicon().expect("clear lexicon");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 0);
+    assert_eq!(user_lexicon.trigram_count().expect("trigram count"), 0);
     assert_eq!(
         user_lexicon
             .short_phrase_count()
@@ -557,6 +808,40 @@ fn user_lexicon_schema_indexes_pinyin_for_exact_lookup() {
         .expect("query index");
 
     assert_eq!(index_count, 1);
+}
+
+#[test]
+fn existing_user_learning_tables_migrate_frequency_into_decay_weight() {
+    let temp_db = TempDb::new("decay_weight_migration");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute_batch(
+            "CREATE TABLE user_bigrams (
+               left_phrase TEXT NOT NULL,
+               right_phrase TEXT NOT NULL,
+               right_pinyin TEXT NOT NULL,
+               frequency INTEGER NOT NULL,
+               updated_at_ms INTEGER NOT NULL,
+               PRIMARY KEY (left_phrase, right_phrase)
+             );
+             INSERT INTO user_bigrams
+               (left_phrase, right_phrase, right_pinyin, frequency, updated_at_ms)
+             VALUES ('今天', '天气', 'tian qi', 7, 1);",
+        )
+        .expect("create legacy schema");
+    drop(connection);
+
+    let _user_lexicon = UserLexicon::open(&temp_db.path).expect("migrate user lexicon");
+    let connection = Connection::open(&temp_db.path).expect("reopen raw sqlite connection");
+    let weight: f64 = connection
+        .query_row(
+            "SELECT weight FROM user_bigrams WHERE left_phrase = '今天'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("query migrated weight");
+
+    assert_eq!(weight, 7.0);
 }
 
 #[test]

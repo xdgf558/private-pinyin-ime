@@ -12,6 +12,7 @@ use crate::settings::{ImeMode, ImeSettings, ToggleKey};
 use crate::user_lexicon::{UserLexicon, UserTransitionSnapshot};
 
 pub const MAX_RAW_INPUT_CHARS: usize = 64;
+pub const MAX_CONTEXT_TOKENS: usize = 8;
 
 #[derive(Debug, Clone)]
 pub struct InputSession {
@@ -159,8 +160,7 @@ impl InputSession {
         };
 
         self.learn_candidate(&candidate);
-        self.context_tokens
-            .push(candidate_context_token(&candidate));
+        self.append_candidate_context(&candidate);
         self.clear_composition();
         self.candidates = self.predict_next();
         let candidates = self.current_page_candidates();
@@ -188,8 +188,7 @@ impl InputSession {
         } else if let Some(actual_index) = self.actual_candidate_index(0) {
             if let Some(candidate) = self.candidates.get(actual_index).cloned() {
                 self.learn_candidate(&candidate);
-                self.context_tokens
-                    .push(candidate_context_token(&candidate));
+                self.append_candidate_context(&candidate);
                 let commit_text = format!("{}{}", candidate.text, punctuation);
                 self.clear_composition();
                 self.committed_output(commit_text)
@@ -249,6 +248,15 @@ impl InputSession {
             };
             let mut user_candidates = Vec::new();
             if let Some(user_lexicon) = &self.user_lexicon {
+                if self.context_tokens.len() >= 2 {
+                    let first_index = self.context_tokens.len() - 2;
+                    match user_lexicon
+                        .predict_trigram(&self.context_tokens[first_index], last_token)
+                    {
+                        Ok(candidates) => user_candidates.extend(candidates),
+                        Err(error) => logger::emit_error(error),
+                    }
+                }
                 match user_lexicon.predict_short_phrases(last_token) {
                     Ok(candidates) => user_candidates.extend(candidates),
                     Err(error) => logger::emit_error(error),
@@ -278,6 +286,57 @@ impl InputSession {
         }
     }
 
+    fn learn_trigrams(
+        &self,
+        segments: &[crate::candidate::CandidateSegment],
+        user_lexicon: &UserLexicon,
+    ) {
+        let previous = self
+            .context_tokens
+            .iter()
+            .rev()
+            .take(2)
+            .rev()
+            .cloned()
+            .collect::<Vec<_>>();
+        let previous_len = previous.len();
+        let mut tokens = previous
+            .into_iter()
+            .map(|text| crate::candidate::CandidateSegment {
+                text,
+                pinyin: String::new(),
+            })
+            .collect::<Vec<_>>();
+        tokens.extend_from_slice(segments);
+
+        for window_start in 0..tokens.len().saturating_sub(2) {
+            let next_index = window_start + 2;
+            if next_index < previous_len {
+                continue;
+            }
+            let first = &tokens[window_start];
+            let second = &tokens[window_start + 1];
+            let next = &tokens[next_index];
+            if let Err(error) =
+                user_lexicon.record_trigram(&first.text, &second.text, &next.text, &next.pinyin)
+            {
+                logger::emit_error(error);
+            }
+        }
+    }
+
+    fn append_candidate_context(&mut self, candidate: &Candidate) {
+        self.context_tokens.extend(
+            candidate_segments(candidate)
+                .into_iter()
+                .map(|segment| segment.text),
+        );
+        if self.context_tokens.len() > MAX_CONTEXT_TOKENS {
+            let excess = self.context_tokens.len() - MAX_CONTEXT_TOKENS;
+            self.context_tokens.drain(..excess);
+        }
+    }
+
     fn refresh_composition(&mut self) -> ImeOutput {
         if self.raw_input.is_empty() {
             self.clear_composition();
@@ -296,7 +355,7 @@ impl InputSession {
             &parses,
             previous_context,
             |left, right| {
-                Ranker::score_continuous_transition(
+                Ranker::score_continuous_transition_weight(
                     self.predictor.transition_frequency(left, right),
                     user_transition_frequency(&self.user_transitions, left, right),
                 )
@@ -453,6 +512,7 @@ impl InputSession {
         for pair in segments.windows(2) {
             self.record_learned_transition(&pair[0].text, &pair[1]);
         }
+        self.learn_trigrams(&segments, &user_lexicon);
         self.learn_short_phrase_prediction(candidate, &user_lexicon);
     }
 
@@ -472,7 +532,7 @@ impl InputSession {
                     .or_default()
                     .entry(right.text.clone())
                     .or_default();
-                *frequency = frequency.saturating_add(1);
+                *frequency += 1.0;
             }
             Err(error) => logger::emit_error(error),
         }
@@ -490,15 +550,7 @@ fn candidate_segments(candidate: &Candidate) -> Vec<crate::candidate::CandidateS
     }
 }
 
-fn candidate_context_token(candidate: &Candidate) -> String {
-    candidate
-        .segments
-        .last()
-        .map(|segment| segment.text.clone())
-        .unwrap_or_else(|| candidate.text.clone())
-}
-
-fn user_transition_frequency(transitions: &UserTransitionSnapshot, left: &str, right: &str) -> u32 {
+fn user_transition_frequency(transitions: &UserTransitionSnapshot, left: &str, right: &str) -> f64 {
     transitions
         .get(left)
         .and_then(|right_entries| right_entries.get(right))
