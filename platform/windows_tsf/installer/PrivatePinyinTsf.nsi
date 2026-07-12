@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.12"
+!define PRODUCT_VERSION "0.1.13"
 !endif
 
 !ifndef PACKAGE_SOURCE
@@ -75,6 +75,7 @@ Section "猫栈拼音" SecMain
   File "${PACKAGE_SOURCE}\unregister-ime.ps1"
   File "${PACKAGE_SOURCE}\open-settings.ps1"
   File "${PACKAGE_SOURCE}\open-onboarding.ps1"
+  File "${PACKAGE_SOURCE}\ReleaseNotes.zh-Hans.txt"
   File "${PACKAGE_SOURCE}\PrivatePinyinInstaller.ico"
   File "${PACKAGE_SOURCE}\default_settings.json"
 
@@ -96,6 +97,7 @@ Section "猫栈拼音" SecMain
   CreateDirectory "$SMPROGRAMS\猫栈拼音"
   CreateShortcut "$SMPROGRAMS\猫栈拼音\安装引导.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\open-onboarding.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
   CreateShortcut "$SMPROGRAMS\猫栈拼音\偏好设置.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\open-settings.ps1$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
+  CreateShortcut "$SMPROGRAMS\猫栈拼音\更新说明.lnk" "$WINDIR\System32\notepad.exe" "$\"$INSTDIR\ReleaseNotes.zh-Hans.txt$\"" "$INSTDIR\PrivatePinyinInstaller.ico"
   CreateShortcut "$SMPROGRAMS\猫栈拼音\卸载.lnk" "$INSTDIR\uninstall.exe"
 
   ${DisableX64FSRedirection}
@@ -120,6 +122,7 @@ Section "Uninstall"
 
   Delete "$SMPROGRAMS\猫栈拼音\安装引导.lnk"
   Delete "$SMPROGRAMS\猫栈拼音\偏好设置.lnk"
+  Delete "$SMPROGRAMS\猫栈拼音\更新说明.lnk"
   Delete "$SMPROGRAMS\猫栈拼音\卸载.lnk"
   RMDir "$SMPROGRAMS\猫栈拼音"
   Delete "$SMPROGRAMS\PrivatePinyin IME\Setup Guide.lnk"
@@ -134,6 +137,7 @@ Section "Uninstall"
   Delete "$INSTDIR\unregister-ime.ps1"
   Delete "$INSTDIR\open-settings.ps1"
   Delete "$INSTDIR\open-onboarding.ps1"
+  Delete "$INSTDIR\ReleaseNotes.zh-Hans.txt"
   Delete "$INSTDIR\PrivatePinyinInstaller.ico"
   Delete "$INSTDIR\default_settings.json"
   Delete "$INSTDIR\uninstall.exe"

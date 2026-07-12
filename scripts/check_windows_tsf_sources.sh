@@ -17,6 +17,7 @@ required_files=(
   "platform/windows_tsf/installer/unregister-ime.ps1"
   "platform/windows_tsf/installer/open-settings.ps1"
   "platform/windows_tsf/installer/open-onboarding.ps1"
+  "platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt"
   "platform/windows_tsf/installer/PrivatePinyinTsf.wxs"
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
@@ -58,5 +59,7 @@ grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'regsvr32.exe" /u /s' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "ReleaseNotes.zh-Hans.txt" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "本地 trigram 联想" platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt
 grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "猫栈拼音已安装" platform/windows_tsf/installer/open-onboarding.ps1

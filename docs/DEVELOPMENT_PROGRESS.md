@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 09:55
+Last updated: 2026-07-12 11:46
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -35,6 +35,7 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Changed the macOS candidate panel to InputMethodKit's horizontal 9-column stepping layout, made nine candidates the macOS default, and added a targeted migration from the previous default page size of five.
 - Routed native candidate selection keys through the macOS controller first, keeping digit selection on one core-owned path while retaining four-host manual verification as a release gate.
 - Bumped the macOS app metadata to `0.1.16 (16)` and added horizontal-layout source gates and smoke coverage.
+- Bumped the macOS app and installer to `0.1.17 (17)` and the Windows/core package to `0.1.13`, with bundled Simplified Chinese release notes for bounded local trigram learning.
 - Diagnosed intermittent macOS input loss as repeated `EXC_BAD_ACCESS` crashes in InputMethodKit server deactivation while calling `isVisible` on a released candidate panel.
 - Retained the server-attached `IMKCandidates` panel for the input-method process lifetime, added host palette cleanup, and bumped the signed macOS release to `0.1.15`.
 - Installed `0.1.15` over the existing build and completed 20 TextEdit/Chrome focus switches with active and committed compositions; the process stayed alive and the existing 17 crash reports did not increase.
@@ -404,6 +405,16 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 - Command: stage 09/11, platform-validation, macOS, iOS, and Windows source gates
 - Result: passed
+
+### macOS 0.1.17 Bounded Trigram Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.17 bash scripts/package_macos_pkg.sh` with Developer ID Application and Developer ID Installer, followed by direct `notarytool submit` using the existing local Apple credential
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.17.pkg`; Apple notarization submission `24d53cdb-0e42-48fb-ae82-d2f01b595b74` returned `Accepted`, and stapling succeeded.
+
+- Command: trusted-system `pkgutil --check-signature`, `spctl --assess --type install`, `xcrun stapler validate`, and `codesign --verify --deep --strict`
+- Result: passed
+- Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `36698c54bbde96e5a37d8f4cbbf6d14f07f5429ab8dee88b0fb7e39b90e39b42`.
 
 ## Open Items
 
