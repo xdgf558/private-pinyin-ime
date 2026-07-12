@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 11:46
+Last updated: 2026-07-12 11:59
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -415,6 +415,20 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Command: trusted-system `pkgutil --check-signature`, `spctl --assess --type install`, `xcrun stapler validate`, and `codesign --verify --deep --strict`
 - Result: passed
 - Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `36698c54bbde96e5a37d8f4cbbf6d14f07f5429ab8dee88b0fb7e39b90e39b42`.
+
+### Windows 0.1.13 Unsigned Internal-Test Package
+
+- Command: GitHub Actions `Windows Unsigned Package`, run `29178813702`, version input `0.1.13`
+- Result: passed
+- Notes: The `windows-2022` job built and uploaded the NSIS EXE, WiX MSI, and ZIP from commit `91772288cb78d235095ff0e57da1d90b64d75cca`; the ZIP contains `ReleaseNotes.zh-Hans.txt` and all TSF runtime files.
+
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13-setup.exe`
+- SHA-256: `2131c35c98b4b2149b147dafd764b9d4740ba12ea3390f9ff3e38926aedb4e3e`
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.msi`
+- SHA-256: `245a50e52ec2a68c216ef266a6793aa861d94ea659b1c117d8eb9e4e76eced0b`
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.zip`
+- SHA-256: `1c1fcad0823dc40613f95c126749bf02fccb6c3fdea72f1a7b87c64727a89e5a`
+- Distribution note: these Windows artifacts are unsigned and remain for internal testing only.
 
 ## Open Items
 
