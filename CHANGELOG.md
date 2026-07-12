@@ -169,6 +169,8 @@
 
 ### Fixed
 
+- Fixed transient SQLite BUSY/LOCKED learning-write failures with bounded retries, including concurrent Windows TSF host writes.
+- Fixed the Stage 16 plist source gate so it uses cross-platform `plistlib` validation instead of requiring macOS `plutil` on Ubuntu CI.
 - Fixed intermittent macOS input loss by retaining the server-attached `IMKCandidates` panel for the input method process lifetime instead of releasing it with each client input controller.
 - Fixed the Stage 15 source gate to follow the current `Host composition` and `App Group fallback` iOS smoke-record labels.
 - Fixed idle Space so prediction candidates no longer hijack normal space input.

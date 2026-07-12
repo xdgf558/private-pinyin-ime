@@ -6,7 +6,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::functions::FunctionFlags;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Error as SqliteError, ErrorCode};
 use rusqlite::{Transaction, TransactionBehavior};
 
 use crate::atomic_file::AtomicFile;
@@ -21,6 +21,8 @@ const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 const MAX_USER_SHORT_PHRASE_CHARS: usize = 12;
 const USER_SHORT_PHRASE_TOKEN_COUNT: i64 = 2;
 const USER_LEARNING_HALF_LIFE_MS: f64 = 30.0 * 24.0 * 60.0 * 60.0 * 1_000.0;
+const SQLITE_BUSY_RETRY_LIMIT: usize = 4;
+const SQLITE_BUSY_RETRY_DELAY_MS: u64 = 10;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
 pub type UserTransitionSnapshot = HashMap<String, HashMap<String, f64>>;
 
@@ -194,8 +196,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_phrases
                    (phrase, pinyin, compact_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -210,7 +212,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![text, pinyin, compact_pinyin(pinyin), reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Phrases, self.limits.phrases)?;
         }
@@ -239,8 +242,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_bigrams
                    (left_phrase, right_phrase, right_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -255,7 +258,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![left, right, right_pinyin, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Bigrams, self.limits.bigrams)?;
         }
@@ -370,8 +374,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_trigrams
                    (first_phrase, second_phrase, next_phrase, next_pinyin, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, ?4, 1, 1.0, ?5)
@@ -386,7 +390,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![first, second, next, next_pinyin, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(&connection, LearningTable::Trigrams, self.limits.trigrams)?;
         }
@@ -456,8 +461,8 @@ impl UserLexicon {
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
-        connection
-            .execute(
+        with_sqlite_busy_retry(|| {
+            connection.execute(
                 "INSERT INTO user_short_phrases
                    (left_phrase, phrase, token_count, frequency, weight, updated_at_ms)
                  VALUES (?1, ?2, ?3, 1, 1.0, ?4)
@@ -472,7 +477,8 @@ impl UserLexicon {
                    updated_at_ms = excluded.updated_at_ms",
                 params![left, phrase, token_count, reference_time_ms],
             )
-            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        })
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
         if is_new {
             prune_table_to_limit(
                 &connection,
@@ -870,6 +876,36 @@ fn configure_connection(connection: &Connection) -> ImeResult<()> {
         )
         .map_err(|_| ImeError::UserLexiconDatabase)?;
     Ok(())
+}
+
+fn with_sqlite_busy_retry<T>(
+    mut operation: impl FnMut() -> rusqlite::Result<T>,
+) -> rusqlite::Result<T> {
+    let mut retry_count = 0;
+    loop {
+        match operation() {
+            Err(error)
+                if is_sqlite_busy_or_locked(&error) && retry_count < SQLITE_BUSY_RETRY_LIMIT =>
+            {
+                retry_count += 1;
+                std::thread::sleep(Duration::from_millis(
+                    SQLITE_BUSY_RETRY_DELAY_MS * retry_count as u64,
+                ));
+            }
+            result => return result,
+        }
+    }
+}
+
+fn is_sqlite_busy_or_locked(error: &SqliteError) -> bool {
+    matches!(
+        error,
+        SqliteError::SqliteFailure(sqlite_error, _)
+            if matches!(
+                sqlite_error.code,
+                ErrorCode::DatabaseBusy | ErrorCode::DatabaseLocked
+            )
+    )
 }
 
 fn now_ms() -> i64 {
