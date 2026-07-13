@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-12 12:52
+Last updated: 2026-07-13 14:45
 Current stage: Stage 17 Device keyboard behavior and privacy closure
-Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
+Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
 ## Stage Status
 
@@ -23,8 +23,8 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-10 13:56 | App Store Connect app `6789098978` has processed build `0.1.12 (13)` with `VALID` and `APP_STORE_ELIGIBLE` status |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-10 13:58 | Optimized keyboard UI and inline settings passed iOS 27 Simulator smoke; build `13` is ready for group assignment while real-device password/phone/App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-13 14:41 | App Store Connect app `6789098978` has processed build `0.1.18 (14)` with `VALID` and `APP_STORE_ELIGIBLE` status |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-13 14:45 | Local trigram learning passed iOS 27 Simulator smoke; build `14` is ready for group assignment while real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Completed Work
@@ -215,9 +215,9 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 - The Stage 17 branch includes the approved Chinese onboarding, stable per-key rendering, weighted keyboard layout, inline prediction/learning preferences, and extension-local storage fallback.
 - iOS 27 Simulator smoke passed for `nihao -> 你好`, `wojintian -> 我今天`, retained prediction candidates, local learning opt-in, Globe switching, and portrait/landscape layout.
-- Build `0.1.12 (13)` was archived with Beta Xcode and uploaded through Xcode's App Store Connect export path.
-- Apple processing returned `VALID`, `APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true` for delivery `0ba67b28-a10c-437c-9968-456d8ee8d95b`.
-- Existing external Beta App Review/public-link state remains on build `11`; build `13` has not been assigned to the external group yet.
+- Build `0.1.18 (14)` was archived with Xcode 26.6 and uploaded through Xcode's App Store Connect export path.
+- Apple processing returned `VALID`, `APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true` for delivery `2bcd0055-5594-46bd-aa56-d8193b53ba58`.
+- Build `14` has not been assigned to the external group yet; external testing remains a separate Owner action.
 
 ## Validation Results
 
@@ -338,6 +338,32 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Command: `xcrun altool --build-status --delivery-id 0ba67b28-a10c-437c-9968-456d8ee8d95b --wait ...`
 - Result: passed
 - Notes: Apple returned `import-status=VALID`, `build-audience-type=APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true`.
+
+### Stage 17 - Local Trigram TestFlight Build 14
+
+- Command: `cargo test --workspace && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+- Notes: All 83 Rust workspace tests passed; formatting and clippy were clean.
+
+- Command: `env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash scripts/run_ios_smoke_readiness.sh`
+- Result: passed
+- Notes: Xcode 27 and the iOS 27 Simulator build passed Stage 14-16 source gates, App Group expansion, `RequestsOpenAccess=false`, bundled settings, and no-network checks.
+
+- Command: iOS 27.0 iPhone 17 Pro Simulator trigram smoke
+- Result: passed
+- Notes: With Full Access off and local learning enabled, selecting `我 -> 喜欢 -> 猫` created the expected local trigram row; a new `我 -> 喜欢` context then predicted `猫`.
+
+- Command: Xcode 27.0 beta archive and App Store Connect upload
+- Result: upload rejected before import
+- Notes: App Store Connect no longer accepted build `27A5194q`; no TestFlight build was created from this attempt.
+
+- Command: Xcode 26.6 Release archive and App Store Connect upload
+- Result: passed
+- Notes: `dist/ios/PrivatePinyin-build14-xcode26.xcarchive` reports `0.1.18 (14)`, iPhoneOS 26.5, and arm64; Xcode reported `Upload succeeded` with delivery UUID `2bcd0055-5594-46bd-aa56-d8193b53ba58`.
+
+- Command: `altool --build-status --delivery-id 2bcd0055-5594-46bd-aa56-d8193b53ba58 --wait ...`
+- Result: passed
+- Notes: Apple returned `import-status=VALID`, `build-audience-type=APP_STORE_ELIGIBLE`, `build-status=BETA_INTERNAL_TESTING`, and `is-on-app-store-connect=true`.
 
 ### macOS 0.1.13 Signed Release Package
 
