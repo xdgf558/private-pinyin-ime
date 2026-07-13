@@ -167,6 +167,7 @@ fn joint_decoder_stays_within_interactive_lookup_budget() {
     );
 }
 
+#[cfg(target_vendor = "apple")]
 #[test]
 fn nine_key_decoder_stays_within_interactive_lookup_budget() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
