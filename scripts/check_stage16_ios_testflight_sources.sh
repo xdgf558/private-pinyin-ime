@@ -17,8 +17,12 @@ for file in "${required_files[@]}"; do
   test -f "$file"
 done
 
-plutil -lint platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template >/dev/null
-plutil -lint platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template >/dev/null
+validate_plist() {
+  python3 -c 'import pathlib, plistlib, sys; plistlib.loads(pathlib.Path(sys.argv[1]).read_bytes())' "$1"
+}
+
+validate_plist platform/ios_keyboard/AppStoreMetadata/ExportOptions.plist.template
+validate_plist platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template
 
 bash -n scripts/package_ios_app_store.sh
 

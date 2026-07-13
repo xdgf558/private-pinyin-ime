@@ -44,6 +44,10 @@ When strict privacy mode is enabled, the engine must not write new learning data
 
 ## User Lexicon Storage
 
-The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, update time, one-step selected-phrase transitions, and bounded short phrase completions derived only from selected candidates. It must not store complete sentences, raw key streams, surrounding document text, clipboard content, or account identifiers.
+The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, update time, one-step selected-phrase transitions, bounded short phrase completions, and three-token transition records derived only from selected candidates. A trigram record contains two selected context tokens plus the selected next token and its pinyin; it must not include surrounding document text or an unbounded sentence.
+
+Learned ranking weight uses a 30-day inactivity half-life. Local storage is bounded to 20,000 selected phrases, 20,000 bigrams, 10,000 short phrase completions, and 20,000 trigrams by default. Capacity maintenance removes the lowest decayed-weight and oldest rows first. The in-memory session retains at most the eight most recent selected tokens.
+
+User learning data remains in the platform-local SQLite file. It must not be uploaded, synchronized, or sent to a network service by the core engine.
 
 When `enable_user_learning` is disabled or strict privacy mode is enabled, candidate commits must not create or update user lexicon rows.

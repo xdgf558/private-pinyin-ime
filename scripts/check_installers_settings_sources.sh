@@ -13,6 +13,7 @@ required_files=(
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "platform/windows_tsf/installer/open-settings.ps1"
   "platform/windows_tsf/installer/open-onboarding.ps1"
+  "platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt"
   "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
   "platform/windows_tsf/installer/PrivatePinyinLogo.png"
   "platform/macos_imk/Sources/SettingsStore.swift"
@@ -46,6 +47,7 @@ grep -q "default_settings.json" scripts/build_macos_imk.sh
 grep -q "PrivatePinyinTsf.wxs" scripts/package_windows_tsf.ps1
 grep -q "PrivatePinyinTsf.nsi" scripts/package_windows_tsf.ps1
 grep -q "open-onboarding.ps1" scripts/package_windows_tsf.ps1
+grep -q "ReleaseNotes.zh-Hans.txt" scripts/package_windows_tsf.ps1
 grep -q "PrivatePinyinInstaller.ico" scripts/package_windows_tsf.ps1
 grep -q "PrivatePinyinLogo.png" scripts/package_windows_tsf.ps1
 grep -q 'Set-Content.*version.txt' scripts/package_windows_tsf.ps1

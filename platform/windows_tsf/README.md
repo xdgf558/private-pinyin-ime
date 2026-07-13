@@ -18,6 +18,7 @@ The Windows host remains thin:
 - `installer/unregister-ime.ps1`: unregisters the DLL.
 - `installer/open-settings.ps1`: opens a local settings window for privacy mode, user learning, prediction, lexicon clear, and lexicon export.
 - `installer/open-onboarding.ps1`: opens the post-install setup guide with language-settings and preferences shortcuts.
+- `installer/ReleaseNotes.zh-Hans.txt`: Simplified Chinese release notes installed with the package.
 - `installer/PrivatePinyinTsf.wxs`: WiX source for the per-user MSI package.
 - `installer/PrivatePinyinTsf.nsi`: NSIS source for the per-user EXE installer.
 - `installer/PrivatePinyinInstaller.ico`: cat-brand installer icon used by the EXE, uninstaller, and Start Menu shortcuts.

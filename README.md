@@ -15,7 +15,7 @@ Rust 核心引擎、C ABI、macOS InputMethodKit 原型、Windows TSF 原型、i
 - 本地拼音解析和候选排序，默认不依赖云端服务。
 - 已导入 AOSP/pinyin-data 来源的基础词库，覆盖常用单字和常用词。
 - 支持本地用户词库学习：会记录你选过的候选词、拼音、频率和更新时间，用于后续排序。
-- 支持本地 bigram、短句补全和 trigram 联想；最近两个已选词可以共同影响下一候选。
+- 支持本地 bigram、短句和 trigram 联想；最近两个已选词可以共同影响下一个候选，目前基础 bigram 数据仍较小。
 - macOS 版本提供偏好设置入口，可切换预测、用户学习和严格隐私模式。
 - 严格隐私模式会关闭用户学习。
 - 支持清空和导出本地用户词库。
@@ -49,8 +49,8 @@ PrivatePinyin/猫栈拼音条目，再重新添加一次。
 ~/Library/Application Support/PrivatePinyin/user_lexicon.sqlite
 ```
 
-用户词库只用于改善本地排序、一步联想、短句补全和 trigram 联想。它不是云同步，也不会自动读取剪贴板或应用上下文。当前学习能力包括
-「候选选择记忆」「已选词转移记忆」「短句补全记忆」和「两词上下文联想」：你经常选的词会逐渐排得更靠前，常在某个词后面选择的下一个词也会出现在联想候选里；如果你反复依次选择 `今天`、`天气`、`不错`，之后再次选择 `今天`、`天气` 时，`不错` 会获得更高的本地联想权重。学习记录有容量上限，权重会按 30 天半衰期逐步衰减。
+用户词库只用于改善本地排序、一步联想、短句补全和 trigram（最近两词上下文）联想。它不是云同步，也不会自动读取剪贴板或应用上下文。当前学习能力包括
+「候选选择记忆」「已选词转移记忆」「短句补全记忆」和「最近两词预测」：你经常选的词会逐渐排得更靠前，`今天 -> 天气 -> 不错` 与 `昨天 -> 天气 -> 很冷` 可以形成不同的本地候选。学习权重按 30 天半衰期自然降低，长期不用的记录会逐渐让位；数据库还会按容量淘汰低权重旧记录，不会无限增长。该功能只保存有限的候选关系，不保存完整句子、原始按键或周围文档内容。
 
 ### 开发状态
 
@@ -77,7 +77,7 @@ The project follows the staged development plan in `docs/private_pinyin_ime_deve
 
 ## Current Status
 
-Stage 16 is in local review: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram and short phrase learning, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with unsigned internal MSI packaging, macOS InputMethodKit prototype with preferences/onboarding UI, JSON settings loading, iOS container app and keyboard extension with App Group settings storage, learning opt-in, explicit signing/App Group release inputs, iOS smoke-readiness automation, TestFlight archive/upload scaffolding, tests, CI workflows, platform smoke-test plan, and staged source checks are in place.
+Stage 17 is in progress: the Rust workspace, core engine crate, indexed production base lexicon, SQLite user lexicon range lookup, local bigram/short-phrase/trigram learning with decay and capacity eviction, AOSP/pinyin-data lexicon import tooling, CLI smoke tools, C ABI crate, C demo, Windows TSF prototype with unsigned internal MSI packaging, macOS InputMethodKit prototype with preferences/onboarding UI, JSON settings loading, iOS container app and keyboard extension with App Group settings storage, learning opt-in, explicit signing/App Group release inputs, iOS smoke-readiness automation, TestFlight archive/upload scaffolding, tests, CI workflows, platform smoke-test plan, and staged source checks are in place.
 
 Public release is still gated on the final project license, owner-provided signing/provisioning credentials, notarization/App Store setup, and completed platform smoke-test records. The bundled base lexicon source/license/version gate is closed for the current AOSP+pinyin-data import.
 

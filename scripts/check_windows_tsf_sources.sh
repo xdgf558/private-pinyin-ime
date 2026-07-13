@@ -17,6 +17,7 @@ required_files=(
   "platform/windows_tsf/installer/unregister-ime.ps1"
   "platform/windows_tsf/installer/open-settings.ps1"
   "platform/windows_tsf/installer/open-onboarding.ps1"
+  "platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt"
   "platform/windows_tsf/installer/PrivatePinyinTsf.wxs"
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
   "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
@@ -84,6 +85,8 @@ grep -q "IfSilent" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "WindowStyle Hidden" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'MUI_LANGUAGE "SimpChinese"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "INPUTCHARSET" scripts/package_windows_tsf.ps1
+grep -q "ReleaseNotes.zh-Hans.txt" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "本地 trigram 联想" platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt
 grep -q "ms-settings:regionlanguage" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "Set-WinUserLanguageList" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "00286F63-195C-445D-AD40-C6D1A4C560AD" platform/windows_tsf/installer/open-onboarding.ps1

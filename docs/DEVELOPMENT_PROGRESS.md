@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-12 04:38
+Last updated: 2026-07-12 12:52
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,9 +29,13 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Added local trigram learning so the last two selected tokens can produce context-specific next-token predictions across macOS, Windows, and iOS through the shared Rust core.
+- Added 30-day-half-life ranking decay, an eight-token in-memory context bound, and decayed-weight capacity eviction for all four local learning tables.
+- Added user-learning regression tests for trigram context, inactivity decay, privacy write guards, export/clear behavior, bounded context, and low-weight eviction.
 - Changed the macOS candidate panel to InputMethodKit's horizontal 9-column stepping layout, made nine candidates the macOS default, and added a targeted migration from the previous default page size of five.
 - Routed native candidate selection keys through the macOS controller first, keeping digit selection on one core-owned path while retaining four-host manual verification as a release gate.
 - Bumped the macOS app metadata to `0.1.16 (16)` and added horizontal-layout source gates and smoke coverage.
+- Bumped the macOS app and installer to `0.1.17 (17)` and the Windows/core package to `0.1.13`, with bundled Simplified Chinese release notes for bounded local trigram learning.
 - Diagnosed intermittent macOS input loss as repeated `EXC_BAD_ACCESS` crashes in InputMethodKit server deactivation while calling `isVisible` on a released candidate panel.
 - Retained the server-attached `IMKCandidates` panel for the input-method process lifetime, added host palette cleanup, and bumped the signed macOS release to `0.1.15`.
 - Installed `0.1.15` over the existing build and completed 20 TextEdit/Chrome focus switches with active and committed compositions; the process stayed alive and the existing 17 crash reports did not increase.
@@ -379,6 +383,57 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Result: passed
 - Notes: Trusted installer signature, Gatekeeper assessment, stapled ticket, notarytool profile, and SHA-256 validation passed. SHA-256: `678026ab7a6e9c86b284e5048c78fa52fbb59f587954e2f16e33495a1d41a289`. Four-host horizontal layout and number-selection smoke remains required before public release.
 
+### Local Trigram Learning Validation
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: All Rust, C ABI, layout, settings, prediction, privacy, lexicon-builder, and 28 user-lexicon tests passed, including legacy-schema migration and concurrent SQLite learning updates.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: C ABI demo returned `你好` and committed it successfully.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+
+- Command: `bash scripts/build_ios_keyboard.sh`
+- Result: passed
+- Notes: Xcode 27 Simulator build completed with `BUILD SUCCEEDED` after running with CoreSimulator access.
+
+- Command: stage 09/11, platform-validation, macOS, iOS, and Windows source gates
+- Result: passed
+
+- Command: GitHub Actions CI run `29180012276` on PR #15
+- Result: passed
+- Notes: Ubuntu Rust/source gates and the `windows-2022` Rust/TSF job both passed; the Windows job includes the concurrent trigram learning regression that originally exposed SQLite writer starvation.
+
+### macOS 0.1.17 Bounded Trigram Package
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.17 bash scripts/package_macos_pkg.sh` with Developer ID Application and Developer ID Installer, followed by direct `notarytool submit` using the existing local Apple credential
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.17.pkg`; Apple notarization submission `90edbce9-e28f-40a9-9f98-71830dad8839` returned `Accepted`, and stapling succeeded.
+
+- Command: trusted-system `pkgutil --check-signature`, `spctl --assess --type install`, `xcrun stapler validate`, and `codesign --verify --deep --strict`
+- Result: passed
+- Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `43bcec63708a16098dec51a6a0d7533795a0cf7b7d459040eb1e9abf449bdb79`.
+
+### Windows 0.1.13 Unsigned Internal-Test Package
+
+- Command: GitHub Actions `Windows Unsigned Package`, run `29180177697`, version input `0.1.13`
+- Result: passed
+- Notes: The `windows-2022` job built and uploaded the NSIS EXE, WiX MSI, and ZIP from commit `91b37fa02843b4594a5d043b24675ba4a0912787`; the ZIP contains `ReleaseNotes.zh-Hans.txt` and all TSF runtime files.
+
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13-setup.exe`
+- SHA-256: `7bcc0125b1e57aa129a85f773aa5feca543c70a852704b80762440d4615c9b88`
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.msi`
+- SHA-256: `992141e002b895b9b4c422f835b9261ccb0ae3dba6e22b01111e65efc7aa5bc8`
+- Artifact: `dist/windows_tsf/PrivatePinyin-0.1.13.zip`
+- SHA-256: `0f167ca8e923f50c89b89723fa1192b407ce5e69bb4a73b8f3a88bf40211f6a1`
+- Distribution note: these Windows artifacts are unsigned and remain for internal testing only.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -397,26 +452,20 @@ Current status: iOS build 0.1.12 (13) is processed and App Store eligible; real-
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
-- Add a retention policy for long-running `user_phrases`, `user_bigrams`, and `user_short_phrases` growth.
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
 - `CHANGELOG.md`
 - `README.md`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/ios_testflight_upload_record.md`
-- `docs/release_distribution_plan.md`
-- `platform/ios_keyboard/AppStoreMetadata/ExportOptions.upload.plist.template`
-- `platform/ios_keyboard/AppStoreMetadata/README.md`
-- `platform/ios_keyboard/AppStoreMetadata/Signing.env.example`
-- `platform/ios_keyboard/README.md`
-- `scripts/README.md`
-- `scripts/check_stage16_ios_testflight_sources.sh`
-- `scripts/package_ios_app_store.sh`
+- `docs/privacy_spec.md`
+- `ime_core/src/ranker.rs`
+- `ime_core/src/session.rs`
+- `ime_core/src/user_lexicon.rs`
+- `ime_core/tests/user_lexicon_tests.rs`
 
 ## Next Step
 
-- Assign build `0.1.12 (13)` to the external TestFlight group when the current Beta App Review state permits it, then install that exact build on the iPhone and complete the remaining real-device privacy/input smoke record.
+- Review the local trigram-learning branch, then merge it before producing new platform packages or TestFlight builds.

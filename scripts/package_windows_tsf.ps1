@@ -341,6 +341,7 @@ Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageD
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
+Copy-Item "platform\windows_tsf\installer\ReleaseNotes.zh-Hans.txt" -Destination $stageDir
 Copy-Item $installerIcon -Destination $stageDir
 Copy-Item $productLogo -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir

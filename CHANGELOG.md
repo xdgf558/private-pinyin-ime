@@ -71,6 +71,8 @@
 - Added `scripts/check_macos_public_release.sh` to verify Developer ID identities, installer signature, Gatekeeper install assessment, stapled notarization, notarytool profile access, and SHA256 output before website publication.
 - Added first-pass local user bigram learning so repeated selected-word sequences can outrank starter prediction data without leaving the local user lexicon.
 - Added second-pass local short phrase completion learning for bounded selected-candidate sequences such as `今天 -> 天气不错`.
+- Added local trigram learning so the last two selected tokens can predict a context-specific next token without network access or full-sentence storage.
+- Added regression coverage for trigram context selection, inactivity decay, privacy write guards, bounded session context, export/clear behavior, and learning-table capacity eviction.
 - Added a manual GitHub Actions workflow for unsigned Windows internal-test zip/MSI packaging.
 - Added Stage 14 iOS signing and App Group source gates, plus an owner-filled `Signing.env.example`.
 - Added Stage 15 iOS smoke-readiness automation and a tracked iOS keyboard smoke record.
@@ -162,12 +164,20 @@
 - Bumped the macOS app and installer package to `0.1.14` for second-generation continuous-pinyin decoding and local transition learning.
 - Bumped the macOS app and installer package to `0.1.15` for the InputMethodKit candidate-panel lifecycle crash fix.
 - Bumped the macOS app and installer package to `0.1.16` for the horizontal nine-candidate layout.
+- Bumped the Windows/core package version to `0.1.13` for bounded local trigram learning.
+- Bumped the macOS app and installer package to `0.1.17` for bounded local trigram learning.
 - Changed the macOS candidate panel from a vertical scrolling column to a horizontal single row with nine visible candidates and direct `1` through `9` selection.
 - Routed macOS candidate key events through the input controller first so each `1` through `9` key follows one core-owned selection path instead of also reaching the native panel.
 - Migrated the previous macOS default page size of five candidates to nine while preserving other explicit page-size customizations.
+- Changed local user-learning influence to decay with a 30-day half-life, allowing recent lower-frequency choices to replace inactive historical patterns.
+- Bounded local learning storage to 20,000 user phrases, 20,000 bigrams, 10,000 short phrases, and 20,000 trigrams, evicting the lowest decayed-weight records first.
+- Limited each active session to the eight most recent context tokens while preserving all selected word segments needed for bigram and trigram learning.
+- Migrated existing user-learning tables to independent decay weights and made concurrent decay updates atomic across desktop host processes.
 
 ### Fixed
 
+- Fixed transient SQLite BUSY/LOCKED learning-write failures with per-database in-process serialization and bounded cross-process retries, including concurrent Windows TSF host writes.
+- Fixed the Stage 16 plist source gate so it uses cross-platform `plistlib` validation instead of requiring macOS `plutil` on Ubuntu CI.
 - Fixed intermittent macOS input loss by retaining the server-attached `IMKCandidates` panel for the input method process lifetime instead of releasing it with each client input controller.
 - Fixed the Stage 15 source gate to follow the current `Host composition` and `App Group fallback` iOS smoke-record labels.
 - Fixed idle Space so prediction candidates no longer hijack normal space input.

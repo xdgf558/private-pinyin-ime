@@ -13,6 +13,7 @@ required_files=(
   "scripts/check_macos_public_release.sh"
   "scripts/package_ios_app_store.sh"
   "platform/windows_tsf/installer/PrivatePinyinTsf.nsi"
+  "platform/windows_tsf/installer/ReleaseNotes.zh-Hans.txt"
   "platform/windows_tsf/installer/PrivatePinyinInstaller.ico"
 )
 
@@ -56,6 +57,7 @@ grep -q "candle.exe" scripts/package_windows_tsf.ps1
 grep -q "Resolve-NsisToolchain" scripts/package_windows_tsf.ps1
 grep -q "makensis.exe" scripts/package_windows_tsf.ps1
 grep -q "PrivatePinyinInstaller.ico" scripts/package_windows_tsf.ps1
+grep -q "ReleaseNotes.zh-Hans.txt" scripts/package_windows_tsf.ps1
 grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
