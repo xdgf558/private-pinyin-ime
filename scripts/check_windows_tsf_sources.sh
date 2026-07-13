@@ -56,7 +56,16 @@ grep -q "UnregisterClassW" platform/windows_tsf/src/candidate_window.cpp
 grep -q "GetDpiForWindow" platform/windows_tsf/src/candidate_window.cpp
 grep -q "AppsUseLightTheme" platform/windows_tsf/src/candidate_window.cpp
 grep -q "/utf-8" platform/windows_tsf/CMakeLists.txt
-grep -q "regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "CMAKE_MSVC_RUNTIME_LIBRARY" platform/windows_tsf/CMakeLists.txt
+grep -q "RegSvr32Path" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "System64Folder" scripts/package_windows_tsf.ps1
+grep -q "PackagePlatform" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "ComponentWin64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "target-feature=+crt-static" scripts/package_windows_tsf.ps1
+grep -q "record_trigram" ime_core/src/user_lexicon.rs
+grep -q "predict_trigram" ime_core/src/session.rs
+grep -q "user_trigrams" ime_core/src/user_lexicon.rs
+grep -q 'features = \["bundled", "functions"\]' ime_core/Cargo.toml
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi

@@ -52,6 +52,10 @@ grep -q 'Set-Content.*version.txt' scripts/package_windows_tsf.ps1
 grep -q "Copy-Item \"config\\\\default_settings.json\"" scripts/package_windows_tsf.ps1
 grep -q "InstallScope=\"perUser\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "Impersonate=\"yes\"" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "PackagePlatform" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "ComponentWin64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RegSvr32Path" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "System64Folder" scripts/package_windows_tsf.ps1
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q '!define APP_DIR_NAME "app-${PRODUCT_VERSION}"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'RMDir /r /REBOOTOK "$INSTDIR\\$2"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi

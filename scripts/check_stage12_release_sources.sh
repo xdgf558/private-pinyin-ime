@@ -48,6 +48,10 @@ grep -q '".ps1"' scripts/package_windows_tsf.ps1
 grep -q "RequireSigning" scripts/package_windows_tsf.ps1
 grep -q "TimestampUrl" scripts/package_windows_tsf.ps1
 grep -q "Resolve-WixToolchain" scripts/package_windows_tsf.ps1
+grep -q "Resolve-WixArchitecture" scripts/package_windows_tsf.ps1
+grep -q "System64Folder" scripts/package_windows_tsf.ps1
+grep -q "target-feature=+crt-static" scripts/package_windows_tsf.ps1
+grep -q "CMAKE_MSVC_RUNTIME_LIBRARY" platform/windows_tsf/CMakeLists.txt
 grep -q "candle.exe" scripts/package_windows_tsf.ps1
 grep -q "Resolve-NsisToolchain" scripts/package_windows_tsf.ps1
 grep -q "makensis.exe" scripts/package_windows_tsf.ps1

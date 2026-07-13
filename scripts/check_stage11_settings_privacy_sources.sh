@@ -22,6 +22,10 @@ grep -q "packaged_default_settings_json_matches_rust_default" ime_core/tests/set
 grep -q "AtomicFile::create" ime_core/src/settings.rs
 grep -q "AtomicFile::create" ime_core/src/user_lexicon.rs
 grep -q "replace_file" ime_core/src/atomic_file.rs
+grep -q "record_trigram" ime_core/src/user_lexicon.rs
+grep -q "predict_trigram" ime_core/src/session.rs
+grep -q "user_trigrams" ime_core/src/user_lexicon.rs
+grep -q "trigram_count" ime_core/tests/user_lexicon_tests.rs
 
 if grep -q "remove_file(path)" ime_core/src/settings.rs ime_core/src/user_lexicon.rs; then
   echo "Settings and export writers must use AtomicFile instead of remove+rename." >&2

@@ -340,9 +340,9 @@ if (Test-Path $logoPath) {
 
 Add-Separator -Parent $aboutPage -Y 136
 [void](New-UiLabel -Parent $aboutPage -Text "本版更新" -X 24 -Y 158 -Width 180 -Height 28 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
-[void](New-UiLabel -Parent $aboutPage -Text "1. 全新设计偏好设置，加入常规、隐私与词库、关于页面。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "2. 修复 Windows 单按 Shift 切换中英文，并保留 Ctrl + Space 选项。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "3. 输入法列表改用猫图标，并继续支持无中断覆盖升级。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "1. 新增本地 trigram 联想，最近两个已选词可共同影响下一候选。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "2. 学习权重按 30 天半衰期衰减，并对本地学习数据设置容量上限。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "3. 加固 Windows x64 静态运行库、MSI 架构和 64 位 TSF 注册。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
 
 $footerLine = New-Object System.Windows.Forms.Panel
 $footerLine.Location = New-Object System.Drawing.Point(0, 558)
