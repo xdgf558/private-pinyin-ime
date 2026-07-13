@@ -13,6 +13,7 @@ use crate::atomic_file::AtomicFile;
 use crate::candidate::{Candidate, CandidateSource};
 use crate::error::{ImeError, ImeResult};
 use crate::lexicon::MAX_LOOKUP_CANDIDATES;
+use crate::nine_key::{is_valid_nine_key_input, pinyin_to_nine_key};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
 
@@ -191,6 +192,69 @@ impl UserLexicon {
         Ok(exact_candidates)
     }
 
+    pub fn lookup_nine_key(&self, digits: &str) -> ImeResult<Vec<Candidate>> {
+        if !is_valid_nine_key_input(digits) {
+            return Ok(Vec::new());
+        }
+
+        let upper_bound = compact_prefix_upper_bound(digits);
+        let reference_time_ms = now_ms();
+        let connection = self.connection()?;
+        let rows = {
+            let mut statement = connection
+                .prepare(
+                    "SELECT phrase, pinyin, weight, updated_at_ms
+                     FROM user_phrases
+                     WHERE nine_key >= ?1 AND nine_key < ?2
+                     ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            let mapped_rows = statement
+                .query_map(params![digits, upper_bound], |row| {
+                    let phrase: String = row.get(0)?;
+                    let pinyin: String = row.get(1)?;
+                    let weight: f64 = row.get(2)?;
+                    let updated_at_ms: i64 = row.get(3)?;
+                    Ok((phrase, pinyin, weight, updated_at_ms))
+                })
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            collect_user_lookup_rows(mapped_rows)?
+        };
+
+        let mut exact_candidates = Vec::new();
+        let mut prefix_candidates = Vec::new();
+        let mut seen_phrases = std::collections::HashSet::new();
+        for (phrase, pinyin, weight, updated_at_ms) in rows {
+            if !seen_phrases.insert(phrase.clone()) {
+                continue;
+            }
+            let match_kind = if pinyin_to_nine_key(&pinyin) == digits {
+                CandidateMatchKind::Exact
+            } else {
+                CandidateMatchKind::Prefix
+            };
+            let candidate = user_candidate(
+                phrase,
+                pinyin,
+                weight,
+                updated_at_ms,
+                reference_time_ms,
+                match_kind,
+            );
+            if match_kind == CandidateMatchKind::Exact {
+                exact_candidates.push(candidate);
+            } else {
+                prefix_candidates.push(candidate);
+            }
+        }
+
+        Ranker::sort_candidates(&mut exact_candidates);
+        Ranker::sort_candidates(&mut prefix_candidates);
+        exact_candidates.extend(prefix_candidates);
+        exact_candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        Ok(exact_candidates)
+    }
+
     pub fn record_selection(&self, text: &str, pinyin: &str) -> ImeResult<()> {
         if text.is_empty() || pinyin.is_empty() {
             return Ok(());
@@ -211,8 +275,8 @@ impl UserLexicon {
         with_sqlite_busy_retry(|| {
             connection.execute(
                 "INSERT INTO user_phrases
-                   (phrase, pinyin, compact_pinyin, frequency, weight, updated_at_ms)
-                 VALUES (?1, ?2, ?3, 1, 1.0, ?4)
+                   (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, 1, 1.0, ?5)
                  ON CONFLICT(phrase, pinyin) DO UPDATE SET
                    frequency = frequency + 1,
                    weight = private_pinyin_decay_weight(
@@ -221,8 +285,15 @@ impl UserLexicon {
                      excluded.updated_at_ms
                    ) + 1.0,
                    compact_pinyin = excluded.compact_pinyin,
+                   nine_key = excluded.nine_key,
                    updated_at_ms = excluded.updated_at_ms",
-                params![text, pinyin, compact_pinyin(pinyin), reference_time_ms],
+                params![
+                    text,
+                    pinyin,
+                    compact_pinyin(pinyin),
+                    pinyin_to_nine_key(pinyin),
+                    reference_time_ms
+                ],
             )
         })
         .map_err(|_| ImeError::UserLexiconDatabase)?;
@@ -773,6 +844,7 @@ impl UserLexicon {
                    phrase TEXT NOT NULL,
                    pinyin TEXT NOT NULL,
                    compact_pinyin TEXT NOT NULL,
+                   nine_key TEXT NOT NULL DEFAULT '',
                    frequency INTEGER NOT NULL,
                    weight REAL NOT NULL DEFAULT 1.0,
                    updated_at_ms INTEGER NOT NULL,
@@ -831,6 +903,13 @@ impl UserLexicon {
         ] {
             ensure_weight_column(&connection, table)?;
         }
+        ensure_nine_key_column(&connection)?;
+        connection
+            .execute_batch(
+                "CREATE INDEX IF NOT EXISTS idx_user_phrases_nine_key
+                   ON user_phrases(nine_key);",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
         Ok(())
     }
 
@@ -1039,6 +1118,46 @@ impl LearningTable {
     }
 }
 
+fn ensure_nine_key_column(connection: &Connection) -> ImeResult<()> {
+    let transaction = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)
+        .map_err(|_| ImeError::UserLexiconDatabase)?;
+    if !table_has_column(&transaction, "user_phrases", "nine_key")? {
+        transaction
+            .execute_batch(
+                "ALTER TABLE user_phrases
+                   ADD COLUMN nine_key TEXT NOT NULL DEFAULT '';",
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+
+    let rows = {
+        let mut statement = transaction
+            .prepare("SELECT rowid, pinyin FROM user_phrases WHERE nine_key = ''")
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let mapped = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+        let mut rows = Vec::new();
+        for row in mapped {
+            rows.push(row.map_err(|_| ImeError::UserLexiconDatabase)?);
+        }
+        rows
+    };
+    for (rowid, pinyin) in rows {
+        transaction
+            .execute(
+                "UPDATE user_phrases SET nine_key = ?1 WHERE rowid = ?2",
+                params![pinyin_to_nine_key(&pinyin), rowid],
+            )
+            .map_err(|_| ImeError::UserLexiconDatabase)?;
+    }
+    transaction
+        .commit()
+        .map_err(|_| ImeError::UserLexiconDatabase)
+}
+
 fn ensure_weight_column(connection: &Connection, table: LearningTable) -> ImeResult<()> {
     if table_has_weight_column(connection, table)? {
         return Ok(());
@@ -1064,7 +1183,14 @@ fn ensure_weight_column(connection: &Connection, table: LearningTable) -> ImeRes
 }
 
 fn table_has_weight_column(connection: &Connection, table: LearningTable) -> ImeResult<bool> {
-    let table_name = table.name();
+    table_has_column(connection, table.name(), "weight")
+}
+
+fn table_has_column(
+    connection: &Connection,
+    table_name: &str,
+    column_name: &str,
+) -> ImeResult<bool> {
     let pragma_sql = format!("PRAGMA table_info({table_name})");
     let mut statement = connection
         .prepare(&pragma_sql)
@@ -1073,7 +1199,7 @@ fn table_has_weight_column(connection: &Connection, table: LearningTable) -> Ime
         .query_map([], |row| row.get::<_, String>(1))
         .map_err(|_| ImeError::UserLexiconDatabase)?;
     for column in columns {
-        if column.map_err(|_| ImeError::UserLexiconDatabase)? == "weight" {
+        if column.map_err(|_| ImeError::UserLexiconDatabase)? == column_name {
             return Ok(true);
         }
     }

@@ -1,5 +1,10 @@
 import Foundation
 
+enum IosKeyboardLayout: String {
+    case qwerty
+    case nineKey = "nine_key"
+}
+
 enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
 
@@ -89,6 +94,22 @@ enum IosSettingsStore {
         }
     }
 
+    static func keyboardLayout() -> IosKeyboardLayout {
+        guard
+            let value = readSettings()["ios_keyboard_layout"] as? String,
+            let layout = IosKeyboardLayout(rawValue: value)
+        else {
+            return .qwerty
+        }
+        return layout
+    }
+
+    static func setKeyboardLayout(_ layout: IosKeyboardLayout) -> Bool {
+        updateSettings { settings in
+            settings["ios_keyboard_layout"] = layout.rawValue
+        }
+    }
+
     static func storageDescription() -> String {
         if usesAppGroupStorage {
             return "学习数据仅保存在本机共享容器中。"
@@ -146,6 +167,7 @@ enum IosSettingsStore {
         ]
         settings["enable_user_learning"] = false
         settings["user_lexicon_path"] = userLexiconURL.path
+        settings["ios_keyboard_layout"] = IosKeyboardLayout.qwerty.rawValue
         return settings
     }
 

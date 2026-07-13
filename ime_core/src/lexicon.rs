@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
 use crate::error::{ImeError, ImeResult};
+use crate::nine_key::{is_valid_nine_key_input, pinyin_to_nine_key};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
 
@@ -23,7 +24,9 @@ pub struct Lexicon {
     entries: Vec<LexiconEntry>,
     compact_index: Vec<CompactLexiconIndexEntry>,
     initial_index: Vec<InitialLexiconIndexEntry>,
+    nine_key_index: Vec<NineKeyLexiconIndexEntry>,
     max_compact_pinyin_chars: usize,
+    max_nine_key_chars: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +38,12 @@ struct CompactLexiconIndexEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct InitialLexiconIndexEntry {
     initials: String,
+    entry_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NineKeyLexiconIndexEntry {
+    digits: String,
     entry_index: usize,
 }
 
@@ -91,9 +100,15 @@ impl Lexicon {
 
         let compact_index = build_compact_index(&entries);
         let initial_index = build_initial_index(&entries);
+        let nine_key_index = build_nine_key_index(&entries);
         let max_compact_pinyin_chars = compact_index
             .iter()
             .map(|entry| entry.compact_pinyin.chars().count())
+            .max()
+            .unwrap_or_default();
+        let max_nine_key_chars = nine_key_index
+            .iter()
+            .map(|entry| entry.digits.len())
             .max()
             .unwrap_or_default();
 
@@ -101,7 +116,9 @@ impl Lexicon {
             entries,
             compact_index,
             initial_index,
+            nine_key_index,
             max_compact_pinyin_chars,
+            max_nine_key_chars,
         })
     }
 
@@ -200,6 +217,67 @@ impl Lexicon {
         candidates
     }
 
+    pub fn lookup_nine_key(&self, digits: &str) -> Vec<Candidate> {
+        self.lookup_nine_key_with_context(digits, None, |_, _| 0.0)
+    }
+
+    pub fn lookup_nine_key_with_context(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+    ) -> Vec<Candidate> {
+        if !is_valid_nine_key_input(digits) {
+            return Vec::new();
+        }
+
+        let mut exact_candidates = Vec::new();
+        let mut continuous_candidates = Vec::new();
+        let mut prefix_candidates = Vec::new();
+        let mut seen = HashSet::<String>::new();
+
+        for indexed_entry in &self.nine_key_index[self.nine_key_prefix_range(digits)] {
+            let entry = &self.entries[indexed_entry.entry_index];
+            if !seen.insert(entry.phrase.clone()) {
+                continue;
+            }
+
+            let exact_match = indexed_entry.digits == digits;
+            let match_kind = if exact_match {
+                CandidateMatchKind::Exact
+            } else {
+                CandidateMatchKind::Prefix
+            };
+            let candidate = Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                .with_score(Ranker::score(entry.frequency))
+                .with_rank_score(Ranker::score_match(
+                    entry.frequency,
+                    match_kind,
+                    CandidateSource::Base,
+                ));
+            if exact_match {
+                exact_candidates.push(candidate);
+            } else {
+                prefix_candidates.push(candidate);
+            }
+        }
+
+        continuous_candidates.extend(self.continuous_nine_key_candidates(
+            digits,
+            previous_context,
+            &transition_score,
+            &mut seen,
+        ));
+        Ranker::sort_candidates(&mut exact_candidates);
+        Ranker::sort_candidates(&mut continuous_candidates);
+        Ranker::sort_candidates(&mut prefix_candidates);
+
+        exact_candidates.extend(continuous_candidates);
+        exact_candidates.extend(prefix_candidates);
+        exact_candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        exact_candidates
+    }
+
     fn compact_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
         let upper_bound = compact_prefix_upper_bound(prefix);
         let start = self
@@ -219,6 +297,17 @@ impl Lexicon {
         let end = self
             .initial_index
             .partition_point(|entry| entry.initials.as_str() < upper_bound.as_str());
+        start..end
+    }
+
+    fn nine_key_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
+        let upper_bound = compact_prefix_upper_bound(prefix);
+        let start = self
+            .nine_key_index
+            .partition_point(|entry| entry.digits.as_str() < prefix);
+        let end = self
+            .nine_key_index
+            .partition_point(|entry| entry.digits.as_str() < upper_bound.as_str());
         start..end
     }
 
@@ -361,6 +450,121 @@ impl Lexicon {
         candidates
     }
 
+    fn continuous_nine_key_candidates(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: &impl Fn(&str, &str) -> f64,
+        seen: &mut HashSet<String>,
+    ) -> Vec<Candidate> {
+        let chars = digits.chars().collect::<Vec<_>>();
+        if chars.len() < 2 {
+            return Vec::new();
+        }
+
+        let mut lattice = vec![Vec::<ContinuousPath>::new(); chars.len() + 1];
+        lattice[0].push(ContinuousPath {
+            text: String::new(),
+            pinyin: String::new(),
+            score: 0.0,
+            segments: Vec::new(),
+        });
+
+        for start in 0..chars.len() {
+            if lattice[start].is_empty() {
+                continue;
+            }
+
+            let end_limit = chars
+                .len()
+                .min(start.saturating_add(self.max_nine_key_chars));
+            for end in (start + 1)..=end_limit {
+                let edge = chars[start..end].iter().collect::<String>();
+                let entries =
+                    self.exact_entries_for_nine_key(&edge, MAX_CONTINUOUS_OPTIONS_PER_EDGE);
+                if entries.is_empty() {
+                    continue;
+                }
+
+                let previous_paths = lattice[start].clone();
+                for previous in previous_paths {
+                    for entry in &entries {
+                        let left = previous
+                            .segments
+                            .last()
+                            .map(|segment| segment.text.as_str())
+                            .or(previous_context);
+                        let transition = left
+                            .map(|left| transition_score(left, &entry.phrase))
+                            .unwrap_or_default();
+                        let mut text = previous.text.clone();
+                        text.push_str(&entry.phrase);
+                        let pinyin = if previous.pinyin.is_empty() {
+                            entry.pinyin.clone()
+                        } else {
+                            format!("{} {}", previous.pinyin, entry.pinyin)
+                        };
+                        let mut segments = previous.segments.clone();
+                        segments.push(CandidateSegment {
+                            text: entry.phrase.clone(),
+                            pinyin: entry.pinyin.clone(),
+                        });
+                        lattice[end].push(ContinuousPath {
+                            text,
+                            pinyin,
+                            score: previous.score
+                                + Ranker::score_continuous_token(
+                                    entry.frequency,
+                                    entry.phrase.chars().count(),
+                                )
+                                + transition,
+                            segments,
+                        });
+                    }
+                }
+                sort_continuous_paths(&mut lattice[end], CONTINUOUS_BEAM_WIDTH);
+            }
+        }
+
+        sort_continuous_paths(&mut lattice[chars.len()], MAX_CONTINUOUS_CANDIDATES);
+        let mut candidates = Vec::new();
+        for path in &lattice[chars.len()] {
+            if path.segments.len() < 2 || !seen.insert(path.text.clone()) {
+                continue;
+            }
+            candidates.push(
+                Candidate::new(&path.text, &path.pinyin, CandidateSource::Base)
+                    .with_score(path.score)
+                    .with_rank_score(Ranker::score_continuous_match(path.score))
+                    .with_segments(path.segments.clone()),
+            );
+        }
+        candidates
+    }
+
+    fn exact_entries_for_nine_key(&self, digits: &str, limit: usize) -> Vec<&LexiconEntry> {
+        let mut entries = Vec::new();
+        let mut seen = HashSet::<&str>::new();
+        for indexed_entry in &self.nine_key_index[self.nine_key_prefix_range(digits)] {
+            if indexed_entry.digits != digits {
+                continue;
+            }
+            let entry = &self.entries[indexed_entry.entry_index];
+            if seen.insert(entry.phrase.as_str()) {
+                entries.push(entry);
+            }
+        }
+        entries.sort_by(|left, right| {
+            right
+                .frequency
+                .cmp(&left.frequency)
+                .then_with(|| left.phrase.cmp(&right.phrase))
+                .then_with(|| left.pinyin.cmp(&right.pinyin))
+        });
+        entries.truncate(limit);
+        entries
+    }
+
     fn exact_entries_for_compact(
         &self,
         compact: &str,
@@ -468,6 +672,26 @@ fn build_initial_index(entries: &[LexiconEntry]) -> Vec<InitialLexiconIndexEntry
     index.sort_by(|left, right| {
         left.initials
             .cmp(&right.initials)
+            .then_with(|| left.entry_index.cmp(&right.entry_index))
+    });
+    index
+}
+
+fn build_nine_key_index(entries: &[LexiconEntry]) -> Vec<NineKeyLexiconIndexEntry> {
+    let mut index = entries
+        .iter()
+        .enumerate()
+        .filter_map(|(entry_index, entry)| {
+            let digits = pinyin_to_nine_key(&entry.pinyin);
+            (!digits.is_empty()).then_some(NineKeyLexiconIndexEntry {
+                digits,
+                entry_index,
+            })
+        })
+        .collect::<Vec<_>>();
+    index.sort_by(|left, right| {
+        left.digits
+            .cmp(&right.digits)
             .then_with(|| left.entry_index.cmp(&right.entry_index))
     });
     index

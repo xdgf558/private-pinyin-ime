@@ -57,6 +57,35 @@ fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
 }
 
 #[test]
+fn c_api_can_feed_nine_key_nihao() {
+    unsafe {
+        let engine = ime_engine_new(ptr::null());
+        assert!(!engine.is_null());
+        let session = ime_session_new(engine);
+        assert!(!session.is_null());
+
+        let mut output = ptr::null_mut();
+        for (index, digit) in ["6", "4", "4", "2", "6"].into_iter().enumerate() {
+            let text = CString::new(digit).unwrap();
+            output = ime_session_feed_key(session, nine_key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            if index < 4 {
+                ime_output_free(output);
+            }
+        }
+
+        let first_candidate = &*(*output).candidates;
+        assert_eq!(
+            CStr::from_ptr(first_candidate.text).to_str().unwrap(),
+            "你好"
+        );
+        ime_output_free(output);
+        ime_session_free(session);
+        ime_engine_free(engine);
+    }
+}
+
+#[test]
 fn c_api_null_handles_are_safe_noops() {
     assert!(ime_session_new(ptr::null_mut()).is_null());
     assert!(ime_session_feed_key(ptr::null_mut(), key_event(ptr::null())).is_null());
@@ -155,6 +184,19 @@ fn c_api_can_clear_and_export_user_lexicon() {
 fn key_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
     ImeKeyEvent {
         key_code: 0,
+        text,
+        shift: 0,
+        ctrl: 0,
+        alt: 0,
+        meta: 0,
+        is_repeat: 0,
+        timestamp_ms: 0,
+    }
+}
+
+fn nine_key_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
+    ImeKeyEvent {
+        key_code: 102,
         text,
         shift: 0,
         ctrl: 0,

@@ -8,16 +8,16 @@ from owner-side App Store Connect evidence.
 | Field | Value |
 |---|---|
 | Tester | Owner/Codex signed archive run |
-| Date | 2026-07-10 13:58 +08 |
-| Commit | `codex/ios-keyboard-performance-settings` build 13 candidate |
-| Archive | `dist/ios/PrivatePinyin-build13.xcarchive` |
+| Date | 2026-07-13 14:41 +08 |
+| Commit | Local build 14 candidate based on `main` |
+| Archive | `dist/ios/PrivatePinyin-build14-xcode26.xcarchive` |
 | Export path | Direct App Store Connect upload through `xcodebuild -exportArchive` |
 | Package summary | Xcode distribution logs, altool upload/status output, and App Store Connect TestFlight build table |
 | App bundle ID | `com.privatepinyin.ios` |
 | Keyboard bundle ID | `com.privatepinyin.ios.keyboard` |
 | App Group ID | `group.com.privatepinyin.ios` |
 | Export destination | `upload` |
-| Current candidate | `0.1.12 (13)` optimized TestFlight upload |
+| Current candidate | `0.1.18 (14)` local trigram TestFlight upload |
 
 ## Archive And Export
 
@@ -32,19 +32,19 @@ bash scripts/package_ios_app_store.sh
 |---|---|---|---|
 | Owner signing env | Team ID, app bundle ID, keyboard bundle ID, App Group ID, ExportOptions plist, and profiles are configured | passed | Team `Y35K7AQ974`; App Group `group.com.privatepinyin.ios`; automatic signing created App Store profiles |
 | App Store Connect API key | Upload mode has key path, key ID, and issuer ID configured | not used | Upload used the signed-in Xcode account and Cloud Managed Apple Distribution certificate |
-| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-build13.xcarchive`; Beta Xcode / iPhoneOS 26.5; archive metadata reports `0.1.12 (13)` and arm64 |
-| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `0ba67b28-a10c-437c-9968-456d8ee8d95b` |
+| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-build14-xcode26.xcarchive`; Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive metadata reports `0.1.18 (14)` and arm64 |
+| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `2bcd0055-5594-46bd-aa56-d8193b53ba58` |
 | Package summary | `dist/ios/package_summary.txt` records mode, bundle IDs, App Group, and paths | superseded | Manual automatic-signing run recorded here because the scripted manual-profile path was not used |
 
 ## App Store Connect
 
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
-| Uploaded build | Build appears in App Store Connect | passed | App Store Connect app ID `6789098978`; version `0.1.12`; build `13`; external-capable upload |
+| Uploaded build | Build appears in App Store Connect | passed | App Store Connect app ID `6789098978`; version `0.1.18`; build `14`; external-capable upload |
 | Processing | Build processing completes | passed | altool reported `import-status=VALID`, `build-audience-type=APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true` |
-| TestFlight availability | Processed build can be assigned to a TestFlight group | ready | Build `13` processed as `BETA_INTERNAL_TESTING`; it has not yet been assigned to the external group |
+| TestFlight availability | Processed build can be assigned to a TestFlight group | ready | Build `14` processed as `BETA_INTERNAL_TESTING`; it has not yet been assigned to the external group |
 | External testing metadata | Beta description, privacy URL, feedback channel, review contact, and review notes are configured | passed | Filled in App Store Connect TestFlight test information; personal contact details stay out of the repository |
-| External testing build | Existing external group and review state are recorded separately from upload readiness | pending review | Build `11` is in the external testing group and waiting for Beta App Review; build `13` remains unassigned after upload |
+| External testing build | Existing external group and review state are recorded separately from upload readiness | pending assignment | Build `14` remains unassigned after upload; changing the external group is intentionally separate from archive readiness |
 
 ## Stage 17 External Testing Follow-up
 
@@ -61,5 +61,12 @@ bash scripts/package_ios_app_store.sh
 - Build `13` uploaded and processed successfully as App Store eligible. Assigning
   it to the external group is intentionally left separate from this upload so the
   existing build `11` review state is not changed implicitly.
+- Build `0.1.18 (14)` adds bounded local trigram learning, 30-day inactivity
+  decay, and capacity-based eviction through the shared Rust core.
+- An initial build 14 archive made with Xcode 27.0 beta (`27A5194q`) was rejected
+  before import because that beta SDK was no longer accepted by App Store Connect.
+  Rebuilding with Xcode 26.6 (`17F109`) succeeded and produced delivery
+  `2bcd0055-5594-46bd-aa56-d8193b53ba58` with `VALID` and
+  `APP_STORE_ELIGIBLE` status.
 
 Manual failures should update `docs/OPEN_ITEMS.md` before Stage 17 begins.
