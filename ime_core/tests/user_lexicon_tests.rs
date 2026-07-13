@@ -897,6 +897,17 @@ fn existing_user_phrases_migrate_nine_key_signatures() {
             .map(|candidate| candidate.text.as_str()),
         Some("你好")
     );
+
+    drop(user_lexicon);
+    let reopened = UserLexicon::open(&temp_db.path).expect("repeat migration is idempotent");
+    assert_eq!(
+        reopened
+            .lookup_nine_key("64426")
+            .expect("lookup candidate after repeated migration")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("你好")
+    );
 }
 
 #[test]

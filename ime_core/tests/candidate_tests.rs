@@ -168,6 +168,24 @@ fn joint_decoder_stays_within_interactive_lookup_budget() {
 }
 
 #[test]
+fn nine_key_decoder_stays_within_interactive_lookup_budget() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let iterations = 20;
+    let started = Instant::now();
+    for _ in 0..iterations {
+        let candidates = engine.candidates_for_nine_key(&digits);
+        assert!(!candidates.is_empty());
+    }
+    let average = started.elapsed() / iterations;
+
+    assert!(
+        average < Duration::from_millis(60),
+        "average nine-key continuous lookup took {average:?}"
+    );
+}
+
+#[test]
 fn shorthand_initials_return_phrase_candidates() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let candidates = engine.candidates_for_raw("nh");
