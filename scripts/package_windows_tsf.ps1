@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.13",
+    [string]$Version = "0.1.18",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",
@@ -172,6 +172,14 @@ function Resolve-WixToolchain {
     return $null
 }
 
+function Resolve-WixArchitecture {
+    if ($Architecture -eq "Win32") {
+        return "x86"
+    }
+
+    return $Architecture.ToLowerInvariant()
+}
+
 function Resolve-NsisToolchain {
     $command = Get-Command makensis.exe -ErrorAction SilentlyContinue
     if ($command) {
@@ -208,6 +216,8 @@ function Build-NsisInstaller {
     )
 
     & $NsisToolchain `
+        "/INPUTCHARSET" `
+        "UTF8" `
         "/DPRODUCT_VERSION=$ProductVersion" `
         "/DPACKAGE_SOURCE=$PackageSource" `
         "/DICON_PATH=$InstallerIcon" `
@@ -223,14 +233,22 @@ function Build-Msi {
         [Parameter(Mandatory = $true)][pscustomobject]$WixToolchain,
         [Parameter(Mandatory = $true)][string]$PackageSource,
         [Parameter(Mandatory = $true)][string]$ProductVersion,
+        [Parameter(Mandatory = $true)][string]$WixArchitecture,
         [Parameter(Mandatory = $true)][string]$OutputPath
     )
+
+    $componentWin64 = if ($WixArchitecture -eq "x64" -or $WixArchitecture -eq "arm64") { "yes" } else { "no" }
+    $regSvr32Path = if ($componentWin64 -eq "yes") { "[System64Folder]regsvr32.exe" } else { "[SystemFolder]regsvr32.exe" }
 
     if ($WixToolchain.Kind -eq "WixCli") {
         & $WixToolchain.Wix build `
             "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
+            -arch $WixArchitecture `
             "-dPackageSource=$PackageSource" `
             "-dProductVersion=$ProductVersion" `
+            "-dPackagePlatform=$WixArchitecture" `
+            "-dComponentWin64=$componentWin64" `
+            "-dRegSvr32Path=$regSvr32Path" `
             -out $OutputPath
         if ($LASTEXITCODE -ne 0) {
             throw "WiX build failed."
@@ -244,8 +262,12 @@ function Build-Msi {
     Remove-Item -Force $wixObj -ErrorAction SilentlyContinue
 
     & $WixToolchain.Candle `
+        -arch $WixArchitecture `
         "-dPackageSource=$PackageSource" `
         "-dProductVersion=$ProductVersion" `
+        "-dPackagePlatform=$WixArchitecture" `
+        "-dComponentWin64=$componentWin64" `
+        "-dRegSvr32Path=$regSvr32Path" `
         "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
         -out $wixObj
     if ($LASTEXITCODE -ne 0) {
@@ -260,6 +282,16 @@ function Build-Msi {
 
 $resolvedSignTool = Resolve-SignTool
 $resolvedSigningCertificate = Resolve-SigningCertificate
+$wixArchitecture = Resolve-WixArchitecture
+
+$originalRustFlags = $env:RUSTFLAGS
+if ($originalRustFlags) {
+    if ($originalRustFlags -notmatch "\+crt-static") {
+        $env:RUSTFLAGS = "$originalRustFlags -C target-feature=+crt-static"
+    }
+} else {
+    $env:RUSTFLAGS = "-C target-feature=+crt-static"
+}
 
 & (Join-Path $repoRoot "scripts\build_windows_tsf.ps1") `
     -Configuration $Configuration `
@@ -274,6 +306,7 @@ $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
 $msiPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.msi"
 $exePath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version-setup.exe"
 $installerIcon = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinInstaller.ico"
+$productLogo = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyinLogo.png"
 
 Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -297,6 +330,9 @@ if (-not (Test-Path $settingsTool)) {
 if (-not (Test-Path $installerIcon)) {
     throw "Could not find Windows installer icon at $installerIcon."
 }
+if (-not (Test-Path $productLogo)) {
+    throw "Could not find Windows product logo at $productLogo."
+}
 
 Copy-Item $tsfDll.FullName -Destination $stageDir
 Copy-Item $ffiDll -Destination $stageDir
@@ -305,9 +341,13 @@ Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageD
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
-Copy-Item "platform\windows_tsf\installer\ReleaseNotes.zh-Hans.txt" -Destination $stageDir
+$releaseNotesTemplate = Get-Content "platform\windows_tsf\installer\ReleaseNotes.zh-Hans.txt" -Raw -Encoding UTF8
+$releaseNotes = $releaseNotesTemplate.Replace("{{VERSION}}", $Version)
+Set-Content -Path (Join-Path $stageDir "ReleaseNotes.zh-Hans.txt") -Value $releaseNotes -Encoding UTF8 -NoNewline
 Copy-Item $installerIcon -Destination $stageDir
+Copy-Item $productLogo -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
+Set-Content -Path (Join-Path $stageDir "version.txt") -Value $Version -Encoding ASCII
 
 Get-ChildItem -Path $stageDir -File |
     Where-Object { $_.Extension -in ".dll", ".exe" } |
@@ -345,6 +385,7 @@ if ($wixToolchain) {
         -WixToolchain $wixToolchain `
         -PackageSource $stageDir `
         -ProductVersion $Version `
+        -WixArchitecture $wixArchitecture `
         -OutputPath $msiPath
     Sign-Artifact -Path $msiPath -ResolvedSignTool $resolvedSignTool
     Write-Host "Built Windows MSI: $msiPath"

@@ -70,8 +70,8 @@ KeyMessage map_windows_key(WPARAM key, LPARAM flags) {
       message.handled_by_ime = true;
       break;
     case VK_SHIFT:
-      message.key_code = IME_KEY_UNKNOWN;
-      message.handled_by_ime = false;
+      message.key_code = IME_KEY_SHIFT;
+      message.handled_by_ime = true;
       break;
     case VK_OEM_COMMA:
       message.key_code = IME_KEY_COMMA;

@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
+if(POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif()
+
 project(PrivatePinyinTsf LANGUAGES CXX)
 
 if(NOT WIN32)
@@ -9,6 +13,10 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 add_library(PrivatePinyinTsf SHARED
   PrivatePinyinTsf.def
@@ -33,6 +41,10 @@ target_compile_definitions(PrivatePinyinTsf PRIVATE
   WIN32_LEAN_AND_MEAN
 )
 
+if(MSVC)
+  target_compile_options(PrivatePinyinTsf PRIVATE /utf-8)
+endif()
+
 if(DEFINED PRIVATE_PINYIN_IME_LIB AND NOT "${PRIVATE_PINYIN_IME_LIB}" STREQUAL "")
   target_link_libraries(PrivatePinyinTsf PRIVATE "${PRIVATE_PINYIN_IME_LIB}")
 else()
@@ -43,6 +55,8 @@ target_link_libraries(PrivatePinyinTsf PRIVATE
   advapi32
   gdi32
   ole32
+  oleaut32
+  shell32
   user32
   uuid
 )

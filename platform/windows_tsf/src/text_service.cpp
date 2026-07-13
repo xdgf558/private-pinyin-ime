@@ -1,11 +1,17 @@
 #include "text_service.h"
 
+#include <iterator>
 #include <new>
 #include <optional>
+#include <string>
 #include <utility>
+
+#include <oleauto.h>
+#include <shellapi.h>
 
 #include "com_ptr.h"
 #include "globals.h"
+#include "guids.h"
 #include "key_map.h"
 
 namespace private_pinyin {
@@ -42,6 +48,58 @@ bool is_shift_passthrough_key(int key_code) {
     default:
       return false;
   }
+}
+
+HRESULT launch_preferences(HWND parent) {
+  wchar_t module_path[MAX_PATH]{};
+  const DWORD module_path_length =
+      GetModuleFileNameW(g_module, module_path, static_cast<DWORD>(std::size(module_path)));
+  if (module_path_length == 0 || module_path_length == std::size(module_path)) {
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+
+  std::wstring settings_path(module_path, module_path_length);
+  const std::wstring::size_type separator = settings_path.find_last_of(L"\\/");
+  if (separator == std::wstring::npos) {
+    return E_FAIL;
+  }
+  settings_path.resize(separator + 1);
+  settings_path += L"open-settings.ps1";
+  if (GetFileAttributesW(settings_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+
+  wchar_t windows_directory[MAX_PATH]{};
+  const UINT windows_directory_length =
+      GetWindowsDirectoryW(windows_directory, static_cast<UINT>(std::size(windows_directory)));
+  if (windows_directory_length == 0 || windows_directory_length >= std::size(windows_directory)) {
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+
+  std::wstring powershell_path(windows_directory, windows_directory_length);
+  powershell_path += L"\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+  const std::wstring arguments =
+      L"-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass "
+      L"-WindowStyle Hidden -STA -File \"" +
+      settings_path + L"\"";
+
+  SHELLEXECUTEINFOW execute_info{};
+  execute_info.cbSize = sizeof(execute_info);
+  execute_info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
+  execute_info.hwnd = parent;
+  execute_info.lpVerb = L"open";
+  execute_info.lpFile = powershell_path.c_str();
+  execute_info.lpParameters = arguments.c_str();
+  execute_info.nShow = SW_SHOWNORMAL;
+  if (!ShellExecuteExW(&execute_info)) {
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+
+  if (execute_info.hProcess != nullptr) {
+    WaitForSingleObject(execute_info.hProcess, INFINITE);
+    CloseHandle(execute_info.hProcess);
+  }
+  return S_OK;
 }
 
 class EditSession final : public ITfEditSession {
@@ -117,6 +175,10 @@ HRESULT TextService::QueryInterface(REFIID iid, void** object) {
     *object = static_cast<ITfKeyEventSink*>(this);
   } else if (iid == IID_ITfCompositionSink) {
     *object = static_cast<ITfCompositionSink*>(this);
+  } else if (iid == IID_ITfFunctionProvider) {
+    *object = static_cast<ITfFunctionProvider*>(this);
+  } else if (iid == IID_ITfFunction || iid == IID_ITfFnConfigure) {
+    *object = static_cast<ITfFnConfigure*>(this);
   } else {
     return E_NOINTERFACE;
   }
@@ -159,15 +221,20 @@ HRESULT TextService::ActivateEx(ITfThreadMgr* thread_mgr, TfClientId client_id, 
   const HRESULT hr = advise_key_sink();
   if (FAILED(hr)) {
     Deactivate();
+    return hr;
   }
+  advise_function_provider();
   return hr;
 }
 
 HRESULT TextService::Deactivate() {
+  unadvise_function_provider();
   unadvise_key_sink();
   candidate_window_.hide();
   release_composition();
   has_active_input_ = false;
+  shift_pressed_ = false;
+  shift_used_as_modifier_ = false;
   core_.reset();
 
   if (thread_mgr_ != nullptr) {
@@ -182,6 +249,8 @@ HRESULT TextService::OnSetFocus(BOOL foreground) {
   if (!foreground) {
     candidate_window_.hide();
     has_active_input_ = false;
+    shift_pressed_ = false;
+    shift_used_as_modifier_ = false;
     core_.reset_session();
   }
   return S_OK;
@@ -191,6 +260,13 @@ HRESULT TextService::OnTestKeyDown(ITfContext* /*context*/, WPARAM key, LPARAM f
                                    BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
+  }
+  if (key == VK_SHIFT) {
+    *eaten = TRUE;
+    return S_OK;
+  }
+  if (shift_pressed_) {
+    shift_used_as_modifier_ = true;
   }
   const KeyMessage message = map_windows_key(key, flags);
   *eaten = should_handle_key(message) ? TRUE : FALSE;
@@ -203,6 +279,16 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   }
   *eaten = FALSE;
 
+  if (key == VK_SHIFT) {
+    shift_pressed_ = true;
+    shift_used_as_modifier_ = false;
+    *eaten = TRUE;
+    return S_OK;
+  }
+  if (shift_pressed_) {
+    shift_used_as_modifier_ = true;
+  }
+
   KeyMessage message = map_windows_key(key, flags);
   if (!should_handle_key(message)) {
     return S_OK;
@@ -214,42 +300,56 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
     return S_OK;
   }
 
-  if (context != nullptr) {
-    const HRESULT edit_result = request_edit_session(context, *output);
-    if (FAILED(edit_result)) {
-      if (output->should_show_candidates) {
-        candidate_window_.show(output->candidates);
-      } else {
-        candidate_window_.hide();
-      }
-    }
-  } else if (output->should_show_candidates) {
-    candidate_window_.show(output->candidates);
-  } else {
-    candidate_window_.hide();
-  }
-
+  apply_core_output(context, *output);
   update_input_state(*output);
 
   *eaten = TRUE;
   return S_OK;
 }
 
-HRESULT TextService::OnTestKeyUp(ITfContext* /*context*/, WPARAM /*key*/, LPARAM /*flags*/,
+HRESULT TextService::OnTestKeyUp(ITfContext* /*context*/, WPARAM key, LPARAM /*flags*/,
                                  BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
   }
-  *eaten = FALSE;
+  if (key != VK_SHIFT) {
+    *eaten = FALSE;
+    return S_OK;
+  }
+
+  const bool should_toggle = shift_pressed_ && !shift_used_as_modifier_;
+  *eaten = should_toggle ? TRUE : FALSE;
+  if (!should_toggle) {
+    shift_pressed_ = false;
+    shift_used_as_modifier_ = false;
+  }
   return S_OK;
 }
 
-HRESULT TextService::OnKeyUp(ITfContext* /*context*/, WPARAM /*key*/, LPARAM /*flags*/,
+HRESULT TextService::OnKeyUp(ITfContext* context, WPARAM key, LPARAM flags,
                              BOOL* eaten) {
   if (eaten == nullptr) {
     return E_POINTER;
   }
   *eaten = FALSE;
+  if (key != VK_SHIFT) {
+    return S_OK;
+  }
+
+  const bool should_toggle = shift_pressed_ && !shift_used_as_modifier_;
+  shift_pressed_ = false;
+  shift_used_as_modifier_ = false;
+  if (!should_toggle) {
+    return S_OK;
+  }
+
+  const KeyMessage message = map_windows_key(key, flags);
+  std::optional<OutputSnapshot> output = core_.feed_key(to_ime_key_event(message));
+  if (output.has_value()) {
+    apply_core_output(context, *output);
+    update_input_state(*output);
+  }
+  *eaten = TRUE;
   return S_OK;
 }
 
@@ -270,6 +370,45 @@ HRESULT TextService::OnCompositionTerminated(TfEditCookie /*cookie*/,
     core_.reset_session();
   }
   return S_OK;
+}
+
+HRESULT TextService::GetType(GUID* guid) {
+  if (guid == nullptr) {
+    return E_POINTER;
+  }
+  *guid = kTextServiceClsid;
+  return S_OK;
+}
+
+HRESULT TextService::GetDescription(BSTR* description) {
+  if (description == nullptr) {
+    return E_POINTER;
+  }
+  *description = SysAllocString(kTextServiceDescription);
+  return *description != nullptr ? S_OK : E_OUTOFMEMORY;
+}
+
+HRESULT TextService::GetFunction(REFGUID guid, REFIID iid, IUnknown** object) {
+  if (object == nullptr) {
+    return E_POINTER;
+  }
+  *object = nullptr;
+  if (guid != GUID_NULL || iid != IID_ITfFnConfigure) {
+    return E_NOINTERFACE;
+  }
+  return QueryInterface(iid, reinterpret_cast<void**>(object));
+}
+
+HRESULT TextService::GetDisplayName(BSTR* name) {
+  if (name == nullptr) {
+    return E_POINTER;
+  }
+  *name = SysAllocString(L"偏好设置");
+  return *name != nullptr ? S_OK : E_OUTOFMEMORY;
+}
+
+HRESULT TextService::Show(HWND parent, LANGID /*language_id*/, REFGUID /*profile_guid*/) {
+  return launch_preferences(parent);
 }
 
 HRESULT TextService::apply_output_in_edit_session(TfEditCookie cookie, ITfContext* context,
@@ -320,6 +459,38 @@ void TextService::unadvise_key_sink() {
   }
 }
 
+HRESULT TextService::advise_function_provider() {
+  if (thread_mgr_ == nullptr || client_id_ == TF_CLIENTID_NULL) {
+    return E_UNEXPECTED;
+  }
+
+  ComPtr<ITfSourceSingle> source;
+  HRESULT hr = thread_mgr_->QueryInterface(IID_PPV_ARGS(source.put()));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = source->AdviseSingleSink(client_id_, IID_ITfFunctionProvider,
+                                static_cast<ITfFunctionProvider*>(this));
+  if (SUCCEEDED(hr)) {
+    function_provider_advised_ = true;
+  }
+  return hr;
+}
+
+void TextService::unadvise_function_provider() {
+  if (!function_provider_advised_ || thread_mgr_ == nullptr ||
+      client_id_ == TF_CLIENTID_NULL) {
+    return;
+  }
+
+  ComPtr<ITfSourceSingle> source;
+  if (SUCCEEDED(thread_mgr_->QueryInterface(IID_PPV_ARGS(source.put())))) {
+    source->UnadviseSingleSink(client_id_, IID_ITfFunctionProvider);
+  }
+  function_provider_advised_ = false;
+}
+
 HRESULT TextService::request_edit_session(ITfContext* context, const OutputSnapshot& output) {
   if (context == nullptr || client_id_ == TF_CLIENTID_NULL) {
     return E_INVALIDARG;
@@ -336,6 +507,21 @@ HRESULT TextService::request_edit_session(ITfContext* context, const OutputSnaps
                                   &edit_result);
   edit_session->Release();
   return FAILED(hr) ? hr : edit_result;
+}
+
+void TextService::apply_core_output(ITfContext* context, const OutputSnapshot& output) {
+  if (context != nullptr) {
+    const HRESULT edit_result = request_edit_session(context, output);
+    if (SUCCEEDED(edit_result)) {
+      return;
+    }
+  }
+
+  if (output.should_show_candidates) {
+    candidate_window_.show(output.candidates);
+  } else {
+    candidate_window_.hide();
+  }
 }
 
 HRESULT TextService::update_composition(TfEditCookie cookie, ITfContext* context,

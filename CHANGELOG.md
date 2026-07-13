@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added bounded local trigram learning so the two most recent selected words can jointly influence the next prediction without leaving the device.
+- Added 30-day learning-weight decay, per-table capacity limits, and serialized SQLite writes for local learning data.
+- Added explicit Windows x64 WiX component architecture, 64-bit `regsvr32`, and static MSVC/Rust runtime packaging.
+- Added a redesigned Windows post-install guide with TSF status detection, one-click current-user input-method enablement, language-settings recovery, and a Notepad smoke-test action.
 - Initialized the repository documentation and project skeleton.
 - Added the development specification, progress tracker, decision log, and open item tracker.
 - Added pull request workflow and privacy review checklist.
@@ -85,6 +89,9 @@
 - Added a `--show-preferences` macOS visual-preview path that does not start the InputMethodKit server.
 
 ### Changed
+
+- Kept administrator rights for Windows TSF registration, hid PowerShell host windows, and separated installed-DLL detection from HKCU/merged-HKCR COM registration checks.
+- Fixed Windows installer and TSF display-name mojibake by forcing UTF-8 for NSIS input, MSVC source compilation, and Windows PowerShell UI scripts; switched the NSIS interface to Simplified Chinese.
 
 - Tightened initialization guidance for Rust lockfile handling, Xcode ignores, runtime data paths, Stage 1 workspace layout, and CI expectations.
 - Updated the Stage 11 privacy scaffold check to follow the localized iOS learning copy instead of the removed English label.
