@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-13 14:45
+Last updated: 2026-07-13 19:01
 Current stage: Stage 17 Device keyboard behavior and privacy closure
 Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
 
@@ -29,6 +29,8 @@ Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-
 
 ## Completed Work
 
+- Added an optional iOS nine-key layout without replacing QWERTY or the symbols page; Chinese users can persistently switch with `九宫` / `ABC`, while English mode continues to use QWERTY.
+- Added shared Rust nine-key indexing and continuous digit-string decoding, C ABI key code `102`, learned-candidate lookup, old SQLite user-phrase migration, and regression coverage for `64426 -> 你好`.
 - Added local trigram learning so the last two selected tokens can produce context-specific next-token predictions across macOS, Windows, and iOS through the shared Rust core.
 - Added 30-day-half-life ranking decay, an eight-token in-memory context bound, and decayed-weight capacity eviction for all four local learning tables.
 - Added user-learning regression tests for trigram context, inactivity decay, privacy write guards, export/clear behavior, bounded context, and low-weight eviction.

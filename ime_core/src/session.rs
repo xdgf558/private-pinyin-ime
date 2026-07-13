@@ -18,6 +18,7 @@ pub const MAX_CONTEXT_TOKENS: usize = 8;
 pub struct InputSession {
     mode: ImeMode,
     pub raw_input: String,
+    pub nine_key_input: String,
     pub parsed_syllables: Vec<String>,
     pub preedit_text: String,
     pub candidates: Vec<Candidate>,
@@ -52,6 +53,7 @@ impl InputSession {
         Self {
             mode: settings_snapshot.default_mode,
             raw_input: String::new(),
+            nine_key_input: String::new(),
             parsed_syllables: Vec::new(),
             preedit_text: String::new(),
             candidates: Vec::new(),
@@ -85,6 +87,9 @@ impl InputSession {
 
         match event.key_code {
             KeyCode::Character(ch) if ch.is_ascii_alphabetic() => {
+                if !self.nine_key_input.is_empty() {
+                    self.clear_composition();
+                }
                 if self.raw_input.chars().count() >= MAX_RAW_INPUT_CHARS {
                     return self.current_output(false, false, String::new());
                 }
@@ -93,7 +98,9 @@ impl InputSession {
                 self.refresh_composition()
             }
             KeyCode::Apostrophe => {
-                if self.raw_input.is_empty() {
+                if !self.nine_key_input.is_empty() {
+                    self.current_output(false, false, String::new())
+                } else if self.raw_input.is_empty() {
                     self.commit_text("'")
                 } else if self.raw_input.chars().count() >= MAX_RAW_INPUT_CHARS {
                     self.current_output(false, false, String::new())
@@ -103,7 +110,7 @@ impl InputSession {
                 }
             }
             KeyCode::Space => {
-                if self.raw_input.is_empty() {
+                if !self.has_composition_input() {
                     self.commit_text(" ")
                 } else if self.candidates.is_empty() {
                     self.commit_raw_input()
@@ -112,7 +119,7 @@ impl InputSession {
                 }
             }
             KeyCode::Digit(index @ 1..=9) => {
-                if self.raw_input.is_empty() {
+                if !self.has_composition_input() {
                     if self.candidates.is_empty() {
                         ImeOutput::idle(self.mode)
                     } else {
@@ -122,8 +129,18 @@ impl InputSession {
                     self.commit_candidate(usize::from(index - 1))
                 }
             }
+            KeyCode::NineKeyDigit(digit @ 2..=9) => {
+                if !self.raw_input.is_empty() {
+                    self.clear_composition();
+                }
+                if self.nine_key_input.len() >= MAX_RAW_INPUT_CHARS {
+                    return self.current_output(false, false, String::new());
+                }
+                self.nine_key_input.push(char::from(b'0' + digit));
+                self.refresh_nine_key_composition()
+            }
             KeyCode::Enter => {
-                if self.raw_input.is_empty() {
+                if !self.has_composition_input() {
                     ImeOutput::idle(self.mode)
                 } else {
                     self.commit_raw_input()
@@ -131,8 +148,13 @@ impl InputSession {
             }
             KeyCode::Escape => self.cancel_composition(),
             KeyCode::Backspace => {
-                self.raw_input.pop();
-                self.refresh_composition()
+                if self.nine_key_input.is_empty() {
+                    self.raw_input.pop();
+                    self.refresh_composition()
+                } else {
+                    self.nine_key_input.pop();
+                    self.refresh_nine_key_composition()
+                }
             }
             KeyCode::PageDown | KeyCode::ArrowDown => self.turn_candidate_page(1),
             KeyCode::PageUp | KeyCode::ArrowUp => self.turn_candidate_page(-1),
@@ -177,13 +199,13 @@ impl InputSession {
     }
 
     pub fn commit_raw_input(&mut self) -> ImeOutput {
-        let commit_text = self.raw_input.clone();
+        let commit_text = self.composition_input().to_owned();
         self.clear_composition();
         self.committed_output(commit_text)
     }
 
     fn commit_punctuation(&mut self, punctuation: &str) -> ImeOutput {
-        if self.raw_input.is_empty() {
+        if !self.has_composition_input() {
             self.commit_text(punctuation)
         } else if let Some(actual_index) = self.actual_candidate_index(0) {
             if let Some(candidate) = self.candidates.get(actual_index).cloned() {
@@ -238,7 +260,7 @@ impl InputSession {
     }
 
     pub fn predict_next(&self) -> Vec<Candidate> {
-        if self.raw_input.is_empty()
+        if !self.has_composition_input()
             && self.mode == ImeMode::Chinese
             && self.settings_snapshot.enable_prediction
         {
@@ -380,6 +402,43 @@ impl InputSession {
         self.current_output(true, false, String::new())
     }
 
+    fn refresh_nine_key_composition(&mut self) -> ImeOutput {
+        if self.nine_key_input.is_empty() {
+            self.clear_composition();
+            return self.current_output(true, false, String::new());
+        }
+
+        self.parsed_syllables.clear();
+        let previous_context = self.context_tokens.last().map(String::as_str);
+        let base_candidates = self.lexicon.lookup_nine_key_with_context(
+            &self.nine_key_input,
+            previous_context,
+            |left, right| {
+                Ranker::score_continuous_transition_weight(
+                    self.predictor.transition_frequency(left, right),
+                    user_transition_frequency(&self.user_transitions, left, right),
+                )
+            },
+        );
+        let user_candidates = self
+            .user_lexicon
+            .as_ref()
+            .map(
+                |user_lexicon| match user_lexicon.lookup_nine_key(&self.nine_key_input) {
+                    Ok(candidates) => candidates,
+                    Err(error) => {
+                        logger::emit_error(error);
+                        Vec::new()
+                    }
+                },
+            )
+            .unwrap_or_default();
+        self.candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        self.candidate_page = 0;
+        self.preedit_text = self.nine_key_input.clone();
+        self.current_output(true, false, String::new())
+    }
+
     fn feed_english_key(&mut self, event: KeyEvent) -> ImeOutput {
         let commit_text = if event.text.is_empty() {
             match event.key_code {
@@ -431,6 +490,7 @@ impl InputSession {
 
     fn clear_composition(&mut self) {
         self.raw_input.clear();
+        self.nine_key_input.clear();
         self.parsed_syllables.clear();
         self.preedit_text.clear();
         self.candidates.clear();
@@ -438,18 +498,30 @@ impl InputSession {
     }
 
     fn has_active_input(&self) -> bool {
-        !self.raw_input.is_empty() || !self.candidates.is_empty()
+        self.has_composition_input() || !self.candidates.is_empty()
+    }
+
+    fn has_composition_input(&self) -> bool {
+        !self.raw_input.is_empty() || !self.nine_key_input.is_empty()
+    }
+
+    fn composition_input(&self) -> &str {
+        if self.nine_key_input.is_empty() {
+            &self.raw_input
+        } else {
+            &self.nine_key_input
+        }
     }
 
     fn commit_raw_input_with_suffix(&mut self, suffix: &str) -> ImeOutput {
-        let commit_text = format!("{}{}", self.raw_input, suffix);
+        let commit_text = format!("{}{}", self.composition_input(), suffix);
         self.clear_composition();
         self.committed_output(commit_text)
     }
 
     fn turn_candidate_page(&mut self, delta: isize) -> ImeOutput {
         if self.candidates.is_empty() {
-            return if self.raw_input.is_empty() {
+            return if !self.has_composition_input() {
                 ImeOutput::idle(self.mode)
             } else {
                 self.current_output(false, false, String::new())

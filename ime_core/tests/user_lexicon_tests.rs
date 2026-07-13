@@ -120,6 +120,28 @@ fn learned_candidate_is_read_from_user_lexicon() {
 }
 
 #[test]
+fn learned_candidate_is_available_to_nine_key_lookup() {
+    let temp_db = TempDb::new("nine_key_learn_readback");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    user_lexicon
+        .record_selection("私有候选", "ni hao")
+        .expect("selection records");
+
+    let candidates = user_lexicon
+        .lookup_nine_key("64426")
+        .expect("nine-key lookup succeeds");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("私有候选")
+    );
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.source),
+        Some(CandidateSource::User)
+    );
+}
+
+#[test]
 fn sequential_candidate_commits_learn_user_bigram_prediction() {
     let temp_db = TempDb::new("learn_bigram");
     let settings = settings_with_user_lexicon(temp_db.path.clone());
@@ -842,6 +864,39 @@ fn existing_user_learning_tables_migrate_frequency_into_decay_weight() {
         .expect("query migrated weight");
 
     assert_eq!(weight, 7.0);
+}
+
+#[test]
+fn existing_user_phrases_migrate_nine_key_signatures() {
+    let temp_db = TempDb::new("nine_key_migration");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute_batch(
+            "CREATE TABLE user_phrases (
+               phrase TEXT NOT NULL,
+               pinyin TEXT NOT NULL,
+               compact_pinyin TEXT NOT NULL,
+               frequency INTEGER NOT NULL,
+               weight REAL NOT NULL DEFAULT 1.0,
+               updated_at_ms INTEGER NOT NULL,
+               PRIMARY KEY (phrase, pinyin)
+             );
+             INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, frequency, weight, updated_at_ms)
+             VALUES ('你好', 'ni hao', 'nihao', 2, 2.0, 1);",
+        )
+        .expect("create legacy phrase schema");
+    drop(connection);
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("migrate user lexicon");
+    assert_eq!(
+        user_lexicon
+            .lookup_nine_key("64426")
+            .expect("lookup migrated candidate")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("你好")
+    );
 }
 
 #[test]

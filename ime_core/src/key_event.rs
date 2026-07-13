@@ -10,6 +10,7 @@ pub struct Modifiers {
 pub enum KeyCode {
     Character(char),
     Digit(u8),
+    NineKeyDigit(u8),
     Space,
     Enter,
     Backspace,

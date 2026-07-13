@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added an optional iOS nine-key pinyin layout with persistent QWERTY switching, 2-9 T9 decoding, continuous digit-string segmentation, shared candidate learning, and automatic migration of learned phrases into an indexed nine-key signature column.
 - Added bounded local trigram learning so the two most recent selected words can jointly influence the next prediction without leaving the device.
 - Added 30-day learning-weight decay, per-table capacity limits, and serialized SQLite writes for local learning data.
 - Added explicit Windows x64 WiX component architecture, 64-bit `regsvr32`, and static MSVC/Rust runtime packaging.

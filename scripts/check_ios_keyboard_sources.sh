@@ -54,6 +54,7 @@ grep -q "ime_engine_new(pathPointer)" platform/ios_keyboard/KeyboardExtension/Io
 grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "nineKeyDigit: Int32 = 102" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "output.mode == IME_MODE_ENGLISH" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "let settingsPath = IosSettingsStore.ensureSettingsFile()" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 if grep -q "englishMode.toggle()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
@@ -66,6 +67,10 @@ grep -q "widthWeight" platform/ios_keyboard/KeyboardExtension/KeyboardViewContro
 grep -q "togglePreferences" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "setPredictionEnabled" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "clearLearningData" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "nineKeyRows" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "selectKeyboardLayout(.nineKey)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "ios_keyboard_layout" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 if sed -n '/func feedCharacter/,/func handleTextKey/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then
   echo "Character input must not rebuild the complete iOS keyboard." >&2
