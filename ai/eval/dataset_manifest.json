@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "dataset_id": "private-pinyin-ai-baseline-v1",
+  "file": "baseline_cases.tsv",
+  "case_count": 20,
+  "created_date": "2026-07-14",
+  "purpose": "Freeze current engine regressions and measure local AI improvement opportunities.",
+  "provenance": [
+    "Project-owned regression cases already documented in repository tests",
+    "First-party synthetic examples written for local AI evaluation"
+  ],
+  "contains_user_data": false,
+  "contains_real_application_context": false,
+  "contains_prompts_or_model_outputs": false,
+  "network_required": false,
+  "license": "LicenseRef-All-Rights-Reserved"
+}

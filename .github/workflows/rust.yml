@@ -74,6 +74,9 @@ jobs:
       - name: Check Stage 16 iOS TestFlight scaffold
         run: bash scripts/check_stage16_ios_testflight_sources.sh
 
+      - name: Check AI-01 evaluation baseline
+        run: bash scripts/check_ai01_evaluation_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

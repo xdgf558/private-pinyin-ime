@@ -27,6 +27,8 @@ Current scripts:
 - `check_stage14_ios_signing_sources.sh`: verifies Stage 14 iOS signing, bundle ID, export-options, and App Group build-setting wiring.
 - `check_stage15_ios_smoke_sources.sh`: verifies Stage 15 iOS smoke-readiness script and record coverage.
 - `check_stage16_ios_testflight_sources.sh`: verifies Stage 16 TestFlight archive/upload script, templates, and record coverage.
+- `run_ai_eval.sh`: runs the AI-01 offline quality baseline, or the report-only release benchmark with `--benchmark`.
+- `check_ai01_evaluation_sources.sh`: validates the synthetic/project-regression corpus, data-policy manifest, tools, and required baseline behavior.
 
 Planned scripts:
 
