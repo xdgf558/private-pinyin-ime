@@ -15,6 +15,7 @@ enum IosKeyCodeValue {
     static let semicolon: Int32 = 13
     static let character: Int32 = 100
     static let digit: Int32 = 101
+    static let nineKeyDigit: Int32 = 102
 }
 
 struct IosPinyinCandidate {

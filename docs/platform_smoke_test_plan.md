@@ -111,6 +111,11 @@ Checklist:
 | Learning opt-in | Container app shows learning disabled by default; the toggle enables only when App Group storage is available | | |
 | App Group storage | With Full Access off, verify whether the keyboard extension can read/write the shared App Group settings and SQLite path; if denied, typing still works through built-in defaults and learning remains disabled | | |
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
+| QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
+| Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `ABC` to return to QWERTY, and reopen the keyboard to confirm the selected Chinese layout persists | | |
+| Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
+| Nine-key continuous input | A longer 2-9 digit sequence can produce a segmented phrase candidate without switching back to QWERTY | | |
+| Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
 | Self-change callback | If prediction disappears, reset self-text-operation state from `textDidChange` instead of synchronous `defer` | | |
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |

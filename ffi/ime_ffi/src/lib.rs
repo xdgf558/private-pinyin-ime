@@ -33,6 +33,7 @@ const IME_KEY_ARROW_UP: c_int = 16;
 const IME_KEY_ARROW_DOWN: c_int = 17;
 const IME_KEY_CHARACTER: c_int = 100;
 const IME_KEY_DIGIT: c_int = 101;
+const IME_KEY_NINE_KEY_DIGIT: c_int = 102;
 
 pub struct ImeEngine {
     inner: CoreImeEngine,
@@ -319,6 +320,7 @@ fn to_core_key_event(event: ImeKeyEvent) -> KeyEvent {
         IME_KEY_ARROW_UP => KeyEvent::new(KeyCode::ArrowUp),
         IME_KEY_ARROW_DOWN => KeyEvent::new(KeyCode::ArrowDown),
         IME_KEY_DIGIT => digit_event(&text),
+        IME_KEY_NINE_KEY_DIGIT => nine_key_digit_event(&text),
         IME_KEY_CHARACTER => character_event(&text),
         IME_KEY_UNKNOWN => text_event(&text),
         _ => text_event(&text),
@@ -349,6 +351,14 @@ fn character_event(text: &str) -> KeyEvent {
         .next()
         .filter(char::is_ascii_alphabetic)
         .map(KeyEvent::from_char)
+        .unwrap_or_else(|| KeyEvent::new(KeyCode::Unknown))
+}
+
+fn nine_key_digit_event(text: &str) -> KeyEvent {
+    text.chars()
+        .next()
+        .and_then(|ch| ch.to_digit(10))
+        .map(|digit| KeyEvent::new(KeyCode::NineKeyDigit(digit as u8)))
         .unwrap_or_else(|| KeyEvent::new(KeyCode::Unknown))
 }
 

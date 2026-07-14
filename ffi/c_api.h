@@ -52,7 +52,8 @@ typedef enum {
   IME_KEY_ARROW_UP = 16,
   IME_KEY_ARROW_DOWN = 17,
   IME_KEY_CHARACTER = 100,
-  IME_KEY_DIGIT = 101
+  IME_KEY_DIGIT = 101,
+  IME_KEY_NINE_KEY_DIGIT = 102
 } ImeKeyCode;
 
 typedef struct {

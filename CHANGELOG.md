@@ -6,6 +6,7 @@
 
 - Added an x86 Windows TSF and Rust FFI build alongside x64 so 32-bit applications such as QQ can load the input method.
 - Added dual registry-view detection and x64/x86 registration to the Windows installers and post-install guide.
+- Added an optional iOS nine-key pinyin layout with persistent QWERTY switching, 2-9 T9 decoding, continuous digit-string segmentation, shared candidate learning, and automatic migration of learned phrases into an indexed nine-key signature column.
 - Added bounded local trigram learning so the two most recent selected words can jointly influence the next prediction without leaving the device.
 - Added 30-day learning-weight decay, per-table capacity limits, and serialized SQLite writes for local learning data.
 - Added explicit Windows x64 WiX component architecture, 64-bit `regsvr32`, and static MSVC/Rust runtime packaging.
@@ -156,6 +157,7 @@
 - Changed the iOS keyboard layout to use centered letter rows, wider edit keys, and a substantially wider space bar in portrait and landscape.
 - Changed iOS keyboard-local settings to repair stale sandbox paths after reinstall and to support learning without App Group access.
 - Bumped the iOS container app and keyboard extension to build `0.1.12 (13)` for the optimized TestFlight candidate.
+- Bumped the iOS container app and keyboard extension to `0.1.18 (14)` for the TestFlight candidate that includes bounded local trigram learning, 30-day inactivity decay, and capacity-based eviction.
 - Changed the Windows NSIS setup EXE to request administrator rights for TSF profile registration and pre-unregister stale DLL registrations before registering.
 - Bumped the Windows package version to `0.1.11` for the TSF registration hardening build.
 - Changed the Windows TSF display name, installer UI, onboarding, settings window, Start Menu shortcuts, and uninstall metadata to use the Chinese product name `猫栈拼音`.

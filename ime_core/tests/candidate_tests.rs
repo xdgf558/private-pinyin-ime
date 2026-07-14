@@ -5,7 +5,10 @@ use ime_core::lexicon::Lexicon;
 use ime_core::predictor::Predictor;
 use ime_core::ranker::Ranker;
 use ime_core::session::MAX_RAW_INPUT_CHARS;
-use ime_core::{ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifiers, PinyinParser};
+use ime_core::{
+    pinyin_to_nine_key, ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifiers,
+    PinyinParser,
+};
 
 #[test]
 fn nihao_returns_expected_candidates() {
@@ -19,6 +22,56 @@ fn nihao_returns_expected_candidates() {
     assert!(candidates
         .iter()
         .any(|candidate| candidate.text == "你好啊"));
+}
+
+#[test]
+fn nine_key_nihao_returns_expected_candidate() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_nine_key("64426");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("你好")
+    );
+}
+
+#[test]
+fn nine_key_continuous_input_segments_common_sentence() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let candidates = engine.candidates_for_nine_key(&digits);
+
+    assert!(candidates
+        .iter()
+        .any(|candidate| candidate.text == "我今天想去吃饭"));
+}
+
+#[test]
+fn nine_key_session_commits_candidate_and_supports_backspace() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let mut session = engine.create_session();
+    let mut output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(6)));
+    for digit in [4, 4, 2, 6] {
+        output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+    }
+
+    assert_eq!(output.preedit, "64426");
+    assert_eq!(
+        output
+            .candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("你好")
+    );
+
+    let shortened = session.feed_key(KeyEvent::new(KeyCode::Backspace));
+    assert_eq!(shortened.preedit, "6442");
+    let restored = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(6)));
+    assert_eq!(restored.preedit, "64426");
+
+    let commit = session.feed_key(KeyEvent::new(KeyCode::Space));
+    assert_eq!(commit.commit_text, "你好");
+    assert!(session.nine_key_input.is_empty());
 }
 
 #[test]
@@ -111,6 +164,25 @@ fn joint_decoder_stays_within_interactive_lookup_budget() {
     assert!(
         average < Duration::from_millis(60),
         "average continuous lookup took {average:?}"
+    );
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn nine_key_decoder_stays_within_interactive_lookup_budget() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let iterations = 20;
+    let started = Instant::now();
+    for _ in 0..iterations {
+        let candidates = engine.candidates_for_nine_key(&digits);
+        assert!(!candidates.is_empty());
+    }
+    let average = started.elapsed() / iterations;
+
+    assert!(
+        average < Duration::from_millis(60),
+        "average nine-key continuous lookup took {average:?}"
     );
 }
 

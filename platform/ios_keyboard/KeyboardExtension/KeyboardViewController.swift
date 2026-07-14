@@ -20,6 +20,7 @@ final class KeyboardViewController: UIInputViewController {
     private var shifted = false
     private var symbolsVisible = false
     private var englishMode = false
+    private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var preferencesVisible = false
     private var isPerformingTextOperation = false
     private var lastNeedsInputModeSwitchKey = true
@@ -254,7 +255,14 @@ final class KeyboardViewController: UIInputViewController {
         shiftButton = nil
         modeButton = nil
 
-        let rows = symbolsVisible ? symbolRows() : letterRows()
+        let rows: [[KeySpec]]
+        if symbolsVisible {
+            rows = symbolRows()
+        } else if usesNineKeyLayout {
+            rows = nineKeyRows()
+        } else {
+            rows = letterRows()
+        }
         for (rowIndex, row) in rows.enumerated() {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
@@ -294,7 +302,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func rowHorizontalInset(at index: Int) -> CGFloat {
-        guard index == 1 else {
+        guard !usesNineKeyLayout, index == 1 else {
             return 0
         }
         return symbolsVisible ? 14 : 16
@@ -305,7 +313,19 @@ final class KeyboardViewController: UIInputViewController {
             "qwertyuiop".map { .character(String($0)) },
             "asdfghjkl".map { .character(String($0)) },
             [.shift] + "zxcvbnm".map { .character(String($0)) } + [.backspace],
-            commandRow(with: .symbols),
+            qwertyCommandRow(),
+        ]
+    }
+
+    private func nineKeyRows() -> [[KeySpec]] {
+        [
+            [.nineKeyPunctuation, .nineKeyDigit(2, letters: "ABC"),
+             .nineKeyDigit(3, letters: "DEF"), .backspace],
+            [.nineKeyDigit(4, letters: "GHI"), .nineKeyDigit(5, letters: "JKL"),
+             .nineKeyDigit(6, letters: "MNO"), .nineKeySpace],
+            [.nineKeyDigit(7, letters: "PQRS"), .nineKeyDigit(8, letters: "TUV"),
+             .nineKeyDigit(9, letters: "WXYZ"), .enter],
+            nineKeyCommandRow(),
         ]
     }
 
@@ -314,8 +334,25 @@ final class KeyboardViewController: UIInputViewController {
             "1234567890".map { .text(String($0)) },
             [".", ",", "?", "!", "'", "-", ":", ";", "/"].map { .text($0) },
             [.text("("), .text(")"), .text("@"), .text("#"), .text("$"), .text("&"), .backspace],
-            commandRow(with: .letters),
+            commandRow(with: preferredLayout == .nineKey && !englishMode ? .nineKeyLayout : .letters),
         ]
+    }
+
+    private func qwertyCommandRow() -> [KeySpec] {
+        var row = commandRow(with: .symbols)
+        if !englishMode {
+            row.insert(.nineKeyLayout, at: needsInputModeSwitchKey ? 2 : 1)
+        }
+        return row
+    }
+
+    private func nineKeyCommandRow() -> [KeySpec] {
+        var row: [KeySpec] = []
+        if needsInputModeSwitchKey {
+            row.append(.globe)
+        }
+        row.append(contentsOf: [.symbols, .letters, .modeToggle])
+        return row
     }
 
     private func commandRow(with layoutToggle: KeySpec) -> [KeySpec] {
@@ -335,6 +372,8 @@ final class KeyboardViewController: UIInputViewController {
         }
         button.accessibilityLabel = key.accessibilityLabel
         button.titleLabel?.font = UIFont.systemFont(ofSize: key.isWide ? 15 : 18, weight: .medium)
+        button.titleLabel?.numberOfLines = key.title?.contains("\n") == true ? 2 : 1
+        button.titleLabel?.textAlignment = .center
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.75
         button.backgroundColor = key.isCommand ? UIColor.systemGray3 : UIColor.systemBackground
@@ -403,6 +442,10 @@ final class KeyboardViewController: UIInputViewController {
             feedCharacter(value)
         case .text(let value):
             handleTextKey(value)
+        case .nineKeyDigit(let value):
+            apply(core?.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value))
+        case .nineKeyPunctuation:
+            applyOrInsert(core?.feed(keyCode: IosKeyCodeValue.comma, text: ","), fallback: "，")
         case .space:
             applyOrInsert(core?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
         case .enter:
@@ -419,7 +462,10 @@ final class KeyboardViewController: UIInputViewController {
             rebuildKeyboard()
         case .letters:
             symbolsVisible = false
-            rebuildKeyboard()
+            selectKeyboardLayout(.qwerty)
+        case .nineKeyLayout:
+            symbolsVisible = false
+            selectKeyboardLayout(.nineKey)
         case .modeToggle:
             apply(core?.toggleMode())
         }
@@ -502,7 +548,8 @@ private extension KeyboardViewController {
         currentPreedit = output.preedit
         currentCandidates = output.shouldShowCandidates ? output.candidates : []
         if modeChanged {
-            refreshKeyStates()
+            symbolsVisible = false
+            rebuildKeyboard()
         }
         updateCandidateBar()
     }
@@ -550,6 +597,24 @@ private extension KeyboardViewController {
         default:
             return nil
         }
+    }
+
+    var usesNineKeyLayout: Bool {
+        preferredLayout == .nineKey && !englishMode && !symbolsVisible
+    }
+
+    func selectKeyboardLayout(_ layout: IosKeyboardLayout) {
+        guard preferredLayout != layout else {
+            rebuildKeyboard()
+            return
+        }
+
+        if hasActiveInput {
+            apply(core?.reset())
+        }
+        preferredLayout = layout
+        _ = IosSettingsStore.setKeyboardLayout(layout)
+        rebuildKeyboard()
     }
 }
 
@@ -625,6 +690,8 @@ private struct KeySpec {
     enum Kind {
         case character(String)
         case text(String)
+        case nineKeyDigit(String)
+        case nineKeyPunctuation
         case space
         case enter
         case backspace
@@ -632,6 +699,7 @@ private struct KeySpec {
         case globe
         case symbols
         case letters
+        case nineKeyLayout
         case modeToggle
     }
 
@@ -666,6 +734,28 @@ private struct KeySpec {
             widthWeight: 1
         )
     }
+
+    static func nineKeyDigit(_ value: Int, letters: String) -> Self {
+        Self(
+            kind: .nineKeyDigit(String(value)),
+            title: "\(value)\n\(letters)",
+            systemImageName: nil,
+            accessibilityLabel: "九宫格 \(value) \(letters)",
+            isCommand: false,
+            isWide: false,
+            widthWeight: 1
+        )
+    }
+
+    static let nineKeyPunctuation = Self(
+        kind: .nineKeyPunctuation,
+        title: "1\n，",
+        systemImageName: nil,
+        accessibilityLabel: "中文逗号",
+        isCommand: false,
+        isWide: false,
+        widthWeight: 1
+    )
 
     static let shift = Self(
         kind: .shift,
@@ -712,6 +802,15 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.2
     )
+    static let nineKeyLayout = Self(
+        kind: .nineKeyLayout,
+        title: "九宫",
+        systemImageName: nil,
+        accessibilityLabel: "切换到九宫格拼音",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1.2
+    )
     static let space = Self(
         kind: .space,
         title: "空格",
@@ -720,6 +819,15 @@ private struct KeySpec {
         isCommand: false,
         isWide: true,
         widthWeight: 3.15
+    )
+    static let nineKeySpace = Self(
+        kind: .space,
+        title: "空格",
+        systemImageName: nil,
+        accessibilityLabel: "空格",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1.35
     )
     static let enter = Self(
         kind: .enter,
