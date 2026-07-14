@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-14 22:27
-Current stage: UPDATE-01 macOS version discovery
-Current status: UPDATE-01 is ready for review; AI work is paused after the completed AI-01 baseline
+Last updated: 2026-07-15 00:08
+Current stage: UPDATE-02 verified macOS package handoff
+Current status: UPDATE-02 is complete and ready for review; AI work remains paused after AI-01
 
 ## Stage Status
 
@@ -40,12 +40,17 @@ Current status: UPDATE-01 is ready for review; AI work is paused after the compl
 
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
-| UPDATE-01 | macOS version check and reminder | completed | 2026-07-14 22:27 | Fixed HTTPS feed, opt-in automatic checks, strict-privacy gate, menu/preferences/onboarding UI, manifest validation, offline tests, and release documentation are ready for review |
-| UPDATE-02 | Verified package download and Installer handoff | planned | | Enforce size, SHA-256, Developer ID/notarization, explicit consent, and visible system Installer flow |
+| UPDATE-01 | macOS version check and reminder | completed | 2026-07-14 22:27 | Merged to `main` through PR #20; fixed HTTPS feed, opt-in checks, strict-privacy gate, manifest validation, and update UI are complete |
+| UPDATE-02 | Verified package download and Installer handoff | completed | 2026-07-15 00:08 | Bounded private download, SHA-256/size/signature/notarization verification, two-step consent, and visible system Installer handoff are ready for review |
 | UPDATE-03 | Post-install process refresh | planned | | Detect stale IMK process state and give reload/logout/restart guidance only when needed |
 
 ## Completed Work
 
+- Added UPDATE-02 package delivery to the macOS host while keeping the shared Rust engine and typing path network-free.
+- Added same-host HTTPS `.pkg` downloads through an ephemeral no-cache/no-cookie session, with streaming and final-size enforcement plus a private single-package cache.
+- Added streaming CryptoKit SHA-256 verification, pinned Developer ID Installer Team ID validation, and notarization assessment through exact-argument `pkgutil` and `spctl` subprocesses.
+- Added cancel/retry states, strict-privacy download cancellation, sanitized errors, a second user confirmation, and mandatory re-verification immediately before opening Apple's visible Installer app.
+- Explicitly excluded silent privileged installation, `sudo`, credential collection, and automatic process restart from UPDATE-02; post-install process refresh remains UPDATE-03.
 - Added UPDATE-01 version discovery to the macOS host without changing the network-free Rust engine or typing path.
 - Kept automatic checks off by default, limited opt-in checks to once per 24 hours, paused them under strict privacy, and exposed manual checks through the menu and preferences.
 - Added a fixed-host schema-1 manifest with HTTPS, redirect, response-size, package-extension, SHA-256, package-size, version, and minimum-system validation plus offline Swift tests and a CI source gate.
@@ -239,11 +244,10 @@ Current status: UPDATE-01 is ready for review; AI work is paused after the compl
 
 ## Current Work
 
-- The Stage 17 branch includes the approved Chinese onboarding, stable per-key rendering, weighted keyboard layout, inline prediction/learning preferences, and extension-local storage fallback.
-- iOS 27 Simulator smoke passed for `nihao -> 你好`, `wojintian -> 我今天`, retained prediction candidates, local learning opt-in, Globe switching, and portrait/landscape layout.
-- Build `0.1.18 (14)` was archived with Xcode 26.6 and uploaded through Xcode's App Store Connect export path.
-- Apple processing returned `VALID`, `APP_STORE_ELIGIBLE`, and `is-on-app-store-connect=true` for delivery `2bcd0055-5594-46bd-aa56-d8193b53ba58`.
-- Build `14` has not been assigned to the external group yet; external testing remains a separate Owner action.
+- UPDATE-02 is implemented on `codex/update-02-verified-installer` and is awaiting PR review.
+- A package is downloaded only after explicit consent, verified away from the typing thread, and handed to Apple's Installer only after a second confirmation and immediate re-verification.
+- The current public stable-manifest endpoint still returns HTTP 404, so a successful live-package end-to-end smoke remains blocked on publisher action and is tracked as `UPDATE-OI-001`.
+- UPDATE-03 stale-process detection and reload/logout/restart guidance has not started.
 
 ## Validation Results
 
@@ -532,6 +536,28 @@ Current status: UPDATE-01 is ready for review; AI work is paused after the compl
 - Result: pending publisher action (`HTTP 404` on 2026-07-14)
 - Notes: The client and manifest contract are ready, but `UPDATE-OI-001` remains open until the owner publishes and smoke-tests the live stable manifest after an immutable signed/notarized pkg is available.
 
+### UPDATE-02 Verified Package Handoff Validation
+
+- Command: `bash scripts/test_macos_update_package.sh`
+- Result: passed
+- Notes: Offline Swift tests cover successful verification plus exact-size, SHA-256, Team ID, installer-signature, and notarization failures without requiring a live network endpoint.
+
+- Command: `bash scripts/check_update02_sources.sh`
+- Result: passed
+- Notes: The source gate pins ephemeral download policy, same-host HTTPS redirects, bounded package size, private cache permissions, exact subprocess arguments, pinned Team ID, notarization, two-step consent, re-verification, and the ban on silent privileged installation.
+
+- Command: `bash scripts/check_update01_sources.sh && bash scripts/check_macos_imk_sources.sh && bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: UPDATE-01 compatibility and the complete Swift InputMethodKit host build passed without warnings.
+
+- Command: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged shared engine and C ABI remain clean and still return and commit `你好`; UPDATE-02 remains isolated to the macOS host.
+
+- Command: local `--show-preferences` update-state visual smoke
+- Result: passed
+- Notes: The update status and action controls fit the Station Board preferences window without clipping or overlap. A successful live signed-package handoff remains pending `UPDATE-OI-001`.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -553,7 +579,7 @@ Current status: UPDATE-01 is ready for review; AI work is paused after the compl
 - Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
 - Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
 - Publish and smoke-test the fixed macOS stable manifest after the versioned pkg and release page are live.
-- Implement verified pkg download/Installer handoff and stale-process recovery as separate UPDATE-02/03 stages.
+- Implement stale-process detection and reload/logout/restart guidance in UPDATE-03.
 
 ## Files Changed In Latest Stage
 
@@ -570,20 +596,18 @@ Current status: UPDATE-01 is ready for review; AI work is paused after the compl
 - `platform/macos_imk/README.md`
 - `platform/macos_imk/Resources/Info.plist`
 - `platform/macos_imk/Sources/PrivatePinyinInputController.swift`
-- `platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift`
+- `platform/macos_imk/Sources/PrivatePinyinPackageDownloader.swift`
+- `platform/macos_imk/Sources/PrivatePinyinPackageVerifier.swift`
 - `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
 - `platform/macos_imk/Sources/PrivatePinyinUpdateController.swift`
-- `platform/macos_imk/Sources/UpdateManifest.swift`
-- `platform/macos_imk/Sources/main.swift`
-- `platform/macos_imk/Tests/`
+- `platform/macos_imk/Tests/UpdatePackageVerifierTests.swift`
 - `scripts/README.md`
 - `scripts/build_macos_imk.sh`
 - `scripts/check_macos_imk_sources.sh`
-- `scripts/check_update01_sources.sh`
-- `scripts/test_macos_update_manifest.sh`
+- `scripts/check_update02_sources.sh`
+- `scripts/test_macos_update_package.sh`
 
 ## Next Step
 
-- Review UPDATE-01 as a standalone PR. Begin UPDATE-02 package verification and
-  system Installer handoff only after approval and merge; resume AI-02 after the
-  update stages are complete.
+- Review UPDATE-02 as a standalone PR. Begin UPDATE-03 stale-process recovery
+  only after approval and merge; resume AI-02 after the update stages are complete.

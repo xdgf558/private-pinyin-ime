@@ -101,6 +101,12 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
     method menu.
 11. Enable strict privacy mode and confirm background checks are disabled while
     a manual check asks for confirmation.
+12. With a staged newer-version manifest, select `下载并验证`, confirm progress
+    can be cancelled, and verify that a wrong byte size or SHA-256 is rejected
+    without opening Installer.
+13. With the signed/notarized release pkg and correct manifest, confirm the
+    second consent prompt appears, macOS Installer opens visibly, and the app
+    never requests or supplies administrator credentials itself.
 
 ## Known Gaps
 
@@ -108,5 +114,6 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 - Developer ID signing and notarization hooks are present; release still requires owner credentials and notarization evidence.
 - Candidate panel appearance and positioning need app-by-app validation.
 - The menu bar/input-source icon uses the packaged template TIFF; the app bundle uses the packaged color icon.
-- UPDATE-01 only checks and links to the release page. Package download,
-  installation, and stale-process refresh prompts remain UPDATE-02/03 work.
+- UPDATE-02 verifies and hands a package to macOS Installer, but end-to-end
+  website update smoke remains blocked until `UPDATE-OI-001` publishes the live
+  manifest. Stale-process refresh guidance remains UPDATE-03 work.

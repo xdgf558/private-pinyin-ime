@@ -146,15 +146,17 @@ Manual gates:
 
 ## Automatic Update Strategy
 
-UPDATE-01 adds an opt-in, check-only macOS release channel after Developer ID
-signing and notarization evidence became available.
+UPDATE-01 adds opt-in macOS release discovery after Developer ID signing and
+notarization evidence became available. UPDATE-02 adds explicit package
+download and system Installer handoff.
 
 - Windows: distribute signed MSI/zip through a release page first; revisit MSIX
   or App Installer after TSF registration and update semantics are validated.
-- macOS: read only the fixed first-party HTTPS manifest, display validated
-  release notes, and open the release page. Do not download or execute the pkg
-  until UPDATE-02 adds size, SHA-256, Developer ID, notarization, and explicit
-  Installer handoff gates.
+- macOS: read only the fixed first-party HTTPS manifest; download only after
+  explicit consent; enforce declared size and SHA-256; require the pinned
+  Developer ID Installer Team ID and Gatekeeper `Notarized Developer ID`;
+  repeat verification before opening Apple's visible system Installer. Never
+  perform a silent privileged installation.
 - iOS: use App Store/TestFlight updates only.
 
 This keeps installation platform-native and leaves the shared input engine

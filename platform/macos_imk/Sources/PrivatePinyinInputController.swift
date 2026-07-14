@@ -97,9 +97,7 @@ final class PrivatePinyinInputController: IMKInputController {
             keyEquivalent: ""
         )
         updateItem.target = self
-        if case .checking = PrivatePinyinUpdateController.shared.state {
-            updateItem.isEnabled = false
-        }
+        updateItem.isEnabled = PrivatePinyinUpdateController.shared.isMenuActionEnabled
         menu.addItem(updateItem)
 
         menu.addItem(NSMenuItem.separator())

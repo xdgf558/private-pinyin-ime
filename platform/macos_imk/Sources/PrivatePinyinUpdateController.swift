@@ -7,7 +7,22 @@ enum PrivatePinyinUpdateState: Equatable {
     case upToDate(checkedAt: Date)
     case updateAvailable(PrivatePinyinValidatedUpdate)
     case systemUpgradeRequired(PrivatePinyinValidatedUpdate)
+    case downloading(PrivatePinyinValidatedUpdate, progress: Int)
+    case verifying(PrivatePinyinValidatedUpdate)
+    case readyToInstall(PrivatePinyinValidatedUpdate, packageURL: URL, installerOpened: Bool)
+    case packageFailed(PrivatePinyinValidatedUpdate, PrivatePinyinPackageFailure)
     case failed
+}
+
+enum PrivatePinyinPackageFailure: Equatable {
+    case download
+    case storage
+    case size
+    case digest
+    case signature
+    case notarization
+    case verificationUnavailable
+    case installerUnavailable
 }
 
 final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @unchecked Sendable {
@@ -27,9 +42,14 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
     private let defaults = UserDefaults.standard
     private let endpointURL: URL?
     private let allowedHost: String
+    private let expectedInstallerTeamIdentifier: String
     private let currentVersion: String
     private let currentBuild: Int
     private let currentSystemVersion: String
+    private let verificationQueue = DispatchQueue(
+        label: "PrivatePinyin.UpdateVerification",
+        qos: .userInitiated
+    )
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 10
@@ -37,6 +57,7 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
+        configuration.urlCredentialStorage = nil
         configuration.httpShouldSetCookies = false
         configuration.waitsForConnectivity = false
         return URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
@@ -48,6 +69,8 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
     private var responseExceededLimit = false
     private var userInitiatedCheck = false
     private weak var presentingWindow: NSWindow?
+    private var packageDownloader: PrivatePinyinPackageDownloader?
+    private var activePackageOperationID: UUID?
 
     private(set) var state: PrivatePinyinUpdateState = .idle {
         didSet {
@@ -60,6 +83,7 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         let endpoint = info["PrivatePinyinUpdateManifestURL"] as? String
         endpointURL = endpoint.flatMap(URL.init(string:))
         allowedHost = (info["PrivatePinyinUpdateAllowedHost"] as? String ?? "").lowercased()
+        expectedInstallerTeamIdentifier = info["PrivatePinyinUpdateExpectedInstallerTeamID"] as? String ?? ""
         currentVersion = info["CFBundleShortVersionString"] as? String ?? "0"
         currentBuild = Int(info["CFBundleVersion"] as? String ?? "0") ?? 0
         let system = ProcessInfo.processInfo.operatingSystemVersion
@@ -91,10 +115,36 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
             return "发现新版本 \(update.manifest.version)..."
         case let .systemUpgradeRequired(update):
             return "新版本需要 macOS \(update.manifest.minimumMacOSVersion)"
+        case let .downloading(_, progress):
+            return "取消更新下载（\(progress)%）"
+        case .verifying:
+            return "正在验证更新..."
+        case let .readyToInstall(_, _, installerOpened):
+            return installerOpened ? "重新打开系统安装器..." : "打开系统安装器..."
+        case .packageFailed:
+            return "更新验证失败，重试..."
         case .checking:
             return "正在检查更新..."
         default:
             return "检查更新..."
+        }
+    }
+
+    var isMenuActionEnabled: Bool {
+        switch state {
+        case .checking, .verifying:
+            return false
+        default:
+            return true
+        }
+    }
+
+    private var blocksVersionCheck: Bool {
+        switch state {
+        case .downloading, .verifying, .readyToInstall:
+            return true
+        default:
+            return false
         }
     }
 
@@ -112,11 +162,16 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
     func applyCurrentPrivacyPolicy() {
         if PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled() {
             cancelBackgroundCheckIfNeeded()
+            cancelPackageDownloadIfNeeded()
         }
     }
 
     func scheduleAutomaticCheck(force: Bool = false) {
-        guard automaticChecksEffectivelyEnabled, activeTask == nil else {
+        guard automaticChecksEffectivelyEnabled,
+              activeTask == nil,
+              activePackageOperationID == nil,
+              !blocksVersionCheck
+        else {
             return
         }
         if !force,
@@ -127,7 +182,12 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
-            guard let self, self.automaticChecksEffectivelyEnabled, self.activeTask == nil else {
+            guard let self,
+                  self.automaticChecksEffectivelyEnabled,
+                  self.activeTask == nil,
+                  self.activePackageOperationID == nil,
+                  !self.blocksVersionCheck
+            else {
                 return
             }
             if !force,
@@ -145,7 +205,17 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         switch state {
         case let .updateAvailable(update), let .systemUpgradeRequired(update):
             present(update: update, presentingWindow: presentingWindow)
-        case .checking:
+        case .downloading:
+            cancelPackageDownloadIfNeeded()
+        case let .readyToInstall(update, packageURL, _):
+            presentInstallerHandoff(
+                update: update,
+                packageURL: packageURL,
+                presentingWindow: presentingWindow
+            )
+        case let .packageFailed(update, _):
+            present(update: update, presentingWindow: presentingWindow)
+        case .checking, .verifying:
             break
         default:
             checkForUpdates(presentingWindow: presentingWindow)
@@ -153,7 +223,10 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
     }
 
     func checkForUpdates(presentingWindow: NSWindow? = nil) {
-        guard activeTask == nil else {
+        guard activeTask == nil,
+              activePackageOperationID == nil,
+              !blocksVersionCheck
+        else {
             return
         }
         if PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled(),
@@ -264,6 +337,16 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         restoreCachedState()
     }
 
+    private func cancelPackageDownloadIfNeeded() {
+        guard case let .downloading(update, _) = state else {
+            return
+        }
+        activePackageOperationID = nil
+        packageDownloader?.cancel()
+        packageDownloader = nil
+        state = .updateAvailable(update)
+    }
+
     private func finish(
         with newState: PrivatePinyinUpdateState,
         userInitiated: Bool,
@@ -300,14 +383,325 @@ final class PrivatePinyinUpdateController: NSObject, URLSessionDataDelegate, @un
         alert.messageText = supported
             ? "猫栈拼音 \(update.manifest.version) 可以更新"
             : "新版本需要 macOS \(update.manifest.minimumMacOSVersion)"
-        alert.informativeText = "\(update.manifest.title)\n\n\(update.formattedReleaseNotes)"
-        alert.addButton(withTitle: supported ? "前往更新页面" : "查看更新说明")
+        let packageSize = ByteCountFormatter.string(
+            fromByteCount: update.manifest.packageSizeBytes,
+            countStyle: .file
+        )
+        alert.informativeText = supported
+            ? "\(update.manifest.title)\n\n\(update.formattedReleaseNotes)\n\n下载大小：\(packageSize)。下载后会在本机验证 SHA-256、Developer ID Installer 签名和 Apple 公证，再交给系统安装器。"
+            : "\(update.manifest.title)\n\n\(update.formattedReleaseNotes)"
+        alert.addButton(withTitle: supported ? "下载并验证" : "查看更新说明")
+        if supported {
+            alert.addButton(withTitle: "查看更新说明")
+        }
         alert.addButton(withTitle: "稍后")
         present(alert: alert, presentingWindow: presentingWindow) { response in
-            guard response == .alertFirstButtonReturn else {
+            if supported, response == .alertFirstButtonReturn {
+                self.beginPackageDownload(update: update, presentingWindow: presentingWindow)
+            } else if (!supported && response == .alertFirstButtonReturn) ||
+                (supported && response == .alertSecondButtonReturn)
+            {
+                NSWorkspace.shared.open(update.releasePageURL)
+            }
+        }
+    }
+
+    private func beginPackageDownload(
+        update: PrivatePinyinValidatedUpdate,
+        presentingWindow: NSWindow?
+    ) {
+        guard activeTask == nil, activePackageOperationID == nil else {
+            return
+        }
+        let operationID = UUID()
+        activePackageOperationID = operationID
+        state = .downloading(update, progress: 0)
+
+        let destinationFileName = "PrivatePinyin-\(update.manifest.version)-\(update.manifest.build).pkg"
+        let downloader = PrivatePinyinPackageDownloader(
+            packageURL: update.packageURL,
+            allowedHost: allowedHost,
+            expectedSize: update.manifest.packageSizeBytes,
+            destinationFileName: destinationFileName,
+            progressHandler: { [weak self] progress in
+                guard let self, self.activePackageOperationID == operationID else {
+                    return
+                }
+                self.state = .downloading(update, progress: progress)
+            },
+            completionHandler: { [weak self] result in
+                guard let self, self.activePackageOperationID == operationID else {
+                    return
+                }
+                self.packageDownloader = nil
+                switch result {
+                case let .success(packageURL):
+                    self.verifyPackage(
+                        update: update,
+                        packageURL: packageURL,
+                        operationID: operationID,
+                        purpose: .prepare,
+                        presentingWindow: presentingWindow
+                    )
+                case let .failure(error):
+                    self.activePackageOperationID = nil
+                    if error == .cancelled {
+                        self.state = .updateAvailable(update)
+                    } else {
+                        let failure = Self.packageFailure(for: error)
+                        self.state = .packageFailed(update, failure)
+                        self.presentPackageFailure(
+                            update: update,
+                            failure: failure,
+                            presentingWindow: presentingWindow
+                        )
+                    }
+                }
+            }
+        )
+        packageDownloader = downloader
+        downloader.start()
+    }
+
+    private enum VerificationPurpose {
+        case prepare
+        case installerHandoff
+    }
+
+    private func verifyPackage(
+        update: PrivatePinyinValidatedUpdate,
+        packageURL: URL,
+        operationID: UUID,
+        purpose: VerificationPurpose,
+        presentingWindow: NSWindow?
+    ) {
+        state = .verifying(update)
+        let teamIdentifier = expectedInstallerTeamIdentifier
+        let expectedSize = update.manifest.packageSizeBytes
+        let expectedDigest = update.manifest.packageSHA256
+
+        verificationQueue.async { [weak self] in
+            let failure: PrivatePinyinPackageVerificationError?
+            do {
+                try PrivatePinyinPackageVerifier(
+                    expectedTeamIdentifier: teamIdentifier
+                ).verify(
+                    packageURL: packageURL,
+                    expectedSize: expectedSize,
+                    expectedSHA256: expectedDigest
+                )
+                failure = nil
+            } catch let error as PrivatePinyinPackageVerificationError {
+                failure = error
+            } catch {
+                failure = .commandFailed
+            }
+
+            DispatchQueue.main.async {
+                guard let self, self.activePackageOperationID == operationID else {
+                    return
+                }
+                if let failure {
+                    self.activePackageOperationID = nil
+                    try? FileManager.default.removeItem(at: packageURL)
+                    let packageFailure = Self.packageFailure(for: failure)
+                    self.state = .packageFailed(update, packageFailure)
+                    self.presentPackageFailure(
+                        update: update,
+                        failure: packageFailure,
+                        presentingWindow: presentingWindow
+                    )
+                    return
+                }
+
+                self.activePackageOperationID = nil
+                switch purpose {
+                case .prepare:
+                    self.state = .readyToInstall(update, packageURL: packageURL, installerOpened: false)
+                    self.presentInstallerHandoff(
+                        update: update,
+                        packageURL: packageURL,
+                        presentingWindow: presentingWindow
+                    )
+                case .installerHandoff:
+                    self.openSystemInstaller(
+                        update: update,
+                        packageURL: packageURL,
+                        presentingWindow: presentingWindow
+                    )
+                }
+            }
+        }
+    }
+
+    private func presentInstallerHandoff(
+        update: PrivatePinyinValidatedUpdate,
+        packageURL: URL,
+        presentingWindow: NSWindow?
+    ) {
+        guard FileManager.default.fileExists(atPath: packageURL.path) else {
+            state = .packageFailed(update, .storage)
+            presentPackageFailure(update: update, failure: .storage, presentingWindow: presentingWindow)
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "更新包已通过安全验证"
+        alert.informativeText = "猫栈拼音 \(update.manifest.version) 已通过文件大小、SHA-256、Developer ID Installer 签名和 Apple 公证检查。下一步将打开 macOS 系统安装器，由你确认并输入系统密码。"
+        alert.addButton(withTitle: "打开系统安装器")
+        alert.addButton(withTitle: "稍后")
+        present(alert: alert, presentingWindow: presentingWindow) { response in
+            guard response == .alertFirstButtonReturn,
+                  self.activePackageOperationID == nil
+            else {
                 return
             }
-            NSWorkspace.shared.open(update.releasePageURL)
+            let operationID = UUID()
+            self.activePackageOperationID = operationID
+            self.verifyPackage(
+                update: update,
+                packageURL: packageURL,
+                operationID: operationID,
+                purpose: .installerHandoff,
+                presentingWindow: presentingWindow
+            )
+        }
+    }
+
+    private func openSystemInstaller(
+        update: PrivatePinyinValidatedUpdate,
+        packageURL: URL,
+        presentingWindow: NSWindow?
+    ) {
+        let installerURL = URL(fileURLWithPath: "/System/Library/CoreServices/Installer.app")
+        guard FileManager.default.fileExists(atPath: installerURL.path) else {
+            state = .packageFailed(update, .installerUnavailable)
+            presentPackageFailure(
+                update: update,
+                failure: .installerUnavailable,
+                presentingWindow: presentingWindow
+            )
+            return
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.open(
+            [packageURL],
+            withApplicationAt: installerURL,
+            configuration: configuration
+        ) { [weak self] _, error in
+            DispatchQueue.main.async {
+                guard let self else {
+                    return
+                }
+                if error == nil {
+                    self.state = .readyToInstall(update, packageURL: packageURL, installerOpened: true)
+                } else {
+                    self.state = .packageFailed(update, .installerUnavailable)
+                    self.presentPackageFailure(
+                        update: update,
+                        failure: .installerUnavailable,
+                        presentingWindow: presentingWindow
+                    )
+                }
+            }
+        }
+    }
+
+    private func presentPackageFailure(
+        update: PrivatePinyinValidatedUpdate,
+        failure: PrivatePinyinPackageFailure,
+        presentingWindow: NSWindow?
+    ) {
+        let alert = NSAlert()
+        alert.messageText = "无法安全安装这次更新"
+        alert.informativeText = Self.packageFailureDetail(failure)
+        alert.addButton(withTitle: "重试下载")
+        alert.addButton(withTitle: "查看更新说明")
+        alert.addButton(withTitle: "稍后")
+        present(alert: alert, presentingWindow: presentingWindow) { response in
+            if response == .alertFirstButtonReturn {
+                self.beginPackageDownload(update: update, presentingWindow: presentingWindow)
+            } else if response == .alertSecondButtonReturn {
+                NSWorkspace.shared.open(update.releasePageURL)
+            }
+        }
+    }
+
+    private static func packageFailure(
+        for error: PrivatePinyinPackageDownloadError
+    ) -> PrivatePinyinPackageFailure {
+        switch error {
+        case .cancelled:
+            return .download
+        case .invalidResponse, .networkFailure:
+            return .download
+        case .invalidSize:
+            return .size
+        case .storageFailure:
+            return .storage
+        }
+    }
+
+    private static func packageFailure(
+        for error: PrivatePinyinPackageVerificationError
+    ) -> PrivatePinyinPackageFailure {
+        switch error {
+        case .invalidFile:
+            return .storage
+        case .invalidFileSize:
+            return .size
+        case .invalidDigest:
+            return .digest
+        case .invalidInstallerSignature, .invalidTeamIdentifier:
+            return .signature
+        case .notarizationRejected:
+            return .notarization
+        case .commandFailed:
+            return .verificationUnavailable
+        }
+    }
+
+    static func packageFailureSummary(_ failure: PrivatePinyinPackageFailure) -> String {
+        switch failure {
+        case .download:
+            return "下载未完成或服务器响应无效，未进入安装流程。"
+        case .storage:
+            return "无法安全保存或读取更新包，未进入安装流程。"
+        case .size:
+            return "文件大小与公开清单不一致，更新包已删除。"
+        case .digest:
+            return "SHA-256 与公开清单不一致，更新包已删除。"
+        case .signature:
+            return "Developer ID Installer 签名不符合要求，已拒绝安装。"
+        case .notarization:
+            return "Apple 公证检查未通过，已拒绝安装。"
+        case .verificationUnavailable:
+            return "系统安全验证暂时不可用，已拒绝安装。"
+        case .installerUnavailable:
+            return "无法打开 macOS 系统安装器。"
+        }
+    }
+
+    private static func packageFailureDetail(_ failure: PrivatePinyinPackageFailure) -> String {
+        switch failure {
+        case .download:
+            return "下载没有完成，或服务器返回了不符合清单的文件。输入功能不受影响。"
+        case .storage:
+            return "无法在本机安全保存或读取更新包。输入功能不受影响。"
+        case .size:
+            return "更新包的实际大小与公开清单不一致，已拒绝安装并删除文件。"
+        case .digest:
+            return "更新包的 SHA-256 与公开清单不一致，已拒绝安装并删除文件。"
+        case .signature:
+            return "更新包不是由猫栈拼音指定的 Developer ID Installer 证书签名，已拒绝安装。"
+        case .notarization:
+            return "macOS 未确认该更新包通过 Apple 公证，已拒绝安装。"
+        case .verificationUnavailable:
+            return "本机暂时无法完成系统签名检查，已拒绝安装。"
+        case .installerUnavailable:
+            return "无法打开 macOS 系统安装器。你可以稍后重试或查看更新说明。"
         }
     }
 

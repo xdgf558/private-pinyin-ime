@@ -87,6 +87,8 @@
   <true/>
   <key>PrivatePinyinUpdateAllowedHost</key>
   <string>wwwstationcat.org</string>
+  <key>PrivatePinyinUpdateExpectedInstallerTeamID</key>
+  <string>Y35K7AQ974</string>
   <key>PrivatePinyinUpdateManifestURL</key>
   <string>https://wwwstationcat.org/updates/private-pinyin/macos/stable.json</string>
   <key>TISIconIsTemplate</key>

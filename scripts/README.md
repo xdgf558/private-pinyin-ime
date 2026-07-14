@@ -30,6 +30,8 @@ Current scripts:
 - `run_ai_eval.sh`: runs the AI-01 offline quality baseline, or the report-only release benchmark with `--benchmark`.
 - `test_macos_update_manifest.sh`: compiles and runs the UPDATE-01 manifest/version validation tests when `swiftc` is available.
 - `check_update01_sources.sh`: verifies the UPDATE-01 fixed-host, opt-in, strict-privacy, UI, manifest-validation, and documentation contract.
+- `test_macos_update_package.sh`: compiles and runs the macOS UPDATE-02 size, SHA-256, Developer ID, and notarization verifier tests.
+- `check_update02_sources.sh`: verifies the UPDATE-02 constrained download, local verification, explicit-consent, and system Installer handoff contract.
 - `check_ai01_evaluation_sources.sh`: validates the synthetic/project-regression corpus, data-policy manifest, tools, and required baseline behavior.
 
 Planned scripts:

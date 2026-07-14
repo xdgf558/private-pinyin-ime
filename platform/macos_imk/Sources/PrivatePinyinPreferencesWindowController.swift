@@ -217,6 +217,11 @@ private final class StationButton: NSButton {
         updateAppearance()
     }
 
+    func setStationTitle(_ value: String) {
+        title = value
+        updateAppearance()
+    }
+
     private func updateAppearance() {
         let background = isPressing ? pressedBackground : (isHovering ? hoverBackground : normalBackground)
         layer?.backgroundColor = background.cgColor
@@ -799,29 +804,59 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
 
     private func refreshUpdatePresentation() {
         let state = PrivatePinyinUpdateController.shared.state
-        checkUpdateButton?.isEnabled = state != .checking
+        checkUpdateButton?.isEnabled = true
         switch state {
         case .idle:
+            checkUpdateButton?.setStationTitle("检查更新")
             updateStatusLabel.stringValue = "尚未检查更新"
             updateStatusLabel.textColor = StationTheme.textPrimary
             updateDetailLabel.stringValue = "输入功能始终不依赖更新服务。"
         case .checking:
+            checkUpdateButton?.setStationTitle("正在检查")
+            checkUpdateButton?.isEnabled = false
             updateStatusLabel.stringValue = "正在检查更新..."
             updateStatusLabel.textColor = StationTheme.lampYellow
             updateDetailLabel.stringValue = "正在读取 Station Cat 的固定公开版本清单。"
         case let .upToDate(checkedAt):
+            checkUpdateButton?.setStationTitle("再次检查")
             updateStatusLabel.stringValue = "已经是最新版本"
             updateStatusLabel.textColor = StationTheme.textPrimary
             updateDetailLabel.stringValue = "最近检查：\(Self.updateDateFormatter.string(from: checkedAt))"
         case let .updateAvailable(update):
+            checkUpdateButton?.setStationTitle("查看更新")
             updateStatusLabel.stringValue = "发现新版本 \(update.manifest.version)"
             updateStatusLabel.textColor = StationTheme.lampYellow
             updateDetailLabel.stringValue = update.manifest.title
         case let .systemUpgradeRequired(update):
+            checkUpdateButton?.setStationTitle("查看说明")
             updateStatusLabel.stringValue = "新版本需要 macOS \(update.manifest.minimumMacOSVersion)"
             updateStatusLabel.textColor = StationTheme.lampYellow
             updateDetailLabel.stringValue = "当前系统可以继续使用已安装版本。"
+        case let .downloading(_, progress):
+            checkUpdateButton?.setStationTitle("取消下载")
+            updateStatusLabel.stringValue = "正在下载更新（\(progress)%）"
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = "下载完成后会先在本机执行完整安全验证。"
+        case .verifying:
+            checkUpdateButton?.setStationTitle("正在验证")
+            checkUpdateButton?.isEnabled = false
+            updateStatusLabel.stringValue = "正在验证更新包"
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = "正在核对大小、SHA-256、开发者签名和 Apple 公证。"
+        case let .readyToInstall(update, _, installerOpened):
+            checkUpdateButton?.setStationTitle(installerOpened ? "重新打开" : "打开安装器")
+            updateStatusLabel.stringValue = installerOpened ? "系统安装器已打开" : "更新包已通过安全验证"
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = installerOpened
+                ? "请在系统安装器中确认安装猫栈拼音 \(update.manifest.version)。"
+                : "下一步由 macOS 系统安装器请求你的确认。"
+        case let .packageFailed(_, failure):
+            checkUpdateButton?.setStationTitle("重试")
+            updateStatusLabel.stringValue = "更新已被安全拦截"
+            updateStatusLabel.textColor = StationTheme.textPrimary
+            updateDetailLabel.stringValue = PrivatePinyinUpdateController.packageFailureSummary(failure)
         case .failed:
+            checkUpdateButton?.setStationTitle("重试")
             updateStatusLabel.stringValue = "暂时无法检查更新"
             updateStatusLabel.textColor = StationTheme.textPrimary
             updateDetailLabel.stringValue = "输入功能不受影响，请稍后重试。"

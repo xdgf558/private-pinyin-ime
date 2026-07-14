@@ -52,7 +52,7 @@ PrivatePinyin/猫栈拼音条目，再重新添加一次。
 用户词库只用于改善本地排序、一步联想、短句补全和 trigram（最近两词上下文）联想。它不是云同步，也不会自动读取剪贴板或应用上下文。当前学习能力包括
 「候选选择记忆」「已选词转移记忆」「短句补全记忆」和「最近两词预测」：你经常选的词会逐渐排得更靠前，`今天 -> 天气 -> 不错` 与 `昨天 -> 天气 -> 很冷` 可以形成不同的本地候选。学习权重按 30 天半衰期自然降低，长期不用的记录会逐渐让位；数据库还会按容量淘汰低权重旧记录，不会无限增长。该功能只保存有限的候选关系，不保存完整句子、原始按键或周围文档内容。
 
-macOS 的自动版本检查默认关闭；只有用户主动开启或点击「检查更新」时，宿主才会读取 `wwwstationcat.org` 上的固定公开版本清单。请求不包含输入内容或用户词库，严格隐私模式会暂停后台检查。
+macOS 的自动版本检查默认关闭；只有用户主动开启或点击「检查更新」时，宿主才会读取 `wwwstationcat.org` 上的固定公开版本清单。请求不包含输入内容或用户词库，严格隐私模式会暂停后台检查。发现新版本后，只有点击「下载并验证」才会下载安装包；客户端会核对精确大小、SHA-256、指定 Developer ID Installer 签名和 Apple 公证，并在交给 macOS 系统安装器前再次征求确认。猫栈拼音不会静默安装，也不会代填系统密码。
 
 ### 开发状态
 
@@ -134,6 +134,7 @@ bash scripts/check_stage15_ios_smoke_sources.sh
 bash scripts/check_stage16_ios_testflight_sources.sh
 bash scripts/check_ai01_evaluation_sources.sh
 bash scripts/check_update01_sources.sh
+bash scripts/check_update02_sources.sh
 bash scripts/run_ai_eval.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
@@ -143,6 +144,7 @@ bash scripts/run_ios_smoke_readiness.sh
 
 ## Next Stage
 
-Next update work is UPDATE-02: verify and hand a signed/notarized macOS pkg to
-the system Installer with explicit consent. Local AI resumes at AI-02 only after
-the update stages are reviewed.
+UPDATE-02 now verifies and hands a signed/notarized macOS pkg to the system
+Installer with explicit consent. Next update work is UPDATE-03 post-install
+process refresh guidance. Local AI resumes at AI-02 only after the update
+stages are reviewed.
