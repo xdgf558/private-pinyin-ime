@@ -50,6 +50,29 @@ bool is_shift_passthrough_key(int key_code) {
   }
 }
 
+HRESULT set_caret_after_range(TfEditCookie cookie, ITfContext* context, ITfRange* range) {
+  if (context == nullptr || range == nullptr) {
+    return E_POINTER;
+  }
+
+  ComPtr<ITfRange> caret;
+  HRESULT hr = range->Clone(caret.put());
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = caret->Collapse(cookie, TF_ANCHOR_END);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  TF_SELECTION selection{};
+  selection.range = caret.get();
+  selection.style.ase = TF_AE_NONE;
+  selection.style.fInterimChar = FALSE;
+  return context->SetSelection(cookie, 1, &selection);
+}
+
 HRESULT launch_preferences(HWND parent) {
   wchar_t module_path[MAX_PATH]{};
   const DWORD module_path_length =
@@ -421,7 +444,7 @@ HRESULT TextService::apply_output_in_edit_session(TfEditCookie cookie, ITfContex
 
   if (SUCCEEDED(hr) && output.should_update_preedit) {
     if (output.preedit.empty()) {
-      hr = clear_composition(cookie);
+      hr = clear_composition(cookie, context);
     } else {
       hr = update_composition(cookie, context, output.preedit);
     }
@@ -555,7 +578,11 @@ HRESULT TextService::update_composition(TfEditCookie cookie, ITfContext* context
     return hr;
   }
 
-  return range->SetText(cookie, 0, preedit.c_str(), static_cast<LONG>(preedit.size()));
+  hr = range->SetText(cookie, 0, preedit.c_str(), static_cast<LONG>(preedit.size()));
+  if (FAILED(hr)) {
+    return hr;
+  }
+  return set_caret_after_range(cookie, context, range.get());
 }
 
 HRESULT TextService::commit_text(TfEditCookie cookie, ITfContext* context,
@@ -570,6 +597,9 @@ HRESULT TextService::commit_text(TfEditCookie cookie, ITfContext* context,
     if (SUCCEEDED(hr)) {
       hr = composition_->EndComposition(cookie);
     }
+    if (SUCCEEDED(hr)) {
+      hr = set_caret_after_range(cookie, context, range.get());
+    }
     release_composition();
     return hr;
   }
@@ -581,11 +611,14 @@ HRESULT TextService::commit_text(TfEditCookie cookie, ITfContext* context,
     return FAILED(hr) ? hr : E_FAIL;
   }
   hr = selection.range->SetText(cookie, 0, text.c_str(), static_cast<LONG>(text.size()));
+  if (SUCCEEDED(hr)) {
+    hr = set_caret_after_range(cookie, context, selection.range);
+  }
   selection.range->Release();
   return hr;
 }
 
-HRESULT TextService::clear_composition(TfEditCookie cookie) {
+HRESULT TextService::clear_composition(TfEditCookie cookie, ITfContext* context) {
   if (composition_ == nullptr) {
     return S_OK;
   }
@@ -597,6 +630,9 @@ HRESULT TextService::clear_composition(TfEditCookie cookie) {
   }
   if (SUCCEEDED(hr)) {
     hr = composition_->EndComposition(cookie);
+  }
+  if (SUCCEEDED(hr)) {
+    hr = set_caret_after_range(cookie, context, range.get());
   }
   release_composition();
   return hr;

@@ -53,6 +53,9 @@ grep -q "IME_KEY_SHIFT" platform/windows_tsf/src/key_map.cpp
 grep -q "shift_used_as_modifier_" platform/windows_tsf/src/text_service.cpp
 grep -q "SWP_NOACTIVATE" platform/windows_tsf/src/candidate_window.cpp
 grep -q "GetTextExt" platform/windows_tsf/src/text_service.cpp
+grep -q "TF_ANCHOR_END" platform/windows_tsf/src/text_service.cpp
+grep -q "SetSelection" platform/windows_tsf/src/text_service.cpp
+grep -q "set_caret_after_range" platform/windows_tsf/src/text_service.cpp
 grep -q "UnregisterClassW" platform/windows_tsf/src/candidate_window.cpp
 grep -q "GetDpiForWindow" platform/windows_tsf/src/candidate_window.cpp
 grep -q "AppsUseLightTheme" platform/windows_tsf/src/candidate_window.cpp

@@ -180,6 +180,7 @@
 
 ### Fixed
 
+- Fixed reversed preedit and committed-text insertion in QQ and other Chromium text stores by explicitly collapsing the TSF selection at the end of every updated composition range.
 - Fixed transient SQLite BUSY/LOCKED learning-write failures with per-database in-process serialization and bounded cross-process retries, including concurrent Windows TSF host writes.
 - Fixed the Stage 16 plist source gate so it uses cross-platform `plistlib` validation instead of requiring macOS `plutil` on Ubuntu CI.
 - Fixed intermittent macOS input loss by retaining the server-attached `IMKCandidates` panel for the input method process lifetime instead of releasing it with each client input controller.
