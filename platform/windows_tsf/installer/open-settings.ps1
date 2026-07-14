@@ -340,9 +340,9 @@ if (Test-Path $logoPath) {
 
 Add-Separator -Parent $aboutPage -Y 136
 [void](New-UiLabel -Parent $aboutPage -Text "本版更新" -X 24 -Y 158 -Width 180 -Height 28 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
-[void](New-UiLabel -Parent $aboutPage -Text "1. 新增 x86 输入法组件，支持 QQ 等 32 位 Windows 应用。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "2. 安装器会同时注册 x64 与 x86 TSF，并在引导中分别检测。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "3. 继续提供本机 trigram 联想、30 天衰减和容量控制。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "1. 修复 QQ 等 Chromium 文本框中预编辑和提交文字逆序插入的问题。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "2. composition 更新后会明确将光标恢复到文字末尾。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "3. 继续提供 x64/x86 双架构与本机 trigram 联想。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
 
 $footerLine = New-Object System.Windows.Forms.Panel
 $footerLine.Location = New-Object System.Drawing.Point(0, 558)
