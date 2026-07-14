@@ -11,6 +11,7 @@ The macOS host remains thin:
 - Reset Rust session state when focus, deactivation, or external composition termination invalidates host state.
 - Load a settings snapshot from `~/Library/Application Support/PrivatePinyin/settings.json`.
 - Expose a menu settings entry for strict privacy mode, clearing the user lexicon, exporting the user lexicon, and opening the JSON settings file.
+- Check a fixed first-party release manifest only after explicit opt-in or a manual request; the Rust engine remains network-free.
 
 ## Layout
 
@@ -95,6 +96,11 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 7. Open the input method menu and toggle `严格隐私模式`.
 8. Open `偏好设置...` from the input method menu and toggle prediction or learning.
 9. Use the input method menu to `导出用户词库...` and `清空用户词库`.
+10. Confirm automatic update checks are off on a fresh profile, enable them in
+    preferences, and use `检查更新...` from both preferences and the input
+    method menu.
+11. Enable strict privacy mode and confirm background checks are disabled while
+    a manual check asks for confirmation.
 
 ## Known Gaps
 
@@ -102,3 +108,5 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 - Developer ID signing and notarization hooks are present; release still requires owner credentials and notarization evidence.
 - Candidate panel appearance and positioning need app-by-app validation.
 - The menu bar/input-source icon uses the packaged template TIFF; the app bundle uses the packaged color icon.
+- UPDATE-01 only checks and links to the release page. Package download,
+  installation, and stale-process refresh prompts remain UPDATE-02/03 work.

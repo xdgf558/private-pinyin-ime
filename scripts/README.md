@@ -28,6 +28,8 @@ Current scripts:
 - `check_stage15_ios_smoke_sources.sh`: verifies Stage 15 iOS smoke-readiness script and record coverage.
 - `check_stage16_ios_testflight_sources.sh`: verifies Stage 16 TestFlight archive/upload script, templates, and record coverage.
 - `run_ai_eval.sh`: runs the AI-01 offline quality baseline, or the report-only release benchmark with `--benchmark`.
+- `test_macos_update_manifest.sh`: compiles and runs the UPDATE-01 manifest/version validation tests when `swiftc` is available.
+- `check_update01_sources.sh`: verifies the UPDATE-01 fixed-host, opt-in, strict-privacy, UI, manifest-validation, and documentation contract.
 - `check_ai01_evaluation_sources.sh`: validates the synthetic/project-regression corpus, data-policy manifest, tools, and required baseline behavior.
 
 Planned scripts:

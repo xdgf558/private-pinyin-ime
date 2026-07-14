@@ -85,6 +85,10 @@
   <string>NSApplication</string>
   <key>NSSupportsSuddenTermination</key>
   <true/>
+  <key>PrivatePinyinUpdateAllowedHost</key>
+  <string>wwwstationcat.org</string>
+  <key>PrivatePinyinUpdateManifestURL</key>
+  <string>https://wwwstationcat.org/updates/private-pinyin/macos/stable.json</string>
   <key>TISIconIsTemplate</key>
   <true/>
   <key>TISInputSourceID</key>

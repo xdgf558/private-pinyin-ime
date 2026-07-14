@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added UPDATE-01 opt-in macOS version checks with a fixed first-party HTTPS manifest, strict validation, sanitized status UI, strict-privacy gating, onboarding/preferences controls, and offline contract tests; package installation remains a later stage.
 - Added the AI-01 offline evaluation baseline with a provenance-gated synthetic/regression corpus, deterministic Top-1/target-rank/MRR runner, report-only latency benchmark, and CI source gate without changing input behavior.
 - Added an x86 Windows TSF and Rust FFI build alongside x64 so 32-bit applications such as QQ can load the input method.
 - Added dual registry-view detection and x64/x86 registration to the Windows installers and post-install guide.

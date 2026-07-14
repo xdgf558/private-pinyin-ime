@@ -105,7 +105,8 @@ user account and record:
 
 ## Update Flow
 
-Initial public releases use manual updates:
+UPDATE-01 can notify users about a release after they opt in, but installation
+remains manual:
 
 1. Bump the version, for example `0.1.9 -> 0.1.10`.
 2. Build, sign, notarize, and staple the new `.pkg`.
@@ -114,7 +115,10 @@ Initial public releases use manual updates:
    changelog.
 5. Users install the new pkg over the old version, then log out and log back in
    if macOS keeps the old input-method process cached.
+6. Publish the fixed-host `stable.json` manifest only after the release page and
+   immutable pkg are live and their byte size and SHA-256 are verified.
 
-Do not add Sparkle or another auto-updater until Developer ID signing,
-notarization, rollback policy, update-signing keys, and input-method upgrade
-smoke tests are proven.
+The app must pass `scripts/check_update01_sources.sh`; automatic checks remain
+off by default, strict privacy pauses them, and UPDATE-01 must not download or
+execute packages. Follow `docs/macos_update_strategy.md` before implementing
+UPDATE-02 package download/installation or UPDATE-03 process refresh prompts.

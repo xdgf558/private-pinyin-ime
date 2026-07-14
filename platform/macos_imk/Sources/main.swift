@@ -28,4 +28,8 @@ if shouldShowOnboarding {
     }
 }
 
+if !shouldShowOnboarding {
+    PrivatePinyinUpdateController.shared.scheduleAutomaticCheck()
+}
+
 application.run()
