@@ -88,9 +88,9 @@ grep -q "猫栈拼音" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'regsvr32.exe" /u /s' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
-grep -q "SysWOW64\\regsvr32.exe" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
-grep -q '\\x64\\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
-grep -q '\\x86\\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq 'SysWOW64\regsvr32.exe' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq '\x64\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq '\x86\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q ".onInstSuccess" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "IfSilent" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
@@ -108,8 +108,8 @@ grep -q "HasLegacyInputMethod" platform/windows_tsf/installer/open-onboarding.ps
 grep -q "kLegacyTextServiceProfileGuid" platform/windows_tsf/src/registration.cpp
 grep -q "PrivatePinyinInstaller.ico" platform/windows_tsf/src/registration.cpp
 grep -q "icon_path_length" platform/windows_tsf/src/registration.cpp
-grep -q "RegistryView.*Registry64" platform/windows_tsf/installer/open-onboarding.ps1
-grep -q "RegistryView.*Registry32" platform/windows_tsf/installer/open-onboarding.ps1
+grep -Fq "RegistryView]::Registry64" platform/windows_tsf/installer/open-onboarding.ps1
+grep -Fq "RegistryView]::Registry32" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "X86ComponentInstalled" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "X86Registered" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "QQ 等 32 位应用兼容组件" platform/windows_tsf/installer/open-onboarding.ps1
