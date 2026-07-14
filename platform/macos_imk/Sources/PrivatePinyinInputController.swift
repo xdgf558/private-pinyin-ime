@@ -91,6 +91,17 @@ final class PrivatePinyinInputController: IMKInputController {
         preferencesItem.target = self
         menu.addItem(preferencesItem)
 
+        let updateItem = NSMenuItem(
+            title: PrivatePinyinUpdateController.shared.menuTitle,
+            action: #selector(checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        updateItem.target = self
+        if case .checking = PrivatePinyinUpdateController.shared.state {
+            updateItem.isEnabled = false
+        }
+        menu.addItem(updateItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let privacyItem = NSMenuItem(
@@ -303,6 +314,7 @@ final class PrivatePinyinInputController: IMKInputController {
             showSettingsAlert("无法更新设置。")
             return
         }
+        PrivatePinyinUpdateController.shared.applyCurrentPrivacyPolicy()
         resetComposition()
         guard core?.reload() == true else {
             showSettingsAlert("无法重新加载猫栈拼音。")
@@ -313,6 +325,10 @@ final class PrivatePinyinInputController: IMKInputController {
 
     @objc private func openPreferences(_ sender: Any?) {
         PrivatePinyinPreferencesWindowController.shared.showPreferences()
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        PrivatePinyinUpdateController.shared.checkOrPresentUpdate()
     }
 
     @objc private func settingsChanged(_ notification: Notification) {

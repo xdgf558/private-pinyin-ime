@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-14 14:34
-Current stage: Stage 17 device closure and Local AI AI-01 evaluation baseline
-Current status: iOS device checks remain open; AI-01 now freezes pre-AI quality and reference latency without changing runtime behavior
+Last updated: 2026-07-14 22:27
+Current stage: UPDATE-01 macOS version discovery
+Current status: UPDATE-01 is ready for review; AI work is paused after the completed AI-01 baseline
 
 ## Stage Status
 
@@ -36,8 +36,19 @@ Current status: iOS device checks remain open; AI-01 now freezes pre-AI quality 
 | AI-03 | Privacy guard and source gates | planned | | Add secure-input rejection, minimal context, sanitized errors, and no-network dependency checks |
 | AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
 
+## Update Status
+
+| Stage | Name | Status | Last checked | Notes |
+|---|---|---|---|---|
+| UPDATE-01 | macOS version check and reminder | completed | 2026-07-14 22:27 | Fixed HTTPS feed, opt-in automatic checks, strict-privacy gate, menu/preferences/onboarding UI, manifest validation, offline tests, and release documentation are ready for review |
+| UPDATE-02 | Verified package download and Installer handoff | planned | | Enforce size, SHA-256, Developer ID/notarization, explicit consent, and visible system Installer flow |
+| UPDATE-03 | Post-install process refresh | planned | | Detect stale IMK process state and give reload/logout/restart guidance only when needed |
+
 ## Completed Work
 
+- Added UPDATE-01 version discovery to the macOS host without changing the network-free Rust engine or typing path.
+- Kept automatic checks off by default, limited opt-in checks to once per 24 hours, paused them under strict privacy, and exposed manual checks through the menu and preferences.
+- Added a fixed-host schema-1 manifest with HTTPS, redirect, response-size, package-extension, SHA-256, package-size, version, and minimum-system validation plus offline Swift tests and a CI source gate.
 - Established AI-01 before introducing any model: a 20-case first-party offline corpus separates 13 required engine regressions from 7 observed AI improvement opportunities.
 - Added deterministic Top-1, target-rank, found-rate, and MRR reporting plus a release-mode initialization/lookup latency benchmark with no machine-dependent CI threshold.
 - Recorded dataset provenance and an explicit no-user-data rule; the parser rejects provenance other than project regressions or first-party synthetic cases.
@@ -499,6 +510,28 @@ Current status: iOS device checks remain open; AI-01 now freezes pre-AI quality 
 - Result: passed
 - Notes: On the arm64 macOS reference machine, engine initialization P95 was 56.01 ms, continuous-pinyin lookup P95 was 1.48 ms, and nine-key lookup P95 was 3.67 ms. Measurements are report-only rather than CI thresholds.
 
+### UPDATE-01 macOS Version Check Validation
+
+- Command: `bash scripts/check_update01_sources.sh`
+- Result: passed
+- Notes: Fixed-host, opt-in, strict-privacy, ephemeral-session, 128-KiB streaming cap, manifest-validation, UI wiring, and offline Swift tests passed.
+
+- Command: `bash scripts/check_macos_imk_sources.sh && bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: The complete Swift InputMethodKit host compiled without warnings and produced `dist/macos_imk/PrivatePinyin.app`.
+
+- Command: local `--show-preferences` and `--show-onboarding` visual smoke
+- Result: passed
+- Notes: Update status, manual check, automatic opt-in, privacy copy, and existing controls fit without clipping or overlap; the fresh automatic-check state is off.
+
+- Command: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged shared engine and C ABI still return and commit `你好`; update code remains isolated to the macOS host.
+
+- Command: `curl -I https://wwwstationcat.org/updates/private-pinyin/macos/stable.json`
+- Result: pending publisher action (`HTTP 404` on 2026-07-14)
+- Notes: The client and manifest contract are ready, but `UPDATE-OI-001` remains open until the owner publishes and smoke-tests the live stable manifest after an immutable signed/notarized pkg is available.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -519,30 +552,38 @@ Current status: iOS device checks remain open; AI-01 now freezes pre-AI quality 
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 - Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
 - Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
+- Publish and smoke-test the fixed macOS stable manifest after the versioned pkg and release page are live.
+- Implement verified pkg download/Installer handoff and stale-process recovery as separate UPDATE-02/03 stages.
 
 ## Files Changed In Latest Stage
 
 - `.github/workflows/rust.yml`
 - `CHANGELOG.md`
-- `Cargo.lock`
-- `Cargo.toml`
 - `README.md`
-- `ai/README.md`
-- `ai/eval/README.md`
-- `ai/eval/baseline_cases.tsv`
-- `ai/eval/baseline_report.md`
-- `ai/eval/dataset_manifest.json`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/local_ai_development_plan.md`
+- `docs/macos_public_release_checklist.md`
+- `docs/macos_update_strategy.md`
+- `docs/privacy_spec.md`
+- `docs/release_distribution_plan.md`
+- `platform/macos_imk/README.md`
+- `platform/macos_imk/Resources/Info.plist`
+- `platform/macos_imk/Sources/PrivatePinyinInputController.swift`
+- `platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift`
+- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
+- `platform/macos_imk/Sources/PrivatePinyinUpdateController.swift`
+- `platform/macos_imk/Sources/UpdateManifest.swift`
+- `platform/macos_imk/Sources/main.swift`
+- `platform/macos_imk/Tests/`
 - `scripts/README.md`
-- `scripts/check_ai01_evaluation_sources.sh`
-- `scripts/run_ai_eval.sh`
-- `tools/README.md`
-- `tools/ai_benchmark/`
-- `tools/ai_eval_runner/`
+- `scripts/build_macos_imk.sh`
+- `scripts/check_macos_imk_sources.sh`
+- `scripts/check_update01_sources.sh`
+- `scripts/test_macos_update_manifest.sh`
 
 ## Next Step
 
-- Review AI-01 as a standalone PR. Begin AI-02 runtime contracts and mock provider only after approval and merge.
+- Review UPDATE-01 as a standalone PR. Begin UPDATE-02 package verification and
+  system Installer handoff only after approval and merge; resume AI-02 after the
+  update stages are complete.

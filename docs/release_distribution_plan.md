@@ -146,13 +146,17 @@ Manual gates:
 
 ## Automatic Update Strategy
 
-Initial public releases should not add an in-app auto-updater.
+UPDATE-01 adds an opt-in, check-only macOS release channel after Developer ID
+signing and notarization evidence became available.
 
 - Windows: distribute signed MSI/zip through a release page first; revisit MSIX
   or App Installer after TSF registration and update semantics are validated.
-- macOS: use signed/notarized pkg first; revisit Sparkle after Developer ID
-  signing, update signing keys, rollback policy, and privacy copy are ready.
+- macOS: read only the fixed first-party HTTPS manifest, display validated
+  release notes, and open the release page. Do not download or execute the pkg
+  until UPDATE-02 adds size, SHA-256, Developer ID, notarization, and explicit
+  Installer handoff gates.
 - iOS: use App Store/TestFlight updates only.
 
-This keeps update behavior platform-native until release signing and smoke-test
-evidence exist.
+This keeps installation platform-native and leaves the shared input engine
+network-free. Details and publisher ordering are in
+`docs/macos_update_strategy.md`.

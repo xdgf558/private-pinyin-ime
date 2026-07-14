@@ -42,6 +42,19 @@ Rust code should avoid `unwrap`, `expect`, and debug-format panic messages on pa
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.
 
+## Update Checks
+
+The macOS host may check a fixed first-party HTTPS release manifest only after
+the user explicitly enables automatic checks or starts a manual check. Automatic
+checks are off by default and run at most once every 24 hours. Strict privacy
+mode pauses automatic checks and requires confirmation before a manual check.
+
+The update request must not include raw keys, pinyin, candidates, committed
+text, document context, user-learning records, account identifiers, telemetry,
+or a persistent tracking cookie. The shared Rust engine must remain network-free.
+Update failures must be shown through sanitized state and must never interrupt
+typing.
+
 ## User Lexicon Storage
 
 The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, update time, one-step selected-phrase transitions, bounded short phrase completions, and three-token transition records derived only from selected candidates. A trigram record contains two selected context tokens plus the selected next token and its pinyin; it must not include surrounding document text or an unbounded sentence.

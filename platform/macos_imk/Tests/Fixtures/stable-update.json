@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "channel": "stable",
+  "version": "0.1.21",
+  "build": 21,
+  "minimum_macos_version": "14.0",
+  "published_at": "2026-07-14T12:00:00Z",
+  "title": "版本检查测试清单",
+  "release_notes": [
+    "增加固定更新源版本检查。",
+    "输入核心继续保持完全离线。"
+  ],
+  "release_page_url": "https://wwwstationcat.org/apps/private-pinyin/",
+  "package_url": "https://wwwstationcat.org/downloads/private-pinyin/PrivatePinyin-0.1.21.pkg",
+  "package_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "package_size_bytes": 12582912
+}

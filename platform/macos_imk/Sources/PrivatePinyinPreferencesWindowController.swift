@@ -239,6 +239,11 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     private let settingsPathLabel = NSTextField(labelWithString: "")
+    private let automaticUpdateToggle = StationToggle()
+    private let automaticUpdateDetailLabel = NSTextField(labelWithString: "每天最多读取一次固定的公开版本清单，不上传输入内容。")
+    private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
+    private let updateDetailLabel = NSTextField(labelWithString: "输入功能始终不依赖更新服务。")
+    private var checkUpdateButton: StationButton?
 
     private init() {
         let window = NSWindow(
@@ -257,6 +262,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         window.contentView = StationBoardBackgroundView(frame: window.contentView?.bounds ?? .zero)
         super.init(window: window)
         buildContent()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateStateChanged(_:)),
+            name: .privatePinyinUpdateStateChanged,
+            object: nil
+        )
         reloadFromSettings()
     }
 
@@ -267,6 +278,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
 
     func showPreferences() {
         reloadFromSettings()
+        PrivatePinyinUpdateController.shared.scheduleAutomaticCheck()
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
         window?.center()
@@ -281,9 +293,11 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         strictPrivacyToggle.onToggle = { [weak self] in self?.commitSettings() }
         predictionToggle.onToggle = { [weak self] in self?.commitSettings() }
         learningToggle.onToggle = { [weak self] in self?.commitSettings() }
+        automaticUpdateToggle.onToggle = { [weak self] in self?.automaticUpdateSettingChanged() }
         strictPrivacyToggle.setAccessibilityLabel("严格隐私模式")
         predictionToggle.setAccessibilityLabel("显示预测候选")
         learningToggle.setAccessibilityLabel("用户学习")
+        automaticUpdateToggle.setAccessibilityLabel("自动检查更新")
 
         let topRail = makeTopRail()
         let brandCard = makeBrandCard()
@@ -580,13 +594,64 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         )
         notes.maximumNumberOfLines = 3
 
-        let content = NSStackView(views: [header, title, notes])
+        updateStatusLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        updateStatusLabel.textColor = StationTheme.textPrimary
+        updateDetailLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        updateDetailLabel.textColor = StationTheme.textSecondary
+        updateDetailLabel.maximumNumberOfLines = 2
+        updateDetailLabel.lineBreakMode = .byWordWrapping
+        let statusColumn = NSStackView(views: [updateStatusLabel, updateDetailLabel])
+        statusColumn.orientation = .vertical
+        statusColumn.alignment = .leading
+        statusColumn.spacing = 4
+
+        let statusSpacer = NSView()
+        statusSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let checkButton = StationButton(
+            title: "检查更新",
+            target: self,
+            action: #selector(checkUpdateButtonPressed(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        checkButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 112).isActive = true
+        checkUpdateButton = checkButton
+        let statusRow = NSStackView(views: [statusColumn, statusSpacer, checkButton])
+        statusRow.orientation = .horizontal
+        statusRow.alignment = .centerY
+        statusRow.spacing = 14
+
+        let autoTitle = label("自动检查更新", font: .systemFont(ofSize: 14, weight: .semibold), color: StationTheme.textPrimary)
+        automaticUpdateDetailLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        automaticUpdateDetailLabel.textColor = StationTheme.textSecondary
+        automaticUpdateDetailLabel.maximumNumberOfLines = 2
+        automaticUpdateDetailLabel.lineBreakMode = .byWordWrapping
+        let autoColumn = NSStackView(views: [autoTitle, automaticUpdateDetailLabel])
+        autoColumn.orientation = .vertical
+        autoColumn.alignment = .leading
+        autoColumn.spacing = 4
+        let autoSpacer = NSView()
+        autoSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let autoRow = NSStackView(views: [autoColumn, autoSpacer, automaticUpdateToggle])
+        autoRow.orientation = .horizontal
+        autoRow.alignment = .centerY
+        autoRow.spacing = 14
+
+        let divider = hairline()
+
+        let content = NSStackView(views: [header, title, notes, divider, statusRow, autoRow])
         content.orientation = .vertical
         content.alignment = .leading
-        content.spacing = 8
+        content.spacing = 10
         content.translatesAutoresizingMaskIntoConstraints = false
         header.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
         notes.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        divider.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        statusRow.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        autoRow.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
 
         let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
         card.addSubview(content)
@@ -595,7 +660,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
             content.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
             content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
-            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 116),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 236),
         ])
         return card
     }
@@ -670,6 +735,13 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         let learning = settings["enable_user_learning"] as? Bool ?? true
         learningToggle.isOn = strictPrivacy ? false : learning
         setLearningEnabled(!strictPrivacy)
+        automaticUpdateToggle.isOn = PrivatePinyinUpdateController.shared.automaticChecksEnabled
+        automaticUpdateToggle.isEnabledToggle = !strictPrivacy
+        automaticUpdateDetailLabel.stringValue = strictPrivacy
+            ? "严格隐私模式下后台检查已暂停；手动检查会先征求确认。"
+            : "每天最多读取一次固定的公开版本清单，不上传输入内容。"
+        automaticUpdateDetailLabel.textColor = strictPrivacy ? StationTheme.textFaint : StationTheme.textSecondary
+        refreshUpdatePresentation()
 
         let path = PrivatePinyinSettingsStore.settingsURL.path
         settingsPathLabel.stringValue = path
@@ -711,6 +783,57 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         reloadFromSettings()
         NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
     }
+
+    @objc private func checkUpdateButtonPressed(_ sender: Any?) {
+        PrivatePinyinUpdateController.shared.checkOrPresentUpdate(presentingWindow: window)
+    }
+
+    @objc private func updateStateChanged(_ notification: Notification) {
+        refreshUpdatePresentation()
+    }
+
+    private func automaticUpdateSettingChanged() {
+        PrivatePinyinUpdateController.shared.setAutomaticChecksEnabled(automaticUpdateToggle.isOn)
+        reloadFromSettings()
+    }
+
+    private func refreshUpdatePresentation() {
+        let state = PrivatePinyinUpdateController.shared.state
+        checkUpdateButton?.isEnabled = state != .checking
+        switch state {
+        case .idle:
+            updateStatusLabel.stringValue = "尚未检查更新"
+            updateStatusLabel.textColor = StationTheme.textPrimary
+            updateDetailLabel.stringValue = "输入功能始终不依赖更新服务。"
+        case .checking:
+            updateStatusLabel.stringValue = "正在检查更新..."
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = "正在读取 Station Cat 的固定公开版本清单。"
+        case let .upToDate(checkedAt):
+            updateStatusLabel.stringValue = "已经是最新版本"
+            updateStatusLabel.textColor = StationTheme.textPrimary
+            updateDetailLabel.stringValue = "最近检查：\(Self.updateDateFormatter.string(from: checkedAt))"
+        case let .updateAvailable(update):
+            updateStatusLabel.stringValue = "发现新版本 \(update.manifest.version)"
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = update.manifest.title
+        case let .systemUpgradeRequired(update):
+            updateStatusLabel.stringValue = "新版本需要 macOS \(update.manifest.minimumMacOSVersion)"
+            updateStatusLabel.textColor = StationTheme.lampYellow
+            updateDetailLabel.stringValue = "当前系统可以继续使用已安装版本。"
+        case .failed:
+            updateStatusLabel.stringValue = "暂时无法检查更新"
+            updateStatusLabel.textColor = StationTheme.textPrimary
+            updateDetailLabel.stringValue = "输入功能不受影响，请稍后重试。"
+        }
+    }
+
+    private static let updateDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_Hans_CN")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
 
     private func showAlert(_ message: String) {
         NSApp.activate(ignoringOtherApps: true)

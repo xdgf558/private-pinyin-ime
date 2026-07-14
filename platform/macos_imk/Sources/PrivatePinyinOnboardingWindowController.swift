@@ -110,9 +110,11 @@ private final class StationButton: NSButton {
 final class PrivatePinyinOnboardingWindowController: NSWindowController {
     static let shared = PrivatePinyinOnboardingWindowController()
 
+    private let automaticUpdateSwitch = NSSwitch()
+
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 430),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -164,6 +166,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
 
         let stepCard = makeStepCard()
         let tip = makeTipRow()
+        let updateRow = makeUpdateRow()
         let footer = makeFooterRow()
 
         let brandRow = makeBrandRow()
@@ -172,6 +175,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
             heading,
             stepCard,
             tip,
+            updateRow,
             footer,
         ])
         root.orientation = .vertical
@@ -189,6 +193,7 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
             subtitle.widthAnchor.constraint(equalTo: root.widthAnchor),
             stepCard.widthAnchor.constraint(equalTo: root.widthAnchor),
             tip.widthAnchor.constraint(equalTo: root.widthAnchor),
+            updateRow.widthAnchor.constraint(equalTo: root.widthAnchor),
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
     }
@@ -356,6 +361,47 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
         return row
     }
 
+    private func makeUpdateRow() -> NSView {
+        let title = label(
+            "自动检查新版本",
+            font: .systemFont(ofSize: 13, weight: .semibold),
+            color: StationTheme.textPrimary
+        )
+        let strictPrivacy = PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled()
+        let detail = wrappingLabel(
+            strictPrivacy
+                ? "严格隐私模式下已停用后台检查。"
+                : "可选。每天最多读取一次公开版本清单，不上传输入内容。",
+            font: .systemFont(ofSize: 11, weight: .regular),
+            color: strictPrivacy ? StationTheme.textFaint : StationTheme.textSecondary
+        )
+        let textColumn = NSStackView(views: [title, detail])
+        textColumn.orientation = .vertical
+        textColumn.alignment = .leading
+        textColumn.spacing = 3
+
+        automaticUpdateSwitch.state = PrivatePinyinUpdateController.shared.automaticChecksEnabled ? .on : .off
+        automaticUpdateSwitch.isEnabled = !strictPrivacy
+        automaticUpdateSwitch.target = self
+        automaticUpdateSwitch.action = #selector(automaticUpdateSettingChanged(_:))
+        automaticUpdateSwitch.setAccessibilityLabel("自动检查新版本")
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let row = NSStackView(views: [textColumn, spacer, automaticUpdateSwitch])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 14
+        row.edgeInsets = NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14)
+        row.wantsLayer = true
+        row.layer?.backgroundColor = StationTheme.cardBackground.cgColor
+        row.layer?.cornerRadius = 10
+        row.layer?.borderWidth = 1
+        row.layer?.borderColor = StationTheme.border.cgColor
+        return row
+    }
+
     private func makeFooterRow() -> NSView {
         let openKeyboardButton = StationButton(
             title: "打开键盘设置",
@@ -498,6 +544,10 @@ final class PrivatePinyinOnboardingWindowController: NSWindowController {
                 return
             }
         }
+    }
+
+    @objc private func automaticUpdateSettingChanged(_ sender: NSSwitch) {
+        PrivatePinyinUpdateController.shared.setAutomaticChecksEnabled(sender.state == .on)
     }
 
     @objc private func closeWindow(_ sender: Any?) {
