@@ -60,9 +60,18 @@ grep -q "/utf-8" platform/windows_tsf/CMakeLists.txt
 grep -q "CMAKE_MSVC_RUNTIME_LIBRARY" platform/windows_tsf/CMakeLists.txt
 grep -q "RegSvr32Path" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "System64Folder" scripts/package_windows_tsf.ps1
+grep -q "SystemFolder" scripts/package_windows_tsf.ps1
 grep -q "PackagePlatform" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "ComponentWin64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "PrivatePinyinTsfDllX64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "PrivatePinyinTsfDllX86" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q 'Win64="no"' platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RemoveX64Folder" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RemoveX86Folder" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "target-feature=+crt-static" scripts/package_windows_tsf.ps1
+grep -q "i686-pc-windows-msvc" scripts/package_windows_tsf.ps1
+grep -q "x86_64-pc-windows-msvc" scripts/package_windows_tsf.ps1
+grep -q 'Name = "x86"' scripts/package_windows_tsf.ps1
 grep -q "record_trigram" ime_core/src/user_lexicon.rs
 grep -q "predict_trigram" ime_core/src/session.rs
 grep -q "user_trigrams" ime_core/src/user_lexicon.rs
@@ -79,6 +88,9 @@ grep -q "猫栈拼音" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "MUI_ICON" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "DisableX64FSRedirection" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'regsvr32.exe" /u /s' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq 'SysWOW64\regsvr32.exe' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq '\x64\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -Fq '\x86\PrivatePinyinTsf.dll' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "open-onboarding.ps1" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q ".onInstSuccess" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q "IfSilent" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
@@ -96,7 +108,11 @@ grep -q "HasLegacyInputMethod" platform/windows_tsf/installer/open-onboarding.ps
 grep -q "kLegacyTextServiceProfileGuid" platform/windows_tsf/src/registration.cpp
 grep -q "PrivatePinyinInstaller.ico" platform/windows_tsf/src/registration.cpp
 grep -q "icon_path_length" platform/windows_tsf/src/registration.cpp
-grep -q "HKEY_CLASSES_ROOT" platform/windows_tsf/installer/open-onboarding.ps1
+grep -Fq "RegistryView]::Registry64" platform/windows_tsf/installer/open-onboarding.ps1
+grep -Fq "RegistryView]::Registry32" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "X86ComponentInstalled" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "X86Registered" platform/windows_tsf/installer/open-onboarding.ps1
+grep -q "QQ 等 32 位应用兼容组件" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "ComponentInstalled" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "添加输入法" platform/windows_tsf/installer/open-onboarding.ps1
 grep -q "version.txt" platform/windows_tsf/installer/open-settings.ps1

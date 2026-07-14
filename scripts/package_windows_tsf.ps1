@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.18",
+    [string]$Version = "0.1.19",
     [string]$Configuration = "Release",
     [string]$Generator = "Visual Studio 17 2022",
     [string]$Architecture = "x64",
@@ -238,7 +238,8 @@ function Build-Msi {
     )
 
     $componentWin64 = if ($WixArchitecture -eq "x64" -or $WixArchitecture -eq "arm64") { "yes" } else { "no" }
-    $regSvr32Path = if ($componentWin64 -eq "yes") { "[System64Folder]regsvr32.exe" } else { "[SystemFolder]regsvr32.exe" }
+    $regSvr32Path64 = "[System64Folder]regsvr32.exe"
+    $regSvr32Path32 = "[SystemFolder]regsvr32.exe"
 
     if ($WixToolchain.Kind -eq "WixCli") {
         & $WixToolchain.Wix build `
@@ -248,7 +249,8 @@ function Build-Msi {
             "-dProductVersion=$ProductVersion" `
             "-dPackagePlatform=$WixArchitecture" `
             "-dComponentWin64=$componentWin64" `
-            "-dRegSvr32Path=$regSvr32Path" `
+            "-dRegSvr32Path64=$regSvr32Path64" `
+            "-dRegSvr32Path32=$regSvr32Path32" `
             -out $OutputPath
         if ($LASTEXITCODE -ne 0) {
             throw "WiX build failed."
@@ -267,7 +269,8 @@ function Build-Msi {
         "-dProductVersion=$ProductVersion" `
         "-dPackagePlatform=$WixArchitecture" `
         "-dComponentWin64=$componentWin64" `
-        "-dRegSvr32Path=$regSvr32Path" `
+        "-dRegSvr32Path64=$regSvr32Path64" `
+        "-dRegSvr32Path32=$regSvr32Path32" `
         "platform\windows_tsf\installer\PrivatePinyinTsf.wxs" `
         -out $wixObj
     if ($LASTEXITCODE -ne 0) {
@@ -284,6 +287,10 @@ $resolvedSignTool = Resolve-SignTool
 $resolvedSigningCertificate = Resolve-SigningCertificate
 $wixArchitecture = Resolve-WixArchitecture
 
+if ($Architecture -ne "x64") {
+    throw "Windows compatibility packages must use -Architecture x64 so both x64 and x86 TSF components can be included."
+}
+
 $originalRustFlags = $env:RUSTFLAGS
 if ($originalRustFlags) {
     if ($originalRustFlags -notmatch "\+crt-static") {
@@ -293,14 +300,35 @@ if ($originalRustFlags) {
     $env:RUSTFLAGS = "-C target-feature=+crt-static"
 }
 
-& (Join-Path $repoRoot "scripts\build_windows_tsf.ps1") `
-    -Configuration $Configuration `
-    -Generator $Generator `
-    -Architecture $Architecture
+$buildVariants = @(
+    [pscustomobject]@{
+        Name = "x64"
+        CMakeArchitecture = "x64"
+        RustTarget = "x86_64-pc-windows-msvc"
+        BuildDirectory = Join-Path $repoRoot "build\windows_tsf\x64"
+    },
+    [pscustomobject]@{
+        Name = "x86"
+        CMakeArchitecture = "Win32"
+        RustTarget = "i686-pc-windows-msvc"
+        BuildDirectory = Join-Path $repoRoot "build\windows_tsf\x86"
+    }
+)
 
-cargo build -p private_pinyin_settings --release
+foreach ($variant in $buildVariants) {
+    & (Join-Path $repoRoot "scripts\build_windows_tsf.ps1") `
+        -Configuration $Configuration `
+        -Generator $Generator `
+        -Architecture $variant.CMakeArchitecture `
+        -RustTarget $variant.RustTarget `
+        -BuildDirectory $variant.BuildDirectory
+}
 
-$buildDir = Join-Path $repoRoot "build\windows_tsf"
+cargo build -p private_pinyin_settings --release --target x86_64-pc-windows-msvc
+if ($LASTEXITCODE -ne 0) {
+    throw "Windows settings tool build failed."
+}
+
 $stageDir = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version"
 $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
 $msiPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.msi"
@@ -311,19 +339,7 @@ $productLogo = Join-Path $repoRoot "platform\windows_tsf\installer\PrivatePinyin
 Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 
-$tsfDll = Get-ChildItem -Path $buildDir -Filter "PrivatePinyinTsf.dll" -Recurse |
-    Where-Object { $_.FullName -like "*\$Configuration\*" } |
-    Select-Object -First 1
-if (-not $tsfDll) {
-    throw "Could not find PrivatePinyinTsf.dll under $buildDir."
-}
-
-$ffiDll = Join-Path $repoRoot "target\release\private_pinyin_ime.dll"
-if (-not (Test-Path $ffiDll)) {
-    throw "Could not find Rust FFI DLL at $ffiDll."
-}
-
-$settingsTool = Join-Path $repoRoot "target\release\private-pinyin-settings.exe"
+$settingsTool = Join-Path $repoRoot "target\x86_64-pc-windows-msvc\release\private-pinyin-settings.exe"
 if (-not (Test-Path $settingsTool)) {
     throw "Could not find settings tool at $settingsTool."
 }
@@ -334,8 +350,27 @@ if (-not (Test-Path $productLogo)) {
     throw "Could not find Windows product logo at $productLogo."
 }
 
-Copy-Item $tsfDll.FullName -Destination $stageDir
-Copy-Item $ffiDll -Destination $stageDir
+foreach ($variant in $buildVariants) {
+    $variantStageDir = Join-Path $stageDir $variant.Name
+    New-Item -ItemType Directory -Force -Path $variantStageDir | Out-Null
+
+    $tsfDll = Get-ChildItem -Path $variant.BuildDirectory -Filter "PrivatePinyinTsf.dll" -Recurse |
+        Where-Object { $_.FullName -like "*\$Configuration\*" } |
+        Select-Object -First 1
+    if (-not $tsfDll) {
+        throw "Could not find the $($variant.Name) PrivatePinyinTsf.dll under $($variant.BuildDirectory)."
+    }
+
+    $ffiDll = Join-Path $repoRoot "target\$($variant.RustTarget)\release\private_pinyin_ime.dll"
+    if (-not (Test-Path $ffiDll)) {
+        throw "Could not find the $($variant.Name) Rust FFI DLL at $ffiDll."
+    }
+
+    Copy-Item $tsfDll.FullName -Destination $variantStageDir
+    Copy-Item $ffiDll -Destination $variantStageDir
+    Copy-Item $installerIcon -Destination $variantStageDir
+}
+
 Copy-Item $settingsTool -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
@@ -349,7 +384,7 @@ Copy-Item $productLogo -Destination $stageDir
 Copy-Item "config\default_settings.json" -Destination $stageDir
 Set-Content -Path (Join-Path $stageDir "version.txt") -Value $Version -Encoding ASCII
 
-Get-ChildItem -Path $stageDir -File |
+Get-ChildItem -Path $stageDir -Recurse -File |
     Where-Object { $_.Extension -in ".dll", ".exe" } |
     ForEach-Object { Sign-Artifact -Path $_.FullName -ResolvedSignTool $resolvedSignTool }
 Get-ChildItem -Path $stageDir -File |

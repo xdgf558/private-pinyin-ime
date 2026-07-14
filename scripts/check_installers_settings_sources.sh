@@ -58,6 +58,10 @@ grep -q "PackagePlatform" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "ComponentWin64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "RegSvr32Path" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "System64Folder" scripts/package_windows_tsf.ps1
+grep -q "SystemFolder" scripts/package_windows_tsf.ps1
+grep -q "PrivatePinyinTsfDllX86" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "SysWOW64" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
+grep -q "i686-pc-windows-msvc" scripts/package_windows_tsf.ps1
 grep -q "RequestExecutionLevel admin" platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q '!define APP_DIR_NAME "app-${PRODUCT_VERSION}"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'RMDir /r /REBOOTOK "$INSTDIR\\$2"' platform/windows_tsf/installer/PrivatePinyinTsf.nsi

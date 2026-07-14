@@ -340,9 +340,9 @@ if (Test-Path $logoPath) {
 
 Add-Separator -Parent $aboutPage -Y 136
 [void](New-UiLabel -Parent $aboutPage -Text "本版更新" -X 24 -Y 158 -Width 180 -Height 28 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
-[void](New-UiLabel -Parent $aboutPage -Text "1. 新增本地 trigram 联想，最近两个已选词可共同影响下一候选。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "2. 学习权重按 30 天半衰期衰减，并对本地学习数据设置容量上限。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "3. 加固 Windows x64 静态运行库、MSI 架构和 64 位 TSF 注册。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "1. 新增 x86 输入法组件，支持 QQ 等 32 位 Windows 应用。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "2. 安装器会同时注册 x64 与 x86 TSF，并在引导中分别检测。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "3. 继续提供本机 trigram 联想、30 天衰减和容量控制。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
 
 $footerLine = New-Object System.Windows.Forms.Panel
 $footerLine.Location = New-Object System.Drawing.Point(0, 558)

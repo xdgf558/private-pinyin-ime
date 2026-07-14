@@ -6,7 +6,7 @@ on:
       version:
         description: Windows package version to build
         required: true
-        default: "0.1.18"
+        default: "0.1.19"
 
 permissions:
   contents: read
@@ -23,6 +23,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
+          rustup target add x86_64-pc-windows-msvc i686-pc-windows-msvc
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
