@@ -103,6 +103,8 @@ The root `Cargo.toml` defines a workspace with:
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
 - `tools/settings_cli` manages settings snapshots and user lexicon clear/export actions for installer scripts.
 - `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
+- `tools/ai_eval_runner` freezes required pre-AI behavior and reports improvement opportunities from first-party offline cases.
+- `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -128,6 +130,8 @@ bash scripts/check_stage13_lexicon_sources.sh
 bash scripts/check_stage14_ios_signing_sources.sh
 bash scripts/check_stage15_ios_smoke_sources.sh
 bash scripts/check_stage16_ios_testflight_sources.sh
+bash scripts/check_ai01_evaluation_sources.sh
+bash scripts/run_ai_eval.sh
 bash scripts/build_macos_imk.sh
 bash scripts/package_macos_pkg.sh
 bash scripts/build_ios_keyboard.sh

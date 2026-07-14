@@ -2,6 +2,8 @@
 members = [
     "ffi/ime_ffi",
     "ime_core",
+    "tools/ai_benchmark",
+    "tools/ai_eval_runner",
     "tools/lexicon_builder",
     "tools/settings_cli",
     "tools/test_cli",

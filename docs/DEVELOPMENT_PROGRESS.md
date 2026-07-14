@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-13 19:01
-Current stage: Stage 17 Device keyboard behavior and privacy closure
-Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-device privacy/input smoke and external-group assignment remain
+Last updated: 2026-07-14 14:34
+Current stage: Stage 17 device closure and Local AI AI-01 evaluation baseline
+Current status: iOS device checks remain open; AI-01 now freezes pre-AI quality and reference latency without changing runtime behavior
 
 ## Stage Status
 
@@ -27,8 +27,21 @@ Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-
 | 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-13 14:45 | Local trigram learning passed iOS 27 Simulator smoke; build `14` is ready for group assignment while real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
+## Local AI Status
+
+| Stage | Name | Status | Last checked | Notes |
+|---|---|---|---|---|
+| AI-01 | Offline evaluation baseline | completed | 2026-07-14 14:34 | 13/13 required regressions pass; 7 correction/mixed-input opportunities are measured; latency remains report-only |
+| AI-02 | Runtime contracts and mock provider | planned | | Add local-only request/response, budgets, revision identity, cancellation, and mock behavior |
+| AI-03 | Privacy guard and source gates | planned | | Add secure-input rejection, minimal context, sanitized errors, and no-network dependency checks |
+| AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
+
 ## Completed Work
 
+- Established AI-01 before introducing any model: a 20-case first-party offline corpus separates 13 required engine regressions from 7 observed AI improvement opportunities.
+- Added deterministic Top-1, target-rank, found-rate, and MRR reporting plus a release-mode initialization/lookup latency benchmark with no machine-dependent CI threshold.
+- Recorded dataset provenance and an explicit no-user-data rule; the parser rejects provenance other than project regressions or first-party synthetic cases.
+- Added the approved AI-01 through AI-12 implementation plan, including stable visible candidate numbering and stale asynchronous-result rejection requirements.
 - Added an optional iOS nine-key layout without replacing QWERTY or the symbols page; Chinese users can persistently switch with `九宫` / `ABC`, while English mode continues to use QWERTY.
 - Added shared Rust nine-key indexing and continuous digit-string decoding, C ABI key code `102`, learned-candidate lookup, old SQLite user-phrase migration, and regression coverage for `64426 -> 你好`.
 - Added local trigram learning so the last two selected tokens can produce context-specific next-token predictions across macOS, Windows, and iOS through the shared Rust core.
@@ -462,6 +475,30 @@ Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-
 - SHA-256: `0f167ca8e923f50c89b89723fa1192b407ce5e69bb4a73b8f3a88bf40211f6a1`
 - Distribution note: these Windows artifacts are unsigned and remain for internal testing only.
 
+### Local AI AI-01 Validation
+
+- Command: `bash scripts/check_ai01_evaluation_sources.sh`
+- Result: passed
+- Notes: Dataset provenance and 20-case manifest checks passed; all 13 required pre-AI regressions passed, while 7 correction/mixed-input opportunities remain intentionally observable and non-blocking.
+
+- Command: `cargo fmt --all -- --check`
+- Result: passed
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: Existing core, C ABI, settings, lexicon, learning, nine-key, and the 6 new AI evaluation/benchmark unit tests passed.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged C ABI still returned and committed `你好`.
+
+- Command: `bash scripts/run_ai_eval.sh --benchmark --initialization-iterations 5 --lookup-iterations 100`
+- Result: passed
+- Notes: On the arm64 macOS reference machine, engine initialization P95 was 56.01 ms, continuous-pinyin lookup P95 was 1.48 ms, and nine-key lookup P95 was 3.67 ms. Measurements are report-only rather than CI thresholds.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -480,20 +517,32 @@ Current status: iOS build 0.1.18 (14) is processed and App Store eligible; real-
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
+- Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
+- Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
 
 ## Files Changed In Latest Stage
 
+- `.github/workflows/rust.yml`
 - `CHANGELOG.md`
+- `Cargo.lock`
+- `Cargo.toml`
 - `README.md`
+- `ai/README.md`
+- `ai/eval/README.md`
+- `ai/eval/baseline_cases.tsv`
+- `ai/eval/baseline_report.md`
+- `ai/eval/dataset_manifest.json`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
-- `docs/privacy_spec.md`
-- `ime_core/src/ranker.rs`
-- `ime_core/src/session.rs`
-- `ime_core/src/user_lexicon.rs`
-- `ime_core/tests/user_lexicon_tests.rs`
+- `docs/local_ai_development_plan.md`
+- `scripts/README.md`
+- `scripts/check_ai01_evaluation_sources.sh`
+- `scripts/run_ai_eval.sh`
+- `tools/README.md`
+- `tools/ai_benchmark/`
+- `tools/ai_eval_runner/`
 
 ## Next Step
 
-- Review the local trigram-learning branch, then merge it before producing new platform packages or TestFlight builds.
+- Review AI-01 as a standalone PR. Begin AI-02 runtime contracts and mock provider only after approval and merge.

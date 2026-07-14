@@ -1,0 +1,21 @@
+id	feature	input_kind	input	expected_texts	max_rank	gate	provenance
+core_nihao	core_candidate	raw_pinyin	nihao	你好	1	required	project_regression
+core_ganma	core_candidate	raw_pinyin	ganma	干嘛	1	required	project_regression
+core_gailv	core_candidate	raw_pinyin	gailv	概率	1	required	project_regression
+core_diannao	core_candidate	raw_pinyin	diannao	电脑	10	required	project_regression
+core_shijian	core_candidate	raw_pinyin	shijian	时间	10	required	project_regression
+core_yinwei	core_candidate	raw_pinyin	yinwei	因为	10	required	project_regression
+core_wenjian	core_candidate	raw_pinyin	wenjian	文件	10	required	project_regression
+continuous_weather	continuous_pinyin	raw_pinyin	jintiantianqibucuo	今天天气不错	1	required	project_regression
+continuous_probability	continuous_pinyin	raw_pinyin	gailvhenxiao	概率很小	1	required	project_regression
+continuous_dinner	continuous_pinyin	raw_pinyin	wojintianxiangquchifan	我今天想去吃饭	1	required	project_regression
+initials_nihao	shorthand_initials	raw_pinyin	nh	你好	50	required	project_regression
+nine_key_nihao	nine_key	nine_key	64426	你好	1	required	project_regression
+nine_key_dinner	nine_key	nine_key	9654684269426478244326	我今天想去吃饭	50	required	project_regression
+correction_zongguo	pinyin_correction	raw_pinyin	zongguo	中国	2	observe	synthetic
+correction_jinntian	pinyin_correction	raw_pinyin	jinntian	今天	2	observe	synthetic
+correction_nhao	pinyin_correction	raw_pinyin	nhao	你好	2	observe	synthetic
+mixed_codex	mixed_english	raw_pinyin	woyongcodexxiedaima	我用 Codex 写代码	3	observe	synthetic
+mixed_github_pr	mixed_english	raw_pinyin	wozaigithubkanpr	我在 GitHub 看 PR	3	observe	synthetic
+mixed_api_key	mixed_english	raw_pinyin	zhegeapikeybiefashangqu	这个 API key 别发上去	3	observe	synthetic
+mixed_full_initials	mixed_full_initials	raw_pinyin	wojt	我今天	5	observe	synthetic

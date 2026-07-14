@@ -199,3 +199,11 @@ Status: accepted
 Decision: Learn selected-token trigrams in the existing local SQLite user lexicon, rank all learned signals with a 30-day inactivity half-life, retain only the eight most recent session tokens, and enforce fixed row limits with decayed-weight eviction.
 Reason: Two-token context distinguishes common continuations that a one-step bigram cannot, while local decay and bounded storage keep stale habits from dominating forever and prevent long-running installations from growing without limit. The feature must preserve the no-network and no-full-sentence privacy boundary.
 Consequences: macOS, Windows, and iOS receive the same trigram behavior through the existing Rust core and C ABI. The database may store a bounded `(first, second, next)` selected-token relation and next-token pinyin, but never raw keys, surrounding document text, or an unbounded sentence. Default limits are 20,000 phrases, 20,000 bigrams, 10,000 short phrases, and 20,000 trigrams; `OI-044` is closed.
+
+## Decision 026: Evaluation-first local AI development
+
+Date: 2026-07-14
+Status: accepted
+Decision: Freeze deterministic quality and reference latency before adding any local AI provider, keep existing input behavior as required regression cases, and track unsupported typo correction, mixed English, and mixed full-pinyin/initial input as non-blocking observation cases.
+Reason: A provider cannot be judged safely without a pre-AI baseline, and making model integration precede evaluation would hide regressions behind subjective examples. The corpus must remain first-party synthetic or derived from public repository regressions; exported user data and real application context are prohibited.
+Consequences: AI-01 adds development tools and CI checks only. Future AI stages must improve the observed set without regressing required cases, must measure platform latency/memory separately, and must not asynchronously change the identity of already visible numbered candidates.
