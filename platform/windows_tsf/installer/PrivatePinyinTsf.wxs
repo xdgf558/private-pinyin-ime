@@ -24,54 +24,84 @@
     </Feature>
 
     <CustomAction
-      Id="RegisterTsf"
+      Id="RegisterTsf64"
       Directory="INSTALLFOLDER"
-      ExeCommand="&quot;$(var.RegSvr32Path)&quot; /s &quot;[#PrivatePinyinTsfDll]&quot;"
+      ExeCommand="&quot;$(var.RegSvr32Path64)&quot; /s &quot;[#PrivatePinyinTsfDllX64]&quot;"
       Execute="deferred"
       Impersonate="yes"
       Return="check" />
     <CustomAction
-      Id="UnregisterTsf"
+      Id="RegisterTsf32"
       Directory="INSTALLFOLDER"
-      ExeCommand="&quot;$(var.RegSvr32Path)&quot; /u /s &quot;[#PrivatePinyinTsfDll]&quot;"
+      ExeCommand="&quot;$(var.RegSvr32Path32)&quot; /s &quot;[#PrivatePinyinTsfDllX86]&quot;"
+      Execute="deferred"
+      Impersonate="yes"
+      Return="check" />
+    <CustomAction
+      Id="UnregisterTsf64"
+      Directory="INSTALLFOLDER"
+      ExeCommand="&quot;$(var.RegSvr32Path64)&quot; /u /s &quot;[#PrivatePinyinTsfDllX64]&quot;"
+      Execute="deferred"
+      Impersonate="yes"
+      Return="ignore" />
+    <CustomAction
+      Id="UnregisterTsf32"
+      Directory="INSTALLFOLDER"
+      ExeCommand="&quot;$(var.RegSvr32Path32)&quot; /u /s &quot;[#PrivatePinyinTsfDllX86]&quot;"
       Execute="deferred"
       Impersonate="yes"
       Return="ignore" />
 
     <InstallExecuteSequence>
-      <Custom Action="UnregisterTsf" Before="RemoveFiles">REMOVE="ALL"</Custom>
-      <Custom Action="RegisterTsf" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="UnregisterTsf32" Before="UnregisterTsf64">REMOVE="ALL"</Custom>
+      <Custom Action="UnregisterTsf64" Before="RemoveFiles">REMOVE="ALL"</Custom>
+      <Custom Action="RegisterTsf64" After="InstallFiles">NOT REMOVE~="ALL"</Custom>
+      <Custom Action="RegisterTsf32" After="RegisterTsf64">NOT REMOVE~="ALL"</Custom>
     </InstallExecuteSequence>
   </Product>
 
   <Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="LocalAppDataFolder">
-        <Directory Id="INSTALLFOLDER" Name="PrivatePinyin" />
+        <Directory Id="INSTALLFOLDER" Name="PrivatePinyin">
+          <Directory Id="X64FOLDER" Name="x64" />
+          <Directory Id="X86FOLDER" Name="x86" />
+        </Directory>
       </Directory>
     </Directory>
   </Fragment>
 
   <Fragment>
-    <ComponentGroup Id="PrivatePinyinComponents" Directory="INSTALLFOLDER">
-      <Component Id="PrivatePinyinTsfDllComponent" Guid="D09204C6-B49B-4ACD-9C85-A3250408D944" Win64="$(var.ComponentWin64)">
-        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDll" Type="integer" Value="1" KeyPath="yes" />
-        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
-        <File Id="PrivatePinyinTsfDll" Source="$(var.PackageSource)\PrivatePinyinTsf.dll" />
+    <ComponentGroup Id="PrivatePinyinComponents">
+      <Component Id="PrivatePinyinTsfDllX64Component" Directory="X64FOLDER" Guid="91F61764-B5D5-4E0C-B13F-A194EE25DE19" Win64="yes">
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDllX64" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinTsfDllX64" Source="$(var.PackageSource)\x64\PrivatePinyinTsf.dll" />
+        <File Id="PrivatePinyinInstallerIconX64" Source="$(var.PackageSource)\x64\PrivatePinyinInstaller.ico" />
       </Component>
-      <Component Id="PrivatePinyinFfiDllComponent" Guid="25D234A5-7805-4651-B804-D2F652753E43" Win64="$(var.ComponentWin64)">
-        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="FfiDll" Type="integer" Value="1" KeyPath="yes" />
-        <File Id="PrivatePinyinFfiDll" Source="$(var.PackageSource)\private_pinyin_ime.dll" />
+      <Component Id="PrivatePinyinFfiDllX64Component" Directory="X64FOLDER" Guid="0FD34CE8-6F87-48AF-A442-01D4490287B2" Win64="yes">
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="FfiDllX64" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinFfiDllX64" Source="$(var.PackageSource)\x64\private_pinyin_ime.dll" />
       </Component>
-      <Component Id="PrivatePinyinSettingsToolComponent" Guid="050BB8F6-A41F-44D7-BA89-497D94425CCE" Win64="$(var.ComponentWin64)">
+      <Component Id="PrivatePinyinTsfDllX86Component" Directory="X86FOLDER" Guid="A4C9B63B-756B-4709-9B40-9D5C92D1D8E6" Win64="no">
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDllX86" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinTsfDllX86" Source="$(var.PackageSource)\x86\PrivatePinyinTsf.dll" />
+        <File Id="PrivatePinyinInstallerIconX86" Source="$(var.PackageSource)\x86\PrivatePinyinInstaller.ico" />
+      </Component>
+      <Component Id="PrivatePinyinFfiDllX86Component" Directory="X86FOLDER" Guid="6CF25AC7-FB6A-4300-92B0-48DB307EA5DB" Win64="no">
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="FfiDllX86" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="PrivatePinyinFfiDllX86" Source="$(var.PackageSource)\x86\private_pinyin_ime.dll" />
+      </Component>
+      <Component Id="PrivatePinyinSettingsToolComponent" Directory="INSTALLFOLDER" Guid="050BB8F6-A41F-44D7-BA89-497D94425CCE" Win64="$(var.ComponentWin64)">
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="SettingsTool" Type="integer" Value="1" KeyPath="yes" />
         <File Id="PrivatePinyinSettingsTool" Source="$(var.PackageSource)\private-pinyin-settings.exe" />
       </Component>
-      <Component Id="PrivatePinyinInstallerScriptsComponent" Guid="F6453682-606E-4937-88FF-B006577798FB" Win64="$(var.ComponentWin64)">
+      <Component Id="PrivatePinyinInstallerScriptsComponent" Directory="INSTALLFOLDER" Guid="F6453682-606E-4937-88FF-B006577798FB" Win64="$(var.ComponentWin64)">
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="InstallerScripts" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
         <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" />
         <File Id="UnregisterImeScript" Source="$(var.PackageSource)\unregister-ime.ps1" />
         <File Id="OpenSettingsScript" Source="$(var.PackageSource)\open-settings.ps1" />
+        <File Id="OpenOnboardingScript" Source="$(var.PackageSource)\open-onboarding.ps1" />
         <File Id="PrivatePinyinLogo" Source="$(var.PackageSource)\PrivatePinyinLogo.png" />
         <File Id="ReleaseNotesZhHans" Source="$(var.PackageSource)\ReleaseNotes.zh-Hans.txt" />
         <File Id="DefaultSettingsJson" Source="$(var.PackageSource)\default_settings.json" />

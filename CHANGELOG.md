@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added an x86 Windows TSF and Rust FFI build alongside x64 so 32-bit applications such as QQ can load the input method.
+- Added dual registry-view detection and x64/x86 registration to the Windows installers and post-install guide.
 - Added bounded local trigram learning so the two most recent selected words can jointly influence the next prediction without leaving the device.
 - Added 30-day learning-weight decay, per-table capacity limits, and serialized SQLite writes for local learning data.
 - Added explicit Windows x64 WiX component architecture, 64-bit `regsvr32`, and static MSVC/Rust runtime packaging.

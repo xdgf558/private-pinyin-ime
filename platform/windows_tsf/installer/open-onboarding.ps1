@@ -58,26 +58,44 @@ function Remove-LegacyInputMethodTips {
 }
 
 function Get-PrivatePinyinState {
-    $componentPath = Join-Path $PSScriptRoot "PrivatePinyinTsf.dll"
-    $componentInstalled = Test-Path $componentPath
-    $registrationPaths = @(
-        "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\$textServiceClsid\InprocServer32",
-        "Registry::HKEY_CLASSES_ROOT\CLSID\$textServiceClsid\InprocServer32"
-    )
-    $registered = $false
-    $registeredServerPath = $null
-    foreach ($registrationPath in $registrationPaths) {
-        if (-not (Test-Path $registrationPath)) {
-            continue
-        }
+    $x64ComponentPath = Join-Path $PSScriptRoot "x64\PrivatePinyinTsf.dll"
+    $x86ComponentPath = Join-Path $PSScriptRoot "x86\PrivatePinyinTsf.dll"
+    $x64ComponentInstalled = Test-Path $x64ComponentPath
+    $x86ComponentInstalled = Test-Path $x86ComponentPath
+    $componentInstalled = $x64ComponentInstalled -and $x86ComponentInstalled
 
-        $serverPath = (Get-Item $registrationPath).GetValue("")
-        if ($serverPath -and (Test-Path $serverPath)) {
-            $registered = $true
-            $registeredServerPath = $serverPath
-            break
+    $registrationSubKey = "Software\Classes\CLSID\$textServiceClsid\InprocServer32"
+    function Get-RegisteredServerPath {
+        param([Parameter(Mandatory = $true)][Microsoft.Win32.RegistryView]$View)
+
+        $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+            [Microsoft.Win32.RegistryHive]::CurrentUser,
+            $View
+        )
+        try {
+            $registrationKey = $baseKey.OpenSubKey($registrationSubKey)
+            if ($null -eq $registrationKey) {
+                return $null
+            }
+            try {
+                $serverPath = [string]$registrationKey.GetValue("")
+                if ($serverPath -and (Test-Path $serverPath)) {
+                    return $serverPath
+                }
+                return $null
+            } finally {
+                $registrationKey.Dispose()
+            }
+        } finally {
+            $baseKey.Dispose()
         }
     }
+
+    $x64RegisteredServerPath = Get-RegisteredServerPath -View ([Microsoft.Win32.RegistryView]::Registry64)
+    $x86RegisteredServerPath = Get-RegisteredServerPath -View ([Microsoft.Win32.RegistryView]::Registry32)
+    $x64Registered = $null -ne $x64RegisteredServerPath
+    $x86Registered = $null -ne $x86RegisteredServerPath
+    $registered = $x64Registered -and $x86Registered
     $languageToolsAvailable = $null -ne (Get-Command Get-WinUserLanguageList -ErrorAction SilentlyContinue) -and
         $null -ne (Get-Command Set-WinUserLanguageList -ErrorAction SilentlyContinue)
     $enabled = $false
@@ -101,13 +119,19 @@ function Get-PrivatePinyinState {
 
     [pscustomobject]@{
         ComponentInstalled = $componentInstalled
+        X64ComponentInstalled = $x64ComponentInstalled
+        X86ComponentInstalled = $x86ComponentInstalled
         Registered = $registered
+        X64Registered = $x64Registered
+        X86Registered = $x86Registered
         Enabled = $enabled
         HasLegacyInputMethod = $hasLegacyInputMethod
         HasChineseLanguage = $hasChineseLanguage
         LanguageToolsAvailable = $languageToolsAvailable
         InputMethodTip = $inputMethodTip
-        RegisteredServerPath = $registeredServerPath
+        RegisteredServerPath = $x64RegisteredServerPath
+        X64RegisteredServerPath = $x64RegisteredServerPath
+        X86RegisteredServerPath = $x86RegisteredServerPath
     }
 }
 
@@ -373,11 +397,14 @@ $form.Controls.Add($doneButton)
 function Update-GuideState {
     $state = Get-PrivatePinyinState
 
-    if ($state.ComponentInstalled -and ($state.Registered -or $state.Enabled)) {
-        $step1Status.Text = "已完成：Windows 输入法组件已安装并注册。"
+    if ($state.ComponentInstalled -and $state.Registered) {
+        $step1Status.Text = "已完成：64 位和 32 位输入法组件均已安装并注册。"
         $step1Status.ForeColor = $colors.Success
+    } elseif ($state.X64ComponentInstalled -and $state.X64Registered -and -not $state.X86Registered) {
+        $step1Status.Text = "缺少 QQ 等 32 位应用兼容组件，请安装 0.1.19 或更高版本。"
+        $step1Status.ForeColor = $colors.Warning
     } elseif ($state.ComponentInstalled) {
-        $step1Status.Text = "组件文件已安装，但 Windows TSF 注册尚未完成。"
+        $step1Status.Text = "组件文件已安装，但 64 位或 32 位 TSF 注册尚未完成。"
         $step1Status.ForeColor = $colors.Warning
     } else {
         $step1Status.Text = "未检测到组件，请关闭此窗口并重新运行安装程序。"

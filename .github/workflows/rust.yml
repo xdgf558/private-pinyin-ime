@@ -85,6 +85,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
+          rustup target add x86_64-pc-windows-msvc i686-pc-windows-msvc
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
@@ -118,4 +119,6 @@ jobs:
 
       - name: Build Windows TSF host
         shell: pwsh
-        run: .\scripts\build_windows_tsf.ps1
+        run: |
+          .\scripts\build_windows_tsf.ps1 -Architecture x64 -RustTarget x86_64-pc-windows-msvc
+          .\scripts\build_windows_tsf.ps1 -Architecture Win32 -RustTarget i686-pc-windows-msvc

@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.18"
+!define PRODUCT_VERSION "0.1.19"
 !endif
 
 !define APP_DIR_NAME "app-${PRODUCT_VERSION}"
@@ -71,10 +71,17 @@ FunctionEnd
 Section "猫栈拼音" SecMain
   SetShellVarContext current
   SetRegView 64
-  SetOutPath "$INSTDIR\${APP_DIR_NAME}"
+  SetOutPath "$INSTDIR\${APP_DIR_NAME}\x64"
+  File "${PACKAGE_SOURCE}\x64\PrivatePinyinTsf.dll"
+  File "${PACKAGE_SOURCE}\x64\private_pinyin_ime.dll"
+  File "${PACKAGE_SOURCE}\x64\PrivatePinyinInstaller.ico"
 
-  File "${PACKAGE_SOURCE}\PrivatePinyinTsf.dll"
-  File "${PACKAGE_SOURCE}\private_pinyin_ime.dll"
+  SetOutPath "$INSTDIR\${APP_DIR_NAME}\x86"
+  File "${PACKAGE_SOURCE}\x86\PrivatePinyinTsf.dll"
+  File "${PACKAGE_SOURCE}\x86\private_pinyin_ime.dll"
+  File "${PACKAGE_SOURCE}\x86\PrivatePinyinInstaller.ico"
+
+  SetOutPath "$INSTDIR\${APP_DIR_NAME}"
   File "${PACKAGE_SOURCE}\private-pinyin-settings.exe"
   File "${PACKAGE_SOURCE}\register-ime.ps1"
   File "${PACKAGE_SOURCE}\unregister-ime.ps1"
@@ -108,11 +115,21 @@ Section "猫栈拼音" SecMain
   CreateShortcut "$SMPROGRAMS\猫栈拼音\卸载.lnk" "$INSTDIR\uninstall.exe"
 
   ${DisableX64FSRedirection}
-  ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\PrivatePinyinTsf.dll"'
-  ExecWait '"$WINDIR\System32\regsvr32.exe" /s "$INSTDIR\${APP_DIR_NAME}\PrivatePinyinTsf.dll"' $0
+  ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\x64\PrivatePinyinTsf.dll"'
+  ExecWait '"$WINDIR\System32\regsvr32.exe" /s "$INSTDIR\${APP_DIR_NAME}\x64\PrivatePinyinTsf.dll"' $0
   ${EnableX64FSRedirection}
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "猫栈拼音文件已复制，但 Windows TSF 注册失败，regsvr32 退出码为 $0。请关闭正在使用旧输入法的应用，然后重新运行安装器。如果仍失败，请先卸载旧版本，注销并重新登录后再安装。"
+    MessageBox MB_ICONSTOP "猫栈拼音文件已复制，但 64 位 Windows TSF 注册失败，regsvr32 退出码为 $0。请关闭正在使用旧输入法的应用，然后重新运行安装器。"
+    Abort
+  ${EndIf}
+
+  ExecWait '"$WINDIR\SysWOW64\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\x86\PrivatePinyinTsf.dll"'
+  ExecWait '"$WINDIR\SysWOW64\regsvr32.exe" /s "$INSTDIR\${APP_DIR_NAME}\x86\PrivatePinyinTsf.dll"' $1
+  ${If} $1 != 0
+    ${DisableX64FSRedirection}
+    ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\x64\PrivatePinyinTsf.dll"'
+    ${EnableX64FSRedirection}
+    MessageBox MB_ICONSTOP "猫栈拼音文件已复制，但 QQ 等 32 位应用所需的 TSF 组件注册失败，regsvr32 退出码为 $1。请关闭 QQ 后重新运行安装器。"
     Abort
   ${EndIf}
 
@@ -150,8 +167,9 @@ Section "Uninstall"
   SetRegView 64
 
   ${DisableX64FSRedirection}
-  ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\PrivatePinyinTsf.dll"'
+  ExecWait '"$WINDIR\System32\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\x64\PrivatePinyinTsf.dll"'
   ${EnableX64FSRedirection}
+  ExecWait '"$WINDIR\SysWOW64\regsvr32.exe" /u /s "$INSTDIR\${APP_DIR_NAME}\x86\PrivatePinyinTsf.dll"'
 
   Delete "$SMPROGRAMS\猫栈拼音\安装引导.lnk"
   Delete "$SMPROGRAMS\猫栈拼音\偏好设置.lnk"
