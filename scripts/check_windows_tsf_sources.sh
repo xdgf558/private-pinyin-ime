@@ -66,6 +66,8 @@ grep -q "ComponentWin64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "PrivatePinyinTsfDllX64" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "PrivatePinyinTsfDllX86" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q 'Win64="no"' platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RemoveX64Folder" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q "RemoveX86Folder" platform/windows_tsf/installer/PrivatePinyinTsf.wxs
 grep -q "target-feature=+crt-static" scripts/package_windows_tsf.ps1
 grep -q "i686-pc-windows-msvc" scripts/package_windows_tsf.ps1
 grep -q "x86_64-pc-windows-msvc" scripts/package_windows_tsf.ps1

@@ -75,6 +75,7 @@
     <ComponentGroup Id="PrivatePinyinComponents">
       <Component Id="PrivatePinyinTsfDllX64Component" Directory="X64FOLDER" Guid="91F61764-B5D5-4E0C-B13F-A194EE25DE19" Win64="yes">
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDllX64" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveX64Folder" Directory="X64FOLDER" On="uninstall" />
         <File Id="PrivatePinyinTsfDllX64" Source="$(var.PackageSource)\x64\PrivatePinyinTsf.dll" />
         <File Id="PrivatePinyinInstallerIconX64" Source="$(var.PackageSource)\x64\PrivatePinyinInstaller.ico" />
       </Component>
@@ -84,6 +85,7 @@
       </Component>
       <Component Id="PrivatePinyinTsfDllX86Component" Directory="X86FOLDER" Guid="A4C9B63B-756B-4709-9B40-9D5C92D1D8E6" Win64="no">
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="TsfDllX86" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveX86Folder" Directory="X86FOLDER" On="uninstall" />
         <File Id="PrivatePinyinTsfDllX86" Source="$(var.PackageSource)\x86\PrivatePinyinTsf.dll" />
         <File Id="PrivatePinyinInstallerIconX86" Source="$(var.PackageSource)\x86\PrivatePinyinInstaller.ico" />
       </Component>
