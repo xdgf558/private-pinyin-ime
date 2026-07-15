@@ -56,6 +56,7 @@ Current status: Compact proportional preferences scaling is complete and ready f
 
 - Made the macOS Station Board preferences window resizable with a fixed aspect ratio, a compact 86% default size, and a bounded 72%-100% whole-canvas scale.
 - Kept every card, label, button, custom toggle, and pointer hit region synchronized through AppKit scroll-view magnification; local visual smoke covered default and minimum sizes plus a toggle round trip at minimum scale.
+- Disabled independent trackpad pinch magnification so only proportional window resizing can change the board scale, preventing hidden-scroller clipping at compact window sizes.
 - Added UPDATE-03 post-install lifecycle handling without changing the shared Rust engine or normal IMK typing path.
 - Changed pkg follow-up launch to a new UI-only executable process in the console user's Aqua session with a bounded install timestamp, avoiding both old-instance activation and Input Method LaunchServices failures.
 - Made onboarding, preferences preview, and post-install modes UI-only so they never create a competing `IMKServer` and exit after their last window closes.

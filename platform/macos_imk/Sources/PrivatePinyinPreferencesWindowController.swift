@@ -317,7 +317,9 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         boardScrollView.hasVerticalScroller = false
         boardScrollView.horizontalScrollElasticity = .none
         boardScrollView.verticalScrollElasticity = .none
-        boardScrollView.allowsMagnification = true
+        // Window resizing is the only zoom path. Independent pinch zoom could
+        // enlarge the board beyond the hidden-scroller viewport.
+        boardScrollView.allowsMagnification = false
         boardScrollView.minMagnification = Self.minimumBoardScale
         boardScrollView.maxMagnification = Self.maximumBoardScale
         boardScrollView.documentView = boardView

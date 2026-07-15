@@ -65,7 +65,7 @@ Checklist:
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
 | Build | `scripts/build_macos_imk.sh` produces `dist/macos_imk/PrivatePinyin.app` | | |
-| Preferences scaling | Preferences opens at the compact default size; dragging a window corner keeps the Station Board aspect ratio from minimum to design size, with no clipping and accurate toggle/button clicks | | Verify both 72% minimum and 100% design size |
+| Preferences scaling | Preferences opens at the compact default size; dragging a window corner keeps the Station Board aspect ratio from minimum to design size, with no clipping and accurate toggle/button clicks; trackpad pinch does not independently zoom or crop the board | | Verify both 72% minimum and 100% design size, then pinch at the 86% default size |
 | Install | `platform/macos_imk/installer/install-local.sh` installs into Input Methods | | |
 | Package install | `scripts/package_macos_pkg.sh` pkg installs into `/Library/Input Methods` | | |
 | Post-install onboarding | Fresh pkg install launches a new UI-only helper and opens the setup guide with an Open Keyboard Settings button; the helper does not create a second IMK server | | |
