@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added UPDATE-02 explicit macOS package download with same-host streaming limits, exact size and SHA-256 checks, pinned Developer ID Installer verification, Gatekeeper notarization assessment, cancellation/retry UI, a private one-package cache, and a second confirmation before opening Apple's system Installer.
 - Added UPDATE-01 opt-in macOS version checks with a fixed first-party HTTPS manifest, strict validation, sanitized status UI, strict-privacy gating, onboarding/preferences controls, and offline contract tests; package installation remains a later stage.
 - Added the AI-01 offline evaluation baseline with a provenance-gated synthetic/regression corpus, deterministic Top-1/target-rank/MRR runner, report-only latency benchmark, and CI source gate without changing input behavior.
 - Added an x86 Windows TSF and Rust FFI build alongside x64 so 32-bit applications such as QQ can load the input method.

@@ -55,6 +55,27 @@ or a persistent tracking cookie. The shared Rust engine must remain network-free
 Update failures must be shown through sanitized state and must never interrupt
 typing.
 
+## Update Package Downloads
+
+The macOS host may download a package only after the user explicitly selects
+`下载并验证` for a validated newer version. Automatic checks must never start a
+package transfer. Enabling strict privacy mode cancels an active transfer.
+
+The package request is restricted to the same fixed first-party HTTPS host and
+must not include input content, user-learning data, document context, account
+identifiers, telemetry, cookies, or a referrer derived from user activity. The
+download is kept in a private local cache and is deleted if its size, SHA-256,
+Developer ID Installer identity, or Apple notarization check fails.
+
+Application-controlled verification operates on the local package through
+fixed macOS system tools. Gatekeeper may consult Apple security services under
+the system's own policy; the app provides no input content, learning data,
+account identifier, or telemetry. The host must use fixed structured failure
+states rather than include command output, local paths, certificate details, or
+other environment data in user-facing errors or logs. Opening macOS Installer
+requires a second visible user confirmation; the app must never silently invoke
+a privileged installer or provide credentials.
+
 ## User Lexicon Storage
 
 The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, update time, one-step selected-phrase transitions, bounded short phrase completions, and three-token transition records derived only from selected candidates. A trigram record contains two selected context tokens plus the selected next token and its pinyin; it must not include surrounding document text or an unbounded sentence.

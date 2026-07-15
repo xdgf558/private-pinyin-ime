@@ -80,6 +80,9 @@ jobs:
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
+      - name: Check UPDATE-02 verified-installer source contract
+        run: bash scripts/check_update02_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

@@ -215,3 +215,11 @@ Status: accepted
 Decision: Implement UPDATE-01 in the thin macOS host as an opt-in, check-only client for one fixed first-party HTTPS manifest; keep automatic checks off by default, pause them in strict privacy mode, and leave the shared Rust input engine network-free.
 Reason: Website-distributed users need a reliable way to discover signed releases, but version discovery must not quietly weaken the project's no-network default or combine unreviewed download, privilege, and process-restart behavior in one step.
 Consequences: The menu, preferences, and first-run guide expose update controls; manifest parsing rejects foreign hosts and malformed package metadata; failures never block typing. UPDATE-02 must separately verify and hand a signed/notarized pkg to macOS Installer, while UPDATE-03 owns stale input-method process guidance.
+
+## Decision 028: Verified macOS package handoff
+
+Date: 2026-07-14
+Status: accepted
+Decision: Download a macOS update only after explicit user consent, verify exact size and SHA-256 plus the pinned Developer ID Installer Team ID and Gatekeeper notarization, repeat verification immediately before handoff, and open the package only with Apple's visible system Installer.
+Reason: A trusted manifest alone cannot prove that bytes received later are the reviewed release, and an input-method process must not silently cross a privilege boundary. The update flow must fail closed if the package, signer, notarization result, local cache, or system verifier differs from the published contract.
+Consequences: UPDATE-02 adds a constrained ephemeral download session, one-package private cache, fixed-path system verification without shell evaluation, sanitized failure states, cancellation/retry UI, and two visible consent points. The host never invokes the privileged `installer` command or supplies credentials. UPDATE-03 remains responsible for post-install process-refresh guidance.

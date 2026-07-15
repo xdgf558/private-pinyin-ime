@@ -9,6 +9,8 @@ required_files=(
   "platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift"
   "platform/macos_imk/Sources/PrivatePinyinUpdateController.swift"
   "platform/macos_imk/Sources/UpdateManifest.swift"
+  "platform/macos_imk/Sources/PrivatePinyinPackageVerifier.swift"
+  "platform/macos_imk/Sources/PrivatePinyinPackageDownloader.swift"
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
@@ -135,4 +137,6 @@ grep -q "InputMethodConnectionName" platform/macos_imk/Resources/Info.plist
 grep -q "PrivatePinyinUpdateController" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "PrivatePinyinUpdateController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "UpdateManifest.swift" scripts/build_macos_imk.sh
+grep -q "PrivatePinyinPackageVerifier.swift" scripts/build_macos_imk.sh
+grep -q "PrivatePinyinPackageDownloader.swift" scripts/build_macos_imk.sh
 grep -q "PrivatePinyinUpdateController.swift" scripts/build_macos_imk.sh

@@ -105,20 +105,27 @@ user account and record:
 
 ## Update Flow
 
-UPDATE-01 can notify users about a release after they opt in, but installation
-remains manual:
+UPDATE-01 can notify users about a release after they opt in. UPDATE-02 can
+download and validate the package after explicit consent, but macOS Installer
+still owns authorization and installation:
 
 1. Bump the version, for example `0.1.9 -> 0.1.10`.
 2. Build, sign, notarize, and staple the new `.pkg`.
 3. Run `bash scripts/check_macos_public_release.sh`.
 4. Update the website download link, version, date, SHA256 checksum, and
    changelog.
-5. Users install the new pkg over the old version, then log out and log back in
-   if macOS keeps the old input-method process cached.
-6. Publish the fixed-host `stable.json` manifest only after the release page and
+5. Publish the fixed-host `stable.json` manifest only after the release page and
    immutable pkg are live and their byte size and SHA-256 are verified.
+6. From the installed previous version, choose `下载并验证`; confirm download
+   progress, exact-size/SHA-256 checks, pinned Developer ID Installer Team ID,
+   Gatekeeper notarization, and the second handoff confirmation.
+7. Confirm Apple's system Installer opens visibly and requests authorization;
+   the input method must not invoke a silent installer or provide credentials.
+8. Complete the install over the old version, then log out and log back in if
+   macOS keeps the old input-method process cached.
 
-The app must pass `scripts/check_update01_sources.sh`; automatic checks remain
-off by default, strict privacy pauses them, and UPDATE-01 must not download or
-execute packages. Follow `docs/macos_update_strategy.md` before implementing
-UPDATE-02 package download/installation or UPDATE-03 process refresh prompts.
+The app must pass `scripts/check_update01_sources.sh` and
+`scripts/check_update02_sources.sh`. Automatic checks remain off by default,
+strict privacy pauses checks and cancels active package transfers, and package
+handoff must remain explicit. Follow `docs/macos_update_strategy.md` before
+implementing UPDATE-03 process refresh prompts.

@@ -78,11 +78,46 @@ If a release must be withdrawn, restore the previous valid manifest. The app
 never treats a lower version/build as an update, so rollback requires publishing
 a newly signed build with a higher version/build number.
 
-## Later Stages
+## UPDATE-02: Verified Download And Installer Handoff
 
-- UPDATE-02: download the declared signed/notarized pkg, verify byte size and
-  SHA-256, re-check Developer ID/notarization, and hand it to macOS Installer
-  with visible user consent. No silent privileged install.
+UPDATE-02 starts only after the user selects `下载并验证` for a supported newer
+version. Automatic version checks never start a package download. The macOS
+host then:
+
+1. Downloads only the validated same-host HTTPS `.pkg` URL with an ephemeral
+   session, no cookies or URL cache, same-host redirect enforcement, and a
+   15-minute resource timeout.
+2. Cancels if the transfer exceeds the declared size or if a positive HTTP
+   content length disagrees with the manifest. The completed regular file must
+   match the declared byte size exactly.
+3. Stores at most one package in a private `0700` cache directory with `0600`
+   file permissions and deletes failed or superseded packages.
+4. Streams the local file through CryptoKit SHA-256 and compares the digest
+   with the manifest.
+5. Runs `/usr/sbin/pkgutil --check-signature` without a shell and requires the
+   Apple distribution status, a `Developer ID Installer` chain, and the pinned
+   Station Cat Team ID.
+6. Runs `/usr/sbin/spctl --assess --type install --verbose=4` without a shell
+   and requires Gatekeeper to report `Notarized Developer ID`.
+7. Shows a second confirmation after verification, repeats all local security
+   checks immediately before handoff, and opens the package with Apple's system
+   Installer application.
+
+No silent privileged installation is permitted. The host never invokes the
+`installer` command, never supplies administrator credentials, and never
+claims installation success. macOS Installer owns the visible authorization
+and installation UI. Any size, digest, signer, notarization, storage, or system
+tool failure blocks handoff, removes an untrusted package, and leaves typing
+available.
+
+Strict privacy mode cancels an active package transfer when it is enabled.
+Local verification may finish because the app starts no additional
+application-controlled request. Gatekeeper may consult Apple security services
+according to macOS policy; the app supplies only the downloaded package and no
+input content, user-learning data, account identifier, or telemetry.
+
+## Later Stage
+
 - UPDATE-03: detect stale input-method processes after installation and provide
   the least disruptive supported action: reload guidance first, logout/login
   when required, and a restart prompt only when macOS actually requires it.
