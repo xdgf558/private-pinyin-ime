@@ -83,6 +83,9 @@ jobs:
       - name: Check UPDATE-02 verified-installer source contract
         run: bash scripts/check_update02_sources.sh
 
+      - name: Check UPDATE-03 process-refresh source contract
+        run: bash scripts/check_update03_sources.sh
+
   windows-tsf:
     runs-on: windows-2022
 

@@ -46,9 +46,10 @@ cat > "$pkg_scripts_dir/postinstall" <<'POSTINSTALL'
 set -eu
 
 app_path="/Library/Input Methods/PrivatePinyin.app"
+app_executable="$app_path/Contents/MacOS/PrivatePinyin"
 console_user="$(/usr/bin/stat -f %Su /dev/console 2>/dev/null || true)"
 
-if [ -z "$console_user" ] || [ "$console_user" = "root" ] || [ "$console_user" = "loginwindow" ]; then
+if [ ! -x "$app_executable" ] || [ -z "$console_user" ] || [ "$console_user" = "root" ] || [ "$console_user" = "loginwindow" ]; then
   exit 0
 fi
 
@@ -57,9 +58,11 @@ if [ -z "$console_uid" ]; then
   exit 0
 fi
 
+installed_at="$(/bin/date +%s)"
 /bin/launchctl asuser "$console_uid" \
-  /usr/bin/sudo -u "$console_user" \
-  /usr/bin/open "$app_path" --args --show-onboarding >/dev/null 2>&1 || true
+  /usr/bin/sudo -H -u "$console_user" \
+  /usr/bin/nohup "$app_executable" \
+  --post-install-follow-up --installed-at "$installed_at" >/dev/null 2>&1 &
 
 exit 0
 POSTINSTALL

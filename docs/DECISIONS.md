@@ -223,3 +223,11 @@ Status: accepted
 Decision: Download a macOS update only after explicit user consent, verify exact size and SHA-256 plus the pinned Developer ID Installer Team ID and Gatekeeper notarization, repeat verification immediately before handoff, and open the package only with Apple's visible system Installer.
 Reason: A trusted manifest alone cannot prove that bytes received later are the reviewed release, and an input-method process must not silently cross a privilege boundary. The update flow must fail closed if the package, signer, notarization result, local cache, or system verifier differs from the published contract.
 Consequences: UPDATE-02 adds a constrained ephemeral download session, one-package private cache, fixed-path system verification without shell evaluation, sanitized failure states, cancellation/retry UI, and two visible consent points. The host never invokes the privileged `installer` command or supplies credentials. UPDATE-03 remains responsible for post-install process-refresh guidance.
+
+## Decision 029: Consent-Based macOS Process Refresh
+
+Date: 2026-07-15
+Status: accepted
+Decision: Launch the installed bundle's signed executable as a dedicated UI-only process after pkg installation, detect stale 猫栈拼音 processes by exact bundle identifier plus pre-install launch time, and request a normal exit only after explicit user consent and PID revalidation.
+Reason: Replacing an input-method bundle does not replace code already loaded by macOS, while broad process killing, automatic logout, or routine restart prompts would risk active work in unrelated applications. Direct launch in the console user's Aqua session also avoids both activation of an old instance and LaunchServices `kLSNoExecutableErr` for Input Method bundles.
+Consequences: Command-line onboarding, preferences, and post-install helpers do not create an `IMKServer`. A successful normal refresh needs only an input-source switch; a process that remains receives logout/login guidance. No force-termination, automatic logout, automatic restart, or unrelated-application action is permitted.

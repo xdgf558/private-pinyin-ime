@@ -91,8 +91,11 @@ Manual gates:
   SHA256 checksum with the website download.
 - Confirm the input method can be added from System Settings.
 - Smoke-test TextEdit, Safari, Chrome, and VS Code.
-- Confirm uninstall guidance removes the app bundle and no stale process keeps
-  an old binary loaded.
+- Upgrade over an active previous build; confirm the dedicated helper refreshes
+  only 猫栈拼音's old process after consent, leaves all applications open, and
+  does not require logout or restart on the normal path.
+- Confirm logout/login guidance appears only if normal process exit fails, and
+  uninstall guidance removes the app bundle with no stale process left loaded.
 
 ## iOS Release
 

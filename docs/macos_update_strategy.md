@@ -116,11 +116,42 @@ application-controlled request. Gatekeeper may consult Apple security services
 according to macOS policy; the app supplies only the downloaded package and no
 input content, user-learning data, account identifier, or telemetry.
 
-## Later Stage
+## UPDATE-03: Post-Install Process Refresh
 
-- UPDATE-03: detect stale input-method processes after installation and provide
-  the least disruptive supported action: reload guidance first, logout/login
-  when required, and a restart prompt only when macOS actually requires it.
+The package `postinstall` script records its completion time and launches the
+installed bundle's signed executable as a new UI-only process in the current
+console user's Aqua session. It does not use LaunchServices `open`, because
+Input Method bundles are not regular launchable apps and can return
+`kLSNoExecutableErr`. That helper does not create an `IMKServer` and therefore
+cannot compete with the system-owned input-method instance. It
+enumerates only running applications whose bundle identifier exactly matches
+`com.privatepinyin.inputmethod.PrivatePinyin`, excludes its own PID, and marks
+only processes launched no later than package completion as stale.
+
+The recovery order is deliberately narrow:
+
+1. If no stale process exists, continue to the normal setup guide. No process
+   action, logout prompt, or restart prompt is shown.
+2. If a stale process exists, explain that the user should finish the current
+   composition and offer `重新加载猫栈拼音`. Nothing is terminated before this
+   explicit click.
+3. Immediately before acting, re-enumerate the same bundle identifier and
+   intersect it with the originally detected PID set. Request normal
+   `NSRunningApplication.terminate()` only for that still-valid set.
+4. If those PIDs exit, tell the user to switch away from and back to 猫栈拼音.
+   No logout or restart is required.
+5. If a PID remains after the bounded wait, ask the user to save work and log
+   out, then log back in. The helper never performs the logout itself. A restart
+   is not suggested unless a later manual support check proves logout/login was
+   insufficient.
+
+No unrelated application is terminated. UPDATE-03 never calls force-terminate,
+`kill`, `killall`, `pkill`, AppleScript logout, or system restart commands. The
+installer timestamp is accepted only for a short post-install window, and the
+helper closes when its last guidance window closes.
+
+## Other Platforms
+
 - Windows: keep its update channel separate until signed x64/x86 installer
   evidence and TSF upgrade/uninstall smoke tests are complete.
 - iOS: continue to use App Store and TestFlight updates only.

@@ -45,6 +45,8 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPackageVerifier.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPackageDownloader.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinUpdateController.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinProcessRefreshPolicy.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinPostInstallController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/CAbiBridge.swift" \
