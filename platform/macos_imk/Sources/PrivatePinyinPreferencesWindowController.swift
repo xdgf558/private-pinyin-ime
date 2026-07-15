@@ -235,8 +235,14 @@ private final class StationButton: NSButton {
     }
 }
 
-final class PrivatePinyinPreferencesWindowController: NSWindowController {
+final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWindowDelegate {
     static let shared = PrivatePinyinPreferencesWindowController()
+
+    private static let boardWidth: CGFloat = 780
+    private static let initialBoardHeight: CGFloat = 748
+    private static let defaultBoardScale: CGFloat = 0.86
+    private static let minimumBoardScale: CGFloat = 0.72
+    private static let maximumBoardScale: CGFloat = 1
 
     private let strictPrivacyToggle = StationToggle()
     private let predictionToggle = StationToggle()
@@ -248,12 +254,17 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
     private let automaticUpdateDetailLabel = NSTextField(labelWithString: "每天最多读取一次固定的公开版本清单，不上传输入内容。")
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
     private let updateDetailLabel = NSTextField(labelWithString: "输入功能始终不依赖更新服务。")
+    private let boardScrollView = NSScrollView(frame: .zero)
+    private let boardView = StationBoardBackgroundView(
+        frame: NSRect(x: 0, y: 0, width: boardWidth, height: initialBoardHeight)
+    )
+    private var boardDesignSize = NSSize(width: boardWidth, height: initialBoardHeight)
     private var checkUpdateButton: StationButton?
 
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 748),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: Self.boardWidth, height: Self.initialBoardHeight),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -264,8 +275,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.backgroundColor = StationTheme.windowBackground
-        window.contentView = StationBoardBackgroundView(frame: window.contentView?.bounds ?? .zero)
+        let contentView = NSView(frame: window.contentView?.bounds ?? .zero)
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = StationTheme.windowBackground.cgColor
+        window.contentView = contentView
         super.init(window: window)
+        window.delegate = self
         buildContent()
         NotificationCenter.default.addObserver(
             self,
@@ -294,6 +309,27 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         guard let contentView = window?.contentView else {
             return
         }
+
+        boardScrollView.translatesAutoresizingMaskIntoConstraints = false
+        boardScrollView.borderType = .noBorder
+        boardScrollView.drawsBackground = false
+        boardScrollView.hasHorizontalScroller = false
+        boardScrollView.hasVerticalScroller = false
+        boardScrollView.horizontalScrollElasticity = .none
+        boardScrollView.verticalScrollElasticity = .none
+        // Window resizing is the only zoom path. Independent pinch zoom could
+        // enlarge the board beyond the hidden-scroller viewport.
+        boardScrollView.allowsMagnification = false
+        boardScrollView.minMagnification = Self.minimumBoardScale
+        boardScrollView.maxMagnification = Self.maximumBoardScale
+        boardScrollView.documentView = boardView
+        contentView.addSubview(boardScrollView)
+        NSLayoutConstraint.activate([
+            boardScrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            boardScrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            boardScrollView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            boardScrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
 
         strictPrivacyToggle.onToggle = { [weak self] in self?.commitSettings() }
         predictionToggle.onToggle = { [weak self] in self?.commitSettings() }
@@ -330,13 +366,13 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
         root.alignment = .leading
         root.spacing = 14
         root.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(root)
+        boardView.addSubview(root)
 
         NSLayoutConstraint.activate([
-            root.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: sideInset),
-            root.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -sideInset),
-            root.topAnchor.constraint(equalTo: contentView.topAnchor, constant: topInset),
-            root.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -bottomInset),
+            root.leadingAnchor.constraint(equalTo: boardView.leadingAnchor, constant: sideInset),
+            root.trailingAnchor.constraint(equalTo: boardView.trailingAnchor, constant: -sideInset),
+            root.topAnchor.constraint(equalTo: boardView.topAnchor, constant: topInset),
+            root.bottomAnchor.constraint(lessThanOrEqualTo: boardView.bottomAnchor, constant: -bottomInset),
             topRail.widthAnchor.constraint(equalTo: root.widthAnchor),
             brandCard.widthAnchor.constraint(equalTo: root.widthAnchor),
             privacyCard.widthAnchor.constraint(equalTo: root.widthAnchor),
@@ -346,9 +382,54 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController {
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
 
-        root.layoutSubtreeIfNeeded()
+        boardView.layoutSubtreeIfNeeded()
         let fitted = topInset + root.fittingSize.height + bottomInset
-        window?.setContentSize(NSSize(width: 780, height: ceil(fitted)))
+        boardDesignSize = NSSize(width: Self.boardWidth, height: ceil(fitted))
+        boardView.frame = NSRect(origin: .zero, size: boardDesignSize)
+
+        window?.contentAspectRatio = boardDesignSize
+        window?.contentMinSize = scaledBoardSize(Self.minimumBoardScale)
+        window?.contentMaxSize = scaledBoardSize(Self.maximumBoardScale)
+        window?.preservesContentDuringLiveResize = true
+        window?.setContentSize(scaledBoardSize(Self.defaultBoardScale))
+        contentView.layoutSubtreeIfNeeded()
+        updateBoardScale()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        updateBoardScale()
+    }
+
+    private func scaledBoardSize(_ scale: CGFloat) -> NSSize {
+        NSSize(
+            width: round(boardDesignSize.width * scale),
+            height: round(boardDesignSize.height * scale)
+        )
+    }
+
+    private func updateBoardScale() {
+        guard boardDesignSize.width > 0, boardDesignSize.height > 0 else {
+            return
+        }
+
+        let viewport = boardScrollView.contentSize
+        guard viewport.width > 0, viewport.height > 0 else {
+            return
+        }
+
+        let fittedScale = min(
+            viewport.width / boardDesignSize.width,
+            viewport.height / boardDesignSize.height
+        )
+        let scale = min(max(fittedScale, Self.minimumBoardScale), Self.maximumBoardScale)
+        if abs(boardScrollView.magnification - scale) > 0.001 {
+            boardScrollView.setMagnification(
+                scale,
+                centeredAt: NSPoint(x: boardDesignSize.width / 2, y: boardDesignSize.height / 2)
+            )
+        }
+        boardScrollView.contentView.scroll(to: .zero)
+        boardScrollView.reflectScrolledClipView(boardScrollView.contentView)
     }
 
     private func makeTopRail() -> NSView {

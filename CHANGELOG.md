@@ -97,6 +97,7 @@
 
 ### Changed
 
+- Made the macOS Station Board preferences window open at a compact 86% scale and resize proportionally between 72% and 100%, with the complete interface and pointer hit regions scaling together.
 - Kept administrator rights for Windows TSF registration, hid PowerShell host windows, and separated installed-DLL detection from HKCU/merged-HKCR COM registration checks.
 - Fixed Windows installer and TSF display-name mojibake by forcing UTF-8 for NSIS input, MSVC source compilation, and Windows PowerShell UI scripts; switched the NSIS interface to Simplified Chinese.
 
