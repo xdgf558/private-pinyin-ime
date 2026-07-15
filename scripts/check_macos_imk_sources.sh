@@ -81,6 +81,10 @@ grep -q "StationToggle" platform/macos_imk/Sources/PrivatePinyinPreferencesWindo
 grep -q "StationButton" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "\.resizable" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "contentAspectRatio" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "allowsMagnification = true" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "windowDidResize" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "猫栈拼音偏好设置" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "记住你常选的词" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift

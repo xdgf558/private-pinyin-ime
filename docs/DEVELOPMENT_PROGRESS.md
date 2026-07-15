@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-15 10:38
-Current stage: UPDATE-03 post-install process refresh
-Current status: UPDATE-03 is complete and ready for review; AI work remains paused after AI-01
+Last updated: 2026-07-15 20:33
+Current stage: macOS preferences polish
+Current status: Compact proportional preferences scaling is complete and ready for review; AI work remains paused after AI-01
 
 ## Stage Status
 
@@ -42,7 +42,7 @@ Current status: UPDATE-03 is complete and ready for review; AI work remains paus
 |---|---|---|---|---|
 | UPDATE-01 | macOS version check and reminder | completed | 2026-07-14 22:27 | Merged to `main` through PR #20; fixed HTTPS feed, opt-in checks, strict-privacy gate, manifest validation, and update UI are complete |
 | UPDATE-02 | Verified package download and Installer handoff | completed | 2026-07-15 00:08 | Bounded private download, SHA-256/size/signature/notarization verification, two-step consent, and visible system Installer handoff are ready for review |
-| UPDATE-03 | Post-install process refresh | completed | 2026-07-15 10:38 | Dedicated UI-only postinstall helper, same-bundle launch-time detection, consent/revalidation, normal exit, success guidance, and logout-only fallback are ready for review |
+| UPDATE-03 | Post-install process refresh | completed | 2026-07-15 10:38 | Merged to `main` through PR #22; dedicated UI-only postinstall helper, same-bundle launch-time detection, consent/revalidation, normal exit, success guidance, and logout-only fallback are complete |
 
 ## UPDATE-03 Validation
 
@@ -54,6 +54,8 @@ Current status: UPDATE-03 is complete and ready for review; AI work remains paus
 
 ## Completed Work
 
+- Made the macOS Station Board preferences window resizable with a fixed aspect ratio, a compact 86% default size, and a bounded 72%-100% whole-canvas scale.
+- Kept every card, label, button, custom toggle, and pointer hit region synchronized through AppKit scroll-view magnification; local visual smoke covered default and minimum sizes plus a toggle round trip at minimum scale.
 - Added UPDATE-03 post-install lifecycle handling without changing the shared Rust engine or normal IMK typing path.
 - Changed pkg follow-up launch to a new UI-only executable process in the console user's Aqua session with a bounded install timestamp, avoiding both old-instance activation and Input Method LaunchServices failures.
 - Made onboarding, preferences preview, and post-install modes UI-only so they never create a competing `IMKServer` and exit after their last window closes.
