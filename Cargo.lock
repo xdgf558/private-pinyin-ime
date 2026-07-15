@@ -171,6 +171,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "private_pinyin_local_ai_core"
+version = "0.1.20"
+
+[[package]]
 name = "private_pinyin_settings"
 version = "0.1.20"
 dependencies = [

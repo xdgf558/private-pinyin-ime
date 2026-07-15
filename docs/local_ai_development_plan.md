@@ -27,12 +27,17 @@ pipeline; it does not create a second learning database or replace the core.
 | AI-04 | Rules-first pinyin correction, English-term preservation, and rule/statistics lexicon cleanup suggestions | P0 rules improve targeted cases without normal-input regression |
 | AI-05 | Model manifest, SHA256/license gate, model packager, and hardware tiering | Unapproved or corrupt artifacts cannot load |
 | AI-06 | Shared compact Rust AI Lite ranker using existing frequency, segmentation, bigram, trigram, typo, and term features | Targeted ranking improves within the 30 ms and memory budgets |
-| AI-07 | macOS and Windows asynchronous integration with stale-result cancellation | Visible numbered candidates never change identity after display; failures preserve input |
+| AI-07 | macOS and Windows asynchronous integration with stale-result cancellation | Inference runs on bounded worker queues; visible numbered candidates never change identity after display; failures preserve input |
 | AI-08 | iOS AI Lite integration for QWERTY and nine-key, with no Full Access requirement | Real-device memory and fallback checks pass; no heavy LLM is present |
 | AI-09 | Signed desktop helper skeleton, authenticated local IPC, health, cancellation, and idle exit | Helper crashes and timeouts cannot affect basic input |
 | AI-10 | Optional `llama.cpp` Writer feasibility spike with an owner-approved local model | License, Chinese quality, package size, startup, memory, and cancellation meet a go/no-go gate |
 | AI-11 | Pause-triggered short completion followed by explicit rewrite and translation previews | Base candidates appear first; stale output is discarded; user confirms replacement |
 | AI-12 | Cross-platform regression, privacy audit, fault injection, benchmarks, model notices, and release gates | AI-off behavior equals the pre-AI baseline and all failure modes degrade safely |
+
+AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
+platform hosts. Its mock provider is a deterministic contract test, not an inference
+implementation. PrivacyGuard enforcement remains AI-03 work, while host-generated
+secure-input and revision signals remain AI-07 work.
 
 ## Candidate stability rule
 
@@ -44,6 +49,13 @@ first display only after measurements prove that it is consistently fast enough.
 Every request must carry an opaque session ID, composition revision, candidate-set hash,
 secure-input flag, and deadline. Hosts discard results whose revision or candidate hash
 does not match the current composition.
+
+The candidate-set hash is a non-cryptographic lifecycle fingerprint. It must not become
+a persistent or cross-process cache key; any such cache needs a separately versioned,
+collision-resistant identity. `LocalAiProvider::infer` remains a synchronous provider
+boundary, so AI-07 must dispatch it only through a bounded worker queue. A cooperative
+deadline does not permit direct calls from IMK main-thread handling, TSF edit sessions,
+or iOS input/UI callbacks.
 
 ## Evaluation method
 

@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-15 20:33
-Current stage: macOS preferences polish
-Current status: Compact proportional preferences scaling is complete and ready for review; AI work remains paused after AI-01
+Last updated: 2026-07-16 06:40
+Current stage: AI-02 runtime contracts and mock provider
+Current status: AI-02 implementation and local validation are complete and ready for review
 
 ## Stage Status
 
@@ -32,7 +32,7 @@ Current status: Compact proportional preferences scaling is complete and ready f
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | AI-01 | Offline evaluation baseline | completed | 2026-07-14 14:34 | 13/13 required regressions pass; 7 correction/mixed-input opportunities are measured; latency remains report-only |
-| AI-02 | Runtime contracts and mock provider | planned | | Add local-only request/response, budgets, revision identity, cancellation, and mock behavior |
+| AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
 | AI-03 | Privacy guard and source gates | planned | | Add secure-input rejection, minimal context, sanitized errors, and no-network dependency checks |
 | AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
 
@@ -54,6 +54,12 @@ Current status: Compact proportional preferences scaling is complete and ready f
 
 ## Completed Work
 
+- Added the isolated `ai/local_ai_core` crate without connecting it to the existing engine, C ABI, or platform hosts.
+- Defined local AI features, hardware tiers, latency/output budgets, monotonic deadlines, sanitized error codes, request/response candidate contracts, and opaque session/request/composition/candidate-set identity.
+- Added a deterministic zero-dependency mock provider whose cancellation is scoped to the complete request identity and whose responses preserve identity for stale-result rejection.
+- Redacted content-bearing request, candidate, and response `Debug` output so routine diagnostics cannot expose raw pinyin, composition text, candidate text, or recent tokens.
+- Added eight focused runtime-contract tests and an AI-02 CI source gate; user-visible input behavior remains unchanged.
+- Documented that the FNV candidate fingerprint is lifecycle-only and cannot serve as a persistent/cross-process cache identity; recorded AI-07's mandatory bounded worker-queue dispatch for the synchronous provider contract.
 - Made the macOS Station Board preferences window resizable with a fixed aspect ratio, a compact 86% default size, and a bounded 72%-100% whole-canvas scale.
 - Kept every card, label, button, custom toggle, and pointer hit region synchronized through AppKit scroll-view magnification; local visual smoke covered default and minimum sizes plus a toggle round trip at minimum scale.
 - Disabled independent trackpad pinch magnification so only proportional window resizing can change the board scale, preventing hidden-scroller clipping at compact window sizes.
@@ -531,6 +537,26 @@ Current status: Compact proportional preferences scaling is complete and ready f
 - Command: `bash scripts/run_ai_eval.sh --benchmark --initialization-iterations 5 --lookup-iterations 100`
 - Result: passed
 - Notes: On the arm64 macOS reference machine, engine initialization P95 was 56.01 ms, continuous-pinyin lookup P95 was 1.48 ms, and nine-key lookup P95 was 3.67 ms. Measurements are report-only rather than CI thresholds.
+
+### Local AI AI-02 Validation
+
+- Command: `bash scripts/check_ai02_runtime_contracts.sh`
+- Result: passed
+- Notes: Required contract files, workspace membership, full request identity, cancellation signature, redacted debug surfaces, provider isolation, and deterministic mock tests passed.
+
+- Command: `cargo fmt --all -- --check`
+- Result: passed
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: Eight AI-02 tests cover deterministic candidate-set hashing, mock repeatability, identity-scoped cancellation, stale-revision rejection, deadline expiry, candidate-hash mismatch, debug redaction, and approved latency classes; existing engine and tool tests also remain green.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged C ABI still returned and committed `你好`; AI-02 is not connected to production input paths.
 
 ### UPDATE-01 macOS Version Check Validation
 
