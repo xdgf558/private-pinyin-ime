@@ -67,8 +67,12 @@ Checklist:
 | Build | `scripts/build_macos_imk.sh` produces `dist/macos_imk/PrivatePinyin.app` | | |
 | Install | `platform/macos_imk/installer/install-local.sh` installs into Input Methods | | |
 | Package install | `scripts/package_macos_pkg.sh` pkg installs into `/Library/Input Methods` | | |
-| Post-install onboarding | Fresh pkg install opens the PrivatePinyin Setup onboarding window with an Open Keyboard Settings button | | |
-| Upgrade onboarding | If an old PrivatePinyin process is already running during pkg install, onboarding may not auto-open; manual launch or logout/login refresh is acceptable for unsigned local test builds | | |
+| Post-install onboarding | Fresh pkg install launches a new UI-only helper and opens the setup guide with an Open Keyboard Settings button; the helper does not create a second IMK server | | |
+| Upgrade process detection | With 猫栈拼音 already active, upgrade install shows `猫栈拼音已更新` and detects only the pre-install same-bundle process | | Keep TextEdit, Safari, Chrome, and VS Code open while testing |
+| Immediate post-install activation | Immediately after installation completes, switch away from and back to 猫栈拼音; the newly launched same-bundle PID remains running and is never included in the refresh target set | | Regression for the removed `installedAt + 1s` tolerance; capture PIDs and launch dates before clicking `重新加载猫栈拼音` |
+| Consent and app isolation | Before clicking reload, typing continues through the old process; after clicking, no browser, editor, document, or unrelated process closes | | |
+| Successful refresh | `重新加载猫栈拼音` completes, switching to another input source and back activates the new version, and the guide says no logout or restart is required | | |
+| Refresh fallback | If normal exit is deliberately prevented in a controlled test, guidance asks the tester to save work and logout/login; it does not force-kill, log out, or restart macOS | | Source policy and offline tests must pass even when this path is not induced manually |
 | Input source discovery | PrivatePinyin appears exactly once under Chinese/Simplified Chinese input sources after installing the actual `.pkg`; re-open System Settings or logout/login if the list is cached | | TIS keys changed in macOS onboarding work: mode `TISInputSourceID`, top-level `TISInputSourceID`, and `smSimpChinese` must be revalidated. `tsInputModeDefaultStateKey` must remain `false`; setting it to `true` can make third-party modes disappear from the add-input-source selector before the user enables them |
 | Input source icon/name | System Settings, the input menu, and the menu bar show the new template icon and Chinese display name `猫栈拼音` in a Simplified Chinese user session | | Revalidate after version bumps, logout/login, or TIS cache cleanup; template icon should adapt to light/dark menu bar states |
 | Consecutive upgrade input-source dedupe | After consecutive upgrade installs across two versions, System Settings and the menu bar input menu show at most one PrivatePinyin entry | | Regression for stale `AppleEnabledInputSources` / `AppleEnabledThirdPartyInputSources` records created by older default-enabled builds or manual `TISEnableInputSource` diagnostics |
@@ -83,7 +87,7 @@ Checklist:
 | Candidate panel lifecycle | Switch repeatedly among TextEdit, Safari, and Chrome with candidates visible/hidden at least 20 times; typing keeps working and no new `PrivatePinyin` crash report appears | | |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
-| Stale process check | After upgrade install, no old PrivatePinyin process keeps the previous binary loaded before smoke testing | | |
+| Stale process check | After the guided refresh or logout/login fallback, no pre-install PrivatePinyin PID remains before smoke testing | | |
 | Uninstall | `platform/macos_imk/installer/uninstall-local.sh` removes the app | | |
 
 ## iOS Keyboard Smoke

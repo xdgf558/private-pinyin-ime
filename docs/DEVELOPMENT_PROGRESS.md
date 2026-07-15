@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-15 00:08
-Current stage: UPDATE-02 verified macOS package handoff
-Current status: UPDATE-02 is complete and ready for review; AI work remains paused after AI-01
+Last updated: 2026-07-15 10:38
+Current stage: UPDATE-03 post-install process refresh
+Current status: UPDATE-03 is complete and ready for review; AI work remains paused after AI-01
 
 ## Stage Status
 
@@ -42,10 +42,25 @@ Current status: UPDATE-02 is complete and ready for review; AI work remains paus
 |---|---|---|---|---|
 | UPDATE-01 | macOS version check and reminder | completed | 2026-07-14 22:27 | Merged to `main` through PR #20; fixed HTTPS feed, opt-in checks, strict-privacy gate, manifest validation, and update UI are complete |
 | UPDATE-02 | Verified package download and Installer handoff | completed | 2026-07-15 00:08 | Bounded private download, SHA-256/size/signature/notarization verification, two-step consent, and visible system Installer handoff are ready for review |
-| UPDATE-03 | Post-install process refresh | planned | | Detect stale IMK process state and give reload/logout/restart guidance only when needed |
+| UPDATE-03 | Post-install process refresh | completed | 2026-07-15 10:38 | Dedicated UI-only postinstall helper, same-bundle launch-time detection, consent/revalidation, normal exit, success guidance, and logout-only fallback are ready for review |
+
+## UPDATE-03 Validation
+
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- `bash scripts/run_c_demo.sh` and `bash scripts/build_macos_imk.sh`: passed.
+- UPDATE-01, UPDATE-02, UPDATE-03, AI-01, macOS IMK, installer/settings, Stage 11, Stage 12, Stage 15, and Stage 16 source gates: passed.
+- AppKit visual smoke: stale-process initial state and successful-refresh state rendered without clipping; both UI-only test instances exited after their final windows closed.
+- Temporary unsigned pkg smoke: `pkgbuild` included the UPDATE-03 `postinstall`; the expanded script passed `sh -n` and launched the fixed signed-bundle executable path rather than unsupported LaunchServices `open`. The temporary package was removed after inspection.
 
 ## Completed Work
 
+- Added UPDATE-03 post-install lifecycle handling without changing the shared Rust engine or normal IMK typing path.
+- Changed pkg follow-up launch to a new UI-only executable process in the console user's Aqua session with a bounded install timestamp, avoiding both old-instance activation and Input Method LaunchServices failures.
+- Made onboarding, preferences preview, and post-install modes UI-only so they never create a competing `IMKServer` and exit after their last window closes.
+- Added exact-bundle PID/launch-time detection, current-helper exclusion, click-time target revalidation, normal termination only, and a bounded wait with no force-kill path.
+- Made the launch cutoff strictly conservative: subsecond timestamps are used when available, while same-boundary and later processes are always preserved; a dedicated macOS CI job now executes the Swift policy tests instead of relying on Ubuntu's skip path.
+- Added Station-style success and recovery guidance: successful refresh requires only switching input sources, while a process that remains receives logout/login instructions and no routine restart prompt.
+- Added pure Swift policy tests, UPDATE-03 source gates, privacy/update-strategy decisions, and macOS upgrade smoke coverage.
 - Added UPDATE-02 package delivery to the macOS host while keeping the shared Rust engine and typing path network-free.
 - Added same-host HTTPS `.pkg` downloads through an ephemeral no-cache/no-cookie session, with streaming and final-size enforcement plus a private single-package cache.
 - Added streaming CryptoKit SHA-256 verification, pinned Developer ID Installer Team ID validation, and notarization assessment through exact-argument `pkgutil` and `spctl` subprocesses.

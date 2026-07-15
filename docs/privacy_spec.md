@@ -76,6 +76,21 @@ other environment data in user-facing errors or logs. Opening macOS Installer
 requires a second visible user confirmation; the app must never silently invoke
 a privileged installer or provide credentials.
 
+## Post-Install Process Refresh
+
+After a macOS package install, the UI-only refresh helper may inspect only the
+bundle identifier, PID, and launch date of running 猫栈拼音 application
+instances. It must exclude its own PID, must not inspect document content or
+other applications' process details, and must not upload or log the detected
+values.
+
+The helper may request a normal exit only for a still-running PID that belongs
+to the exact 猫栈拼音 bundle identifier, was detected as older than the install,
+and is revalidated immediately after explicit user confirmation. It must never
+force-terminate a process, close unrelated applications, automatically log the
+user out, or restart the computer. Logout/login guidance is permitted only when
+the old input-method process does not exit normally.
+
 ## User Lexicon Storage
 
 The user lexicon may store selected phrase text, pinyin, compact pinyin, frequency, update time, one-step selected-phrase transitions, bounded short phrase completions, and three-token transition records derived only from selected candidates. A trigram record contains two selected context tokens plus the selected next token and its pinyin; it must not include surrounding document text or an unbounded sentence.

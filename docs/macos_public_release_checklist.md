@@ -15,8 +15,9 @@ bash scripts/package_macos_pkg.sh
 The `0.1.17` release candidate is signed with Developer ID Application and
 Developer ID Installer, accepted by Apple notarization, stapled, and accepted
 by Gatekeeper. It still needs a clean-user install/upgrade/uninstall smoke test
-plus four-host horizontal-candidate interaction validation and website checksum
-publication before public distribution.
+including immediate post-install input-source activation, plus four-host
+horizontal-candidate interaction validation and website checksum publication
+before public distribution.
 
 Current artifact evidence:
 
@@ -121,11 +122,16 @@ still owns authorization and installation:
    Gatekeeper notarization, and the second handoff confirmation.
 7. Confirm Apple's system Installer opens visibly and requests authorization;
    the input method must not invoke a silent installer or provide credentials.
-8. Complete the install over the old version, then log out and log back in if
-   macOS keeps the old input-method process cached.
+8. Complete the install over the old version and verify the new UI-only helper
+   detects the pre-install input-method process. Confirm `重新加载猫栈拼音` closes
+   only that old process and leaves open applications untouched.
+9. Switch to another input source and back; confirm the new version is active
+   without logout or restart. If normal exit is deliberately prevented, confirm
+   the helper gives logout/login guidance without performing it automatically.
 
 The app must pass `scripts/check_update01_sources.sh` and
-`scripts/check_update02_sources.sh`. Automatic checks remain off by default,
+`scripts/check_update02_sources.sh`, and `scripts/check_update03_sources.sh`.
+Automatic checks remain off by default,
 strict privacy pauses checks and cancels active package transfers, and package
-handoff must remain explicit. Follow `docs/macos_update_strategy.md` before
-implementing UPDATE-03 process refresh prompts.
+handoff and process refresh must remain explicit. Follow
+`docs/macos_update_strategy.md` for the complete update contract.
