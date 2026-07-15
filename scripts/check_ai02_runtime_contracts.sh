@@ -29,8 +29,12 @@ grep -q 'ai/local_ai_core' Cargo.toml
 grep -q 'AiRequestIdentity' ai/local_ai_core/src/identity.rs
 grep -q 'AiCompositionRevision' ai/local_ai_core/src/identity.rs
 grep -q 'AiCandidateSetHash' ai/local_ai_core/src/identity.rs
+grep -q 'must not be used for integrity checks' ai/local_ai_core/src/identity.rs
+grep -q 'cross-process cache identity' ai/local_ai_core/src/identity.rs
 grep -q 'AiDeadline' ai/local_ai_core/src/budget.rs
 grep -q 'trait LocalAiProvider: Send + Sync' ai/local_ai_core/src/provider.rs
+grep -q 'bounded worker queue' ai/local_ai_core/src/provider.rs
+grep -q 'must never call it' ai/local_ai_core/src/provider.rs
 grep -q 'fn cancel(&self, identity: AiRequestIdentity)' ai/local_ai_core/src/provider.rs
 grep -q 'private-pinyin-mock-v1' ai/local_ai_core/src/mock_provider.rs
 grep -q '<redacted>' ai/local_ai_core/src/request.rs

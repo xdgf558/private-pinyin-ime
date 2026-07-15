@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-15 22:51
+Last updated: 2026-07-16 06:40
 Current stage: AI-02 runtime contracts and mock provider
 Current status: AI-02 implementation and local validation are complete and ready for review
 
@@ -32,7 +32,7 @@ Current status: AI-02 implementation and local validation are complete and ready
 | Stage | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | AI-01 | Offline evaluation baseline | completed | 2026-07-14 14:34 | 13/13 required regressions pass; 7 correction/mixed-input opportunities are measured; latency remains report-only |
-| AI-02 | Runtime contracts and mock provider | completed | 2026-07-15 22:51 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, and CI source checks are ready for review |
+| AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
 | AI-03 | Privacy guard and source gates | planned | | Add secure-input rejection, minimal context, sanitized errors, and no-network dependency checks |
 | AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
 
@@ -59,6 +59,7 @@ Current status: AI-02 implementation and local validation are complete and ready
 - Added a deterministic zero-dependency mock provider whose cancellation is scoped to the complete request identity and whose responses preserve identity for stale-result rejection.
 - Redacted content-bearing request, candidate, and response `Debug` output so routine diagnostics cannot expose raw pinyin, composition text, candidate text, or recent tokens.
 - Added eight focused runtime-contract tests and an AI-02 CI source gate; user-visible input behavior remains unchanged.
+- Documented that the FNV candidate fingerprint is lifecycle-only and cannot serve as a persistent/cross-process cache identity; recorded AI-07's mandatory bounded worker-queue dispatch for the synchronous provider contract.
 - Made the macOS Station Board preferences window resizable with a fixed aspect ratio, a compact 86% default size, and a bounded 72%-100% whole-canvas scale.
 - Kept every card, label, button, custom toggle, and pointer hit region synchronized through AppKit scroll-view magnification; local visual smoke covered default and minimum sizes plus a toggle round trip at minimum scale.
 - Disabled independent trackpad pinch magnification so only proportional window resizing can change the board scale, preventing hidden-scroller clipping at compact window sizes.

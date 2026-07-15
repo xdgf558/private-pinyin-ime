@@ -52,6 +52,12 @@ impl AiCompositionRevision {
     }
 }
 
+/// A non-cryptographic fingerprint of one ordered candidate set.
+///
+/// This value is only a lifecycle guard within the request that carries it. It is not
+/// collision-resistant and must not be used for integrity checks, authorization,
+/// persistent cache identity, or cross-process cache identity. A future persistent or
+/// cross-process cache must define a separately versioned, collision-resistant key.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AiCandidateSetHash(u64);
 
