@@ -4,6 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if ! command -v swiftc >/dev/null 2>&1; then
+  if [[ "${PRIVATE_PINYIN_REQUIRE_SWIFTC:-0}" == "1" ]]; then
+    echo "swiftc is required for UPDATE-03 process refresh policy tests." >&2
+    exit 1
+  fi
   echo "swiftc is unavailable; UPDATE-03 process refresh policy tests skipped."
   exit 0
 fi

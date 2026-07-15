@@ -42,11 +42,15 @@ enum ProcessRefreshPolicyTests {
             ),
             PrivatePinyinProcessSnapshot(
                 processIdentifier: 300,
-                launchDate: now.addingTimeInterval(0.8)
+                launchDate: now.addingTimeInterval(0.5)
             ),
             PrivatePinyinProcessSnapshot(
                 processIdentifier: 400,
                 launchDate: now.addingTimeInterval(2)
+            ),
+            PrivatePinyinProcessSnapshot(
+                processIdentifier: 450,
+                launchDate: now
             ),
             PrivatePinyinProcessSnapshot(processIdentifier: 500, launchDate: nil),
             PrivatePinyinProcessSnapshot(
@@ -61,12 +65,12 @@ enum ProcessRefreshPolicyTests {
             installedAt: now
         )
         require(
-            staleIdentifiers == Set([200, 300]),
-            "only other same-bundle processes launched before installer completion are stale"
+            staleIdentifiers == Set([200]),
+            "same-boundary and post-install same-bundle processes remain running"
         )
 
         let eligibleIdentifiers = PrivatePinyinProcessRefreshPolicy.eligibleProcessIdentifiers(
-            requestedProcessIdentifiers: Set([200, 400, 999]),
+            requestedProcessIdentifiers: Set([200, 300, 400, 450, 999]),
             currentSnapshots: snapshots,
             currentProcessIdentifier: 100,
             installedAt: now

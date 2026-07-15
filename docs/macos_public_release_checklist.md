@@ -15,8 +15,9 @@ bash scripts/package_macos_pkg.sh
 The `0.1.17` release candidate is signed with Developer ID Application and
 Developer ID Installer, accepted by Apple notarization, stapled, and accepted
 by Gatekeeper. It still needs a clean-user install/upgrade/uninstall smoke test
-plus four-host horizontal-candidate interaction validation and website checksum
-publication before public distribution.
+including immediate post-install input-source activation, plus four-host
+horizontal-candidate interaction validation and website checksum publication
+before public distribution.
 
 Current artifact evidence:
 

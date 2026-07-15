@@ -69,6 +69,7 @@ Checklist:
 | Package install | `scripts/package_macos_pkg.sh` pkg installs into `/Library/Input Methods` | | |
 | Post-install onboarding | Fresh pkg install launches a new UI-only helper and opens the setup guide with an Open Keyboard Settings button; the helper does not create a second IMK server | | |
 | Upgrade process detection | With 猫栈拼音 already active, upgrade install shows `猫栈拼音已更新` and detects only the pre-install same-bundle process | | Keep TextEdit, Safari, Chrome, and VS Code open while testing |
+| Immediate post-install activation | Immediately after installation completes, switch away from and back to 猫栈拼音; the newly launched same-bundle PID remains running and is never included in the refresh target set | | Regression for the removed `installedAt + 1s` tolerance; capture PIDs and launch dates before clicking `重新加载猫栈拼音` |
 | Consent and app isolation | Before clicking reload, typing continues through the old process; after clicking, no browser, editor, document, or unrelated process closes | | |
 | Successful refresh | `重新加载猫栈拼音` completes, switching to another input source and back activates the new version, and the guide says no logout or restart is required | | |
 | Refresh fallback | If normal exit is deliberately prevented in a controlled test, guidance asks the tester to save work and logout/login; it does not force-kill, log out, or restart macOS | | Source policy and offline tests must pass even when this path is not induced manually |

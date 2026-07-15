@@ -58,6 +58,7 @@ Current status: UPDATE-03 is complete and ready for review; AI work remains paus
 - Changed pkg follow-up launch to a new UI-only executable process in the console user's Aqua session with a bounded install timestamp, avoiding both old-instance activation and Input Method LaunchServices failures.
 - Made onboarding, preferences preview, and post-install modes UI-only so they never create a competing `IMKServer` and exit after their last window closes.
 - Added exact-bundle PID/launch-time detection, current-helper exclusion, click-time target revalidation, normal termination only, and a bounded wait with no force-kill path.
+- Made the launch cutoff strictly conservative: subsecond timestamps are used when available, while same-boundary and later processes are always preserved; a dedicated macOS CI job now executes the Swift policy tests instead of relying on Ubuntu's skip path.
 - Added Station-style success and recovery guidance: successful refresh requires only switching input sources, while a process that remains receives logout/login instructions and no routine restart prompt.
 - Added pure Swift policy tests, UPDATE-03 source gates, privacy/update-strategy decisions, and macOS upgrade smoke coverage.
 - Added UPDATE-02 package delivery to the macOS host while keeping the shared Rust engine and typing path network-free.

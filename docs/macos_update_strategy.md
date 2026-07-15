@@ -118,7 +118,7 @@ input content, user-learning data, account identifier, or telemetry.
 
 ## UPDATE-03: Post-Install Process Refresh
 
-The package `postinstall` script records its completion time and launches the
+The package `postinstall` script records a subsecond handoff time and launches the
 installed bundle's signed executable as a new UI-only process in the current
 console user's Aqua session. It does not use LaunchServices `open`, because
 Input Method bundles are not regular launchable apps and can return
@@ -126,7 +126,12 @@ Input Method bundles are not regular launchable apps and can return
 cannot compete with the system-owned input-method instance. It
 enumerates only running applications whose bundle identifier exactly matches
 `com.privatepinyin.inputmethod.PrivatePinyin`, excludes its own PID, and marks
-only processes launched no later than package completion as stale.
+only processes launched strictly before that handoff as stale. A process whose
+launch date equals or follows the boundary is always preserved. On an older
+macOS release where `date` cannot provide nanoseconds, the script falls back to
+integer seconds and keeps the same strict comparison; this may conservatively
+miss an old process launched in that same second, but cannot classify a
+post-boundary launch as stale.
 
 The recovery order is deliberately narrow:
 

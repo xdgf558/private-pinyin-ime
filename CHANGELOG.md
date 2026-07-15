@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added UPDATE-03 macOS post-install process refresh with a dedicated UI-only helper, exact same-bundle stale-process detection, explicit consent and PID revalidation, normal-exit recovery, no-logout success guidance, and logout/login fallback without force-kill or automatic restart.
+- Added UPDATE-03 macOS post-install process refresh with a dedicated UI-only helper, conservative subsecond same-bundle stale-process detection, explicit consent and PID revalidation, normal-exit recovery, no-logout success guidance, and logout/login fallback without force-kill or automatic restart.
 - Added UPDATE-02 explicit macOS package download with same-host streaming limits, exact size and SHA-256 checks, pinned Developer ID Installer verification, Gatekeeper notarization assessment, cancellation/retry UI, a private one-package cache, and a second confirmation before opening Apple's system Installer.
 - Added UPDATE-01 opt-in macOS version checks with a fixed first-party HTTPS manifest, strict validation, sanitized status UI, strict-privacy gating, onboarding/preferences controls, and offline contract tests; package installation remains a later stage.
 - Added the AI-01 offline evaluation baseline with a provenance-gated synthetic/regression corpus, deterministic Top-1/target-rank/MRR runner, report-only latency benchmark, and CI source gate without changing input behavior.

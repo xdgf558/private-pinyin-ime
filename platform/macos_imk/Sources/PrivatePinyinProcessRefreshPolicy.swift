@@ -33,22 +33,20 @@ enum PrivatePinyinPostInstallArguments {
 }
 
 enum PrivatePinyinProcessRefreshPolicy {
-    // Installer timestamps have one-second precision. Include that final second
-    // while always excluding the dedicated follow-up helper's own process.
-    private static let installerTimestampTolerance: TimeInterval = 1
-
     static func staleProcessIdentifiers(
         in snapshots: [PrivatePinyinProcessSnapshot],
         currentProcessIdentifier: Int32,
         installedAt: Date
     ) -> Set<Int32> {
-        let latestStaleLaunchDate = installedAt.addingTimeInterval(installerTimestampTolerance)
         return Set(snapshots.compactMap { snapshot in
             guard
                 snapshot.processIdentifier > 0,
                 snapshot.processIdentifier != currentProcessIdentifier,
                 let launchDate = snapshot.launchDate,
-                launchDate <= latestStaleLaunchDate
+                // Preserve every process launched at or after the handoff
+                // boundary. A same-second false negative is safer than
+                // terminating a newly launched input-method process.
+                launchDate < installedAt
             else {
                 return nil
             }

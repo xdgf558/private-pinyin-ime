@@ -40,6 +40,12 @@ grep -q 'isUIOnlyHelper' platform/macos_imk/Sources/main.swift
 grep -q 'app_executable="$app_path/Contents/MacOS/PrivatePinyin"' scripts/package_macos_pkg.sh
 grep -q '/usr/bin/nohup "$app_executable"' scripts/package_macos_pkg.sh
 grep -q -- '--post-install-follow-up --installed-at "$installed_at"' scripts/package_macos_pkg.sh
+grep -q '/bin/date +%s.%N' scripts/package_macos_pkg.sh
+grep -q 'launchDate < installedAt' \
+  platform/macos_imk/Sources/PrivatePinyinProcessRefreshPolicy.swift
+grep -q 'now.addingTimeInterval(0.5)' \
+  platform/macos_imk/Tests/ProcessRefreshPolicyTests.swift
+grep -q 'PRIVATE_PINYIN_REQUIRE_SWIFTC' scripts/test_macos_process_refresh.sh
 grep -q 'PrivatePinyinProcessRefreshPolicy.swift' scripts/build_macos_imk.sh
 grep -q 'PrivatePinyinPostInstallController.swift' scripts/build_macos_imk.sh
 grep -q 'No unrelated application is terminated' docs/macos_update_strategy.md
