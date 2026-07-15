@@ -77,6 +77,9 @@ jobs:
       - name: Check AI-01 evaluation baseline
         run: bash scripts/check_ai01_evaluation_sources.sh
 
+      - name: Check AI-02 runtime contracts
+        run: bash scripts/check_ai02_runtime_contracts.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 

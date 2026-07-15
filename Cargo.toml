@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ai/local_ai_core",
     "ffi/ime_ffi",
     "ime_core",
     "tools/ai_benchmark",

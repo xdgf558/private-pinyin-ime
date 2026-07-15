@@ -33,6 +33,7 @@ Current scripts:
 - `test_macos_update_package.sh`: compiles and runs the macOS UPDATE-02 size, SHA-256, Developer ID, and notarization verifier tests.
 - `check_update02_sources.sh`: verifies the UPDATE-02 constrained download, local verification, explicit-consent, and system Installer handoff contract.
 - `check_ai01_evaluation_sources.sh`: validates the synthetic/project-regression corpus, data-policy manifest, tools, and required baseline behavior.
+- `check_ai02_runtime_contracts.sh`: validates the isolated local AI request/response contracts, budgets, revision identity, cancellation scope, redacted debug surfaces, and deterministic mock provider.
 
 Planned scripts:
 

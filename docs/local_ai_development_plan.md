@@ -34,6 +34,11 @@ pipeline; it does not create a second learning database or replace the core.
 | AI-11 | Pause-triggered short completion followed by explicit rewrite and translation previews | Base candidates appear first; stale output is discarded; user confirms replacement |
 | AI-12 | Cross-platform regression, privacy audit, fault injection, benchmarks, model notices, and release gates | AI-off behavior equals the pre-AI baseline and all failure modes degrade safely |
 
+AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
+platform hosts. Its mock provider is a deterministic contract test, not an inference
+implementation. PrivacyGuard enforcement remains AI-03 work, while host-generated
+secure-input and revision signals remain AI-07 work.
+
 ## Candidate stability rule
 
 An asynchronous result must not reorder an already visible numbered candidate page.

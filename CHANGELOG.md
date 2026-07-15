@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the AI-02 zero-dependency `local_ai_core` contract crate with feature budgets, monotonic deadlines, opaque session/request/revision/candidate identity, identity-scoped cancellation, redacted debug surfaces, a deterministic mock provider, unit tests, and a CI source gate without platform integration or input behavior changes.
 - Added UPDATE-03 macOS post-install process refresh with a dedicated UI-only helper, conservative subsecond same-bundle stale-process detection, explicit consent and PID revalidation, normal-exit recovery, no-logout success guidance, and logout/login fallback without force-kill or automatic restart.
 - Added UPDATE-02 explicit macOS package download with same-host streaming limits, exact size and SHA-256 checks, pinned Developer ID Installer verification, Gatekeeper notarization assessment, cancellation/retry UI, a private one-package cache, and a second confirmation before opening Apple's system Installer.
 - Added UPDATE-01 opt-in macOS version checks with a fixed first-party HTTPS manifest, strict validation, sanitized status UI, strict-privacy gating, onboarding/preferences controls, and offline contract tests; package installation remains a later stage.
