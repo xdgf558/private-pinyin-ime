@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-16 11:28
-Current stage: Core follow-up OI-045
-Current status: Incremental lattice reuse and mixed full-pinyin/initial decoding are complete and ready for review; local AI development is paused
+Last updated: 2026-07-16 23:11
+Current stage: iOS keyboard UI and navigation follow-up
+Current status: Station Cat keyboard redesign, immediate touch response, persistent full-key/nine-key selection, and candidate paging are complete and ready for review; packaging remains intentionally deferred
 
 ## Stage Status
 
@@ -24,7 +24,7 @@ Current status: Incremental lattice reuse and mixed full-pinyin/initial decoding
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
 | 16 | TestFlight archive and upload | completed | 2026-07-13 14:41 | App Store Connect app `6789098978` has processed build `0.1.18 (14)` with `VALID` and `APP_STORE_ELIGIBLE` status |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-13 14:45 | Local trigram learning passed iOS 27 Simulator smoke; build `14` is ready for group assignment while real-device password/phone/App Group checks remain |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-16 23:11 | Station Cat full-key/nine-key UI, shorthand input, candidate paging, and one-shot nine-key commit passed iOS 27 Simulator smoke; real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -68,8 +68,21 @@ Current status: Incremental lattice reuse and mixed full-pinyin/initial decoding
 - Report-only arm64 macOS release benchmark: engine initialization p50 `36.84 ms` / p95 `61.13 ms`, continuous pinyin p95 `3.33 ms`, and mixed full/initial p95 `0.26 ms`; these are local reference values, not portable CI thresholds, and `OI-042` remains the cross-platform initialization follow-up.
 - AI-01 required regressions remain `13/13`; the pre-existing observation case `mixed_full_initials` now meets target `1/1` through deterministic core behavior without any AI provider or model.
 
+## iOS Keyboard UI Follow-up Validation
+
+- `bash scripts/check_ios_keyboard_sources.sh` and `bash scripts/run_ios_smoke_readiness.sh`: passed with Xcode 27 and the iOS 27 Simulator build.
+- `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed after the shared OI-045 decoder was included.
+- iPhone 17 Pro / iOS 27 Simulator visual smoke: Station Cat colors, compact candidate strip, balanced QWERTY, adaptive nine-key controls, Shift/delete symbols, and inline preferences rendered without clipping.
+- Full-key behavior: `nh` ranked `你好` first; an `a` candidate page moved forward and backward with fixed visible controls; touch-down typing produced one event per tap.
+- Nine-key behavior: the saved layout reopened correctly, `64426` ranked `你好` first, and one candidate tap inserted exactly one `你好` into Messages.
+- The system-owned bottom dictation key remains available when iOS provides it; the extension does not show a duplicate non-functional microphone control.
+
 ## Completed Work
 
+- Rebuilt the iOS Keyboard Extension visual surface from the Station Cat handoff with exact warm-dark tokens, 46-point candidate strip, gradient key styles, native pressed feedback, and compact inline preferences.
+- Kept QWERTY as the default while preserving the optional nine-key layout; when iOS supplies the bottom Globe key, the nine-key grid uses its left control position for a visible `全键` return action.
+- Added fixed previous/next candidate-group controls around the horizontal candidate scroller and a conservative end-of-pages state so paging remains reachable with long candidate text.
+- Changed typing keys to touch-down delivery without changing command-key release semantics, and made core creation retryable so a transient settings/App Group failure does not leave the keyboard inert.
 - Closed `OI-045` with a session-local continuous-decoder cache that retains bounded lattice states across ordinary key appends and safely truncates them for backspace.
 - Added context and apostrophe-boundary compatibility checks plus composition-lifecycle clearing so cached path scores never cross commits, cancellations, resets, mode changes, sessions, or processes.
 - Unified exact full-pinyin and initial edges inside the shared beam decoder with an abbreviation penalty and a minimum full-pinyin guard; `wojt` produces `我今天` while ordinary `abc` retains raw fallback behavior.
@@ -670,35 +683,19 @@ Current status: Incremental lattice reuse and mixed full-pinyin/initial decoding
 - Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
 - Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
 - Publish and smoke-test the fixed macOS stable manifest after the versioned pkg and release page are live.
-- Implement stale-process detection and reload/logout/restart guidance in UPDATE-03.
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
 - `CHANGELOG.md`
-- `README.md`
-- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/OPEN_ITEMS.md`
-- `docs/macos_public_release_checklist.md`
-- `docs/macos_update_strategy.md`
-- `docs/privacy_spec.md`
-- `docs/release_distribution_plan.md`
-- `platform/macos_imk/README.md`
-- `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/Sources/PrivatePinyinInputController.swift`
-- `platform/macos_imk/Sources/PrivatePinyinPackageDownloader.swift`
-- `platform/macos_imk/Sources/PrivatePinyinPackageVerifier.swift`
-- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
-- `platform/macos_imk/Sources/PrivatePinyinUpdateController.swift`
-- `platform/macos_imk/Tests/UpdatePackageVerifierTests.swift`
-- `scripts/README.md`
-- `scripts/build_macos_imk.sh`
-- `scripts/check_macos_imk_sources.sh`
-- `scripts/check_update02_sources.sh`
-- `scripts/test_macos_update_package.sh`
+- `docs/ios_keyboard_smoke_record.md`
+- `docs/platform_smoke_test_plan.md`
+- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
+- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
+- `platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift`
+- `scripts/check_ios_keyboard_sources.sh`
 
 ## Next Step
 
-- Review UPDATE-02 as a standalone PR. Begin UPDATE-03 stale-process recovery
-  only after approval and merge; resume AI-02 after the update stages are complete.
+- Review the iOS keyboard UI/navigation branch as a standalone PR. Package and
+  upload the next TestFlight build only after approval and merge.

@@ -7,6 +7,7 @@ enum IosKeyboardLayout: String {
 
 enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
+    private static let keyboardCandidatePageSize = 5
 
     static var appGroupIdentifier: String {
         guard
@@ -152,12 +153,19 @@ enum IosSettingsStore {
             return
         }
 
+        var needsWrite = false
         let expectedPath = userLexiconURL.path
-        guard settings["user_lexicon_path"] as? String != expectedPath else {
-            return
+        if settings["user_lexicon_path"] as? String != expectedPath {
+            settings["user_lexicon_path"] = expectedPath
+            needsWrite = true
         }
-        settings["user_lexicon_path"] = expectedPath
-        try write(settings: settings)
+        if settings["candidate_page_size"] as? Int != keyboardCandidatePageSize {
+            settings["candidate_page_size"] = keyboardCandidatePageSize
+            needsWrite = true
+        }
+        if needsWrite {
+            try write(settings: settings)
+        }
     }
 
     private static func defaultSettings() -> [String: Any] {
@@ -167,6 +175,7 @@ enum IosSettingsStore {
         ]
         settings["enable_user_learning"] = false
         settings["user_lexicon_path"] = userLexiconURL.path
+        settings["candidate_page_size"] = keyboardCandidatePageSize
         settings["ios_keyboard_layout"] = IosKeyboardLayout.qwerty.rawValue
         return settings
     }

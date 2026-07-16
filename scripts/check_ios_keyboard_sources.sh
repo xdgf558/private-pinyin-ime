@@ -55,6 +55,8 @@ grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyin
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "nineKeyDigit: Int32 = 102" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "pageUp: Int32 = 14" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "pageDown: Int32 = 15" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "output.mode == IME_MODE_ENGLISH" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "let settingsPath = IosSettingsStore.ensureSettingsFile()" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 if grep -q "englishMode.toggle()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
@@ -69,7 +71,27 @@ grep -q "setPredictionEnabled" platform/ios_keyboard/KeyboardExtension/KeyboardV
 grep -q "clearLearningData" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "nineKeyRows" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "selectKeyboardLayout(.nineKey)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "上一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "下一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func ensureCore()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '\[.nineKeyPunctuation.weighted(1.15)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '\[.modeToggle.weighted(1.15), .space.weighted(2), .enter.weighted(1.15)\]' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'layoutSegmentedControl = UISegmentedControl(items: \["全键", "九宫"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'StationKeyboardTheme' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'StationKeyButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let accent = UIColor(hex: 0xE8804A)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'systemImageName: "ellipsis"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+if grep -q 'microphoneButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
+  echo "iOS supplies dictation outside third-party keyboards; do not duplicate a non-functional microphone." >&2
+  exit 1
+fi
 grep -q "ios_keyboard_layout" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "keyboardCandidatePageSize = 5" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 if sed -n '/func feedCharacter/,/func handleTextKey/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then

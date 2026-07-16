@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a high-fidelity Station Cat iOS keyboard surface with the warm dark tray, compact candidate strip, native pressed states, balanced QWERTY rows, adaptive left-side nine-key controls, and inline full-key/nine-key preferences from the keyboard UI handoff.
 - Added OI-045 session-local incremental lattice reuse for appended and deleted pinyin prefixes, plus shared mixed full-pinyin/initial decoding such as `wojt -> 我今天` with conservative abbreviation ranking, raw-English fallback protection, C ABI coverage, and no platform ABI change.
 - Added AI-03 guarded local-AI request construction with secure/sensitive/oversized input rejection, feature/license/hardware/budget policy enforcement, explicit-action checks, eight-token context minimization, code-only failures, no-content-log checks, and no-network/external-service CI gates without adding a model or changing input behavior.
 - Added the AI-02 zero-dependency `local_ai_core` contract crate with feature budgets, monotonic deadlines, opaque session/request/revision/candidate identity, identity-scoped cancellation, redacted debug surfaces, a deterministic mock provider, unit tests, and a CI source gate without platform integration or input behavior changes; the contract explicitly prohibits reusing its non-cryptographic fingerprint as a persistent/cross-process cache key and requires future hosts to dispatch synchronous inference through bounded worker queues.
@@ -100,6 +101,7 @@
 
 ### Changed
 
+- Changed iOS typing keys to respond on touch-down while keeping command keys on touch-up, and fixed the iOS candidate page size at five so previous/next group controls remain predictable on compact screens.
 - Made the macOS Station Board preferences window open at a compact 86% scale and resize proportionally between 72% and 100%, with the complete interface and pointer hit regions scaling together.
 - Kept administrator rights for Windows TSF registration, hid PowerShell host windows, and separated installed-DLL detection from HKCU/merged-HKCR COM registration checks.
 - Fixed Windows installer and TSF display-name mojibake by forcing UTF-8 for NSIS input, MSVC source compilation, and Windows PowerShell UI scripts; switched the NSIS interface to Simplified Chinese.
@@ -188,6 +190,8 @@
 
 ### Fixed
 
+- Fixed iOS candidate paging so previous/next controls stay visible outside the horizontally scrolling candidate content and stop offering a no-op next page after the end is reached.
+- Fixed recoverable iOS keyboard startup failures by retrying core creation, and verified both `nh -> 你好` and nine-key `64426 -> 你好` commit exactly once in the iOS 27 Simulator.
 - Fixed reversed preedit and committed-text insertion in QQ and other Chromium text stores by explicitly collapsing the TSF selection at the end of every updated composition range.
 - Fixed transient SQLite BUSY/LOCKED learning-write failures with per-database in-process serialization and bounded cross-process retries, including concurrent Windows TSF host writes.
 - Fixed the Stage 16 plist source gate so it uses cross-platform `plistlib` validation instead of requiring macOS `plutil` on Ubuntu CI.
