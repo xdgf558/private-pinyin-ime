@@ -86,6 +86,39 @@ fn c_api_can_feed_nine_key_nihao() {
 }
 
 #[test]
+fn c_api_can_feed_mixed_full_pinyin_and_initials() {
+    unsafe {
+        let engine = ime_engine_new(ptr::null());
+        assert!(!engine.is_null());
+        let session = ime_session_new(engine);
+        assert!(!session.is_null());
+
+        let mut output = ptr::null_mut();
+        for (index, ch) in ["w", "o", "j", "t"].into_iter().enumerate() {
+            let text = CString::new(ch).unwrap();
+            output = ime_session_feed_key(session, key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            if index < 3 {
+                ime_output_free(output);
+            }
+        }
+
+        let first_candidate = &*(*output).candidates;
+        assert_eq!(
+            CStr::from_ptr(first_candidate.text).to_str().unwrap(),
+            "我今天"
+        );
+        assert_eq!(
+            CStr::from_ptr(first_candidate.pinyin).to_str().unwrap(),
+            "wo jin tian"
+        );
+        ime_output_free(output);
+        ime_session_free(session);
+        ime_engine_free(engine);
+    }
+}
+
+#[test]
 fn c_api_null_handles_are_safe_noops() {
     assert!(ime_session_new(ptr::null_mut()).is_null());
     assert!(ime_session_feed_key(ptr::null_mut(), key_event(ptr::null())).is_null());

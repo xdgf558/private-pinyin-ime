@@ -26,6 +26,7 @@ pub struct Lexicon {
     initial_index: Vec<InitialLexiconIndexEntry>,
     nine_key_index: Vec<NineKeyLexiconIndexEntry>,
     max_compact_pinyin_chars: usize,
+    max_initial_chars: usize,
     max_nine_key_chars: usize,
 }
 
@@ -53,6 +54,84 @@ struct ContinuousPath {
     pinyin: String,
     score: f64,
     segments: Vec<CandidateSegment>,
+    abbreviated_syllables: usize,
+    full_pinyin_chars: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ContinuousEdgeKind {
+    FullPinyin,
+    Initials { syllables: usize },
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ContinuousEdge<'a> {
+    entry: &'a LexiconEntry,
+    kind: ContinuousEdgeKind,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ContinuousDecodeCache {
+    compact_input: String,
+    forced_boundaries: HashSet<usize>,
+    previous_context: Option<String>,
+    lattice: Vec<Vec<ContinuousPath>>,
+    #[cfg(test)]
+    last_reused_chars: usize,
+}
+
+impl ContinuousDecodeCache {
+    pub(crate) fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn prepare(
+        &mut self,
+        compact_input: &str,
+        forced_boundaries: &HashSet<usize>,
+        previous_context: Option<&str>,
+    ) -> usize {
+        let input_chars = compact_input.chars().count();
+        let mut reusable_chars = if self.previous_context.as_deref() == previous_context {
+            common_prefix_chars(&self.compact_input, compact_input)
+                .min(self.lattice.len().saturating_sub(1))
+                .min(input_chars)
+        } else {
+            0
+        };
+
+        for position in 1..reusable_chars {
+            if self.forced_boundaries.contains(&position) != forced_boundaries.contains(&position) {
+                reusable_chars = position;
+                break;
+            }
+        }
+
+        if reusable_chars == 0 || self.lattice.is_empty() {
+            self.lattice = vec![Vec::new(); input_chars + 1];
+            self.lattice[0].push(ContinuousPath {
+                text: String::new(),
+                pinyin: String::new(),
+                score: 0.0,
+                segments: Vec::new(),
+                abbreviated_syllables: 0,
+                full_pinyin_chars: 0,
+            });
+        } else {
+            self.lattice.truncate(reusable_chars + 1);
+            self.lattice.resize_with(input_chars + 1, Vec::new);
+        }
+
+        self.compact_input.clear();
+        self.compact_input.push_str(compact_input);
+        self.forced_boundaries.clone_from(forced_boundaries);
+        self.previous_context = previous_context.map(str::to_owned);
+        #[cfg(test)]
+        {
+            self.last_reused_chars = reusable_chars;
+        }
+        reusable_chars
+    }
 }
 
 impl Lexicon {
@@ -106,6 +185,11 @@ impl Lexicon {
             .map(|entry| entry.compact_pinyin.chars().count())
             .max()
             .unwrap_or_default();
+        let max_initial_chars = initial_index
+            .iter()
+            .map(|entry| entry.initials.chars().count())
+            .max()
+            .unwrap_or_default();
         let max_nine_key_chars = nine_key_index
             .iter()
             .map(|entry| entry.digits.len())
@@ -118,6 +202,7 @@ impl Lexicon {
             initial_index,
             nine_key_index,
             max_compact_pinyin_chars,
+            max_initial_chars,
             max_nine_key_chars,
         })
     }
@@ -136,6 +221,25 @@ impl Lexicon {
         parses: &[PinyinParse],
         previous_context: Option<&str>,
         transition_score: impl Fn(&str, &str) -> f64,
+    ) -> Vec<Candidate> {
+        let mut cache = ContinuousDecodeCache::default();
+        self.lookup_with_context_cached(
+            raw_input,
+            parses,
+            previous_context,
+            transition_score,
+            &mut cache,
+        )
+    }
+
+    // Path scores are reusable only while the session context and transition snapshot stay stable.
+    pub(crate) fn lookup_with_context_cached(
+        &self,
+        raw_input: &str,
+        parses: &[PinyinParse],
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+        continuous_cache: &mut ContinuousDecodeCache,
     ) -> Vec<Candidate> {
         if raw_input.trim().is_empty() {
             return Vec::new();
@@ -186,11 +290,12 @@ impl Lexicon {
             }
         }
 
-        continuous_candidates.extend(self.continuous_candidates(
+        continuous_candidates.extend(self.continuous_candidates_cached(
             raw_input,
             previous_context,
             &transition_score,
             &mut seen,
+            continuous_cache,
         ));
         initial_exact_candidates.extend(self.initial_candidates(
             &normalized_input,
@@ -349,53 +454,53 @@ impl Lexicon {
         candidates
     }
 
-    fn continuous_candidates(
+    fn continuous_candidates_cached(
         &self,
         raw_input: &str,
         previous_context: Option<&str>,
         transition_score: &impl Fn(&str, &str) -> f64,
         seen: &mut HashSet<String>,
+        cache: &mut ContinuousDecodeCache,
     ) -> Vec<Candidate> {
         let Some((compact, forced_boundaries)) = compact_input_with_boundaries(raw_input) else {
             return Vec::new();
         };
         let chars = compact.chars().collect::<Vec<_>>();
-        if chars.len() < 2 {
+        if chars.is_empty() {
             return Vec::new();
         }
 
-        let mut lattice = vec![Vec::<ContinuousPath>::new(); chars.len() + 1];
-        lattice[0].push(ContinuousPath {
-            text: String::new(),
-            pinyin: String::new(),
-            score: 0.0,
-            segments: Vec::new(),
-        });
+        let reused_chars = cache.prepare(&compact, &forced_boundaries, previous_context);
+        let max_edge_chars = self.max_compact_pinyin_chars.max(self.max_initial_chars);
 
         for start in 0..chars.len() {
-            if lattice[start].is_empty() {
+            if cache.lattice[start].is_empty() {
                 continue;
             }
 
-            let end_limit = chars
-                .len()
-                .min(start.saturating_add(self.max_compact_pinyin_chars));
-            for end in (start + 1)..=end_limit {
+            let end_limit = chars.len().min(start.saturating_add(max_edge_chars));
+            let first_unprocessed_end = (start + 1).max(reused_chars + 1);
+            if first_unprocessed_end > end_limit {
+                continue;
+            }
+
+            for end in first_unprocessed_end..=end_limit {
                 let compact_edge = chars[start..end].iter().collect::<String>();
-                let entries = self.exact_entries_for_compact(
+                let edges = self.exact_edges_for_mixed_input(
                     &compact_edge,
                     start,
                     end,
                     &forced_boundaries,
                     MAX_CONTINUOUS_OPTIONS_PER_EDGE,
                 );
-                if entries.is_empty() {
+                if edges.is_empty() {
                     continue;
                 }
 
-                let previous_paths = lattice[start].clone();
+                let previous_paths = cache.lattice[start].clone();
                 for previous in previous_paths {
-                    for entry in &entries {
+                    for edge in &edges {
+                        let entry = edge.entry;
                         let left = previous
                             .segments
                             .last()
@@ -416,7 +521,18 @@ impl Lexicon {
                             text: entry.phrase.clone(),
                             pinyin: entry.pinyin.clone(),
                         });
-                        lattice[end].push(ContinuousPath {
+                        let (abbreviated_syllables, full_pinyin_chars, abbreviation_score) =
+                            match edge.kind {
+                                ContinuousEdgeKind::FullPinyin => {
+                                    (0, compact_edge.chars().count(), 0.0)
+                                }
+                                ContinuousEdgeKind::Initials { syllables } => (
+                                    syllables,
+                                    0,
+                                    Ranker::score_continuous_initial_edge(syllables),
+                                ),
+                            };
+                        cache.lattice[end].push(ContinuousPath {
                             text,
                             pinyin,
                             score: previous.score
@@ -424,26 +540,43 @@ impl Lexicon {
                                     entry.frequency,
                                     entry.phrase.chars().count(),
                                 )
-                                + transition,
+                                + transition
+                                + abbreviation_score,
                             segments,
+                            abbreviated_syllables: previous.abbreviated_syllables
+                                + abbreviated_syllables,
+                            full_pinyin_chars: previous.full_pinyin_chars + full_pinyin_chars,
                         });
                     }
                 }
 
-                sort_continuous_paths(&mut lattice[end], CONTINUOUS_BEAM_WIDTH);
+                sort_continuous_paths(&mut cache.lattice[end], CONTINUOUS_BEAM_WIDTH);
             }
         }
 
-        sort_continuous_paths(&mut lattice[chars.len()], MAX_CONTINUOUS_CANDIDATES);
+        if chars.len() < 2 {
+            return Vec::new();
+        }
+
+        let mut complete_paths = cache.lattice[chars.len()].clone();
+        sort_continuous_paths(&mut complete_paths, MAX_CONTINUOUS_CANDIDATES);
         let mut candidates = Vec::new();
-        for path in &lattice[chars.len()] {
-            if path.segments.len() < 2 || !seen.insert(path.text.clone()) {
+        for path in &complete_paths {
+            if path.segments.len() < 2
+                || (path.abbreviated_syllables > 0 && path.full_pinyin_chars < 2)
+                || !seen.insert(path.text.clone())
+            {
                 continue;
             }
+            let rank_score = if path.abbreviated_syllables == 0 {
+                Ranker::score_continuous_match(path.score)
+            } else {
+                Ranker::score_mixed_continuous_match(path.score)
+            };
             candidates.push(
                 Candidate::new(&path.text, &path.pinyin, CandidateSource::Base)
                     .with_score(path.score)
-                    .with_rank_score(Ranker::score_continuous_match(path.score))
+                    .with_rank_score(rank_score)
                     .with_segments(path.segments.clone()),
             );
         }
@@ -468,6 +601,8 @@ impl Lexicon {
             pinyin: String::new(),
             score: 0.0,
             segments: Vec::new(),
+            abbreviated_syllables: 0,
+            full_pinyin_chars: 0,
         });
 
         for start in 0..chars.len() {
@@ -519,6 +654,8 @@ impl Lexicon {
                                 )
                                 + transition,
                             segments,
+                            abbreviated_syllables: 0,
+                            full_pinyin_chars: previous.full_pinyin_chars,
                         });
                     }
                 }
@@ -540,6 +677,70 @@ impl Lexicon {
             );
         }
         candidates
+    }
+
+    fn exact_edges_for_mixed_input(
+        &self,
+        compact: &str,
+        start: usize,
+        end: usize,
+        forced_boundaries: &HashSet<usize>,
+        limit: usize,
+    ) -> Vec<ContinuousEdge<'_>> {
+        let mut edges = Vec::new();
+        let mut seen = HashSet::<&str>::new();
+
+        for entry in self.exact_entries_for_compact(compact, start, end, forced_boundaries, limit) {
+            if seen.insert(entry.phrase.as_str()) {
+                edges.push(ContinuousEdge {
+                    entry,
+                    kind: ContinuousEdgeKind::FullPinyin,
+                });
+            }
+        }
+
+        for entry in self.exact_entries_for_initials(compact, limit) {
+            if seen.insert(entry.phrase.as_str()) {
+                edges.push(ContinuousEdge {
+                    entry,
+                    kind: ContinuousEdgeKind::Initials {
+                        syllables: entry.pinyin.split_whitespace().count(),
+                    },
+                });
+            }
+        }
+
+        edges.sort_by(|left, right| {
+            continuous_edge_priority(left.kind)
+                .cmp(&continuous_edge_priority(right.kind))
+                .then_with(|| right.entry.frequency.cmp(&left.entry.frequency))
+                .then_with(|| left.entry.phrase.cmp(&right.entry.phrase))
+                .then_with(|| left.entry.pinyin.cmp(&right.entry.pinyin))
+        });
+        edges.truncate(limit);
+        edges
+    }
+
+    fn exact_entries_for_initials(&self, initials: &str, limit: usize) -> Vec<&LexiconEntry> {
+        let start = self
+            .initial_index
+            .partition_point(|entry| entry.initials.as_str() < initials);
+        let end = self
+            .initial_index
+            .partition_point(|entry| entry.initials.as_str() <= initials);
+        let mut entries = Vec::new();
+        let mut seen = HashSet::<&str>::new();
+
+        for indexed_entry in &self.initial_index[start..end] {
+            let entry = &self.entries[indexed_entry.entry_index];
+            if seen.insert(entry.phrase.as_str()) {
+                entries.push(entry);
+                if entries.len() == limit {
+                    break;
+                }
+            }
+        }
+        entries
     }
 
     fn exact_entries_for_nine_key(&self, digits: &str, limit: usize) -> Vec<&LexiconEntry> {
@@ -672,6 +873,21 @@ fn build_initial_index(entries: &[LexiconEntry]) -> Vec<InitialLexiconIndexEntry
     index.sort_by(|left, right| {
         left.initials
             .cmp(&right.initials)
+            .then_with(|| {
+                entries[right.entry_index]
+                    .frequency
+                    .cmp(&entries[left.entry_index].frequency)
+            })
+            .then_with(|| {
+                entries[left.entry_index]
+                    .phrase
+                    .cmp(&entries[right.entry_index].phrase)
+            })
+            .then_with(|| {
+                entries[left.entry_index]
+                    .pinyin
+                    .cmp(&entries[right.entry_index].pinyin)
+            })
             .then_with(|| left.entry_index.cmp(&right.entry_index))
     });
     index
@@ -702,6 +918,20 @@ fn pinyin_initials(pinyin: &str) -> String {
         .split_whitespace()
         .filter_map(|syllable| syllable.chars().next())
         .collect()
+}
+
+fn continuous_edge_priority(kind: ContinuousEdgeKind) -> u8 {
+    match kind {
+        ContinuousEdgeKind::FullPinyin => 0,
+        ContinuousEdgeKind::Initials { .. } => 1,
+    }
+}
+
+fn common_prefix_chars(left: &str, right: &str) -> usize {
+    left.chars()
+        .zip(right.chars())
+        .take_while(|(left, right)| left == right)
+        .count()
 }
 
 fn compact_input_with_boundaries(raw_input: &str) -> Option<(String, HashSet<usize>)> {
@@ -770,4 +1000,44 @@ fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
                 == right.segments.last().map(|segment| &segment.text)
     });
     paths.truncate(limit);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn continuous_cache_reuses_prefixes_and_invalidates_changed_boundaries_or_context() {
+        let lexicon = Lexicon::from_tsv(
+            "我\two\t100000\n今天\tjin tian\t90000\n今\tjin\t80000\n天\ttian\t70000\n",
+        )
+        .expect("test lexicon loads");
+        let parser = PinyinParser;
+        let mut cache = ContinuousDecodeCache::default();
+
+        let parses = parser.parse("wo");
+        lexicon.lookup_with_context_cached("wo", &parses, None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 0);
+
+        let parses = parser.parse("woj");
+        lexicon.lookup_with_context_cached("woj", &parses, None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 2);
+
+        let parses = parser.parse("wojt");
+        let candidates =
+            lexicon.lookup_with_context_cached("wojt", &parses, None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 3);
+        assert_eq!(
+            candidates.first().map(|candidate| candidate.text.as_str()),
+            Some("我今天")
+        );
+
+        let parses = parser.parse("wo'jt");
+        lexicon.lookup_with_context_cached("wo'jt", &parses, None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 2);
+
+        let parses = parser.parse("woj");
+        lexicon.lookup_with_context_cached("woj", &parses, Some("前文"), |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 0);
+    }
 }

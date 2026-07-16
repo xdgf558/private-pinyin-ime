@@ -7,6 +7,7 @@ const USER_PREDICTION_BOOST: f64 = 1_000_000_000.0;
 const USER_SOURCE_BOOST: f64 = 100_000_000.0;
 const CONTINUOUS_UNIGRAM_NORMALIZER: f64 = 13.0;
 const CONTINUOUS_PHRASE_CHAR_BONUS: f64 = 1.5;
+const CONTINUOUS_INITIAL_PENALTY: f64 = 2.5;
 const BASE_TRANSITION_WEIGHT: f64 = 0.8;
 const USER_TRANSITION_BOOST: f64 = 6.0;
 const USER_TRANSITION_WEIGHT: f64 = 2.0;
@@ -78,6 +79,14 @@ impl Ranker {
 
     pub fn score_continuous_match(path_score: f64) -> f64 {
         2.0 * MATCH_TIER_WEIGHT + path_score
+    }
+
+    pub fn score_continuous_initial_edge(syllables: usize) -> f64 {
+        -(syllables as f64) * CONTINUOUS_INITIAL_PENALTY
+    }
+
+    pub fn score_mixed_continuous_match(path_score: f64) -> f64 {
+        1.75 * MATCH_TIER_WEIGHT + path_score
     }
 
     pub fn score_match(
