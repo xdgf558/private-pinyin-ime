@@ -1,22 +1,31 @@
 import UIKit
 
 final class KeyboardViewController: UIInputViewController {
-    private var core = IosPinyinCoreBridge()
+    private var core: IosPinyinCoreBridge?
     private let rootStack = UIStackView()
     private let candidateBar = UIStackView()
+    private let candidateScrollView = UIScrollView()
     private let candidateStack = UIStackView()
     private let keyRowsStack = UIStackView()
     private let preferencesView = UIView()
     private let preeditLabel = UILabel()
+    private let candidateDivider = UIView()
     private let settingsButton = UIButton(type: .system)
+    private let previousCandidatePageButton = UIButton(type: .system)
+    private let nextCandidatePageButton = UIButton(type: .system)
+    private let layoutSegmentedControl = UISegmentedControl(items: ["全键", "九宫"])
     private let predictionSwitch = UISwitch()
     private let learningSwitch = UISwitch()
     private let preferencesStatusLabel = UILabel()
     private var candidateButtons: [UIButton] = []
     private weak var shiftButton: UIButton?
     private weak var modeButton: UIButton?
+    private weak var spaceButton: UIButton?
     private var currentPreedit = ""
     private var currentCandidates: [IosPinyinCandidate] = []
+    private var candidatePage = 0
+    private var candidatePageReachedEnd = false
+    private let visibleCandidateCount = 5
     private var shifted = false
     private var symbolsVisible = false
     private var englishMode = false
@@ -24,9 +33,13 @@ final class KeyboardViewController: UIInputViewController {
     private var preferencesVisible = false
     private var isPerformingTextOperation = false
     private var lastNeedsInputModeSwitchKey = true
+    private var coreUnavailable = false
+    private let trayGradient = CAGradientLayer()
+    private var minimumHeightConstraint: NSLayoutConstraint?
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        _ = ensureCore()
         setupView()
         rebuildKeyboard()
         updateCandidateBar()
@@ -38,7 +51,7 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
 
-        if let output = core?.reset() {
+        if let output = ensureCore()?.reset() {
             englishMode = output.isEnglishMode
         }
         currentPreedit = ""
@@ -55,11 +68,28 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        trayGradient.frame = view.bounds
+    }
+
     private func setupView() {
-        view.backgroundColor = UIColor.systemGray5
+        view.backgroundColor = StationKeyboardTheme.trayBottom
+        trayGradient.colors = [
+            StationKeyboardTheme.trayTop.cgColor,
+            StationKeyboardTheme.trayBottom.cgColor,
+        ]
+        trayGradient.startPoint = CGPoint(x: 0.5, y: 0)
+        trayGradient.endPoint = CGPoint(x: 0.5, y: 1)
+        view.layer.insertSublayer(trayGradient, at: 0)
+
+        let topBorder = UIView()
+        topBorder.backgroundColor = StationKeyboardTheme.trayBorder
+        topBorder.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(topBorder)
 
         rootStack.axis = .vertical
-        rootStack.spacing = 6
+        rootStack.spacing = 9
         rootStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(rootStack)
 
@@ -67,76 +97,158 @@ final class KeyboardViewController: UIInputViewController {
 
         keyRowsStack.axis = .vertical
         keyRowsStack.distribution = .fillEqually
-        keyRowsStack.spacing = 6
+        keyRowsStack.spacing = 9
         rootStack.addArrangedSubview(keyRowsStack)
 
         setupPreferencesView()
         preferencesView.isHidden = true
         rootStack.addArrangedSubview(preferencesView)
 
+        minimumHeightConstraint = view.heightAnchor.constraint(greaterThanOrEqualToConstant: 278)
         NSLayoutConstraint.activate([
+            topBorder.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            topBorder.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            topBorder.topAnchor.constraint(equalTo: view.topAnchor),
+            topBorder.heightAnchor.constraint(equalToConstant: 1 / traitCollection.displayScale),
             rootStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
             rootStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
-            rootStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 6),
-            rootStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -6),
-            view.heightAnchor.constraint(greaterThanOrEqualToConstant: 252),
-            candidateBar.heightAnchor.constraint(equalToConstant: 38),
+            rootStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+            rootStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+            minimumHeightConstraint!,
+            candidateBar.heightAnchor.constraint(equalToConstant: 46),
         ])
     }
 
     private func setupCandidateBar() {
         candidateBar.axis = .horizontal
-        candidateBar.alignment = .fill
-        candidateBar.spacing = 6
+        candidateBar.alignment = .center
+        candidateBar.spacing = 8
+        candidateBar.isLayoutMarginsRelativeArrangement = true
+        candidateBar.layoutMargins = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 6)
         rootStack.addArrangedSubview(candidateBar)
 
-        candidateStack.axis = .horizontal
-        candidateStack.alignment = .fill
-        candidateStack.distribution = .fillEqually
-        candidateStack.spacing = 6
-        candidateBar.addArrangedSubview(candidateStack)
-
         configurePreeditLabel()
-        candidateStack.addArrangedSubview(preeditLabel)
+        candidateBar.addArrangedSubview(preeditLabel)
 
-        for index in 0..<5 {
+        candidateDivider.backgroundColor = StationKeyboardTheme.divider
+        candidateDivider.widthAnchor.constraint(equalToConstant: 1).isActive = true
+        candidateDivider.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        candidateDivider.isHidden = true
+        candidateBar.addArrangedSubview(candidateDivider)
+
+        candidateScrollView.showsHorizontalScrollIndicator = false
+        candidateScrollView.showsVerticalScrollIndicator = false
+        candidateScrollView.alwaysBounceHorizontal = true
+        candidateScrollView.delaysContentTouches = false
+        candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        candidateScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        configureCandidatePageButton(
+            previousCandidatePageButton,
+            systemImageName: "chevron.left",
+            accessibilityLabel: "上一组候选"
+        ) { [weak self] in
+            self?.turnCandidatePage(-1)
+        }
+        candidateBar.addArrangedSubview(previousCandidatePageButton)
+        candidateBar.addArrangedSubview(candidateScrollView)
+
+        candidateStack.axis = .horizontal
+        candidateStack.alignment = .center
+        candidateStack.distribution = .fill
+        candidateStack.spacing = 20
+        candidateStack.translatesAutoresizingMaskIntoConstraints = false
+        candidateScrollView.addSubview(candidateStack)
+
+        NSLayoutConstraint.activate([
+            candidateStack.leadingAnchor.constraint(equalTo: candidateScrollView.contentLayoutGuide.leadingAnchor),
+            candidateStack.trailingAnchor.constraint(equalTo: candidateScrollView.contentLayoutGuide.trailingAnchor),
+            candidateStack.topAnchor.constraint(equalTo: candidateScrollView.contentLayoutGuide.topAnchor),
+            candidateStack.bottomAnchor.constraint(equalTo: candidateScrollView.contentLayoutGuide.bottomAnchor),
+            candidateStack.heightAnchor.constraint(equalTo: candidateScrollView.frameLayoutGuide.heightAnchor),
+        ])
+
+        for index in 0..<visibleCandidateCount {
             let button = makeCandidateButton(index: index)
             button.isHidden = true
             candidateButtons.append(button)
             candidateStack.addArrangedSubview(button)
         }
 
-        settingsButton.setImage(UIImage(systemName: "gearshape.fill"), for: .normal)
-        settingsButton.tintColor = .secondaryLabel
-        settingsButton.backgroundColor = UIColor.systemGray4
-        settingsButton.layer.cornerRadius = 6
-        settingsButton.accessibilityLabel = "键盘偏好设置"
-        settingsButton.addAction(UIAction { [weak self] _ in
+        configureCandidatePageButton(
+            nextCandidatePageButton,
+            systemImageName: "chevron.right",
+            accessibilityLabel: "下一组候选"
+        ) { [weak self] in
+            self?.turnCandidatePage(1)
+        }
+        candidateBar.addArrangedSubview(nextCandidatePageButton)
+
+        configureCandidateToolButton(
+            settingsButton,
+            systemImageName: "ellipsis",
+            accessibilityLabel: "更多工具与键盘设置"
+        ) { [weak self] in
             self?.togglePreferences()
-        }, for: .touchUpInside)
-        settingsButton.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        }
         candidateBar.addArrangedSubview(settingsButton)
     }
 
+    private func configureCandidateToolButton(
+        _ button: UIButton,
+        systemImageName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) {
+        button.setImage(UIImage(systemName: systemImageName), for: .normal)
+        button.tintColor = StationKeyboardTheme.toolText
+        button.backgroundColor = .clear
+        button.accessibilityLabel = accessibilityLabel
+        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        button.widthAnchor.constraint(equalToConstant: 34).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 34).isActive = true
+    }
+
+    private func configureCandidatePageButton(
+        _ button: UIButton,
+        systemImageName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) {
+        button.setImage(UIImage(systemName: systemImageName), for: .normal)
+        button.tintColor = StationKeyboardTheme.secondaryText
+        button.backgroundColor = .clear
+        button.accessibilityLabel = accessibilityLabel
+        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        button.widthAnchor.constraint(equalToConstant: 22).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        button.isHidden = true
+    }
+
     private func configurePreeditLabel() {
-        preeditLabel.textAlignment = .center
-        preeditLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        preeditLabel.textColor = .secondaryLabel
-        preeditLabel.backgroundColor = UIColor.systemGray6
-        preeditLabel.layer.cornerRadius = 6
-        preeditLabel.layer.masksToBounds = true
+        preeditLabel.textAlignment = .left
+        preeditLabel.font = UIFont.systemFont(ofSize: 20, weight: .medium)
+        preeditLabel.textColor = StationKeyboardTheme.accent
+        preeditLabel.backgroundColor = .clear
         preeditLabel.adjustsFontSizeToFitWidth = true
         preeditLabel.minimumScaleFactor = 0.72
+        preeditLabel.setContentHuggingPriority(.required, for: .horizontal)
+        preeditLabel.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        preeditLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 92).isActive = true
     }
 
     private func makeCandidateButton(index: Int) -> UIButton {
         let button = UIButton(type: .system)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 21, weight: index == 0 ? .bold : .medium)
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.72
-        button.backgroundColor = UIColor.systemBackground
-        button.layer.cornerRadius = 6
-        button.setTitleColor(.label, for: .normal)
+        button.backgroundColor = .clear
+        button.setTitleColor(
+            index == 0 ? StationKeyboardTheme.accent : StationKeyboardTheme.candidateText,
+            for: .normal
+        )
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
         button.addAction(UIAction { [weak self] _ in
             self?.commitCandidate(index)
         }, for: .touchUpInside)
@@ -144,8 +256,11 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func setupPreferencesView() {
-        preferencesView.backgroundColor = UIColor.systemGray6
+        preferencesView.backgroundColor = StationKeyboardTheme.functionKey
         preferencesView.layer.cornerRadius = 8
+        preferencesView.layer.cornerCurve = .continuous
+        preferencesView.layer.borderColor = StationKeyboardTheme.trayBorder.cgColor
+        preferencesView.layer.borderWidth = 1
 
         let stack = UIStackView()
         stack.axis = .vertical
@@ -153,18 +268,35 @@ final class KeyboardViewController: UIInputViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         preferencesView.addSubview(stack)
 
-        predictionSwitch.onTintColor = UIColor.systemYellow
+        layoutSegmentedControl.selectedSegmentTintColor = StationKeyboardTheme.accent
+        layoutSegmentedControl.backgroundColor = StationKeyboardTheme.trayBottom
+        layoutSegmentedControl.setTitleTextAttributes([
+            .foregroundColor: StationKeyboardTheme.secondaryText,
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+        ], for: .normal)
+        layoutSegmentedControl.setTitleTextAttributes([
+            .foregroundColor: StationKeyboardTheme.returnText,
+            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+        ], for: .selected)
+        layoutSegmentedControl.accessibilityLabel = "拼音键盘布局"
+        layoutSegmentedControl.addAction(UIAction { [weak self] _ in
+            self?.setPreferredLayout()
+        }, for: .valueChanged)
+
+        predictionSwitch.onTintColor = StationKeyboardTheme.accent
         predictionSwitch.accessibilityLabel = "显示预测候选"
         predictionSwitch.addAction(UIAction { [weak self] _ in
             self?.setPredictionEnabled()
         }, for: .valueChanged)
 
-        learningSwitch.onTintColor = UIColor.systemYellow
+        learningSwitch.onTintColor = StationKeyboardTheme.accent
         learningSwitch.accessibilityLabel = "记住我常选的词"
         learningSwitch.addAction(UIAction { [weak self] _ in
             self?.setLearningEnabled()
         }, for: .valueChanged)
 
+        stack.addArrangedSubview(makeLayoutPreferenceRow())
+        stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makePreferenceRow(
             title: "显示预测候选",
             detail: "提交后显示下一词建议",
@@ -191,12 +323,12 @@ final class KeyboardViewController: UIInputViewController {
         let titleLabel = UILabel()
         titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-        titleLabel.textColor = .label
+        titleLabel.textColor = StationKeyboardTheme.primaryText
 
         let detailLabel = UILabel()
         detailLabel.text = detail
         detailLabel.font = UIFont.systemFont(ofSize: 11, weight: .regular)
-        detailLabel.textColor = .secondaryLabel
+        detailLabel.textColor = StationKeyboardTheme.weakText
 
         let labels = UIStackView(arrangedSubviews: [titleLabel, detailLabel])
         labels.axis = .vertical
@@ -212,9 +344,35 @@ final class KeyboardViewController: UIInputViewController {
         return row
     }
 
+    private func makeLayoutPreferenceRow() -> UIView {
+        let titleLabel = UILabel()
+        titleLabel.text = "拼音布局"
+        titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.textColor = StationKeyboardTheme.primaryText
+
+        let detailLabel = UILabel()
+        detailLabel.text = "全键与九宫格可随时切换"
+        detailLabel.font = UIFont.systemFont(ofSize: 11, weight: .regular)
+        detailLabel.textColor = StationKeyboardTheme.weakText
+
+        let labels = UIStackView(arrangedSubviews: [titleLabel, detailLabel])
+        labels.axis = .vertical
+        labels.spacing = 2
+
+        let row = UIStackView(arrangedSubviews: [labels, layoutSegmentedControl])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 12
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12)
+        row.heightAnchor.constraint(equalToConstant: 58).isActive = true
+        layoutSegmentedControl.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        return row
+    }
+
     private func makePreferenceFooter() -> UIView {
         preferencesStatusLabel.font = UIFont.systemFont(ofSize: 11, weight: .regular)
-        preferencesStatusLabel.textColor = .secondaryLabel
+        preferencesStatusLabel.textColor = StationKeyboardTheme.weakText
         preferencesStatusLabel.numberOfLines = 2
         preferencesStatusLabel.adjustsFontSizeToFitWidth = true
         preferencesStatusLabel.minimumScaleFactor = 0.75
@@ -222,8 +380,8 @@ final class KeyboardViewController: UIInputViewController {
         let clearButton = UIButton(type: .system)
         clearButton.setTitle("清除", for: .normal)
         clearButton.setImage(UIImage(systemName: "trash"), for: .normal)
-        clearButton.tintColor = .systemRed
-        clearButton.setTitleColor(.systemRed, for: .normal)
+        clearButton.tintColor = StationKeyboardTheme.accent
+        clearButton.setTitleColor(StationKeyboardTheme.accent, for: .normal)
         clearButton.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .medium)
         clearButton.accessibilityLabel = "清除本机学习记录"
         clearButton.addAction(UIAction { [weak self] _ in
@@ -242,7 +400,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private func makeDivider() -> UIView {
         let divider = UIView()
-        divider.backgroundColor = UIColor.separator
+        divider.backgroundColor = StationKeyboardTheme.divider
         divider.heightAnchor.constraint(equalToConstant: 1 / traitCollection.displayScale).isActive = true
         return divider
     }
@@ -254,6 +412,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         shiftButton = nil
         modeButton = nil
+        spaceButton = nil
 
         let rows: [[KeySpec]]
         if symbolsVisible {
@@ -263,12 +422,18 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             rows = letterRows()
         }
+        minimumHeightConstraint?.constant = usesNineKeyLayout ? 310 : 278
         for (rowIndex, row) in rows.enumerated() {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
             rowStack.alignment = .fill
             rowStack.distribution = .fill
-            rowStack.spacing = 6
+            rowStack.spacing = usesNineKeyLayout ? 7 : 6
+
+            let rowHeight = usesNineKeyLayout ? 52.0 : 44.0
+            let rowHeightConstraint = rowStack.heightAnchor.constraint(equalToConstant: rowHeight)
+            rowHeightConstraint.priority = .defaultHigh
+            rowHeightConstraint.isActive = true
 
             let horizontalInset = rowHorizontalInset(at: rowIndex)
             if horizontalInset > 0 {
@@ -305,7 +470,7 @@ final class KeyboardViewController: UIInputViewController {
         guard !usesNineKeyLayout, index == 1 else {
             return 0
         }
-        return symbolsVisible ? 14 : 16
+        return symbolsVisible ? 14 : 18
     }
 
     private func letterRows() -> [[KeySpec]] {
@@ -318,14 +483,15 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func nineKeyRows() -> [[KeySpec]] {
-        [
-            [.nineKeyPunctuation, .nineKeyDigit(2, letters: "ABC"),
-             .nineKeyDigit(3, letters: "DEF"), .backspace],
-            [.nineKeyDigit(4, letters: "GHI"), .nineKeyDigit(5, letters: "JKL"),
-             .nineKeyDigit(6, letters: "MNO"), .nineKeySpace],
-            [.nineKeyDigit(7, letters: "PQRS"), .nineKeyDigit(8, letters: "TUV"),
-             .nineKeyDigit(9, letters: "WXYZ"), .enter],
-            nineKeyCommandRow(),
+        let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout
+        return [
+            [.nineKeyPunctuation.weighted(1.15), .nineKeyDigit(2, letters: "ABC"),
+             .nineKeyDigit(3, letters: "DEF"), .backspace.weighted(1.15)],
+            [.symbols.weighted(1.15), .nineKeyDigit(4, letters: "GHI"),
+             .nineKeyDigit(5, letters: "JKL"), .nineKeyDigit(6, letters: "MNO").weighted(1.15)],
+            [globeKey.weighted(1.15), .nineKeyDigit(7, letters: "PQRS"),
+             .nineKeyDigit(8, letters: "TUV"), .nineKeyDigit(9, letters: "WXYZ").weighted(1.15)],
+            [.modeToggle.weighted(1.15), .space.weighted(2), .enter.weighted(1.15)],
         ]
     }
 
@@ -334,63 +500,64 @@ final class KeyboardViewController: UIInputViewController {
             "1234567890".map { .text(String($0)) },
             [".", ",", "?", "!", "'", "-", ":", ";", "/"].map { .text($0) },
             [.text("("), .text(")"), .text("@"), .text("#"), .text("$"), .text("&"), .backspace],
-            commandRow(with: preferredLayout == .nineKey && !englishMode ? .nineKeyLayout : .letters),
+            qwertyCommandRow(),
         ]
     }
 
     private func qwertyCommandRow() -> [KeySpec] {
-        var row = commandRow(with: .symbols)
-        if !englishMode {
-            row.insert(.nineKeyLayout, at: needsInputModeSwitchKey ? 2 : 1)
-        }
-        return row
-    }
-
-    private func nineKeyCommandRow() -> [KeySpec] {
-        var row: [KeySpec] = []
+        let leadingKey = symbolsVisible ? KeySpec.letters : .symbols
+        var row = [
+            leadingKey.weighted(1.6),
+        ]
         if needsInputModeSwitchKey {
-            row.append(.globe)
+            row.append(.globe.weighted(1.2))
         }
-        row.append(contentsOf: [.symbols, .letters, .modeToggle])
-        return row
-    }
-
-    private func commandRow(with layoutToggle: KeySpec) -> [KeySpec] {
-        var row: [KeySpec] = []
-        if needsInputModeSwitchKey {
-            row.append(.globe)
-        }
-        row.append(contentsOf: [layoutToggle, .space, .modeToggle, .enter])
+        row.append(contentsOf: [
+            .space.weighted(4.6),
+            .modeToggle.weighted(1.4),
+            .enter.weighted(1.8),
+        ])
         return row
     }
 
     private func makeKeyButton(_ key: KeySpec) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setTitle(key.title, for: .normal)
+        let button = StationKeyButton(style: key.visualStyle)
+        let title: String?
+        switch key.kind {
+        case .space:
+            title = englishMode ? "space" : "猫栈拼音"
+        case .modeToggle:
+            title = englishMode ? "英" : "中"
+        case .enter:
+            title = "换行"
+        default:
+            title = key.title
+        }
+        button.setTitle(title, for: .normal)
         if let systemImageName = key.systemImageName {
-            button.setImage(UIImage(systemName: systemImageName), for: .normal)
+            let image = UIImage(systemName: systemImageName)?.withRenderingMode(.alwaysTemplate)
+            button.setCenteredImage(image)
         }
         button.accessibilityLabel = key.accessibilityLabel
-        button.titleLabel?.font = UIFont.systemFont(ofSize: key.isWide ? 15 : 18, weight: .medium)
-        button.titleLabel?.numberOfLines = key.title?.contains("\n") == true ? 2 : 1
+        button.titleLabel?.font = key.titleFont
+        button.titleLabel?.numberOfLines = 1
         button.titleLabel?.textAlignment = .center
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.75
-        button.backgroundColor = key.isCommand ? UIColor.systemGray3 : UIColor.systemBackground
-        button.layer.cornerRadius = 6
-        button.layer.cornerCurve = .continuous
-        button.tintColor = .label
-        button.setTitleColor(.label, for: .normal)
-        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 42).isActive = true
+        button.cornerRadius = usesNineKeyLayout ? 7 : 6
+        button.isEnabled = key.kind.isInteractive
+        button.alpha = key.kind.isInteractive ? 1 : 0
         button.addAction(UIAction { [weak self] _ in
             self?.handle(key)
-        }, for: .touchUpInside)
+        }, for: key.activationEvent)
 
         switch key.kind {
         case .shift:
             shiftButton = button
         case .modeToggle:
             modeButton = button
+        case .space:
+            spaceButton = button
         default:
             break
         }
@@ -398,9 +565,9 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func refreshKeyStates() {
-        shiftButton?.backgroundColor = shifted ? UIColor.systemYellow : UIColor.systemGray3
-        shiftButton?.tintColor = shifted ? UIColor.black : UIColor.label
-        modeButton?.setTitle(englishMode ? "EN" : "中", for: .normal)
+        (shiftButton as? StationKeyButton)?.isLatched = shifted
+        modeButton?.setTitle(englishMode ? "英" : "中", for: .normal)
+        spaceButton?.setTitle(englishMode ? "space" : "猫栈拼音", for: .normal)
     }
 
     private func updateCandidateBar() {
@@ -413,16 +580,30 @@ final class KeyboardViewController: UIInputViewController {
             }
             settingsButton.setImage(UIImage(systemName: "xmark"), for: .normal)
             settingsButton.isEnabled = true
+            candidateScrollView.isHidden = true
+            candidateDivider.isHidden = true
+            previousCandidatePageButton.isHidden = true
+            nextCandidatePageButton.isHidden = true
             return
         }
 
-        settingsButton.setImage(UIImage(systemName: "gearshape.fill"), for: .normal)
+        candidateScrollView.isHidden = false
+        settingsButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         settingsButton.isEnabled = currentPreedit.isEmpty
         settingsButton.alpha = settingsButton.isEnabled ? 1.0 : 0.45
 
-        let showPreedit = !currentPreedit.isEmpty || currentCandidates.isEmpty
-        preeditLabel.text = currentPreedit
+        let hasCandidates = !currentCandidates.isEmpty
+        previousCandidatePageButton.isHidden = !hasCandidates || candidatePage == 0
+        nextCandidatePageButton.isHidden = !hasCandidates
+            || currentCandidates.count < visibleCandidateCount
+            || candidatePageReachedEnd
+
+        let showPreedit = !currentPreedit.isEmpty || !hasCandidates
+        preeditLabel.text = currentPreedit.isEmpty && coreUnavailable
+            ? "输入引擎暂时不可用，请再试一次"
+            : currentPreedit
         preeditLabel.isHidden = !showPreedit
+        candidateDivider.isHidden = preeditLabel.isHidden || currentPreedit.isEmpty
 
         for (index, button) in candidateButtons.enumerated() {
             guard index < currentCandidates.count else {
@@ -434,6 +615,7 @@ final class KeyboardViewController: UIInputViewController {
             button.accessibilityLabel = "候选词 \(currentCandidates[index].text)"
             button.isHidden = false
         }
+        candidateScrollView.setContentOffset(.zero, animated: false)
     }
 
     private func handle(_ key: KeySpec) {
@@ -443,13 +625,13 @@ final class KeyboardViewController: UIInputViewController {
         case .text(let value):
             handleTextKey(value)
         case .nineKeyDigit(let value):
-            apply(core?.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value))
+            feedNineKeyDigit(value)
         case .nineKeyPunctuation:
-            applyOrInsert(core?.feed(keyCode: IosKeyCodeValue.comma, text: ","), fallback: "，")
+            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.comma, text: ","), fallback: "，")
         case .space:
-            applyOrInsert(core?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
+            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
         case .enter:
-            applyOrInsert(core?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"), fallback: "\n")
+            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"), fallback: "\n")
         case .backspace:
             handleBackspace()
         case .shift:
@@ -462,12 +644,17 @@ final class KeyboardViewController: UIInputViewController {
             rebuildKeyboard()
         case .letters:
             symbolsVisible = false
-            selectKeyboardLayout(.qwerty)
+            rebuildKeyboard()
         case .nineKeyLayout:
             symbolsVisible = false
             selectKeyboardLayout(.nineKey)
+        case .qwertyLayout:
+            symbolsVisible = false
+            selectKeyboardLayout(.qwerty)
         case .modeToggle:
-            apply(core?.toggleMode())
+            apply(ensureCore()?.toggleMode())
+        case .spacer:
+            break
         }
     }
 }
@@ -489,7 +676,7 @@ private extension KeyboardViewController {
         }
 
         let text = wasShifted ? value.uppercased() : value
-        let output = core?.feed(
+        let output = ensureCore()?.feed(
             keyCode: IosKeyCodeValue.character,
             text: text,
             shift: wasShifted
@@ -499,7 +686,7 @@ private extension KeyboardViewController {
 
     func handleTextKey(_ value: String) {
         if let keyCode = coreKeyCode(for: value) {
-            applyOrInsert(core?.feed(keyCode: keyCode, text: value), fallback: value)
+            applyOrInsert(ensureCore()?.feed(keyCode: keyCode, text: value), fallback: value)
             return
         }
 
@@ -509,14 +696,14 @@ private extension KeyboardViewController {
 
     func handleBackspace() {
         if hasActiveInput {
-            apply(core?.feed(keyCode: IosKeyCodeValue.backspace))
+            apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.backspace))
         } else {
             deleteDocumentBackward()
         }
     }
 
     func commitCandidate(_ index: Int) {
-        apply(core?.commitCandidate(index: index))
+        apply(ensureCore()?.commitCandidate(index: index))
     }
 
     func applyOrInsert(_ output: IosPinyinOutput?, fallback: String) {
@@ -529,12 +716,48 @@ private extension KeyboardViewController {
 
     func endActiveInputIfNeeded() {
         if hasActiveInput {
-            apply(core?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
+            apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
         }
+    }
+
+    func feedNineKeyDigit(_ value: String) {
+        guard value.count == 1, let digit = value.first, ("2"..."9").contains(String(digit)) else {
+            return
+        }
+        apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value))
+    }
+
+    func turnCandidatePage(_ delta: Int) {
+        guard delta != 0, !currentCandidates.isEmpty else {
+            return
+        }
+        let previousSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
+        let keyCode = delta < 0 ? IosKeyCodeValue.pageUp : IosKeyCodeValue.pageDown
+        guard let output = ensureCore()?.feed(keyCode: keyCode) else {
+            updateCandidateBar()
+            return
+        }
+        let nextSignature = output.candidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
+        if nextSignature != previousSignature {
+            candidatePage = max(0, candidatePage + delta)
+            candidatePageReachedEnd = output.candidates.count < visibleCandidateCount
+        } else if delta > 0 {
+            candidatePageReachedEnd = true
+        }
+        apply(output)
+    }
+
+    func ensureCore() -> IosPinyinCoreBridge? {
+        if core == nil {
+            core = IosPinyinCoreBridge()
+        }
+        coreUnavailable = core == nil
+        return core
     }
 
     func apply(_ output: IosPinyinOutput?) {
         guard let output else {
+            updateCandidateBar()
             return
         }
 
@@ -545,8 +768,17 @@ private extension KeyboardViewController {
             insertDocumentText(output.commitText)
         }
 
+        if output.shouldUpdatePreedit || output.shouldCommit {
+            candidatePage = 0
+            candidatePageReachedEnd = false
+        }
+
         currentPreedit = output.preedit
         currentCandidates = output.shouldShowCandidates ? output.candidates : []
+        if currentCandidates.isEmpty {
+            candidatePage = 0
+            candidatePageReachedEnd = false
+        }
         if modeChanged {
             symbolsVisible = false
             rebuildKeyboard()
@@ -610,7 +842,7 @@ private extension KeyboardViewController {
         }
 
         if hasActiveInput {
-            apply(core?.reset())
+            apply(ensureCore()?.reset())
         }
         preferredLayout = layout
         _ = IosSettingsStore.setKeyboardLayout(layout)
@@ -628,18 +860,28 @@ private extension KeyboardViewController {
         preferencesView.isHidden = !preferencesVisible
         if preferencesVisible {
             currentCandidates = []
+            candidatePage = 0
             refreshPreferenceControls()
         }
         updateCandidateBar()
     }
 
     func refreshPreferenceControls() {
+        layoutSegmentedControl.selectedSegmentIndex = preferredLayout == .nineKey ? 1 : 0
         predictionSwitch.isOn = IosSettingsStore.isPredictionEnabled()
         learningSwitch.isOn = IosSettingsStore.isLearningEnabled()
         learningSwitch.isEnabled = IosSettingsStore.canEnableLearning
         preferencesStatusLabel.text = IosSettingsStore.keyboardStorageDescription(
             hasFullAccess: hasFullAccess
         )
+    }
+
+    func setPreferredLayout() {
+        let layout: IosKeyboardLayout = layoutSegmentedControl.selectedSegmentIndex == 1
+            ? .nineKey
+            : .qwerty
+        selectKeyboardLayout(layout)
+        preferencesStatusLabel.text = layout == .nineKey ? "已切换为九宫格拼音" : "已切换为全键拼音"
     }
 
     func setPredictionEnabled() {
@@ -664,17 +906,18 @@ private extension KeyboardViewController {
         core = nil
         do {
             let removed = try IosSettingsStore.clearLocalLexiconArtifacts()
-            core = IosPinyinCoreBridge()
+            _ = ensureCore()
             clearCompositionState()
             preferencesStatusLabel.text = removed == 0 ? "没有本机学习记录" : "本机学习记录已清除"
         } catch {
-            core = IosPinyinCoreBridge()
+            _ = ensureCore()
             preferencesStatusLabel.text = "无法清除本机学习记录"
         }
     }
 
     func reloadCoreAfterSettingsChange(status: String) {
-        core = IosPinyinCoreBridge()
+        core = nil
+        _ = ensureCore()
         clearCompositionState()
         preferencesStatusLabel.text = core == nil ? "输入引擎重新载入失败" : status
     }
@@ -682,6 +925,7 @@ private extension KeyboardViewController {
     func clearCompositionState() {
         currentPreedit = ""
         currentCandidates = []
+        candidatePage = 0
         updateCandidateBar()
     }
 }
@@ -700,7 +944,9 @@ private struct KeySpec {
         case symbols
         case letters
         case nineKeyLayout
+        case qwertyLayout
         case modeToggle
+        case spacer
     }
 
     let kind: Kind
@@ -710,6 +956,61 @@ private struct KeySpec {
     let isCommand: Bool
     let isWide: Bool
     let widthWeight: CGFloat
+
+    var activationEvent: UIControl.Event {
+        switch kind {
+        case .character, .text, .nineKeyDigit, .nineKeyPunctuation,
+             .space, .enter, .backspace:
+            return .touchDown
+        case .shift, .globe, .symbols, .letters, .nineKeyLayout,
+             .qwertyLayout, .modeToggle, .spacer:
+            return .touchUpInside
+        }
+    }
+
+    var visualStyle: StationKeyVisualStyle {
+        switch kind {
+        case .character, .text, .nineKeyDigit:
+            return .letter
+        case .space:
+            return .space
+        case .modeToggle:
+            return .mode
+        case .enter:
+            return .returnKey
+        case .nineKeyPunctuation, .backspace, .shift, .globe,
+             .symbols, .letters, .nineKeyLayout, .qwertyLayout, .spacer:
+            return .function
+        }
+    }
+
+    var titleFont: UIFont {
+        switch kind {
+        case .character:
+            return UIFont.systemFont(ofSize: 20, weight: .semibold)
+        case .nineKeyDigit:
+            return UIFont.systemFont(ofSize: 22, weight: .semibold)
+        case .text, .nineKeyPunctuation:
+            return UIFont.systemFont(ofSize: 18, weight: .medium)
+        case .space, .modeToggle, .enter, .symbols, .letters,
+             .nineKeyLayout, .qwertyLayout:
+            return UIFont.systemFont(ofSize: 15, weight: .semibold)
+        case .backspace, .shift, .globe, .spacer:
+            return UIFont.systemFont(ofSize: 16, weight: .medium)
+        }
+    }
+
+    func weighted(_ weight: CGFloat) -> Self {
+        Self(
+            kind: kind,
+            title: title,
+            systemImageName: systemImageName,
+            accessibilityLabel: accessibilityLabel,
+            isCommand: isCommand,
+            isWide: isWide,
+            widthWeight: weight
+        )
+    }
 
     static func character(_ value: String) -> Self {
         Self(
@@ -738,7 +1039,7 @@ private struct KeySpec {
     static func nineKeyDigit(_ value: Int, letters: String) -> Self {
         Self(
             kind: .nineKeyDigit(String(value)),
-            title: "\(value)\n\(letters)",
+            title: letters,
             systemImageName: nil,
             accessibilityLabel: "九宫格 \(value) \(letters)",
             isCommand: false,
@@ -749,7 +1050,7 @@ private struct KeySpec {
 
     static let nineKeyPunctuation = Self(
         kind: .nineKeyPunctuation,
-        title: "1\n，",
+        title: "，。？",
         systemImageName: nil,
         accessibilityLabel: "中文逗号",
         isCommand: false,
@@ -764,7 +1065,7 @@ private struct KeySpec {
         accessibilityLabel: "大写",
         isCommand: true,
         isWide: true,
-        widthWeight: 1.35
+        widthWeight: 1.5
     )
     static let backspace = Self(
         kind: .backspace,
@@ -773,7 +1074,7 @@ private struct KeySpec {
         accessibilityLabel: "删除",
         isCommand: true,
         isWide: true,
-        widthWeight: 1.35
+        widthWeight: 1.5
     )
     static let globe = Self(
         kind: .globe,
@@ -811,6 +1112,15 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.2
     )
+    static let qwertyLayout = Self(
+        kind: .qwertyLayout,
+        title: "全键",
+        systemImageName: nil,
+        accessibilityLabel: "切换到全键拼音",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1.2
+    )
     static let space = Self(
         kind: .space,
         title: "空格",
@@ -831,8 +1141,8 @@ private struct KeySpec {
     )
     static let enter = Self(
         kind: .enter,
-        title: nil,
-        systemImageName: "return",
+        title: "换行",
+        systemImageName: nil,
         accessibilityLabel: "换行",
         isCommand: true,
         isWide: true,
@@ -847,4 +1157,178 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.15
     )
+    static let spacer = Self(
+        kind: .spacer,
+        title: nil,
+        systemImageName: nil,
+        accessibilityLabel: "",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
+    )
+}
+
+private extension KeySpec.Kind {
+    var isInteractive: Bool {
+        if case .spacer = self {
+            return false
+        }
+        return true
+    }
+}
+
+private enum StationKeyVisualStyle {
+    case letter
+    case function
+    case space
+    case mode
+    case returnKey
+}
+
+private enum StationKeyboardTheme {
+    static let accent = UIColor(hex: 0xE8804A)
+    static let accentDark = UIColor(hex: 0xD98F31)
+    static let trayTop = UIColor(hex: 0x221B15)
+    static let trayBottom = UIColor(hex: 0x1A1510)
+    static let trayBorder = UIColor(hex: 0x2E261D)
+    static let letterKeyTop = UIColor(hex: 0x3F382F)
+    static let letterKeyBottom = UIColor(hex: 0x332E27)
+    static let functionKey = UIColor(hex: 0x2B241C)
+    static let spaceKeyTop = UIColor(hex: 0x463D32)
+    static let spaceKeyBottom = UIColor(hex: 0x39322A)
+    static let modeKey = UIColor(hex: 0x332A20)
+    static let primaryText = UIColor(hex: 0xF3EDE3)
+    static let candidateText = UIColor(hex: 0xD8CFC2)
+    static let secondaryText = UIColor(hex: 0xD8D0C4)
+    static let weakText = UIColor(hex: 0x9A9084)
+    static let toolText = UIColor(hex: 0xB3A99B)
+    static let divider = UIColor(hex: 0x3A3025)
+    static let returnText = UIColor(hex: 0x231703)
+}
+
+private final class StationKeyButton: UIButton {
+    private let keyStyle: StationKeyVisualStyle
+    private let gradientLayer = CAGradientLayer()
+    private let centeredImageView = UIImageView()
+
+    var cornerRadius: CGFloat = 6 {
+        didSet {
+            layer.cornerRadius = cornerRadius
+            gradientLayer.cornerRadius = cornerRadius
+        }
+    }
+
+    var isLatched = false {
+        didSet {
+            applyStyle()
+        }
+    }
+
+    init(style: StationKeyVisualStyle) {
+        keyStyle = style
+        super.init(frame: .zero)
+
+        backgroundColor = .clear
+        layer.insertSublayer(gradientLayer, at: 0)
+        layer.cornerCurve = .continuous
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.6
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        layer.shadowRadius = 0
+
+        centeredImageView.contentMode = .scaleAspectFit
+        centeredImageView.isUserInteractionEnabled = false
+        centeredImageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
+            pointSize: 17,
+            weight: .medium
+        )
+        centeredImageView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(centeredImageView)
+        NSLayoutConstraint.activate([
+            centeredImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            centeredImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            centeredImageView.widthAnchor.constraint(lessThanOrEqualToConstant: 22),
+            centeredImageView.heightAnchor.constraint(lessThanOrEqualToConstant: 22),
+        ])
+        applyStyle()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradientLayer.frame = bounds
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            alpha = isHighlighted ? 0.72 : 1
+            transform = isHighlighted
+                ? CGAffineTransform(scaleX: 0.975, y: 0.975)
+                : .identity
+        }
+    }
+
+    func setCenteredImage(_ image: UIImage?) {
+        centeredImageView.image = image
+        centeredImageView.isHidden = image == nil
+    }
+
+    private func applyStyle() {
+        let colors: [UIColor]
+        let foreground: UIColor
+        let borderColor: UIColor?
+
+        if isLatched {
+            colors = [StationKeyboardTheme.accent, StationKeyboardTheme.accentDark]
+            foreground = StationKeyboardTheme.returnText
+            borderColor = nil
+        } else {
+            switch keyStyle {
+            case .letter:
+                colors = [StationKeyboardTheme.letterKeyTop, StationKeyboardTheme.letterKeyBottom]
+                foreground = StationKeyboardTheme.primaryText
+                borderColor = nil
+            case .function:
+                colors = [StationKeyboardTheme.functionKey, StationKeyboardTheme.functionKey]
+                foreground = StationKeyboardTheme.secondaryText
+                borderColor = nil
+            case .space:
+                colors = [StationKeyboardTheme.spaceKeyTop, StationKeyboardTheme.spaceKeyBottom]
+                foreground = StationKeyboardTheme.weakText
+                borderColor = nil
+            case .mode:
+                colors = [StationKeyboardTheme.modeKey, StationKeyboardTheme.modeKey]
+                foreground = StationKeyboardTheme.accent
+                borderColor = StationKeyboardTheme.accent.withAlphaComponent(0.55)
+            case .returnKey:
+                colors = [StationKeyboardTheme.accent, StationKeyboardTheme.accentDark]
+                foreground = StationKeyboardTheme.returnText
+                borderColor = nil
+            }
+        }
+
+        gradientLayer.colors = colors.map(\.cgColor)
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        layer.borderColor = borderColor?.cgColor
+        layer.borderWidth = borderColor == nil ? 0 : 1
+        tintColor = foreground
+        centeredImageView.tintColor = foreground
+        setTitleColor(foreground, for: .normal)
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32, alpha: CGFloat = 1) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: alpha
+        )
+    }
 }

@@ -13,6 +13,8 @@ enum IosKeyCodeValue {
     static let equal: Int32 = 11
     static let apostrophe: Int32 = 12
     static let semicolon: Int32 = 13
+    static let pageUp: Int32 = 14
+    static let pageDown: Int32 = 15
     static let character: Int32 = 100
     static let digit: Int32 = 101
     static let nineKeyDigit: Int32 = 102

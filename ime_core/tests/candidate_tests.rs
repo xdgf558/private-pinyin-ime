@@ -195,6 +195,71 @@ fn shorthand_initials_return_phrase_candidates() {
 }
 
 #[test]
+fn mixed_full_pinyin_and_initials_rank_joint_candidate_first() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("wojt");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("我今天")
+    );
+    assert_eq!(
+        candidates
+            .first()
+            .map(|candidate| candidate.pinyin.as_str()),
+        Some("wo jin tian")
+    );
+}
+
+#[test]
+fn mixed_input_survives_backspace_and_reuses_the_same_ranking() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let mut session = engine.create_session();
+    let mut output = session.feed_key(KeyEvent::from_char('w'));
+    for ch in "ojt".chars() {
+        output = session.feed_key(KeyEvent::from_char(ch));
+    }
+    let original = output
+        .candidates
+        .iter()
+        .map(|candidate| candidate.text.clone())
+        .collect::<Vec<_>>();
+
+    let shortened = session.feed_key(KeyEvent::new(KeyCode::Backspace));
+    assert_eq!(shortened.preedit, "woj");
+    let restored = session.feed_key(KeyEvent::from_char('t'));
+    let restored_candidates = restored
+        .candidates
+        .iter()
+        .map(|candidate| candidate.text.clone())
+        .collect::<Vec<_>>();
+
+    assert_eq!(restored.preedit, "wojt");
+    assert_eq!(restored_candidates, original);
+    assert_eq!(
+        restored_candidates.first().map(String::as_str),
+        Some("我今天")
+    );
+}
+
+#[test]
+fn mixed_decoder_stays_within_interactive_lookup_budget() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let iterations = 20;
+    let started = Instant::now();
+    for _ in 0..iterations {
+        let candidates = engine.candidates_for_raw("wojtxqcf");
+        assert!(!candidates.is_empty());
+    }
+    let average = started.elapsed() / iterations;
+
+    assert!(
+        average < Duration::from_millis(60),
+        "average mixed lookup took {average:?}"
+    );
+}
+
+#[test]
 fn starter_lexicon_returns_common_terms() {
     let engine = ImeEngine::new().expect("engine loads starter lexicon");
 

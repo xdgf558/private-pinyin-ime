@@ -58,3 +58,27 @@ bash scripts/run_ios_smoke_readiness.sh
 
 Manual failures should update `docs/OPEN_ITEMS.md` before release-readiness work
 continues.
+
+## Station Cat UI And Navigation Regression (2026-07-16)
+
+| Field | Value |
+|---|---|
+| Tester | Codex iOS 27 Simulator smoke |
+| Simulator | iPhone 17 Pro, iOS 27.0 |
+| Xcode | 27.0 (`27A5194q`) |
+| Branch | `codex/fix-ios-nine-key-navigation` |
+| Build artifact | `/private/tmp/private_pinyin_ios_ui_signed/Build/Products/Debug-iphonesimulator/PrivatePinyin.app` |
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Station Cat visual handoff | passed | Warm dark tray, orange accent, compact 46-point candidate strip, key gradients, inline preferences, and pressed states rendered without clipping |
+| QWERTY geometry | passed | Ten-key first row, inset nine-key second row, Shift + seven letters + Delete third row, and adaptive bottom command row fit the iPhone 17 Pro portrait viewport |
+| Immediate key response | passed | Letter keys use touch-down delivery; one `n` tap plus one `h` tap produced exactly `nh` and ranked `你好` first |
+| Candidate groups | passed | `a` displayed a fixed next-page chevron; page two displayed a fixed previous-page chevron; both controls remained reachable outside the horizontal scroller |
+| Nine-key geometry | passed | Four-column layout placed punctuation/ABC/DEF/Delete, 123/GHI/JKL/MNO, and `全键`/PQRS/TUV/WXYZ as specified, with Space spanning the center of the final row |
+| Nine-key composition | passed | Tapping `64426` ranked `你好` first; one candidate tap inserted exactly one `你好` in Messages |
+| Layout persistence | passed | Selecting `九宫` in inline preferences rebuilt the keyboard and the stored setting remained active after the preferences panel closed |
+| System controls | passed | iOS continued to provide the bottom Globe/dictation row; the extension did not duplicate a non-functional microphone button |
+
+Password-field, phone-field, distribution App Group, and final real-device latency
+checks remain part of Stage 17 and are not replaced by this Simulator record.

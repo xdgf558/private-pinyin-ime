@@ -117,7 +117,10 @@ Checklist:
 | App Group storage | With Full Access off, verify whether the keyboard extension can read/write the shared App Group settings and SQLite path; if denied, typing still works through built-in defaults and learning remains disabled | | |
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
-| Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `ABC` to return to QWERTY, and reopen the keyboard to confirm the selected Chinese layout persists | | |
+| Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
+| Immediate response | Rapid full-key and nine-key taps update preedit/candidates once per tap without waiting for an exaggerated release delay | | |
+| Candidate groups | With more than five candidates, fixed next/previous controls remain visible, change pages once, and never require horizontal scrolling to reach the control | | |
+| Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `全键` to return to QWERTY, and reopen the keyboard to confirm the selected Chinese layout persists | | |
 | Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
 | Nine-key continuous input | A longer 2-9 digit sequence can produce a segmented phrase candidate without switching back to QWERTY | | |
 | Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
