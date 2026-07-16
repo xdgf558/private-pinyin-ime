@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added OI-045 session-local incremental lattice reuse for appended and deleted pinyin prefixes, plus shared mixed full-pinyin/initial decoding such as `wojt -> 我今天` with conservative abbreviation ranking, raw-English fallback protection, C ABI coverage, and no platform ABI change.
 - Added AI-03 guarded local-AI request construction with secure/sensitive/oversized input rejection, feature/license/hardware/budget policy enforcement, explicit-action checks, eight-token context minimization, code-only failures, no-content-log checks, and no-network/external-service CI gates without adding a model or changing input behavior.
 - Added the AI-02 zero-dependency `local_ai_core` contract crate with feature budgets, monotonic deadlines, opaque session/request/revision/candidate identity, identity-scoped cancellation, redacted debug surfaces, a deterministic mock provider, unit tests, and a CI source gate without platform integration or input behavior changes; the contract explicitly prohibits reusing its non-cryptographic fingerprint as a persistent/cross-process cache key and requires future hosts to dispatch synchronous inference through bounded worker queues.
 - Added UPDATE-03 macOS post-install process refresh with a dedicated UI-only helper, conservative subsecond same-bundle stale-process detection, explicit consent and PID revalidation, normal-exit recovery, no-logout success guidance, and logout/login fallback without force-kill or automatic restart.

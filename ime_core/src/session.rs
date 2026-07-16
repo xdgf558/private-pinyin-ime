@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::api::ImeOutput;
 use crate::candidate::Candidate;
 use crate::key_event::{KeyCode, KeyEvent};
-use crate::lexicon::{merge_user_and_base_candidates, Lexicon};
+use crate::lexicon::{merge_user_and_base_candidates, ContinuousDecodeCache, Lexicon};
 use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::{merge_prediction_candidates, Predictor};
@@ -30,6 +30,7 @@ pub struct InputSession {
     predictor: Arc<Predictor>,
     user_lexicon: Option<Arc<UserLexicon>>,
     user_transitions: UserTransitionSnapshot,
+    continuous_decode_cache: ContinuousDecodeCache,
 }
 
 impl InputSession {
@@ -65,6 +66,7 @@ impl InputSession {
             predictor,
             user_lexicon,
             user_transitions,
+            continuous_decode_cache: ContinuousDecodeCache::default(),
         }
     }
 
@@ -372,7 +374,7 @@ impl InputSession {
             .map(|parse| parse.syllable_texts())
             .unwrap_or_default();
         let previous_context = self.context_tokens.last().map(String::as_str);
-        let base_candidates = self.lexicon.lookup_with_context(
+        let base_candidates = self.lexicon.lookup_with_context_cached(
             &self.raw_input,
             &parses,
             previous_context,
@@ -382,6 +384,7 @@ impl InputSession {
                     user_transition_frequency(&self.user_transitions, left, right),
                 )
             },
+            &mut self.continuous_decode_cache,
         );
         let user_candidates = self
             .user_lexicon
@@ -495,6 +498,7 @@ impl InputSession {
         self.preedit_text.clear();
         self.candidates.clear();
         self.candidate_page = 0;
+        self.continuous_decode_cache.clear();
     }
 
     fn has_active_input(&self) -> bool {
