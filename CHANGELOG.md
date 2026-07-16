@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added AI-03 guarded local-AI request construction with secure/sensitive/oversized input rejection, feature/license/hardware/budget policy enforcement, explicit-action checks, eight-token context minimization, code-only failures, no-content-log checks, and no-network/external-service CI gates without adding a model or changing input behavior.
 - Added the AI-02 zero-dependency `local_ai_core` contract crate with feature budgets, monotonic deadlines, opaque session/request/revision/candidate identity, identity-scoped cancellation, redacted debug surfaces, a deterministic mock provider, unit tests, and a CI source gate without platform integration or input behavior changes; the contract explicitly prohibits reusing its non-cryptographic fingerprint as a persistent/cross-process cache key and requires future hosts to dispatch synchronous inference through bounded worker queues.
 - Added UPDATE-03 macOS post-install process refresh with a dedicated UI-only helper, conservative subsecond same-bundle stale-process detection, explicit consent and PID revalidation, normal-exit recovery, no-logout success guidance, and logout/login fallback without force-kill or automatic restart.
 - Added UPDATE-02 explicit macOS package download with same-host streaming limits, exact size and SHA-256 checks, pinned Developer ID Installer verification, Gatekeeper notarization assessment, cancellation/retry UI, a private one-package cache, and a second confirmation before opening Apple's system Installer.

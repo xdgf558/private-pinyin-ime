@@ -34,7 +34,8 @@ Current scripts:
 - `check_update02_sources.sh`: verifies the UPDATE-02 constrained download, local verification, explicit-consent, and system Installer handoff contract.
 - `check_ai01_evaluation_sources.sh`: validates the synthetic/project-regression corpus, data-policy manifest, tools, and required baseline behavior.
 - `check_ai02_runtime_contracts.sh`: validates the isolated local AI request/response contracts, budgets, revision identity, cancellation scope, redacted debug surfaces, and deterministic mock provider.
+- `check_no_external_ai_service.sh`: rejects network clients, localhost dependencies, cloud AI APIs, and external local model services from local AI runtime sources.
+- `check_ai_privacy_sources.sh`: validates guarded request construction, minimal context, sensitive-input rejection, code-only errors, forbidden-context absence, and no runtime content logging.
+- `check_ai03_privacy_sources.sh`: runs the complete AI-03 privacy and no-network gate.
 
-Planned scripts:
-
-- Privacy validation helpers.
+Planned scripts will be added with their owning AI stages.
