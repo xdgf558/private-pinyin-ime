@@ -147,12 +147,18 @@ fn payment_identity_and_phone_numbers_are_rejected() {
 }
 
 #[test]
-fn ordinary_api_key_discussion_is_not_treated_as_a_secret_assignment() {
-    builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
-        .with_raw_pinyin("zhe ge api key bie fa shang qu")
-        .with_composition_text("这个 API key 别发上去")
-        .build(&PrivacyGuard, enabled_policy())
-        .expect("ordinary terminology must remain usable");
+fn ordinary_security_terms_are_not_treated_as_secret_assignments() {
+    for ordinary_text in [
+        "这个 API key 别发上去",
+        "token economy",
+        "secret garden",
+        "password manager",
+    ] {
+        builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
+            .with_composition_text(ordinary_text)
+            .build(&PrivacyGuard, enabled_policy())
+            .expect("ordinary security terminology must remain usable");
+    }
 
     let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
         .with_composition_text("api key: secret-value")

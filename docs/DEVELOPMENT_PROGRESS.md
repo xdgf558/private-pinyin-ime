@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-16 08:48
+Last updated: 2026-07-16 09:44
 Current stage: AI-03 privacy guard and source gates
 Current status: AI-03 implementation and local validation are complete and ready for review
 
@@ -60,6 +60,7 @@ Current status: AI-03 implementation and local validation are complete and ready
 - Distinguished full-pinyin and nine-key raw input so digit-only OTP heuristics fail closed for undeclared numeric input without blocking a declared `64426 -> 你好` nine-key request.
 - Retained only the last eight non-empty recent tokens, rejected oversized candidate pages instead of changing their lifecycle hash, and kept forbidden clipboard/document/web/email/chat/screen context structurally absent.
 - Added eighteen local-AI runtime tests plus AI-03 privacy, no-content-log, and no-network/external-service source gates; no model or user-visible input behavior is connected.
+- Added explicit false-positive regressions for ordinary `API key`, `token economy`, `secret garden`, and `password manager` discussion, and tracked a categorized privacy corpus plus future context/confirmation/allowlist policy in `AI-OI-006`.
 - Added the isolated `ai/local_ai_core` crate without connecting it to the existing engine, C ABI, or platform hosts.
 - Defined local AI features, hardware tiers, latency/output budgets, monotonic deadlines, sanitized error codes, request/response candidate contracts, and opaque session/request/composition/candidate-set identity.
 - Added a deterministic zero-dependency mock provider whose cancellation is scoped to the complete request identity and whose responses preserve identity for stale-result rejection.
