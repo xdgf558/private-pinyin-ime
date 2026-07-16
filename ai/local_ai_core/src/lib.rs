@@ -6,8 +6,10 @@ mod feature;
 mod hardware;
 mod identity;
 mod mock_provider;
+mod privacy_guard;
 mod provider;
 mod request;
+mod request_builder;
 mod response;
 
 pub use budget::{AiBudget, AiDeadline};
@@ -18,9 +20,18 @@ pub use identity::{
     AiCandidateSetHash, AiCompositionRevision, AiRequestId, AiRequestIdentity, AiSessionId,
 };
 pub use mock_provider::MockProvider;
+pub use privacy_guard::{
+    AiFeaturePolicy, AiModelLicenseState, PrivacyGuard, MAX_BASE_CANDIDATES,
+    MAX_CANDIDATE_PINYIN_CHARS, MAX_CANDIDATE_TEXT_UNITS, MAX_COMPOSITION_TEXT_UNITS,
+    MAX_LOCALE_CHARS, MAX_RAW_PINYIN_CHARS, MAX_RECENT_TOKENS, MAX_RECENT_TOKEN_UNITS,
+    MAX_TOTAL_CONTEXT_UNITS,
+};
 pub use provider::{LocalAiProvider, ProviderHealth};
-pub use request::{AiCandidateInput, AiPrivacyMode, AiRequest};
+pub use request::{AiCandidateInput, AiPrivacyMode, AiRawInputKind, AiRequest};
+pub use request_builder::AiRequestBuilder;
 pub use response::{AiCandidateOutput, AiReasonCode, AiResponse, AiStatus};
 
+#[cfg(test)]
+mod privacy_tests;
 #[cfg(test)]
 mod tests;

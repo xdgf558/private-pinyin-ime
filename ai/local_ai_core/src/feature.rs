@@ -41,4 +41,17 @@ impl AiFeature {
     pub const fn requires_writer(self) -> bool {
         !self.is_lite()
     }
+
+    pub const fn requires_explicit_user_action(self) -> bool {
+        matches!(
+            self,
+            Self::RewriteFormal
+                | Self::RewritePolite
+                | Self::RewriteShort
+                | Self::RewriteCasual
+                | Self::TranslateZhEn
+                | Self::TranslateEnZh
+                | Self::UserLexiconCleanupSuggest
+        )
+    }
 }

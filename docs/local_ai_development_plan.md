@@ -36,8 +36,10 @@ pipeline; it does not create a second learning database or replace the core.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
-implementation. PrivacyGuard enforcement remains AI-03 work, while host-generated
-secure-input and revision signals remain AI-07 work.
+implementation. AI-03 makes guarded construction the only public request path, rejects
+sensitive and oversized content, retains no more than eight recent tokens, and adds
+no-network/no-content-log source gates. Host-generated secure-input and revision signals
+remain AI-07 work.
 
 ## Candidate stability rule
 

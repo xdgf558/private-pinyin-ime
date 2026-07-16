@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-16 06:40
-Current stage: AI-02 runtime contracts and mock provider
-Current status: AI-02 implementation and local validation are complete and ready for review
+Last updated: 2026-07-16 09:44
+Current stage: AI-03 privacy guard and source gates
+Current status: AI-03 implementation and local validation are complete and ready for review
 
 ## Stage Status
 
@@ -33,7 +33,7 @@ Current status: AI-02 implementation and local validation are complete and ready
 |---|---|---|---|---|
 | AI-01 | Offline evaluation baseline | completed | 2026-07-14 14:34 | 13/13 required regressions pass; 7 correction/mixed-input opportunities are measured; latency remains report-only |
 | AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
-| AI-03 | Privacy guard and source gates | planned | | Add secure-input rejection, minimal context, sanitized errors, and no-network dependency checks |
+| AI-03 | Privacy guard and source gates | completed | 2026-07-16 08:48 | Guarded construction, secure/sensitive/oversized rejection, eight-token context minimization, code-only errors, and no-network/no-content-log source gates are ready for review |
 | AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
 
 ## Update Status
@@ -54,6 +54,13 @@ Current status: AI-02 implementation and local validation are complete and ready
 
 ## Completed Work
 
+- Made `AiRequestBuilder` plus `PrivacyGuard` the only public local-AI request construction path while keeping the crate isolated from the engine, FFI, and platform hosts.
+- Added fail-closed policy checks for disabled features, strict-privacy opt-out, unapproved model licenses, unsupported hardware, expanded budgets, expired deadlines, mismatched candidate identity, secure input, and missing explicit rewrite/translation consent.
+- Added bounded content checks and local sensitive-pattern rejection for password/secret assignments, labeled or standalone one-time codes, payment cards, Chinese identity numbers, and phone numbers without exposing rejected content in errors.
+- Distinguished full-pinyin and nine-key raw input so digit-only OTP heuristics fail closed for undeclared numeric input without blocking a declared `64426 -> 你好` nine-key request.
+- Retained only the last eight non-empty recent tokens, rejected oversized candidate pages instead of changing their lifecycle hash, and kept forbidden clipboard/document/web/email/chat/screen context structurally absent.
+- Added eighteen local-AI runtime tests plus AI-03 privacy, no-content-log, and no-network/external-service source gates; no model or user-visible input behavior is connected.
+- Added explicit false-positive regressions for ordinary `API key`, `token economy`, `secret garden`, and `password manager` discussion, and tracked a categorized privacy corpus plus future context/confirmation/allowlist policy in `AI-OI-006`.
 - Added the isolated `ai/local_ai_core` crate without connecting it to the existing engine, C ABI, or platform hosts.
 - Defined local AI features, hardware tiers, latency/output budgets, monotonic deadlines, sanitized error codes, request/response candidate contracts, and opaque session/request/composition/candidate-set identity.
 - Added a deterministic zero-dependency mock provider whose cancellation is scoped to the complete request identity and whose responses preserve identity for stale-result rejection.
@@ -557,6 +564,26 @@ Current status: AI-02 implementation and local validation are complete and ready
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
 - Notes: The unchanged C ABI still returned and committed `你好`; AI-02 is not connected to production input paths.
+
+### Local AI AI-03 Validation
+
+- Command: `bash scripts/check_ai03_privacy_sources.sh`
+- Result: passed
+- Notes: Required guard/builder/tests exist; runtime source scans found no network client, external AI service, forbidden context field, or content-logging macro.
+
+- Command: `cargo fmt --all -- --check`
+- Result: passed
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`
+- Result: passed
+
+- Command: `cargo test --workspace`
+- Result: passed
+- Notes: Eighteen local-AI tests cover the eight AI-02 lifecycle cases plus normal/minimized context, secure input, password/OTP, payment/identity/phone data, API-key discussion versus assignment, full-pinyin versus nine-key numeric input, oversized input, policy/hardware/budget rejection, strict privacy, explicit actions, and builder debug redaction.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged C ABI still returns and commits `你好`; AI-03 is not connected to production input paths.
 
 ### UPDATE-01 macOS Version Check Validation
 

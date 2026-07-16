@@ -38,6 +38,28 @@ Error logs must use structured error codes or enum variants. They must not inclu
 
 Rust code should avoid `unwrap`, `expect`, and debug-format panic messages on paths that can include user input. Errors crossing API or FFI boundaries should be sanitized before logging or returning them to platform hosts.
 
+## Local AI Requests
+
+Every local AI request must be constructed through `AiRequestBuilder` and accepted by
+`PrivacyGuard` before it can reach a provider. The guard rejects secure-input fields,
+password/secret assignments, one-time codes, payment-card numbers, Chinese identity
+numbers, phone numbers, oversized text/context, disabled features, unapproved model
+licenses, unsupported hardware, expanded budgets, and rewrite/translation requests that
+were not explicitly initiated by the user.
+
+An accepted request may contain only current raw pinyin, current composition text, the
+current bounded candidate page, at most the eight most recent non-empty selected tokens,
+and an explicitly requested draft. It has no fields for clipboard data, surrounding
+documents, webpages, email bodies, chat history, screenshots, or other application
+content. Sensitive-pattern rejection supplements platform secure-input signals; it does
+not replace the AI-07 requirement for trustworthy host field classification. A request
+must also declare whether raw input is full pinyin or nine-key digits, so numeric
+one-time-code rejection cannot silently disable ordinary nine-key composition.
+
+Local AI runtime sources must not use HTTP, WebSocket, gRPC, localhost model services, or
+cloud AI APIs. They must not emit request, candidate, prompt, output, or recent-context
+content through logging macros. Privacy failures expose only stable `AiErrorCode` values.
+
 ## Strict Privacy Mode
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.

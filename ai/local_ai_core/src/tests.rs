@@ -2,8 +2,8 @@ use std::time::{Duration, Instant};
 
 use crate::{
     AiBudget, AiCandidateInput, AiCandidateSetHash, AiCompositionRevision, AiErrorCode, AiFeature,
-    AiRequest, AiRequestId, AiRequestIdentity, AiSessionId, HardwareTier, LocalAiProvider,
-    MockProvider,
+    AiFeaturePolicy, AiRequest, AiRequestBuilder, AiRequestId, AiRequestIdentity, AiSessionId,
+    HardwareTier, LocalAiProvider, MockProvider, PrivacyGuard,
 };
 
 fn candidates() -> Vec<AiCandidateInput> {
@@ -32,7 +32,7 @@ fn identity(
 }
 
 fn request(identity: AiRequestIdentity, candidates: Vec<AiCandidateInput>) -> AiRequest {
-    AiRequest::new(
+    AiRequestBuilder::new(
         identity,
         AiFeature::CandidateRerank,
         "zh-Hans",
@@ -43,6 +43,8 @@ fn request(identity: AiRequestIdentity, candidates: Vec<AiCandidateInput>) -> Ai
     .with_composition_text("你好")
     .with_base_candidates(candidates)
     .with_recent_tokens(vec!["今天".to_owned(), "天气".to_owned()])
+    .build(&PrivacyGuard, AiFeaturePolicy::local_rules_enabled(true))
+    .expect("guarded mock request")
 }
 
 #[test]
@@ -112,7 +114,7 @@ fn expired_deadline_fails_without_waiting() {
     let identity = identity(8, 1, 1, &candidates);
     let budget = AiBudget::for_feature(AiFeature::CandidateRerank);
     let issued_at = Instant::now() - Duration::from_millis(100);
-    let request = AiRequest::new_at(
+    let error = AiRequestBuilder::new_at(
         identity,
         AiFeature::CandidateRerank,
         "zh-Hans",
@@ -120,11 +122,9 @@ fn expired_deadline_fails_without_waiting() {
         budget,
         issued_at,
     )
-    .with_base_candidates(candidates);
-
-    let error = MockProvider::default()
-        .infer(&request)
-        .expect_err("expired request must time out");
+    .with_base_candidates(candidates)
+    .build(&PrivacyGuard, AiFeaturePolicy::local_rules_enabled(true))
+    .expect_err("expired request must time out");
     assert_eq!(error.code(), AiErrorCode::Timeout);
 }
 
@@ -138,9 +138,16 @@ fn mismatched_candidate_hash_is_rejected() {
         AiCandidateSetHash::from_ordered_texts(["别的候选"]),
     );
 
-    let error = MockProvider::default()
-        .infer(&request(wrong_identity, candidates))
-        .expect_err("candidate identity mismatch must fail");
+    let error = AiRequestBuilder::new(
+        wrong_identity,
+        AiFeature::CandidateRerank,
+        "zh-Hans",
+        HardwareTier::Tier1,
+        AiBudget::for_feature(AiFeature::CandidateRerank),
+    )
+    .with_base_candidates(candidates)
+    .build(&PrivacyGuard, AiFeaturePolicy::local_rules_enabled(true))
+    .expect_err("candidate identity mismatch must fail");
     assert_eq!(error.code(), AiErrorCode::IdentityMismatch);
 }
 
