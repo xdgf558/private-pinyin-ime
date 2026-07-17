@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "private-pinyin.ai-lite-ranker",
+  "display_name": "PrivatePinyin AI Lite Ranker",
+  "version": "1.0.0",
+  "class": "lite",
+  "runtime": "rust_compact",
+  "platforms": [
+    "macos",
+    "windows",
+    "ios"
+  ],
+  "capabilities": [
+    "candidate_rerank"
+  ],
+  "artifacts": [
+    {
+      "kind": "model",
+      "path": "model/ranker.json",
+      "sha256": "cb02eb23a5060a56f7da403e68e7e2e933c937f8af740b23c8f8c5bb6a1f5801",
+      "size_bytes": 364
+    },
+    {
+      "kind": "license_notice",
+      "path": "MODEL_NOTICE.md",
+      "sha256": "ab88787ea307f40e86cc218f35f0c492d81e7b369d690d0424298025ab2caf27",
+      "size_bytes": 614
+    }
+  ],
+  "license": {
+    "name": "LicenseRef-All-Rights-Reserved",
+    "url": "https://github.com/xdgf558/private-pinyin-ime/blob/main/LICENSE",
+    "source_url": "https://github.com/xdgf558/private-pinyin-ime/tree/main/ai/eval",
+    "notice_path": "MODEL_NOTICE.md",
+    "redistribution_allowed": true,
+    "owner_approved": true
+  },
+  "hardware": {
+    "min_tier": "tier_1",
+    "min_memory_mb": 8192,
+    "recommended_memory_mb": 8192,
+    "requires_gpu": false
+  },
+  "privacy": {
+    "runs_locally": true,
+    "network_required": false,
+    "stores_input": false
+  }
+}

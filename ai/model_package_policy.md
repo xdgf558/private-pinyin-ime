@@ -1,10 +1,13 @@
 # Local AI Model Package Policy
 
-Status: AI-05 supply-chain gate
+Status: AI-06 first approved AI Lite package
 
-No local AI model is currently approved. The embedded registry at
-`ai/models/approved_models.json` is intentionally empty, and no weight file is tracked
-in this repository.
+The embedded registry at `ai/models/approved_models.json` currently approves exactly one
+package: `private-pinyin.ai-lite-ranker` version `1.0.0`, with approval fingerprint
+`481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6`.
+Its 364-byte JSON coefficient artifact is first-party, hand-calibrated from repository
+regressions and synthetic cases, and contains no user data. No neural or Writer model is
+approved.
 
 ## Package Workflow
 
@@ -68,3 +71,7 @@ in this repository.
 
 The manifest may require more memory or a GPU. AI-07 and AI-08 must supply trustworthy
 platform memory/GPU profiles and calibrate real-device behavior before enabling a model.
+
+Any coefficient, artifact, source, license, platform, hardware, capability, or manifest
+change requires a new model version, a new fingerprint, fresh evaluation evidence, and a
+new reviewed registry entry. Editing the manifest approval bit alone cannot authorize it.

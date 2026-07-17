@@ -71,8 +71,10 @@ it never deletes a record automatically.
 A model manifest is not authority by itself. Loading requires a redistribution-compatible
 license assertion, an exact independently embedded Owner approval fingerprint, the
 declared target platform, sufficient hardware, and successful size/SHA-256 verification
-of every artifact. The registry is empty until a model source, exact revision, license,
-notice, quality evidence, size, and redistribution terms receive explicit Owner review.
+of every artifact. A registry entry may be added only after the model source, exact
+revision, license, notice, quality evidence, size, and redistribution terms receive
+explicit Owner review. The current AI-06 entry authorizes only the first-party 364-byte
+fixed-point candidate-ranker coefficients; it does not authorize other weights.
 
 Model package paths must remain inside one package root and must not use symbolic links.
 The privacy declaration must require local execution, no network service, and no storage
@@ -80,6 +82,12 @@ of input content. Integrity, approval, platform, and hardware failures return on
 error codes; they must not expose artifact paths, model bytes, or machine details. A
 verified primary model is hashed again as it is read so replacement after initial package
 verification cannot enter inference unnoticed.
+
+AI-06 ranker inputs are bounded numeric signals derived from the current candidate page
+and existing local engine state. The ranker does not create a learning database, retain a
+request, send data over a network, or log candidate content. Its checked-in evaluation
+dataset contains only first-party synthetic/project-regression cases and explicitly
+declares that it contains no user data or real application context.
 
 ## Strict Privacy Mode
 

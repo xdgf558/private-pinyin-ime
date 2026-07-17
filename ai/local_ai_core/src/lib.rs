@@ -5,6 +5,7 @@ mod error;
 mod feature;
 mod hardware;
 mod identity;
+mod lite_ranker;
 mod mock_provider;
 mod model_integrity;
 mod model_manifest;
@@ -23,6 +24,10 @@ pub use hardware::{HardwareProfile, HardwareTier, ModelHardwareRequirements};
 pub use identity::{
     AiCandidateSetHash, AiCompositionRevision, AiRequestId, AiRequestIdentity, AiSessionId,
 };
+pub use lite_ranker::{
+    AiLiteRanker, AI_LITE_FEATURE_SCALE, AI_LITE_MODEL_SCHEMA_VERSION,
+    MAX_AI_LITE_RANKER_MODEL_BYTES,
+};
 pub use mock_provider::MockProvider;
 pub use model_manifest::{
     ModelArtifact, ModelArtifactKind, ModelClass, ModelLicense, ModelManifest, ModelPlatform,
@@ -39,7 +44,9 @@ pub use privacy_guard::{
     MAX_TOTAL_CONTEXT_UNITS,
 };
 pub use provider::{LocalAiProvider, ProviderHealth};
-pub use request::{AiCandidateInput, AiPrivacyMode, AiRawInputKind, AiRequest};
+pub use request::{
+    AiCandidateInput, AiLiteCandidateFeatures, AiPrivacyMode, AiRawInputKind, AiRequest,
+};
 pub use request_builder::AiRequestBuilder;
 pub use response::{AiCandidateOutput, AiReasonCode, AiResponse, AiStatus};
 pub use rules::{

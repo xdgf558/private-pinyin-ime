@@ -60,22 +60,65 @@ assert template["privacy"] == {
 }
 assert all(item["sha256"] == "" and item["size_bytes"] == 0
            for item in template["artifacts"])
-assert registry == {"schema_version": 1, "approvals": []}
+assert registry["schema_version"] == 1
+assert isinstance(registry["approvals"], list)
+
+approval_keys = set()
+approval_ids = set()
+for approval in registry["approvals"]:
+    assert set(approval) == {
+        "approval_id",
+        "model_id",
+        "version",
+        "manifest_fingerprint_sha256",
+    }
+    assert approval["approval_id"] not in approval_ids
+    approval_ids.add(approval["approval_id"])
+    key = (approval["model_id"], approval["version"])
+    assert key not in approval_keys
+    approval_keys.add(key)
+    assert len(approval["manifest_fingerprint_sha256"]) == 64
+
+package_keys = set()
+for package_root in sorted(path for path in Path("ai/models").iterdir() if path.is_dir()):
+    manifest_path = package_root / "manifest.json"
+    assert manifest_path.is_file(), f"missing manifest: {package_root}"
+    manifest = json.loads(manifest_path.read_text())
+    key = (manifest["id"], manifest["version"])
+    assert key not in package_keys
+    package_keys.add(key)
+    assert key in approval_keys
+    assert manifest["license"]["owner_approved"] is True
+    assert manifest["license"]["redistribution_allowed"] is True
+    assert manifest["privacy"] == {
+        "runs_locally": True,
+        "network_required": False,
+        "stores_input": False,
+    }
+
+    declared_files = {"manifest.json"}
+    for artifact in manifest["artifacts"]:
+        artifact_path = package_root / artifact["path"]
+        assert artifact_path.is_file()
+        assert not artifact_path.is_symlink()
+        data = artifact_path.read_bytes()
+        assert len(data) == artifact["size_bytes"]
+        import hashlib
+        assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        declared_files.add(artifact["path"])
+
+    actual_files = {
+        str(path.relative_to(package_root))
+        for path in package_root.rglob("*")
+        if path.is_file()
+    }
+    assert actual_files == declared_files, (
+        f"package {package_root} contains undeclared files: "
+        f"{sorted(actual_files - declared_files)}"
+    )
+
+assert package_keys == approval_keys
 PY
-
-unexpected_model_files="$(
-  find ai/models -type f ! -name approved_models.json -print
-)"
-if [[ -n "$unexpected_model_files" ]]; then
-  echo "AI-05 must not include model weights or unapproved model-package files:" >&2
-  echo "$unexpected_model_files" >&2
-  exit 1
-fi
-
-if git ls-files ai/models | grep -E '(\.bin|\.gguf|\.onnx|\.ort|\.safetensors|\.mlmodel$|\.mlpackage/)'; then
-  echo "Tracked AI model artifacts require a later Owner-approved registry entry." >&2
-  exit 1
-fi
 
 if rg -n '(println!|eprintln!|dbg!|log::|tracing::)' \
   ai/local_ai_core/src/model_integrity.rs \
@@ -111,4 +154,4 @@ assert all(len(item["sha256"]) == 64 and item["size_bytes"] > 0
            for item in manifest["artifacts"])
 PY
 
-echo "AI-05 model supply-chain gates passed."
+echo "AI-05 model supply-chain gates passed for every approved package."

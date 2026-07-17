@@ -40,12 +40,18 @@ first-party canonical table, and lexicon cleanup returns read-only reason-coded
 suggestions. No platform host invokes these components before AI-07 supplies bounded
 worker queues and stale-result handling.
 
-AI-05 establishes a fail-closed supply-chain boundary without selecting a model. A
+AI-05 establishes a fail-closed supply-chain boundary before selecting a model. A
 manifest self-assertion cannot authorize loading: exact artifact hashes, sizes, license,
 privacy, runtime, platform, hardware policy, and a separately embedded Owner approval
-fingerprint must agree. Paths and symbolic links are rejected, primary bytes are
-reverified at use time, the approval registry starts empty, and no model weight is added.
-AI-06 must use this gate for any compact scorer it proposes.
+fingerprint must agree. Paths and symbolic links are rejected and primary bytes are
+reverified at use time.
+
+AI-06 uses that boundary for a shared fixed-point Rust ranker. The approved first-party
+package is a 364-byte coefficient table over bounded base-order, frequency, segmentation,
+bigram, trigram, typo-correction, and English-term signals. Its 12-case synthetic and
+project-regression gate improves eight targeted ranks, preserves four base winners, and
+keeps all inference scratch state bounded. It remains disconnected from platform hosts;
+AI-07 owns asynchronous integration and visible-candidate stability.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference

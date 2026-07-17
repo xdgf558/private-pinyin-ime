@@ -12,6 +12,13 @@ pub enum AiStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AiReasonCode {
     MockDeterministic,
+    LiteBaseOrder,
+    LiteFrequency,
+    LiteSegmentation,
+    LiteBigram,
+    LiteTrigram,
+    LiteTypoCorrection,
+    LiteTermPreservation,
 }
 
 #[derive(Clone, PartialEq, Eq)]
