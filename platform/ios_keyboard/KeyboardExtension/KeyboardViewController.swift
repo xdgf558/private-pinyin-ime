@@ -29,6 +29,7 @@ final class KeyboardViewController: UIInputViewController {
     private let visibleCandidateCount = 9
     private var shifted = false
     private var symbolsVisible = false
+    private var extendedSymbolsVisible = false
     private var englishMode = false
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
@@ -502,7 +503,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func rowHorizontalInset(at index: Int) -> CGFloat {
-        guard !usesNineKeyLayout, index == 1 else {
+        guard !usesNineKeyLayout, index == 1, !extendedSymbolsVisible else {
             return 0
         }
         return symbolsVisible ? 14 : 18
@@ -531,16 +532,33 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func symbolRows() -> [[KeySpec]] {
-        [
+        if extendedSymbolsVisible {
+            return [
+                ["【", "】", "{", "}", "#", "%", "^", "*", "+", "="].map { .text($0) },
+                ["_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"].map { .text($0) },
+                [.symbols.weighted(1.25), .text("…", title: "..."), .text("，"),
+                 .text("^^"), .text("?"), .text("!"), .text("'"),
+                 .backspace.weighted(1.25)],
+                qwertyCommandRow(),
+            ]
+        }
+
+        return [
             "1234567890".map { .text(String($0)) },
             [".", ",", "?", "!", "'", "-", ":", ";", "/"].map { .text($0) },
-            [.text("("), .text(")"), .text("@"), .text("#"), .text("$"), .text("&"), .backspace],
+            [.extendedSymbols.weighted(1.25), .text("("), .text(")"), .text("@"),
+             .text("#"), .text("$"), .text("&"), .backspace.weighted(1.25)],
             qwertyCommandRow(),
         ]
     }
 
     private func qwertyCommandRow() -> [KeySpec] {
-        let leadingKey = symbolsVisible ? KeySpec.letters : .symbols
+        let leadingKey: KeySpec
+        if symbolsVisible, preferredLayout == .nineKey, !englishMode {
+            leadingKey = .nineKeyLayout
+        } else {
+            leadingKey = symbolsVisible ? .letters : .symbols
+        }
         var row = [
             leadingKey.weighted(1.6),
         ]
@@ -681,15 +699,23 @@ final class KeyboardViewController: UIInputViewController {
             advanceToNextInputMode()
         case .symbols:
             symbolsVisible = true
+            extendedSymbolsVisible = false
+            rebuildKeyboard()
+        case .extendedSymbols:
+            symbolsVisible = true
+            extendedSymbolsVisible = true
             rebuildKeyboard()
         case .letters:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             rebuildKeyboard()
         case .nineKeyLayout:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             selectKeyboardLayout(.nineKey)
         case .qwertyLayout:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             selectKeyboardLayout(.qwerty)
         case .modeToggle:
             apply(ensureCore()?.toggleMode())
@@ -821,6 +847,7 @@ private extension KeyboardViewController {
         }
         if modeChanged {
             symbolsVisible = false
+            extendedSymbolsVisible = false
             rebuildKeyboard()
         }
         updateCandidateBar()
@@ -1022,6 +1049,7 @@ private struct KeySpec {
         case shift
         case globe
         case symbols
+        case extendedSymbols
         case letters
         case nineKeyLayout
         case qwertyLayout
@@ -1043,7 +1071,7 @@ private struct KeySpec {
              .space, .enter, .backspace:
             return .touchDown
         case .shift, .globe, .symbols, .letters, .nineKeyLayout,
-             .qwertyLayout, .modeToggle, .spacer:
+             .extendedSymbols, .qwertyLayout, .modeToggle, .spacer:
             return .touchUpInside
         }
     }
@@ -1059,7 +1087,8 @@ private struct KeySpec {
         case .enter:
             return .returnKey
         case .nineKeyPunctuation, .backspace, .shift, .globe,
-             .symbols, .letters, .nineKeyLayout, .qwertyLayout, .spacer:
+             .symbols, .extendedSymbols, .letters, .nineKeyLayout,
+             .qwertyLayout, .spacer:
             return .function
         }
     }
@@ -1072,7 +1101,7 @@ private struct KeySpec {
             return UIFont.systemFont(ofSize: 22, weight: .semibold)
         case .text, .nineKeyPunctuation:
             return UIFont.systemFont(ofSize: 18, weight: .medium)
-        case .space, .modeToggle, .enter, .symbols, .letters,
+        case .space, .modeToggle, .enter, .symbols, .extendedSymbols, .letters,
              .nineKeyLayout, .qwertyLayout:
             return UIFont.systemFont(ofSize: 15, weight: .semibold)
         case .backspace, .shift, .globe, .spacer:
@@ -1105,9 +1134,13 @@ private struct KeySpec {
     }
 
     static func text(_ value: String) -> Self {
+        text(value, title: value)
+    }
+
+    static func text(_ value: String, title: String) -> Self {
         Self(
             kind: .text(value),
-            title: value,
+            title: title,
             systemImageName: nil,
             accessibilityLabel: value,
             isCommand: false,
@@ -1170,6 +1203,15 @@ private struct KeySpec {
         title: "123",
         systemImageName: nil,
         accessibilityLabel: "数字与符号",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1.2
+    )
+    static let extendedSymbols = Self(
+        kind: .extendedSymbols,
+        title: "#+=",
+        systemImageName: nil,
+        accessibilityLabel: "更多符号",
         isCommand: true,
         isWide: true,
         widthWeight: 1.2

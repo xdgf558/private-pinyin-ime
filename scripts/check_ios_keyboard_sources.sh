@@ -106,6 +106,12 @@ grep -q "ios_chinese_script" platform/ios_keyboard/ContainerApp/IosSettingsStore
 grep -q "keyboardCandidatePageSize = 9" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq '"【", "】", "{", "}", "#", "%", "^", "*", "+", "="' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq '"_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 if sed -n '/func feedCharacter/,/func handleTextKey/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then
