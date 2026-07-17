@@ -263,3 +263,11 @@ Status: accepted
 Decision: Implement AI-04 as deterministic, bounded, host-independent rules: at most two validated pinyin corrections, canonical first-party English-term segmentation, and read-only reason-coded user-lexicon cleanup suggestions.
 Reason: The P0 correction and mixed-English cases can be improved measurably without introducing model provenance, package size, asynchronous lifecycle, or input-thread latency risks. Cleanup must remain advisory because silently deleting learned data would violate user control and make recovery impossible.
 Consequences: The offline rules evaluation passes all 13 required regressions and all 7 observed targets. Correction never removes the original path; normal pinyin such as `zhongguo` produces no correction. Stateless correction and term matching may be permitted in strict privacy mode, while cleanup is disabled there. No host, FFI, or production engine path invokes these rules before AI-07 adds bounded worker queues, trustworthy revisions, and stale-result rejection; user-confirmed deletion and undo remain integration work.
+
+## Decision 034: Dual-Control Local Model Supply Chain
+
+Date: 2026-07-17
+Status: accepted
+Decision: Require every local model package to pass a strict manifest plus an exact, independently embedded Owner approval fingerprint; treat a manifest's own approval flag as necessary but never sufficient, and keep the default approval registry empty.
+Reason: Model weights are executable product inputs with separate provenance, license, privacy, platform, size, and hardware risks. A package must not authorize itself, a renamed or replaced artifact must invalidate approval, and a filesystem path must not escape the reviewed package through traversal or symbolic links.
+Consequences: AI-05 adds streaming SHA-256/size verification, bounded relative paths, symlink rejection, platform and hardware gates, local-only privacy declarations, use-time primary-model revalidation, a 64-MiB AI Lite package ceiling, an atomic packager that cannot grant approval, and CI checks that reject bundled weights in the empty-registry stage. No model or host integration is added. AI-06 must submit exact artifact provenance and measurable evaluation evidence before the Owner can add a registry entry; AI-07 and AI-08 must provide calibrated host hardware profiles.

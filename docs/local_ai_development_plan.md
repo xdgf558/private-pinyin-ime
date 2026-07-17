@@ -40,6 +40,13 @@ first-party canonical table, and lexicon cleanup returns read-only reason-coded
 suggestions. No platform host invokes these components before AI-07 supplies bounded
 worker queues and stale-result handling.
 
+AI-05 establishes a fail-closed supply-chain boundary without selecting a model. A
+manifest self-assertion cannot authorize loading: exact artifact hashes, sizes, license,
+privacy, runtime, platform, hardware policy, and a separately embedded Owner approval
+fingerprint must agree. Paths and symbolic links are rejected, primary bytes are
+reverified at use time, the approval registry starts empty, and no model weight is added.
+AI-06 must use this gate for any compact scorer it proposes.
+
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects

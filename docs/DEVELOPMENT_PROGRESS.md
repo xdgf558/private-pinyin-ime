@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-17 14:03
-Current stage: AI-04 rules-first local enhancement
-Current status: bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, offline quality gates, and CI wiring are ready for review without production host integration
+Last updated: 2026-07-17 15:09
+Current stage: AI-05 local model supply-chain gate
+Current status: strict manifests, dual-control Owner approval, artifact integrity/path/privacy/platform/hardware checks, atomic model packaging, tests, and CI wiring are ready for review with an empty approval registry and no bundled model
 
 ## Stage Status
 
@@ -41,7 +41,8 @@ Current status: bounded pinyin correction, canonical English-term preservation, 
 | AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
 | AI-03 | Privacy guard and source gates | completed | 2026-07-16 10:04 | Merged to `main` through PR #25; guarded construction, secure/sensitive/oversized rejection, eight-token context minimization, code-only errors, and no-network/no-content-log source gates remain isolated from production input |
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
-| AI-05 to AI-12 | Model gate, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
+| AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Strict schema, compile-time-only external Owner approval registry, bounded SHA-256/size/use-time verification, safe paths, symlink rejection, local-only privacy, platform/hardware gates, atomic packager, empty registry, and CI checks are ready for review; no model or host behavior is added |
+| AI-06 to AI-12 | AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
 
 ## Update Status
 
@@ -647,6 +648,24 @@ Current status: bounded pinyin correction, canonical English-term preservation, 
 - Result: passed
 - Notes: Overall Top-1 is 19/20, all expected candidates are found, and MRR is 0.975. The unchanged production engine remains the fallback and no platform host invokes AI-04 rules.
 
+### Local AI AI-05 Validation
+
+- Command: `bash scripts/check_ai05_model_gate_sources.sh`
+- Result: passed
+- Notes: The strict schema/template/empty-registry source contract passed, no external AI service or runtime network source was detected, the CLI packaged local synthetic bytes, and no model weight was added to the repository.
+
+- Command: `cargo test -p private_pinyin_local_ai_core -p private_pinyin_model_packager`
+- Result: passed
+- Notes: Forty-one core tests include valid dual-control loading, manifest-self-approval rejection, bounded corruption checks, use-time replacement, platform, memory tier, unsafe path, local-only privacy, preapproval, empty registry, and symbolic-link cases; two packager tests cover atomic hashing and refusal to manufacture Owner approval.
+
+- Command: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`
+- Result: passed
+- Notes: The complete workspace remains formatted, warning-free, and green with the committed Cargo lockfile.
+
+- Command: `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The unchanged production C ABI still returns and commits `你好`; AI-05 adds no provider, model, FFI change, host integration, setting, or visible input behavior.
+
 ### UPDATE-01 macOS Version Check Validation
 
 - Command: `bash scripts/check_update01_sources.sh`
@@ -711,20 +730,44 @@ Current status: bounded pinyin correction, canonical English-term preservation, 
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 - Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
 - Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
+- Detect and calibrate trustworthy memory/GPU profiles on macOS, Windows, and iOS before host model integration.
 - Publish and smoke-test the fixed macOS stable manifest after the versioned pkg and release page are live.
 
 ## Files Changed In Latest Stage
 
+- `.github/workflows/rust.yml`
+- `.gitignore`
+- `Cargo.lock`
+- `Cargo.toml`
 - `CHANGELOG.md`
+- `README.md`
+- `ai/README.md`
+- `ai/local_ai_core/Cargo.toml`
+- `ai/local_ai_core/src/error.rs`
+- `ai/local_ai_core/src/feature.rs`
+- `ai/local_ai_core/src/hardware.rs`
+- `ai/local_ai_core/src/lib.rs`
+- `ai/local_ai_core/src/model_integrity.rs`
+- `ai/local_ai_core/src/model_manifest.rs`
+- `ai/local_ai_core/src/model_tests.rs`
+- `ai/local_ai_core/src/model_verifier.rs`
+- `ai/model_manifest.schema.json`
+- `ai/model_manifest.template.example.json`
+- `ai/model_package_policy.md`
+- `ai/models/approved_models.json`
+- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/ios_keyboard_smoke_record.md`
-- `docs/platform_smoke_test_plan.md`
-- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
-- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
-- `platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift`
-- `scripts/check_ios_keyboard_sources.sh`
+- `docs/OPEN_ITEMS.md`
+- `docs/local_ai_development_plan.md`
+- `docs/privacy_spec.md`
+- `scripts/README.md`
+- `scripts/check_ai05_model_gate_sources.sh`
+- `tools/model_packager/Cargo.toml`
+- `tools/model_packager/src/lib.rs`
+- `tools/model_packager/src/main.rs`
 
 ## Next Step
 
-- Wait for external Beta App Review of `0.1.20 (16)`, then complete the
-  real-device Stage 17 privacy and keyboard smoke checks.
+- Review AI-05. After approval and merge, AI-06 may evaluate a compact shared Rust AI
+  Lite ranker, but no artifact may enter the registry without Owner provenance/license
+  approval and an exact AI-05 fingerprint.

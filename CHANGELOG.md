@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added AI-05 strict local-model manifests, independent Owner approval fingerprints, streaming SHA-256/size verification, path and symlink rejection, platform/privacy/hardware gates, an atomic model packager, an empty default approval registry, tests, documentation, and CI enforcement without bundling or loading a model.
 - Added AI-04 deterministic pinyin correction, canonical English-term preservation, and read-only user-lexicon cleanup suggestions with bounded outputs, redacted debug surfaces, strict-privacy cleanup blocking, offline evaluation integration, and a CI quality gate; production input hosts remain unchanged.
 - Added a high-fidelity Station Cat iOS keyboard surface with the warm dark tray, compact candidate strip, native pressed states, balanced QWERTY rows, adaptive left-side nine-key controls, and inline full-key/nine-key preferences from the keyboard UI handoff.
 - Added OI-045 session-local incremental lattice reuse for appended and deleted pinyin prefixes, plus shared mixed full-pinyin/initial decoding such as `wojt -> 我今天` with conservative abbreviation ranking, raw-English fallback protection, C ABI coverage, and no platform ABI change.

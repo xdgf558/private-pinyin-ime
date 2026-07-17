@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wwwstationcat.org/schemas/private-pinyin-ai-model-manifest-v1.json",
+  "title": "PrivatePinyin Local AI Model Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "display_name",
+    "version",
+    "class",
+    "runtime",
+    "platforms",
+    "capabilities",
+    "artifacts",
+    "license",
+    "hardware",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$" },
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "version": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+    "class": { "enum": ["lite", "writer"] },
+    "runtime": { "enum": ["rust_compact", "core_ml", "onnx", "gguf"] },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["macos", "windows", "ios"] }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "candidate_rerank",
+          "pinyin_correction",
+          "mixed_english_term_preservation",
+          "short_completion",
+          "rewrite_formal",
+          "rewrite_polite",
+          "rewrite_short",
+          "rewrite_casual",
+          "translate_zh_en",
+          "translate_en_zh",
+          "user_lexicon_cleanup_suggest"
+        ]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "license": { "$ref": "#/$defs/license" },
+    "hardware": { "$ref": "#/$defs/hardware" },
+    "privacy": { "$ref": "#/$defs/privacy" }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256", "size_bytes"],
+      "properties": {
+        "kind": { "enum": ["model", "tokenizer", "license_notice", "metadata"] },
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$",
+          "maxLength": 240
+        },
+        "sha256": { "type": "string", "pattern": "^(?:[0-9a-f]{64})?$" },
+        "size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "url",
+        "source_url",
+        "notice_path",
+        "redistribution_allowed",
+        "owner_approved"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "url": { "type": "string", "pattern": "^https://" },
+        "source_url": { "type": "string", "pattern": "^https://" },
+        "notice_path": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+        },
+        "redistribution_allowed": { "type": "boolean" },
+        "owner_approved": { "type": "boolean" }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_tier", "min_memory_mb", "recommended_memory_mb", "requires_gpu"],
+      "properties": {
+        "min_tier": { "enum": ["tier_0", "tier_1", "tier_2", "tier_3"] },
+        "min_memory_mb": { "type": "integer", "minimum": 1 },
+        "recommended_memory_mb": { "type": "integer", "minimum": 1 },
+        "requires_gpu": { "type": "boolean" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs_locally", "network_required", "stores_input"],
+      "properties": {
+        "runs_locally": { "const": true },
+        "network_required": { "const": false },
+        "stores_input": { "const": false }
+      }
+    }
+  }
+}
