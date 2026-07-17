@@ -107,6 +107,7 @@
 
 ### Changed
 
+- Bumped the iOS container app and keyboard extension to `0.1.21 (17)` for readable nine-key composition, a generic Return label, local Simplified/Traditional output, nine-candidate groups, the expanded symbol page, and executable Traditional-conversion regression coverage.
 - Bumped the iOS container app and keyboard extension to `0.1.20 (16)` for the Station Cat keyboard redesign, responsive touch handling, five-candidate paging, optional nine-key layout, and incremental mixed-pinyin decoding TestFlight build.
 - Changed iOS typing keys to respond on touch-down while keeping command keys on touch-up, and fixed the iOS candidate page size at five so previous/next group controls remain predictable on compact screens.
 - Made the macOS Station Board preferences window open at a compact 86% scale and resize proportionally between 72% and 100%, with the complete interface and pointer hit regions scaling together.
