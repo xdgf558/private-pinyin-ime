@@ -26,7 +26,7 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
-    private let visibleCandidateCount = 5
+    private let visibleCandidateCount = 9
     private var shifted = false
     private var symbolsVisible = false
     private var englishMode = false
@@ -142,6 +142,8 @@ final class KeyboardViewController: UIInputViewController {
         candidateScrollView.showsVerticalScrollIndicator = false
         candidateScrollView.alwaysBounceHorizontal = true
         candidateScrollView.delaysContentTouches = false
+        candidateScrollView.accessibilityLabel = "候选词"
+        candidateScrollView.accessibilityHint = "左右滑动查看更多候选"
         candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         candidateScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -158,7 +160,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateStack.axis = .horizontal
         candidateStack.alignment = .center
         candidateStack.distribution = .fill
-        candidateStack.spacing = 20
+        candidateStack.spacing = 16
         candidateStack.translatesAutoresizingMaskIntoConstraints = false
         candidateScrollView.addSubview(candidateStack)
 

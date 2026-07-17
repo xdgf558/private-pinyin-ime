@@ -119,7 +119,7 @@ Checklist:
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
 | Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
 | Immediate response | Rapid full-key and nine-key taps update preedit/candidates once per tap without waiting for an exaggerated release delay | | |
-| Candidate groups | With more than five candidates, fixed next/previous controls remain visible, change pages once, and never require horizontal scrolling to reach the control | | |
+| Candidate groups | Each group exposes up to nine candidates; swipe the candidate strip to reach long-text candidates, while fixed next/previous controls remain visible and change groups once without being pushed offscreen | | |
 | Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `全键` to return to QWERTY, and reopen the keyboard to confirm the selected Chinese layout persists | | |
 | Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
 | Nine-key preedit | Type `9664`; the composition strip shows the leading candidate's readable pinyin such as `yong`, never the internal `9664` lookup signature when candidates exist | | |

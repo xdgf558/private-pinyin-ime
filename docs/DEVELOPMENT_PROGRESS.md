@@ -77,6 +77,7 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - Beta Xcode readiness build: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension; the resulting Debug app installed and launched on the iPhone 17 Pro / iOS 27 Simulator.
 - Local conversion regression: `里面头发发展干嘛面条` produced `裡面頭髮發展乾嘛麵條`; 50,000 short-string conversions completed in approximately 0.03 seconds on the local Mac reference machine.
 - Simulator settings regression: a fresh local settings repair persisted `ios_chinese_script = simplified`, preserving the existing default until the user explicitly selects `繁體`.
+- Expanded the iOS runtime candidate page from five to nine entries; long candidates remain readable in a horizontally scrollable strip, while group navigation stays fixed outside the scroll content.
 - `bash scripts/check_ios_keyboard_sources.sh` and `bash scripts/run_ios_smoke_readiness.sh`: passed with Xcode 27 and the iOS 27 Simulator build.
 - `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed after the shared OI-045 decoder was included.
 - iPhone 17 Pro / iOS 27 Simulator visual smoke: Station Cat colors, compact candidate strip, balanced QWERTY, adaptive nine-key controls, Shift/delete symbols, and inline preferences rendered without clipping.

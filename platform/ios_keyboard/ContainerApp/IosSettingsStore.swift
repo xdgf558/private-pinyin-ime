@@ -32,7 +32,7 @@ enum IosChineseTextConverter {
 
 enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
-    private static let keyboardCandidatePageSize = 5
+    private static let keyboardCandidatePageSize = 9
 
     static var appGroupIdentifier: String {
         guard

@@ -5,6 +5,7 @@
 ### Added
 
 - Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.
+- Expanded each iOS candidate group from five to nine selectable entries with a horizontally scrollable candidate strip and fixed group-navigation controls.
 - Added AI-05 strict local-model manifests, independent Owner approval fingerprints, streaming SHA-256/size verification, path and symlink rejection, platform/privacy/hardware gates, an atomic model packager, an empty default approval registry, tests, documentation, and CI enforcement without bundling or loading a model.
 - Added AI-04 deterministic pinyin correction, canonical English-term preservation, and read-only user-lexicon cleanup suggestions with bounded outputs, redacted debug surfaces, strict-privacy cleanup blocking, offline evaluation integration, and a CI quality gate; production input hosts remain unchanged.
 - Added a high-fidelity Station Cat iOS keyboard surface with the warm dark tray, compact candidate strip, native pressed states, balanced QWERTY rows, adaptive left-side nine-key controls, and inline full-key/nine-key preferences from the keyboard UI handoff.
