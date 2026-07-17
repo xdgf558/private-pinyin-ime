@@ -11,6 +11,7 @@ mod provider;
 mod request;
 mod request_builder;
 mod response;
+mod rules;
 
 pub use budget::{AiBudget, AiDeadline};
 pub use error::{AiError, AiErrorCode};
@@ -30,6 +31,12 @@ pub use provider::{LocalAiProvider, ProviderHealth};
 pub use request::{AiCandidateInput, AiPrivacyMode, AiRawInputKind, AiRequest};
 pub use request_builder::AiRequestBuilder;
 pub use response::{AiCandidateOutput, AiReasonCode, AiResponse, AiStatus};
+pub use rules::{
+    EnglishTermPreserver, LexiconCleanupAnalyzer, LexiconCleanupReasonCode,
+    LexiconCleanupSuggestion, MixedInputSegment, MixedInputSegmentKind, MixedInputSegmentation,
+    PinyinCorrectionReason, PinyinCorrectionSuggestion, PinyinCorrector, UserLexiconSnapshotEntry,
+    MAX_CLEANUP_ENTRIES, MAX_CLEANUP_SUGGESTIONS, MAX_PINYIN_CORRECTIONS,
+};
 
 #[cfg(test)]
 mod privacy_tests;

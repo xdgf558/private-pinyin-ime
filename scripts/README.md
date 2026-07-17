@@ -37,5 +37,6 @@ Current scripts:
 - `check_no_external_ai_service.sh`: rejects network clients, localhost dependencies, cloud AI APIs, and external local model services from local AI runtime sources.
 - `check_ai_privacy_sources.sh`: validates guarded request construction, minimal context, sensitive-input rejection, code-only errors, forbidden-context absence, and no runtime content logging.
 - `check_ai03_privacy_sources.sh`: runs the complete AI-03 privacy and no-network gate.
+- `check_ai04_rules_sources.sh`: validates bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, and the rules-first quality gate.
 
 Planned scripts will be added with their owning AI stages.

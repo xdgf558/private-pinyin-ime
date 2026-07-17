@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-17 07:54
-Current stage: iOS keyboard UI and navigation follow-up
-Current status: approved Station Cat keyboard changes are merged; TestFlight candidate `0.1.20 (16)` is valid, App Store eligible, and waiting for external Beta App Review
+Last updated: 2026-07-17 10:05
+Current stage: AI-04 rules-first local enhancement
+Current status: bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, offline quality gates, and CI wiring are ready for review without production host integration
 
 ## Stage Status
 
@@ -40,7 +40,8 @@ Current status: approved Station Cat keyboard changes are merged; TestFlight can
 | AI-01 | Offline evaluation baseline | completed | 2026-07-14 14:34 | 13/13 required regressions pass; 7 correction/mixed-input opportunities are measured; latency remains report-only |
 | AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
 | AI-03 | Privacy guard and source gates | completed | 2026-07-16 10:04 | Merged to `main` through PR #25; guarded construction, secure/sensitive/oversized rejection, eight-token context minimization, code-only errors, and no-network/no-content-log source gates remain isolated from production input |
-| AI-04 to AI-12 | Rules, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
+| AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
+| AI-05 to AI-12 | Model gate, AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time |
 
 ## Update Status
 
@@ -627,6 +628,24 @@ Current status: approved Station Cat keyboard changes are merged; TestFlight can
 - Command: `bash scripts/run_c_demo.sh`
 - Result: passed
 - Notes: The unchanged C ABI still returns and commits `你好`; AI-03 is not connected to production input paths.
+
+### Local AI AI-04 Validation
+
+- Command: `bash scripts/check_ai04_rules_sources.sh`
+- Result: passed
+- Notes: Required rule sources and first-party assets exist; source scans found no content logging, network client, or external AI service. The quality gate reports 13/13 required regressions and 7/7 observed opportunities within target.
+
+- Command: `cargo test -p private_pinyin_local_ai_core`
+- Result: passed
+- Notes: 28 tests cover existing runtime/privacy contracts plus common-confusion, repeated-key, missing-medial, normal-input, two-result limit, validator, canonical-term, multi-term, debug-redaction, duplicate/stale/invalid cleanup, no-mutation, and strict-privacy behavior.
+
+- Command: `cargo test -p private_pinyin_ai_eval_runner`
+- Result: passed
+- Notes: The rules-first evaluation test uses the complete 20-case first-party corpus and requires all required and observed targets to pass.
+
+- Command: `bash scripts/run_ai_eval.sh --rules --require-observed-successes 7`
+- Result: passed
+- Notes: Overall Top-1 is 19/20, all expected candidates are found, and MRR is 0.975. The unchanged production engine remains the fallback and no platform host invokes AI-04 rules.
 
 ### UPDATE-01 macOS Version Check Validation
 

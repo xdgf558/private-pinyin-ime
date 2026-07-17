@@ -42,6 +42,16 @@ Emit machine-readable output:
 bash scripts/run_ai_eval.sh --json
 ```
 
+Run the AI-04 rules-first quality gate:
+
+```bash
+bash scripts/run_ai_eval.sh --rules --require-observed-successes 7
+```
+
+Rules mode prepends only bounded correction or canonical English-term suggestions for
+the synthetic opportunity cases. It does not connect the rule engine to a platform host
+or change the production input path.
+
 Capture report-only latency measurements in a release build:
 
 ```bash

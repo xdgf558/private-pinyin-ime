@@ -255,3 +255,11 @@ Status: accepted
 Decision: Keep one bounded continuous-decoder lattice per input session, reuse only the unchanged raw-character prefix while context and apostrophe boundaries remain compatible, and decode exact full-pinyin and initial edges in the same beam with an explicit abbreviation penalty.
 Reason: Rebuilding every lattice position after each key repeats deterministic work, while a separate shorthand lookup cannot express mixed forms such as `wojt`. Reuse must remain session-local because path scores depend on the current context and learned transition snapshot, and permissive shorthand paths must not reinterpret ordinary raw English such as `abc`.
 Consequences: Appending input extends only new lattice suffix positions, backspace truncates to a reusable prefix, and commit/cancel/reset/mode changes clear the cache. Mixed paths require at least two characters of full pinyin, rank below equivalent full-pinyin paths, and continue to use the existing bounded beam and lexicon indexes. macOS, Windows, and iOS receive the behavior through the unchanged C ABI; no cache is persisted or shared across sessions or processes, and AI development remains paused.
+
+## Decision 033: Rules-First Local Enhancement Before Model Integration
+
+Date: 2026-07-17
+Status: accepted
+Decision: Implement AI-04 as deterministic, bounded, host-independent rules: at most two validated pinyin corrections, canonical first-party English-term segmentation, and read-only reason-coded user-lexicon cleanup suggestions.
+Reason: The P0 correction and mixed-English cases can be improved measurably without introducing model provenance, package size, asynchronous lifecycle, or input-thread latency risks. Cleanup must remain advisory because silently deleting learned data would violate user control and make recovery impossible.
+Consequences: The offline rules evaluation passes all 13 required regressions and all 7 observed targets. Correction never removes the original path; normal pinyin such as `zhongguo` produces no correction. Stateless correction and term matching may be permitted in strict privacy mode, while cleanup is disabled there. No host, FFI, or production engine path invokes these rules before AI-07 adds bounded worker queues, trustworthy revisions, and stale-result rejection; user-confirmed deletion and undo remain integration work.

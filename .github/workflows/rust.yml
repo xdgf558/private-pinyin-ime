@@ -83,6 +83,9 @@ jobs:
       - name: Check AI-03 privacy guard
         run: bash scripts/check_ai03_privacy_sources.sh
 
+      - name: Check AI-04 rules-first enhancements
+        run: bash scripts/check_ai04_rules_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 

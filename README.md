@@ -109,6 +109,7 @@ The root `Cargo.toml` defines a workspace with:
 - `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
 - `tools/ai_eval_runner` freezes required pre-AI behavior and reports improvement opportunities from first-party offline cases.
 - `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
+- `ai/local_ai_core` contains privacy-guarded runtime contracts plus bounded, deterministic AI-04 rule features; it remains independent from platform hosts and the production engine.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -135,6 +136,9 @@ bash scripts/check_stage14_ios_signing_sources.sh
 bash scripts/check_stage15_ios_smoke_sources.sh
 bash scripts/check_stage16_ios_testflight_sources.sh
 bash scripts/check_ai01_evaluation_sources.sh
+bash scripts/check_ai02_runtime_contracts.sh
+bash scripts/check_ai03_privacy_sources.sh
+bash scripts/check_ai04_rules_sources.sh
 bash scripts/check_update01_sources.sh
 bash scripts/check_update02_sources.sh
 bash scripts/run_ai_eval.sh
@@ -146,7 +150,6 @@ bash scripts/run_ios_smoke_readiness.sh
 
 ## Next Stage
 
-UPDATE-02 now verifies and hands a signed/notarized macOS pkg to the system
-Installer with explicit consent. Next update work is UPDATE-03 post-install
-process refresh guidance. Local AI resumes at AI-02 only after the update
-stages are reviewed.
+AI-04 now provides rules-first correction, English-term preservation, and read-only
+lexicon cleanup suggestions behind deterministic offline quality gates. AI-05 is the
+next local-AI stage; production host integration remains deferred to AI-07.
