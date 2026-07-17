@@ -64,6 +64,11 @@ ranker, requires all targeted improvements, and rejects any preservation regress
 content declarations prohibit user data, real application context, prompts, model
 outputs, and network dependencies.
 
+Before AI-07 host integration, expand this gate with owner-approved public or manually
+authored cases for common typo patterns, mixed English terms, and longer candidate lists.
+Do not collect, retain, anonymize, or replay production typing; benchmark provenance must
+remain auditable and independent of user input.
+
 Capture report-only latency measurements in a release build:
 
 ```bash

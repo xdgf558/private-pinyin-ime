@@ -43,7 +43,7 @@ manifests, external Owner approval fingerprints, streaming SHA-256 and size chec
 relative-path and symlink rejection, privacy/platform/hardware gates, and an atomic local
 packager.
 
-AI-06 adds the first approved package: a 364-byte first-party fixed-point coefficient
+AI-06 adds the first approved package: a 426-byte first-party fixed-point coefficient
 table for `AiLiteRanker`. It scores only structured `0..1000` frequency, segmentation,
 bigram, trigram, typo-correction, and term-preservation signals plus bounded base-order
 priors. The model contains no user data, performs no network access, stores no input,

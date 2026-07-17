@@ -30,6 +30,10 @@ grep -q 'MAX_AI_LITE_RANKER_MODEL_BYTES: u64 = 64 \* 1024' \
   ai/local_ai_core/src/lite_ranker.rs
 grep -q 'MAX_CANCELLED_IDENTITIES: usize = 256' \
   ai/local_ai_core/src/lite_ranker.rs
+grep -q 'AI_LITE_RANKER_VERSION: &str = "ai06-v1"' \
+  ai/local_ai_core/src/lite_ranker.rs
+grep -q 'AI_LITE_FEATURE_SCHEMA_VERSION: u32 = 1' \
+  ai/local_ai_core/src/lite_ranker.rs
 grep -q 'AiFeaturePolicy::approved_model_enabled(true)' \
   ai/local_ai_core/src/lite_ranker.rs
 grep -q 'ModelRuntime::RustCompact' ai/local_ai_core/src/lite_ranker.rs
@@ -59,6 +63,8 @@ assert sum(case["gate"] == "improve" for case in dataset["cases"]) == 8
 assert sum(case["gate"] == "preserve" for case in dataset["cases"]) == 4
 
 assert model["schema_version"] == 1
+assert model["ranker_version"] == "ai06-v1"
+assert model["feature_schema_version"] == 1
 assert model["model_id"] == manifest["id"]
 assert model["model_version"] == manifest["version"]
 assert model["feature_scale"] == 1000

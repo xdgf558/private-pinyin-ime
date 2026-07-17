@@ -141,7 +141,7 @@ fn checked_in_ai06_ranker_verifies_and_loads_on_every_declared_platform() {
         let ranker = AiLiteRanker::from_verified_package(&verified)
             .expect("approved ranker model must load");
         assert_eq!(ranker.model_id(), "private-pinyin.ai-lite-ranker");
-        assert_eq!(ranker.model_version(), "1.0.0");
+        assert_eq!(ranker.model_version(), "1.0.1");
     }
 }
 

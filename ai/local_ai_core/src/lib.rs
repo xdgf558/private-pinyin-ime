@@ -25,8 +25,8 @@ pub use identity::{
     AiCandidateSetHash, AiCompositionRevision, AiRequestId, AiRequestIdentity, AiSessionId,
 };
 pub use lite_ranker::{
-    AiLiteRanker, AI_LITE_FEATURE_SCALE, AI_LITE_MODEL_SCHEMA_VERSION,
-    MAX_AI_LITE_RANKER_MODEL_BYTES,
+    AiLiteRanker, AI_LITE_FEATURE_SCALE, AI_LITE_FEATURE_SCHEMA_VERSION,
+    AI_LITE_MODEL_SCHEMA_VERSION, AI_LITE_RANKER_VERSION, MAX_AI_LITE_RANKER_MODEL_BYTES,
 };
 pub use mock_provider::MockProvider;
 pub use model_manifest::{

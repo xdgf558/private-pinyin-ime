@@ -1,14 +1,14 @@
 # AI-06 Lite Ranker Evaluation
 
-Date: 2026-07-17
+Date: 2026-07-18
 
-Model: `private-pinyin.ai-lite-ranker` `1.0.0`
+Model: `private-pinyin.ai-lite-ranker` `1.0.1`
 
-Approval fingerprint: `481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6`
+Approval fingerprint: `8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439`
 
 ## Artifact And Data
 
-- Fixed-point coefficient artifact: 364 bytes.
+- Fixed-point coefficient artifact: 426 bytes, ranker version `ai06-v1`, feature schema version `1`.
 - License/provenance notice: 614 bytes.
 - Runtime: shared Rust `rust_compact`; no GPU, network, service, telemetry, or input storage.
 - Inputs: bounded `0..1000` frequency, segmentation, bigram, trigram,

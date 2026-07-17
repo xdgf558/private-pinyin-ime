@@ -11,6 +11,8 @@ use crate::{
 };
 
 pub const AI_LITE_MODEL_SCHEMA_VERSION: u32 = 1;
+pub const AI_LITE_RANKER_VERSION: &str = "ai06-v1";
+pub const AI_LITE_FEATURE_SCHEMA_VERSION: u32 = 1;
 pub const AI_LITE_FEATURE_SCALE: u16 = crate::request::AI_LITE_FEATURE_SCALE;
 pub const MAX_AI_LITE_RANKER_MODEL_BYTES: u64 = 64 * 1024;
 
@@ -24,6 +26,8 @@ const MAX_CANCELLED_IDENTITIES: usize = 256;
 #[serde(deny_unknown_fields)]
 struct AiLiteRankerModel {
     schema_version: u32,
+    ranker_version: String,
+    feature_schema_version: u32,
     model_id: String,
     model_version: String,
     feature_scale: u16,
@@ -48,6 +52,8 @@ impl AiLiteRankerModel {
     fn parse(bytes: &[u8], expected_id: &str, expected_version: &str) -> Result<Self, AiError> {
         let model = serde_json::from_slice::<Self>(bytes).map_err(|_| model_format_invalid())?;
         if model.schema_version != AI_LITE_MODEL_SCHEMA_VERSION
+            || model.ranker_version != AI_LITE_RANKER_VERSION
+            || model.feature_schema_version != AI_LITE_FEATURE_SCHEMA_VERSION
             || model.model_id != expected_id
             || model.model_version != expected_version
             || model.feature_scale != AI_LITE_FEATURE_SCALE
@@ -331,8 +337,10 @@ fn normalized_rank_prior(base_rank: usize, candidate_count: usize) -> u16 {
         return AI_LITE_FEATURE_SCALE;
     }
     let bounded_rank = base_rank.min(candidate_count - 1);
-    let numerator = (candidate_count - 1 - bounded_rank) * usize::from(AI_LITE_FEATURE_SCALE);
-    u16::try_from(numerator / (candidate_count - 1)).unwrap_or(AI_LITE_FEATURE_SCALE)
+    let numerator =
+        (candidate_count - 1 - bounded_rank) as u128 * u128::from(AI_LITE_FEATURE_SCALE);
+    let denominator = (candidate_count - 1) as u128;
+    u16::try_from(numerator / denominator).unwrap_or(AI_LITE_FEATURE_SCALE)
 }
 
 fn normalized_base_score(score: i64, minimum: i64, maximum: i64) -> u16 {
@@ -369,6 +377,8 @@ mod tests {
         AiLiteRankerModel::parse(
             br#"{
                 "schema_version": 1,
+                "ranker_version": "ai06-v1",
+                "feature_schema_version": 1,
                 "model_id": "private-pinyin.test-ranker",
                 "model_version": "1.0.0",
                 "feature_scale": 1000,
@@ -451,7 +461,8 @@ mod tests {
     #[test]
     fn model_parser_rejects_unknown_fields_and_manifest_mismatch() {
         let unknown = br#"{
-            "schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,
+            "schema_version":1,"ranker_version":"ai06-v1","feature_schema_version":1,
+            "model_id":"id","model_version":"1","feature_scale":1000,
             "intercept_milli":0,"weights_milli":{"base_rank":1,"base_score":1,
             "frequency":1,"segmentation":1,"bigram":1,"trigram":1,
             "typo_correction":1,"term_preservation":1},"unexpected":true
@@ -464,7 +475,7 @@ mod tests {
         );
         assert_eq!(
             AiLiteRankerModel::parse(
-                br#"{"schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":0,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#,
+                br#"{"schema_version":1,"ranker_version":"ai06-v1","feature_schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":0,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#,
                 "different",
                 "1",
             )
@@ -474,7 +485,7 @@ mod tests {
         );
         assert_eq!(
             AiLiteRankerModel::parse(
-                br#"{"schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":-2147483648,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#,
+                br#"{"schema_version":1,"ranker_version":"ai06-v1","feature_schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":-2147483648,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#,
                 "id",
                 "1",
             )
@@ -482,6 +493,81 @@ mod tests {
             .code(),
             AiErrorCode::ModelFormatInvalid
         );
+    }
+
+    #[test]
+    fn model_parser_rejects_ranker_or_feature_schema_drift() {
+        for incompatible in [
+            br#"{"schema_version":1,"ranker_version":"ai07-v1","feature_schema_version":1,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":0,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#.as_slice(),
+            br#"{"schema_version":1,"ranker_version":"ai06-v1","feature_schema_version":2,"model_id":"id","model_version":"1","feature_scale":1000,"intercept_milli":0,"weights_milli":{"base_rank":1,"base_score":1,"frequency":1,"segmentation":1,"bigram":1,"trigram":1,"typo_correction":1,"term_preservation":1}}"#.as_slice(),
+        ] {
+            assert_eq!(
+                AiLiteRankerModel::parse(incompatible, "id", "1")
+                    .expect_err("incompatible ranker schema must fail closed")
+                    .code(),
+                AiErrorCode::ModelFormatInvalid
+            );
+        }
+    }
+
+    #[test]
+    fn maximum_bounded_values_and_candidate_counts_do_not_overflow() {
+        let maximum_model = AiLiteRankerModel::parse(
+            br#"{
+                "schema_version":1,
+                "ranker_version":"ai06-v1",
+                "feature_schema_version":1,
+                "model_id":"id",
+                "model_version":"1",
+                "feature_scale":1000,
+                "intercept_milli":10000,
+                "weights_milli":{
+                    "base_rank":10000,
+                    "base_score":10000,
+                    "frequency":10000,
+                    "segmentation":10000,
+                    "bigram":10000,
+                    "trigram":10000,
+                    "typo_correction":10000,
+                    "term_preservation":10000
+                }
+            }"#,
+            "id",
+            "1",
+        )
+        .expect("maximum bounded model");
+        let maximum_features = AiLiteCandidateFeatures::new(
+            AI_LITE_FEATURE_SCALE,
+            AI_LITE_FEATURE_SCALE,
+            AI_LITE_FEATURE_SCALE,
+            AI_LITE_FEATURE_SCALE,
+            AI_LITE_FEATURE_SCALE,
+            AI_LITE_FEATURE_SCALE,
+        )
+        .expect("maximum bounded features");
+        let maximum_candidates = AiBudget::for_feature(AiFeature::CandidateRerank).max_candidates();
+        let candidate = AiCandidateInput::new("候选", 0)
+            .with_base_score(i64::MAX)
+            .with_lite_features(maximum_features);
+        let scored = score_candidate(
+            &maximum_model,
+            &candidate,
+            0,
+            maximum_candidates,
+            i64::MIN,
+            i64::MAX,
+        );
+
+        assert_eq!(maximum_candidates, 32);
+        assert_eq!(scored.adjustment_milli, 60_000);
+        assert_eq!(scored.total_score_milli, 90_000);
+        assert_eq!(normalized_base_score(i64::MIN, i64::MIN, i64::MAX), 0);
+        assert_eq!(
+            normalized_base_score(i64::MAX, i64::MIN, i64::MAX),
+            AI_LITE_FEATURE_SCALE
+        );
+        assert_eq!(normalized_rank_prior(0, usize::MAX), AI_LITE_FEATURE_SCALE);
+        assert_eq!(normalized_rank_prior(usize::MAX - 1, usize::MAX), 0);
     }
 
     #[test]

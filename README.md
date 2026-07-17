@@ -154,7 +154,7 @@ bash scripts/run_ios_smoke_readiness.sh
 ## Local AI Status
 
 AI-06 adds one Owner-approved, first-party fixed-point Lite ranker that consumes bounded
-frequency, segmentation, bigram, trigram, typo, and English-term signals. Its 364-byte
+frequency, segmentation, bigram, trigram, typo, and English-term signals. Its 426-byte
 coefficient artifact passes the AI-05 fingerprint and integrity gate and improves all
 eight targeted synthetic ranking cases without regressing four preservation cases.
 Production host integration remains deferred to AI-07.

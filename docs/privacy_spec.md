@@ -73,7 +73,7 @@ license assertion, an exact independently embedded Owner approval fingerprint, t
 declared target platform, sufficient hardware, and successful size/SHA-256 verification
 of every artifact. A registry entry may be added only after the model source, exact
 revision, license, notice, quality evidence, size, and redistribution terms receive
-explicit Owner review. The current AI-06 entry authorizes only the first-party 364-byte
+explicit Owner review. The current AI-06 entry authorizes only the first-party 426-byte
 fixed-point candidate-ranker coefficients; it does not authorize other weights.
 
 Model package paths must remain inside one package root and must not use symbolic links.

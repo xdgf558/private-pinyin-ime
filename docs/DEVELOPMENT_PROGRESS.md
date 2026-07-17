@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-17 21:03
+Last updated: 2026-07-18 00:15
 Current stage: AI-06 shared fixed-point AI Lite ranker
-Current status: the bounded Rust ranker, first-party 364-byte approved coefficient package, 12-case quality gate, supply-chain checks, tests, and CI wiring are ready for review without platform-host integration
+Current status: the bounded Rust ranker, versioned 426-byte approved coefficient package, 12-case quality gate, overflow regressions, supply-chain checks, tests, and CI wiring are ready for review without platform-host integration
 
 ## Stage Status
 
@@ -42,7 +42,7 @@ Current status: the bounded Rust ranker, first-party 364-byte approved coefficie
 | AI-03 | Privacy guard and source gates | completed | 2026-07-16 10:04 | Merged to `main` through PR #25; guarded construction, secure/sensitive/oversized rejection, eight-token context minimization, code-only errors, and no-network/no-content-log source gates remain isolated from production input |
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
-| AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-17 21:03 | Fixed-point stable ranking over six bounded engine signals, exact AI-05-approved 364-byte first-party coefficients, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
+| AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
 | AI-07 to AI-12 | Platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
 
 ## AI-06 Validation
@@ -53,7 +53,9 @@ Current status: the bounded Rust ranker, first-party 364-byte approved coefficie
 - `.gitattributes` pins hashed model JSON and notice files to LF so Windows checkout cannot alter approved artifact bytes.
 - Offline quality: baseline Top-1 `4/12`, MRR `0.653`; AI Lite Top-1 `12/12`, MRR `1.000`; 8 improved, 0 regressed, 0 gate failures.
 - Local arm64 macOS reference inference: maximum `5 us`, mean `2.1 us` across the 12-case dataset; CI uses the deterministic 30 ms contract test rather than portable latency claims.
-- Artifact: model SHA-256 `cb02eb23a5060a56f7da403e68e7e2e933c937f8af740b23c8f8c5bb6a1f5801`, 364 bytes; approval fingerprint `481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6`.
+- Artifact: model version `1.0.1`, ranker `ai06-v1`, feature schema `1`, SHA-256 `340a2e54f2f5aace39728b38e968a1e4fee8740aab7c41c20af00923e8b85dbd`, 426 bytes; approval fingerprint `8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439`.
+- Boundary regressions cover maximum approved features, weights, candidate count, `i64` base-score extremes, and a `usize::MAX` rank-normalization input without arithmetic overflow.
+- `AI-OI-009` tracks broader owner-approved typo, mixed-English, and long-candidate benchmarks before AI-07 without collecting production typing data.
 - Production behavior: unchanged. No FFI, macOS, Windows, iOS, settings, or input-thread path invokes the ranker before AI-07.
 
 ## Update Status

@@ -3,9 +3,9 @@
 Status: AI-06 first approved AI Lite package
 
 The embedded registry at `ai/models/approved_models.json` currently approves exactly one
-package: `private-pinyin.ai-lite-ranker` version `1.0.0`, with approval fingerprint
-`481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6`.
-Its 364-byte JSON coefficient artifact is first-party, hand-calibrated from repository
+package: `private-pinyin.ai-lite-ranker` version `1.0.1`, with approval fingerprint
+`8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439`.
+Its 426-byte JSON coefficient artifact is first-party, hand-calibrated from repository
 regressions and synthetic cases, and contains no user data. No neural or Writer model is
 approved.
 
@@ -52,6 +52,9 @@ approved.
 - Every artifact is verified by exact byte size and lowercase SHA-256. Verification
   stops as soon as a file exceeds its declared size. Primary model bytes are verified
   again while being read for inference.
+- Compact ranker files declare both `ranker_version` and
+  `feature_schema_version`; unsupported execution logic or feature layouts fail closed
+  before any coefficient is used.
 - The declared platform must match the host. Writer-class models are prohibited on iOS.
 - Privacy declarations must state local execution, no network requirement, and no input
   storage.

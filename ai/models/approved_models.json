@@ -4,8 +4,8 @@
     {
       "approval_id": "owner-ai06-lite-ranker-v1",
       "model_id": "private-pinyin.ai-lite-ranker",
-      "version": "1.0.0",
-      "manifest_fingerprint_sha256": "481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6"
+      "version": "1.0.1",
+      "manifest_fingerprint_sha256": "8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439"
     }
   ]
 }

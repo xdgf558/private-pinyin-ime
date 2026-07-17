@@ -1,7 +1,9 @@
 {
   "schema_version": 1,
+  "ranker_version": "ai06-v1",
+  "feature_schema_version": 1,
   "model_id": "private-pinyin.ai-lite-ranker",
-  "model_version": "1.0.0",
+  "model_version": "1.0.1",
   "feature_scale": 1000,
   "intercept_milli": 0,
   "weights_milli": {

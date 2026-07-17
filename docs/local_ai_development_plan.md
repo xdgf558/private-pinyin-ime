@@ -47,7 +47,7 @@ fingerprint must agree. Paths and symbolic links are rejected and primary bytes 
 reverified at use time.
 
 AI-06 uses that boundary for a shared fixed-point Rust ranker. The approved first-party
-package is a 364-byte coefficient table over bounded base-order, frequency, segmentation,
+package is a 426-byte coefficient table over bounded base-order, frequency, segmentation,
 bigram, trigram, typo-correction, and English-term signals. Its 12-case synthetic and
 project-regression gate improves eight targeted ranks, preserves four base winners, and
 keeps all inference scratch state bounded. It remains disconnected from platform hosts;

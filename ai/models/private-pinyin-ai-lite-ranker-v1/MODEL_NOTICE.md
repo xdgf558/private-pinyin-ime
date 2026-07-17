@@ -2,7 +2,7 @@
 
 Model ID: `private-pinyin.ai-lite-ranker`
 
-Version: `1.0.0`
+Version: `1.0.1`
 
 This package contains first-party, hand-calibrated fixed-point coefficients for the
 PrivatePinyin local candidate ranker. It was created from repository-owned regression

@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added the AI-06 shared fixed-point Rust Lite ranker with bounded frequency, segmentation, bigram, trigram, typo-correction, and English-term features; an Owner-approved 364-byte first-party coefficient package; stable reason-coded ranking; bounded cancellation; a strict 12-case offline quality gate; and AI-05 integrity/license/platform/hardware enforcement without platform-host integration.
+- Added the AI-06 shared fixed-point Rust Lite ranker with bounded frequency, segmentation, bigram, trigram, typo-correction, and English-term features; an Owner-approved 426-byte first-party coefficient package with explicit ranker/feature-schema compatibility; stable reason-coded ranking; overflow boundaries; bounded cancellation; a strict 12-case offline quality gate; and AI-05 integrity/license/platform/hardware enforcement without platform-host integration.
 - Added AI-05 strict local-model manifests, independent Owner approval fingerprints, streaming SHA-256/size verification, path and symlink rejection, platform/privacy/hardware gates, an atomic model packager, an empty default approval registry, tests, documentation, and CI enforcement without bundling or loading a model.
 - Added AI-04 deterministic pinyin correction, canonical English-term preservation, and read-only user-lexicon cleanup suggestions with bounded outputs, redacted debug surfaces, strict-privacy cleanup blocking, offline evaluation integration, and a CI quality gate; production input hosts remain unchanged.
 - Added a high-fidelity Station Cat iOS keyboard surface with the warm dark tray, compact candidate strip, native pressed states, balanced QWERTY rows, adaptive left-side nine-key controls, and inline full-key/nine-key preferences from the keyboard UI handoff.
