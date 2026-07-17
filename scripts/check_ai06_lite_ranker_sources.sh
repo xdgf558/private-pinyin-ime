@@ -20,6 +20,12 @@ for file in "${required_files[@]}"; do
   fi
 done
 
+git check-attr eol -- \
+  ai/models/private-pinyin-ai-lite-ranker-v1/manifest.json \
+  ai/models/private-pinyin-ai-lite-ranker-v1/model/ranker.json \
+  ai/models/private-pinyin-ai-lite-ranker-v1/MODEL_NOTICE.md | \
+  grep -c 'eol: lf' | grep -q '^3$'
+
 grep -q 'MAX_AI_LITE_RANKER_MODEL_BYTES: u64 = 64 \* 1024' \
   ai/local_ai_core/src/lite_ranker.rs
 grep -q 'MAX_CANCELLED_IDENTITIES: usize = 256' \

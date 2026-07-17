@@ -50,6 +50,7 @@ Current status: the bounded Rust ranker, first-party 364-byte approved coefficie
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
 - `bash scripts/check_ai05_model_gate_sources.sh`: validates the approved package, exact files, hashes, sizes, external fingerprint, license, privacy, platform, and hardware declarations.
 - `bash scripts/check_ai06_lite_ranker_sources.sh`: validates bounded source contracts and requires eight targeted improvements with zero preservation regressions.
+- `.gitattributes` pins hashed model JSON and notice files to LF so Windows checkout cannot alter approved artifact bytes.
 - Offline quality: baseline Top-1 `4/12`, MRR `0.653`; AI Lite Top-1 `12/12`, MRR `1.000`; 8 improved, 0 regressed, 0 gate failures.
 - Local arm64 macOS reference inference: maximum `5 us`, mean `2.1 us` across the 12-case dataset; CI uses the deterministic 30 ms contract test rather than portable latency claims.
 - Artifact: model SHA-256 `cb02eb23a5060a56f7da403e68e7e2e933c937f8af740b23c8f8c5bb6a1f5801`, 364 bytes; approval fingerprint `481314bef3b0b56a6baed6dc60d6ae45e1d97b97f0200753b3731d60be7621c6`.
@@ -746,6 +747,7 @@ Current status: the bounded Rust ranker, first-party 364-byte approved coefficie
 ## Files Changed In Latest Stage
 
 - `.github/workflows/rust.yml`
+- `.gitattributes`
 - `CHANGELOG.md`
 - `README.md`
 - `ai/README.md`
