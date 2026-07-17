@@ -4,6 +4,7 @@ mod pinyin_correction;
 
 pub use english_terms::{
     EnglishTermPreserver, MixedInputSegment, MixedInputSegmentKind, MixedInputSegmentation,
+    MAX_MIXED_INPUT_BYTES,
 };
 pub use lexicon_cleanup::{
     LexiconCleanupAnalyzer, LexiconCleanupReasonCode, LexiconCleanupSuggestion,

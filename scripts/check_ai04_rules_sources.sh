@@ -24,12 +24,16 @@ grep -q 'MAX_PINYIN_CORRECTIONS: usize = 2' \
   ai/local_ai_core/src/rules/pinyin_correction.rs
 grep -q 'suggest_with_validator' ai/local_ai_core/src/rules/pinyin_correction.rs
 grep -q 'API key' ai/local_ai_core/assets/english_terms.tsv
+grep -q 'MAX_MIXED_INPUT_BYTES: usize = 128' \
+  ai/local_ai_core/src/rules/english_terms.rs
 grep -q 'MixedInputSegmentKind::EnglishTerm' \
   ai/local_ai_core/src/rules/english_terms.rs
 grep -q 'DuplicateNormalizedEntry' ai/local_ai_core/src/rules/lexicon_cleanup.rs
 grep -q 'privacy_mode == AiPrivacyMode::Strict' \
   ai/local_ai_core/src/rules/lexicon_cleanup.rs
 grep -q 'analysis must never mutate the snapshot' ai/local_ai_core/src/rules/tests.rs
+grep -q 'english_term_boundaries_require_surrounding_pinyin_to_decode' \
+  ai/local_ai_core/src/rules/tests.rs
 grep -q 'rules_first_evaluation_improves_p0_cases_without_required_regression' \
   tools/ai_eval_runner/src/lib.rs
 

@@ -4,6 +4,8 @@ use std::fmt;
 const ENGLISH_TERMS_TSV: &str = include_str!("../../assets/english_terms.tsv");
 const ENGLISH_TERMS_HEADER: &str = "match_key\tdisplay\tpriority\tprovenance";
 
+pub const MAX_MIXED_INPUT_BYTES: usize = 128;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MixedInputSegmentKind {
     Pinyin,
@@ -162,7 +164,10 @@ impl EnglishTermPreserver {
     }
 
     pub fn segment(&self, raw_input: &str) -> Option<MixedInputSegmentation> {
-        if raw_input.is_empty() || !raw_input.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+        if raw_input.is_empty()
+            || raw_input.len() > MAX_MIXED_INPUT_BYTES
+            || !raw_input.bytes().all(|byte| byte.is_ascii_alphabetic())
+        {
             return None;
         }
         let normalized = raw_input.to_ascii_lowercase();

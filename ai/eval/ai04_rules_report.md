@@ -33,7 +33,9 @@ shorthand, or nine-key evaluation behavior.
 - Pinyin correction returns at most two validated alternatives and never removes the
   original input path.
 - The first-party English term table preserves canonical spelling such as `Codex`,
-  `GitHub`, `PR`, and `API key` without a network request.
+  `GitHub`, `PR`, and `API key` without a network request. Segmentation rejects inputs
+  over 128 bytes, and a mixed candidate is emitted only when every surrounding pinyin
+  segment resolves.
 - Lexicon cleanup only analyzes an explicit bounded snapshot and returns entry indexes
   plus reason codes. It does not delete or edit records.
 - Strict privacy mode disables lexicon cleanup. Correction and term matching are

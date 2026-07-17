@@ -35,7 +35,7 @@ pub use rules::{
     EnglishTermPreserver, LexiconCleanupAnalyzer, LexiconCleanupReasonCode,
     LexiconCleanupSuggestion, MixedInputSegment, MixedInputSegmentKind, MixedInputSegmentation,
     PinyinCorrectionReason, PinyinCorrectionSuggestion, PinyinCorrector, UserLexiconSnapshotEntry,
-    MAX_CLEANUP_ENTRIES, MAX_CLEANUP_SUGGESTIONS, MAX_PINYIN_CORRECTIONS,
+    MAX_CLEANUP_ENTRIES, MAX_CLEANUP_SUGGESTIONS, MAX_MIXED_INPUT_BYTES, MAX_PINYIN_CORRECTIONS,
 };
 
 #[cfg(test)]

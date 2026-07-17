@@ -2,7 +2,8 @@ use crate::{AiErrorCode, AiPrivacyMode};
 
 use super::{
     EnglishTermPreserver, LexiconCleanupAnalyzer, LexiconCleanupReasonCode, MixedInputSegmentKind,
-    PinyinCorrectionReason, PinyinCorrector, UserLexiconSnapshotEntry, MAX_PINYIN_CORRECTIONS,
+    PinyinCorrectionReason, PinyinCorrector, UserLexiconSnapshotEntry, MAX_MIXED_INPUT_BYTES,
+    MAX_PINYIN_CORRECTIONS,
 };
 
 const DAY_MS: i64 = 24 * 60 * 60 * 1_000;
@@ -94,6 +95,36 @@ fn multiple_english_terms_render_without_changing_canonical_case() {
         .expect("all pinyin segments decode");
 
     assert_eq!(rendered, "我在 GitHub 看 PR");
+}
+
+#[test]
+fn english_term_boundaries_require_surrounding_pinyin_to_decode() {
+    let preserver = EnglishTermPreserver::embedded();
+    let valid = preserver
+        .segment("wozaigithub")
+        .and_then(|segments| {
+            segments.render_with(|pinyin| (pinyin == "wozai").then(|| "我在".to_owned()))
+        })
+        .expect("known surrounding pinyin renders");
+    assert_eq!(valid, "我在 GitHub");
+
+    let unresolved = preserver
+        .segment("githubxxx")
+        .expect("term segmentation remains observable")
+        .render_with(|_| None);
+    assert!(
+        unresolved.is_none(),
+        "unknown boundary text must reject the mixed candidate"
+    );
+}
+
+#[test]
+fn english_term_segmentation_rejects_overlong_or_non_ascii_input() {
+    let preserver = EnglishTermPreserver::embedded();
+    let overlong = format!("{}github", "a".repeat(MAX_MIXED_INPUT_BYTES));
+
+    assert!(preserver.segment(&overlong).is_none());
+    assert!(preserver.segment("我用github").is_none());
 }
 
 #[test]

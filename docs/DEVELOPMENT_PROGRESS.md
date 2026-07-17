@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-17 10:05
+Last updated: 2026-07-17 14:03
 Current stage: AI-04 rules-first local enhancement
 Current status: bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, offline quality gates, and CI wiring are ready for review without production host integration
 
@@ -637,7 +637,7 @@ Current status: bounded pinyin correction, canonical English-term preservation, 
 
 - Command: `cargo test -p private_pinyin_local_ai_core`
 - Result: passed
-- Notes: 28 tests cover existing runtime/privacy contracts plus common-confusion, repeated-key, missing-medial, normal-input, two-result limit, validator, canonical-term, multi-term, debug-redaction, duplicate/stale/invalid cleanup, no-mutation, and strict-privacy behavior.
+- Notes: 30 tests cover existing runtime/privacy contracts plus common-confusion, repeated-key, missing-medial, normal-input, two-result limit, validator, canonical-term, multi-term, decodable boundaries, overlong/non-ASCII rejection, debug-redaction, duplicate/stale/invalid cleanup, no-mutation, and strict-privacy behavior.
 
 - Command: `cargo test -p private_pinyin_ai_eval_runner`
 - Result: passed
