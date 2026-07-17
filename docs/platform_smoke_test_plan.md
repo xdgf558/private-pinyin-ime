@@ -119,11 +119,17 @@ Checklist:
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
 | Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
 | Immediate response | Rapid full-key and nine-key taps update preedit/candidates once per tap without waiting for an exaggerated release delay | | |
-| Candidate groups | With more than five candidates, fixed next/previous controls remain visible, change pages once, and never require horizontal scrolling to reach the control | | |
+| Candidate groups | Each group exposes up to nine candidates; swipe the candidate strip to reach long-text candidates, while fixed next/previous controls remain visible and change groups once without being pushed offscreen | | |
+| Extended symbols | Open `123`, tap `#+=`, and verify `【】{}#%^*+=`, `_—\\|~《》$&·`, ellipsis, Chinese comma, `^^`, `?`, `!`, and apostrophe each insert once; tap `123` to return and confirm the basic symbol page is unchanged | | |
 | Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `全键` to return to QWERTY, and reopen the keyboard to confirm the selected Chinese layout persists | | |
 | Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
+| Nine-key preedit | Type `9664`; the composition strip shows the leading candidate's readable pinyin such as `yong`, never the internal `9664` lookup signature when candidates exist | | |
 | Nine-key continuous input | A longer 2-9 digit sequence can produce a segmented phrase candidate without switching back to QWERTY | | |
 | Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
+| Return key | The bottom-right key is labeled `回车`; with no active composition it inserts a newline or lets the host field perform its normal Return action | | |
+| Simplified/Traditional output | Open inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm it displays and commits `里面` without rebuilding the keyboard engine | | |
+| Traditional phrase quality | In `繁體`, verify `头发`, `发展`, `面条`, `皇后在后面`, `只有一只猫`, and `制作制度` display and commit as `頭髮`, `發展`, `麵條`, `皇后在後面`, `只有一隻貓`, and `製作制度`; treat the feature as generic system Traditional rather than full Taiwan/Hong Kong localization | | |
+| Script persistence | Reopen the keyboard after selecting `繁體`; candidates, committed text, and predictions remain Traditional while pinyin preedit and the shared local-learning ranking remain unchanged | | |
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
 | Self-change callback | If prediction disappears, reset self-text-operation state from `textDidChange` instead of synchronous `defer` | | |
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |

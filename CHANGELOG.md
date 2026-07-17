@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.
+- Added an executable regression for phrase-aware iOS Traditional conversion and documented that the system transform provides generic Traditional output rather than complete Taiwan/Hong Kong vocabulary localization.
+- Expanded each iOS candidate group from five to nine selectable entries with a horizontally scrollable candidate strip and fixed group-navigation controls.
+- Added a second iOS symbol page behind `#+=` with brackets, braces, operators, book-title marks, Chinese punctuation, ellipsis, and the remaining requested special symbols; `123` returns to the basic symbol page.
 - Added AI-05 strict local-model manifests, independent Owner approval fingerprints, streaming SHA-256/size verification, path and symlink rejection, platform/privacy/hardware gates, an atomic model packager, an empty default approval registry, tests, documentation, and CI enforcement without bundling or loading a model.
 - Added AI-04 deterministic pinyin correction, canonical English-term preservation, and read-only user-lexicon cleanup suggestions with bounded outputs, redacted debug surfaces, strict-privacy cleanup blocking, offline evaluation integration, and a CI quality gate; production input hosts remain unchanged.
 - Added a high-fidelity Station Cat iOS keyboard surface with the warm dark tray, compact candidate strip, native pressed states, balanced QWERTY rows, adaptive left-side nine-key controls, and inline full-key/nine-key preferences from the keyboard UI handoff.
@@ -193,6 +197,7 @@
 
 ### Fixed
 
+- Fixed the iOS nine-key composition strip so valid digit signatures display the leading candidate's readable pinyin instead of exposing internal lookup digits, and renamed the generic bottom-right action from `换行` to `回车`.
 - Fixed iOS candidate paging so previous/next controls stay visible outside the horizontally scrolling candidate content and stop offering a no-op next page after the end is reached.
 - Fixed recoverable iOS keyboard startup failures by retrying core creation, and verified both `nh -> 你好` and nine-key `64426 -> 你好` commit exactly once in the iOS 27 Simulator.
 - Fixed reversed preedit and committed-text insertion in QQ and other Chromium text stores by explicitly collapsing the TSF selection at the end of every updated composition range.
