@@ -37,5 +37,14 @@ clipboard, surrounding application documents, webpages, email, chat history, and
 content. Source gates prohibit network clients, external AI services, and runtime content
 logging. No model, FFI, host integration, setting, or visible behavior is added.
 
+AI-04 adds bounded deterministic correction, canonical English-term preservation, and
+read-only cleanup suggestions. AI-05 adds the model supply-chain boundary: strict JSON
+manifests, external Owner approval fingerprints, streaming SHA-256 and size checks,
+relative-path and symlink rejection, privacy/platform/hardware gates, and an atomic local
+packager. The embedded approval registry is empty, so no model can load after AI-05.
+No model weight, inference provider, FFI change, host integration, setting, or visible
+input behavior is included. See
+[`model_package_policy.md`](model_package_policy.md) before evaluating any artifact.
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).

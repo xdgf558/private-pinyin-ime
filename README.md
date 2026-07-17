@@ -109,6 +109,7 @@ The root `Cargo.toml` defines a workspace with:
 - `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
 - `tools/ai_eval_runner` freezes required pre-AI behavior and reports improvement opportunities from first-party offline cases.
 - `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
+- `tools/model_packager` computes an atomic local model manifest with exact artifact sizes, SHA-256 values, and an approval fingerprint; it cannot grant Owner approval.
 - `ai/local_ai_core` contains privacy-guarded runtime contracts plus bounded, deterministic AI-04 rule features; it remains independent from platform hosts and the production engine.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
@@ -139,6 +140,7 @@ bash scripts/check_ai01_evaluation_sources.sh
 bash scripts/check_ai02_runtime_contracts.sh
 bash scripts/check_ai03_privacy_sources.sh
 bash scripts/check_ai04_rules_sources.sh
+bash scripts/check_ai05_model_gate_sources.sh
 bash scripts/check_update01_sources.sh
 bash scripts/check_update02_sources.sh
 bash scripts/run_ai_eval.sh
@@ -150,6 +152,7 @@ bash scripts/run_ios_smoke_readiness.sh
 
 ## Next Stage
 
-AI-04 now provides rules-first correction, English-term preservation, and read-only
-lexicon cleanup suggestions behind deterministic offline quality gates. AI-05 is the
-next local-AI stage; production host integration remains deferred to AI-07.
+AI-05 now rejects malformed, unapproved, corrupt, platform-incompatible, privacy-unsafe,
+or hardware-incompatible local model packages. The approval registry remains empty and
+no model weight is bundled. AI-06 is the next local-AI stage; production host integration
+remains deferred to AI-07.

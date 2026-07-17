@@ -66,6 +66,21 @@ User-lexicon cleanup is different: it inspects a bounded local snapshot and ther
 must be disabled in strict privacy mode. Cleanup returns only reason-coded suggestions;
 it never deletes a record automatically.
 
+## Local AI Model Packages
+
+A model manifest is not authority by itself. Loading requires a redistribution-compatible
+license assertion, an exact independently embedded Owner approval fingerprint, the
+declared target platform, sufficient hardware, and successful size/SHA-256 verification
+of every artifact. The registry is empty until a model source, exact revision, license,
+notice, quality evidence, size, and redistribution terms receive explicit Owner review.
+
+Model package paths must remain inside one package root and must not use symbolic links.
+The privacy declaration must require local execution, no network service, and no storage
+of input content. Integrity, approval, platform, and hardware failures return only stable
+error codes; they must not expose artifact paths, model bytes, or machine details. A
+verified primary model is hashed again as it is read so replacement after initial package
+verification cannot enter inference unnoticed.
+
 ## Strict Privacy Mode
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.

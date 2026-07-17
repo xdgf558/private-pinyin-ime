@@ -38,5 +38,6 @@ Current scripts:
 - `check_ai_privacy_sources.sh`: validates guarded request construction, minimal context, sensitive-input rejection, code-only errors, forbidden-context absence, and no runtime content logging.
 - `check_ai03_privacy_sources.sh`: runs the complete AI-03 privacy and no-network gate.
 - `check_ai04_rules_sources.sh`: validates bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, and the rules-first quality gate.
+- `check_ai05_model_gate_sources.sh`: validates strict model manifests, external Owner approvals, SHA-256/size/path/symlink/platform/hardware/privacy gates, the model packager, and the no-weight default registry.
 
 Planned scripts will be added with their owning AI stages.

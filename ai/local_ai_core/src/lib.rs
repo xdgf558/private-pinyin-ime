@@ -6,6 +6,9 @@ mod feature;
 mod hardware;
 mod identity;
 mod mock_provider;
+mod model_integrity;
+mod model_manifest;
+mod model_verifier;
 mod privacy_guard;
 mod provider;
 mod request;
@@ -16,11 +19,19 @@ mod rules;
 pub use budget::{AiBudget, AiDeadline};
 pub use error::{AiError, AiErrorCode};
 pub use feature::AiFeature;
-pub use hardware::HardwareTier;
+pub use hardware::{HardwareProfile, HardwareTier, ModelHardwareRequirements};
 pub use identity::{
     AiCandidateSetHash, AiCompositionRevision, AiRequestId, AiRequestIdentity, AiSessionId,
 };
 pub use mock_provider::MockProvider;
+pub use model_manifest::{
+    ModelArtifact, ModelArtifactKind, ModelClass, ModelLicense, ModelManifest, ModelPlatform,
+    ModelPrivacyDeclaration, ModelRuntime, MAX_AI_LITE_PACKAGE_BYTES, MAX_MODEL_ARTIFACTS,
+    MAX_WRITER_PACKAGE_BYTES, MODEL_MANIFEST_SCHEMA_VERSION,
+};
+pub use model_verifier::{
+    ModelPackageVerifier, VerifiedModelPackage, MODEL_APPROVAL_REGISTRY_SCHEMA_VERSION,
+};
 pub use privacy_guard::{
     AiFeaturePolicy, AiModelLicenseState, PrivacyGuard, MAX_BASE_CANDIDATES,
     MAX_CANDIDATE_PINYIN_CHARS, MAX_CANDIDATE_TEXT_UNITS, MAX_COMPOSITION_TEXT_UNITS,
@@ -38,6 +49,8 @@ pub use rules::{
     MAX_CLEANUP_ENTRIES, MAX_CLEANUP_SUGGESTIONS, MAX_MIXED_INPUT_BYTES, MAX_PINYIN_CORRECTIONS,
 };
 
+#[cfg(test)]
+mod model_tests;
 #[cfg(test)]
 mod privacy_tests;
 #[cfg(test)]

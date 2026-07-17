@@ -6,6 +6,7 @@ members = [
     "tools/ai_benchmark",
     "tools/ai_eval_runner",
     "tools/lexicon_builder",
+    "tools/model_packager",
     "tools/settings_cli",
     "tools/test_cli",
 ]

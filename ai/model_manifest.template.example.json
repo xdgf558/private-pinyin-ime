@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "id": "private-pinyin.ai-lite.example",
+  "display_name": "Owner Review Required AI Lite Example",
+  "version": "0.0.0",
+  "class": "lite",
+  "runtime": "rust_compact",
+  "platforms": [
+    "macos",
+    "windows",
+    "ios"
+  ],
+  "capabilities": [
+    "candidate_rerank",
+    "pinyin_correction",
+    "mixed_english_term_preservation"
+  ],
+  "artifacts": [
+    {
+      "kind": "model",
+      "path": "model/model.bin",
+      "sha256": "",
+      "size_bytes": 0
+    },
+    {
+      "kind": "license_notice",
+      "path": "LICENSE.txt",
+      "sha256": "",
+      "size_bytes": 0
+    }
+  ],
+  "license": {
+    "name": "OWNER_REVIEW_REQUIRED",
+    "url": "https://example.invalid/model-license",
+    "source_url": "https://example.invalid/model-source",
+    "notice_path": "LICENSE.txt",
+    "redistribution_allowed": false,
+    "owner_approved": false
+  },
+  "hardware": {
+    "min_tier": "tier_1",
+    "min_memory_mb": 8192,
+    "recommended_memory_mb": 16384,
+    "requires_gpu": false
+  },
+  "privacy": {
+    "runs_locally": true,
+    "network_required": false,
+    "stores_input": false
+  }
+}

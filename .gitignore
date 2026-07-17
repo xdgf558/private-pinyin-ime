@@ -34,3 +34,12 @@ platform/ios_keyboard/AppStoreMetadata/Signing.env
 # Local runtime data for development-only sandbox runs.
 # Production code should use platform-standard application data directories.
 local/
+
+# Local AI model artifacts require explicit Owner approval before repository inclusion.
+ai/models/**/*.bin
+ai/models/**/*.gguf
+ai/models/**/*.onnx
+ai/models/**/*.ort
+ai/models/**/*.safetensors
+ai/models/**/*.mlmodel
+ai/models/**/*.mlpackage/

@@ -1,0 +1,17 @@
+[package]
+name = "private_pinyin_model_packager"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "private_pinyin_model_packager"
+path = "src/lib.rs"
+
+[[bin]]
+name = "private-pinyin-model-packager"
+path = "src/main.rs"
+
+[dependencies]
+private_pinyin_local_ai_core = { path = "../../ai/local_ai_core" }
