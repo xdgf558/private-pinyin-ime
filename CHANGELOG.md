@@ -5,6 +5,7 @@
 ### Added
 
 - Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.
+- Added an executable regression for phrase-aware iOS Traditional conversion and documented that the system transform provides generic Traditional output rather than complete Taiwan/Hong Kong vocabulary localization.
 - Expanded each iOS candidate group from five to nine selectable entries with a horizontally scrollable candidate strip and fixed group-navigation controls.
 - Added a second iOS symbol page behind `#+=` with brackets, braces, operators, book-title marks, Chinese punctuation, ellipsis, and the remaining requested special symbols; `123` returns to the basic symbol page.
 - Added AI-05 strict local-model manifests, independent Owner approval fingerprints, streaming SHA-256/size verification, path and symlink rejection, platform/privacy/hardware gates, an atomic model packager, an empty default approval registry, tests, documentation, and CI enforcement without bundling or loading a model.

@@ -128,6 +128,7 @@ Checklist:
 | Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
 | Return key | The bottom-right key is labeled `回车`; with no active composition it inserts a newline or lets the host field perform its normal Return action | | |
 | Simplified/Traditional output | Open inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm it displays and commits `里面` without rebuilding the keyboard engine | | |
+| Traditional phrase quality | In `繁體`, verify `头发`, `发展`, `面条`, `皇后在后面`, `只有一只猫`, and `制作制度` display and commit as `頭髮`, `發展`, `麵條`, `皇后在後面`, `只有一隻貓`, and `製作制度`; treat the feature as generic system Traditional rather than full Taiwan/Hong Kong localization | | |
 | Script persistence | Reopen the keyboard after selecting `繁體`; candidates, committed text, and predictions remain Traditional while pinyin preedit and the shared local-learning ranking remain unchanged | | |
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
 | Self-change callback | If prediction disappears, reset self-text-operation state from `textDidChange` instead of synchronous `defer` | | |

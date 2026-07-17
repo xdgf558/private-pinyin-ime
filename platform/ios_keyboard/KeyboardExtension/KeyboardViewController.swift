@@ -306,7 +306,7 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makeSegmentedPreferenceRow(
             title: "输出字形",
-            detail: "候选与提交同步切换",
+            detail: "系统通用繁体，非完整台港本地化",
             control: scriptSegmentedControl
         ))
         stack.addArrangedSubview(makeDivider())

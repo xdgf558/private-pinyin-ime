@@ -15,9 +15,11 @@ required_files=(
   "platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements"
   "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
   "platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift"
+  "platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift"
   "platform/ios_keyboard/KeyboardExtension/Info.plist"
   "platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements"
   "scripts/build_ios_keyboard.sh"
+  "scripts/test_ios_chinese_transform.sh"
 )
 
 for file in "${required_files[@]}"; do
@@ -93,6 +95,8 @@ grep -q 'scriptSegmentedControl = UISegmentedControl(items: \["简体", "繁體"
 grep -q 'IosChineseTextConverter.convert(text, to: chineseScript)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'settings\["ios_chinese_script"\] = IosChineseScript.simplified.rawValue' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q '"Simplified-Traditional" as CFString' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q '系统通用繁体，非完整台港本地化' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '裡面頭髮發展乾嘛麵條' platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift
 if grep -q '"换行"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
   echo "The iOS Return key must use the generic 回车 label rather than implying newline-only behavior." >&2
   exit 1

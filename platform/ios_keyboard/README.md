@@ -86,7 +86,11 @@ break across iOS releases and create App Store review risk.
 
 The Simplified/Traditional option uses the local system Chinese transform for
 candidate display, predictions, and committed text. It does not use a network
-service or duplicate the normalized core lexicon and learning records.
+service or duplicate the normalized core lexicon and learning records. The
+result is generic, best-effort Traditional Chinese rather than complete Taiwan
+or Hong Kong vocabulary localization. Phrase-aware examples such as `头发 -> 頭髮`
+and `面条 -> 麵條` are regression-tested, but ambiguous vocabulary may still
+need a dedicated approved conversion dictionary in a future stage.
 
 Password and phone-number fields are expected to fall back to the system keyboard by iOS policy.
 

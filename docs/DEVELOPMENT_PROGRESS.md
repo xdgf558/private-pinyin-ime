@@ -76,6 +76,7 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - Changed nine-key composition display to use the leading candidate's readable pinyin when available, so valid signatures such as `9664` no longer expose internal lookup digits; renamed the generic Return action from `换行` to `回车`.
 - Beta Xcode readiness build: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension; the resulting Debug app installed and launched on the iPhone 17 Pro / iOS 27 Simulator.
 - Local conversion regression: `里面头发发展干嘛面条` produced `裡面頭髮發展乾嘛麵條`; 50,000 short-string conversions completed in approximately 0.03 seconds on the local Mac reference machine.
+- iOS 27 runtime phrase probe confirmed that the system transform is phrase-aware for `头发 -> 頭髮`, `面条 -> 麵條`, `皇后在后面 -> 皇后在後面`, and `只有一只猫 -> 只有一隻貓`; a compiled regression now runs in the macOS CI job. The option remains documented as generic Traditional rather than complete Taiwan/Hong Kong localization.
 - Simulator settings regression: a fresh local settings repair persisted `ios_chinese_script = simplified`, preserving the existing default until the user explicitly selects `繁體`.
 - Expanded the iOS runtime candidate page from five to nine entries; long candidates remain readable in a horizontally scrollable strip, while group navigation stays fixed outside the scroll content.
 - Added a dedicated `#+=` iOS symbol page covering the requested bracket, operator, book-title, punctuation, ellipsis, and separator characters without replacing the existing numeric/basic-symbol page.
