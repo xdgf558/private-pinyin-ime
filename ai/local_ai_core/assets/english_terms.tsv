@@ -1,0 +1,12 @@
+match_key	display	priority	provenance
+apikey	API key	120	first_party
+pullrequest	pull request	115	first_party
+github	GitHub	110	first_party
+codex	Codex	110	first_party
+macos	macOS	105	first_party
+ios	iOS	105	first_party
+api	API	100	first_party
+pr	PR	95	first_party
+commit	commit	90	first_party
+swift	Swift	90	first_party
+rust	Rust	90	first_party

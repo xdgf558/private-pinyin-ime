@@ -60,6 +60,12 @@ Local AI runtime sources must not use HTTP, WebSocket, gRPC, localhost model ser
 cloud AI APIs. They must not emit request, candidate, prompt, output, or recent-context
 content through logging macros. Privacy failures expose only stable `AiErrorCode` values.
 
+Rules-first pinyin correction and canonical English-term matching are stateless and may
+be allowed in strict privacy mode because they do not read or write learning data.
+User-lexicon cleanup is different: it inspects a bounded local snapshot and therefore
+must be disabled in strict privacy mode. Cleanup returns only reason-coded suggestions;
+it never deletes a record automatically.
+
 ## Strict Privacy Mode
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.

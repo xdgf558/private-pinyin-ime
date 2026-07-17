@@ -2,7 +2,9 @@ use std::env;
 use std::path::PathBuf;
 
 use ime_core::ImeEngine;
-use private_pinyin_ai_eval::{evaluate, load_cases, EvaluationGate, EvaluationReport};
+use private_pinyin_ai_eval::{
+    evaluate, evaluate_with_rules, load_cases, EvaluationGate, EvaluationReport,
+};
 
 const DEFAULT_DATASET: &str = "ai/eval/baseline_cases.tsv";
 
@@ -18,10 +20,14 @@ fn run() -> Result<(), String> {
     let cases = load_cases(&args.dataset)?;
     let engine =
         ImeEngine::new().map_err(|error| format!("could not initialize engine: {error}"))?;
-    let report = evaluate(&engine, args.dataset.display().to_string(), &cases);
+    let report = if args.rules {
+        evaluate_with_rules(&engine, args.dataset.display().to_string(), &cases)
+    } else {
+        evaluate(&engine, args.dataset.display().to_string(), &cases)
+    };
 
     match args.format {
-        OutputFormat::Summary => print_summary(&report),
+        OutputFormat::Summary => print_summary(&report, args.rules),
         OutputFormat::Json => println!(
             "{}",
             serde_json::to_string_pretty(&report)
@@ -35,11 +41,26 @@ fn run() -> Result<(), String> {
             report.required_failures
         ));
     }
+    if let Some(required) = args.require_observed_successes {
+        if report.observed_successes < required {
+            return Err(format!(
+                "observed opportunity target not met: {}/{} required",
+                report.observed_successes, required
+            ));
+        }
+    }
     Ok(())
 }
 
-fn print_summary(report: &EvaluationReport) {
-    println!("AI-01 baseline evaluation");
+fn print_summary(report: &EvaluationReport, rules: bool) {
+    println!(
+        "{}",
+        if rules {
+            "AI-04 rules-first evaluation"
+        } else {
+            "AI-01 baseline evaluation"
+        }
+    );
     println!("dataset: {}", report.dataset);
     println!(
         "required: {}/{} passed; observed opportunities: {}/{} currently meet target",
@@ -98,6 +119,8 @@ struct Args {
     dataset: PathBuf,
     format: OutputFormat,
     allow_required_failures: bool,
+    rules: bool,
+    require_observed_successes: Option<usize>,
 }
 
 impl Args {
@@ -105,6 +128,8 @@ impl Args {
         let mut dataset = PathBuf::from(DEFAULT_DATASET);
         let mut format = OutputFormat::Summary;
         let mut allow_required_failures = false;
+        let mut rules = false;
+        let mut require_observed_successes = None;
         let mut index = 0;
 
         while index < args.len() {
@@ -118,6 +143,20 @@ impl Args {
                 }
                 "--json" => format = OutputFormat::Json,
                 "--allow-required-failures" => allow_required_failures = true,
+                "--rules" => rules = true,
+                "--require-observed-successes" => {
+                    index += 1;
+                    require_observed_successes = Some(
+                        args.get(index)
+                            .ok_or_else(|| {
+                                "--require-observed-successes requires a number".to_owned()
+                            })?
+                            .parse::<usize>()
+                            .map_err(|_| {
+                                "--require-observed-successes must be a number".to_owned()
+                            })?,
+                    );
+                }
                 "--help" | "-h" => return Err(usage()),
                 argument => return Err(format!("unknown argument {argument:?}\n{}", usage())),
             }
@@ -128,6 +167,8 @@ impl Args {
             dataset,
             format,
             allow_required_failures,
+            rules,
+            require_observed_successes,
         })
     }
 }
@@ -140,6 +181,6 @@ enum OutputFormat {
 
 fn usage() -> String {
     format!(
-        "Usage: private-pinyin-ai-eval [--dataset PATH] [--json] [--allow-required-failures]\nDefault dataset: {DEFAULT_DATASET}"
+        "Usage: private-pinyin-ai-eval [--dataset PATH] [--json] [--rules] [--require-observed-successes N] [--allow-required-failures]\nDefault dataset: {DEFAULT_DATASET}"
     )
 }

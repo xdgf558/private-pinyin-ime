@@ -150,6 +150,7 @@ name = "private_pinyin_ai_eval_runner"
 version = "0.1.20"
 dependencies = [
  "ime_core",
+ "private_pinyin_local_ai_core",
  "serde",
  "serde_json",
 ]

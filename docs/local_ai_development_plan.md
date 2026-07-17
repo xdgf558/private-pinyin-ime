@@ -34,6 +34,12 @@ pipeline; it does not create a second learning database or replace the core.
 | AI-11 | Pause-triggered short completion followed by explicit rewrite and translation previews | Base candidates appear first; stale output is discarded; user confirms replacement |
 | AI-12 | Cross-platform regression, privacy audit, fault injection, benchmarks, model notices, and release gates | AI-off behavior equals the pre-AI baseline and all failure modes degrade safely |
 
+AI-04 implements deterministic rule components and offline evaluation only. Pinyin
+correction is capped at two validated alternatives, English terms come from a small
+first-party canonical table, and lexicon cleanup returns read-only reason-coded
+suggestions. No platform host invokes these components before AI-07 supplies bounded
+worker queues and stale-result handling.
+
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects

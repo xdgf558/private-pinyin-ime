@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
-use ime_core::{Candidate, ImeEngine};
+use ime_core::{Candidate, CandidateSource, ImeEngine};
+use private_pinyin_local_ai_core::{EnglishTermPreserver, PinyinCorrector};
 use serde::Serialize;
 
 const EXPECTED_HEADER: &str =
@@ -223,10 +224,87 @@ pub fn evaluate(
     build_report(dataset_name.into(), cases, results)
 }
 
+pub fn evaluate_with_rules(
+    engine: &ImeEngine,
+    dataset_name: impl Into<String>,
+    cases: &[EvaluationCase],
+) -> EvaluationReport {
+    let corrector = PinyinCorrector::embedded();
+    let term_preserver = EnglishTermPreserver::embedded();
+    let results = cases
+        .iter()
+        .map(|case| {
+            let candidates =
+                candidates_for_case_with_rules(engine, case, &corrector, &term_preserver);
+            evaluate_candidates(case, &candidates)
+        })
+        .collect::<Vec<_>>();
+    build_report(dataset_name.into(), cases, results)
+}
+
 pub fn candidates_for_case(engine: &ImeEngine, case: &EvaluationCase) -> Vec<Candidate> {
     match case.input_kind {
         InputKind::RawPinyin => engine.candidates_for_raw(&case.input),
         InputKind::NineKey => engine.candidates_for_nine_key(&case.input),
+    }
+}
+
+fn candidates_for_case_with_rules(
+    engine: &ImeEngine,
+    case: &EvaluationCase,
+    corrector: &PinyinCorrector,
+    term_preserver: &EnglishTermPreserver,
+) -> Vec<Candidate> {
+    match case.feature.as_str() {
+        "pinyin_correction" if case.input_kind == InputKind::RawPinyin => {
+            let suggestions = corrector.suggest_with_validator(&case.input, |corrected| {
+                !engine.candidates_for_raw(corrected).is_empty()
+            });
+            let mut candidates = Vec::new();
+            for suggestion in suggestions {
+                if let Some(candidate) = engine
+                    .candidates_for_raw(suggestion.corrected_pinyin())
+                    .into_iter()
+                    .next()
+                {
+                    push_unique_candidate(&mut candidates, candidate);
+                }
+            }
+            for candidate in candidates_for_case(engine, case) {
+                push_unique_candidate(&mut candidates, candidate);
+            }
+            candidates
+        }
+        "mixed_english" if case.input_kind == InputKind::RawPinyin => {
+            let mut candidates = Vec::new();
+            if let Some(text) = term_preserver
+                .segment(&case.input)
+                .and_then(|segmentation| {
+                    segmentation.render_with(|pinyin| {
+                        engine
+                            .candidates_for_raw(pinyin)
+                            .first()
+                            .map(|candidate| candidate.text.clone())
+                    })
+                })
+            {
+                candidates.push(Candidate::new(text, &case.input, CandidateSource::Raw));
+            }
+            for candidate in candidates_for_case(engine, case) {
+                push_unique_candidate(&mut candidates, candidate);
+            }
+            candidates
+        }
+        _ => candidates_for_case(engine, case),
+    }
+}
+
+fn push_unique_candidate(candidates: &mut Vec<Candidate>, candidate: Candidate) {
+    if !candidates
+        .iter()
+        .any(|existing| existing.text == candidate.text)
+    {
+        candidates.push(candidate);
     }
 }
 
@@ -340,11 +418,11 @@ impl MetricsAccumulator {
 
 #[cfg(test)]
 mod tests {
-    use ime_core::{Candidate, CandidateSource};
+    use ime_core::{Candidate, CandidateSource, ImeEngine};
 
     use super::{
-        build_report, evaluate_candidates, parse_cases, CaseProvenance, CaseResult, EvaluationGate,
-        InputKind,
+        build_report, evaluate_candidates, evaluate_with_rules, parse_cases, CaseProvenance,
+        CaseResult, EvaluationGate, InputKind,
     };
 
     const HEADER: &str =
@@ -443,5 +521,17 @@ mod tests {
         assert_eq!(report.overall.found, 2);
         assert_eq!(report.overall.within_target_rank, 2);
         assert!((report.overall.mean_reciprocal_rank - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn rules_first_evaluation_improves_p0_cases_without_required_regression() {
+        let cases = parse_cases(include_str!("../../../ai/eval/baseline_cases.tsv"))
+            .expect("baseline dataset parses");
+        let engine = ImeEngine::new().expect("embedded engine");
+        let report = evaluate_with_rules(&engine, "ai-04-unit", &cases);
+
+        assert_eq!(report.required_failures, 0);
+        assert_eq!(report.observed_successes, report.observed_cases);
+        assert_eq!(report.observed_cases, 7);
     }
 }
