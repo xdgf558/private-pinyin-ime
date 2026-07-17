@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-17 15:09
+Last updated: 2026-07-17 23:29
 Current stage: AI-05 local model supply-chain gate
 Current status: strict manifests, dual-control Owner approval, artifact integrity/path/privacy/platform/hardware checks, atomic model packaging, tests, and CI wiring are ready for review with an empty approval registry and no bundled model
 
@@ -23,8 +23,8 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-17 07:54 | TestFlight candidate `0.1.20 (16)` was archived with Xcode 26.6, uploaded as delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 07:54 | Station Cat full-key/nine-key UI, shorthand input, candidate paging, and one-shot nine-key commit passed iOS 27 Simulator smoke; build `16` is waiting for external Beta App Review and real-device password/phone/App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-17 23:29 | TestFlight candidate `0.1.21 (17)` was archived with Xcode 26.6, uploaded as delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 23:29 | Build `17` contains readable nine-key composition, local Simplified/Traditional output, nine-candidate paging, and expanded symbols; it is processed in App Store Connect and real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -96,6 +96,15 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review: submitted; `BUILD-STATUS` and `BETA-REVIEW-STATE` are both `WAITING_FOR_REVIEW`.
+
+## iOS 0.1.21 (17) TestFlight Upload
+
+- Container app and Keyboard Extension versions were advanced together to `0.1.21 (17)` in release commit `ab1fd88`.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0`.
+- Signed archive `dist/ios/PrivatePinyin-0.1.21-build17-xcode26.xcarchive` reports version `0.1.21`, build `17`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- External TestFlight review: ready for the Owner to finish the test-content form, assign build `17` to the external group, and submit it for Beta App Review.
 
 ## Completed Work
 
@@ -731,7 +740,7 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
-- Monitor external Beta App Review for build `0.1.20 (16)` and publish tester access after approval.
+- Submit build `0.1.21 (17)` to the external TestFlight group, monitor Beta App Review, and publish tester access after approval.
 - Run real-device smoke tests in Notes, Safari, password, and phone fields, including Full Access-off App Group behavior and local learning persistence under distribution provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
