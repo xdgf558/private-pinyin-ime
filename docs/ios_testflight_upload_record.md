@@ -8,16 +8,16 @@ from owner-side App Store Connect evidence.
 | Field | Value |
 |---|---|
 | Tester | Owner/Codex signed archive run |
-| Date | 2026-07-17 07:48 +08 |
-| Commit | Release metadata based on merged `main` commit `4e9f032` |
-| Archive | `dist/ios/PrivatePinyin-0.1.20-build16-xcode26.xcarchive` |
+| Date | 2026-07-17 23:29 +08 |
+| Commit | Release commit `ab1fd88` based on merged `main` commit `61a4f46` |
+| Archive | `dist/ios/PrivatePinyin-0.1.21-build17-xcode26.xcarchive` |
 | Export path | Direct App Store Connect upload through `xcodebuild -exportArchive` |
 | Package summary | Xcode distribution logs, altool upload/status output, and App Store Connect TestFlight build table |
 | App bundle ID | `com.privatepinyin.ios` |
 | Keyboard bundle ID | `com.privatepinyin.ios.keyboard` |
 | App Group ID | `group.com.privatepinyin.ios` |
 | Export destination | `upload` |
-| Current candidate | `0.1.20 (16)` Station Cat keyboard UI and navigation TestFlight upload |
+| Current candidate | `0.1.21 (17)` readable nine-key composition, nine-candidate paging, local Traditional output, and expanded symbols |
 
 ## Archive And Export
 
@@ -32,19 +32,19 @@ bash scripts/package_ios_app_store.sh
 |---|---|---|---|
 | Owner signing env | Team ID, app bundle ID, keyboard bundle ID, App Group ID, ExportOptions plist, and profiles are configured | passed | Team `Y35K7AQ974`; App Group `group.com.privatepinyin.ios`; automatic signing created App Store profiles |
 | App Store Connect API key | Upload mode has key path, key ID, and issuer ID configured | not used | Upload used the signed-in Xcode account and Cloud Managed Apple Distribution certificate |
-| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.20-build16-xcode26.xcarchive`; Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive metadata reports `0.1.20 (16)` and arm64; the bundled SQLite object was rebuilt and verified with `minos 18.0` / SDK 26.5 |
-| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be` |
+| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.21-build17-xcode26.xcarchive`; Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive metadata reports `0.1.21 (17)` and arm64; the device Rust static library was rebuilt with iOS 18 as its deployment target |
+| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb` |
 | Package summary | `dist/ios/package_summary.txt` records mode, bundle IDs, App Group, and paths | superseded | Manual automatic-signing run recorded here because the scripted manual-profile path was not used |
 
 ## App Store Connect
 
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
-| Uploaded build | Build appears in App Store Connect | uploaded | App Store Connect app ID `6789098978`; version `0.1.20`; build `16`; external-capable upload delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be` |
+| Uploaded build | Build appears in App Store Connect | uploaded | App Store Connect app ID `6789098978`; version `0.1.21`; build `17`; external-capable upload delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb` |
 | Processing | Build processing completes | passed | Apple returned `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, and `IS-ON-APP-STORE-CONNECT: true` |
-| TestFlight availability | Processed build can be assigned to a TestFlight group | passed | Build `16` is available in App Store Connect and was submitted for external Beta App Review |
+| TestFlight availability | Processed build can be assigned to a TestFlight group | passed | Build `17` is available in App Store Connect with `BETA_INTERNAL_TESTING` status and is eligible for assignment to the external group |
 | External testing metadata | Beta description, privacy URL, feedback channel, review contact, and review notes are configured | passed | Filled in App Store Connect TestFlight test information; personal contact details stay out of the repository |
-| External testing build | Existing external group and review state are recorded separately from upload readiness | waiting for review | Apple returned `BUILD-STATUS: WAITING_FOR_REVIEW` and `BETA-REVIEW-STATE: WAITING_FOR_REVIEW`; submitted at 2026-07-17 07:53 +08 |
+| External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | Build `17` is processed and ready; assigning it to the external group and submitting Beta App Review remain explicit App Store Connect actions |
 
 ## Stage 17 External Testing Follow-up
 
@@ -75,5 +75,13 @@ bash scripts/package_ios_app_store.sh
   object for iOS 18 (`minos 18.0`, SDK 26.5). Xcode uploaded delivery
   `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`; Apple validated it as App Store
   eligible and accepted it for external Beta App Review.
+- Build `0.1.21 (17)` adds readable nine-key composition, generic Return
+  behavior, persistent local Simplified/Traditional output, nine-candidate
+  paging, and the expanded symbol surface approved in PR #31.
+- Build `17` was archived with Xcode 26.6 and uploaded as delivery
+  `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`. Apple returned `VALID`,
+  `APP_STORE_ELIGIBLE`, `BETA_INTERNAL_TESTING`, and
+  `IS-ON-APP-STORE-CONNECT: true`; external group submission remains a
+  separate Owner action.
 
 Manual failures should update `docs/OPEN_ITEMS.md` before Stage 17 begins.

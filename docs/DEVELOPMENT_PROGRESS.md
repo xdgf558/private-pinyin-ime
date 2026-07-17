@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 00:15
+Last updated: 2026-07-18 07:32
 Current stage: AI-06 shared fixed-point AI Lite ranker
-Current status: the bounded Rust ranker, versioned 426-byte approved coefficient package, 12-case quality gate, overflow regressions, supply-chain checks, tests, and CI wiring are ready for review without platform-host integration
+Current status: AI-06 is approved for merge with the latest iOS 0.1.21 work; the bounded Rust ranker, versioned 426-byte approved coefficient package, 12-case quality gate, overflow regressions, supply-chain checks, tests, and CI wiring remain disconnected from platform hosts until AI-07
 
 ## Stage Status
 
@@ -23,8 +23,8 @@ Current status: the bounded Rust ranker, versioned 426-byte approved coefficient
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-17 07:54 | TestFlight candidate `0.1.20 (16)` was archived with Xcode 26.6, uploaded as delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 07:54 | Station Cat full-key/nine-key UI, shorthand input, candidate paging, and one-shot nine-key commit passed iOS 27 Simulator smoke; build `16` is waiting for external Beta App Review and real-device password/phone/App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-17 23:29 | TestFlight candidate `0.1.21 (17)` was archived with Xcode 26.6, uploaded as delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 23:29 | Build `17` contains readable nine-key composition, local Simplified/Traditional output, nine-candidate paging, and expanded symbols; it is processed in App Store Connect and real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -86,6 +86,14 @@ Current status: the bounded Rust ranker, versioned 426-byte approved coefficient
 
 ## iOS Keyboard UI Follow-up Validation
 
+- Added a persistent inline `简体` / `繁體` output selector. Candidate display, predictions, and commits use the local system Chinese transform while core candidate identity and learning remain shared and normalized.
+- Changed nine-key composition display to use the leading candidate's readable pinyin when available, so valid signatures such as `9664` no longer expose internal lookup digits; renamed the generic Return action from `换行` to `回车`.
+- Beta Xcode readiness build: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension; the resulting Debug app installed and launched on the iPhone 17 Pro / iOS 27 Simulator.
+- Local conversion regression: `里面头发发展干嘛面条` produced `裡面頭髮發展乾嘛麵條`; 50,000 short-string conversions completed in approximately 0.03 seconds on the local Mac reference machine.
+- iOS 27 runtime phrase probe confirmed that the system transform is phrase-aware for `头发 -> 頭髮`, `面条 -> 麵條`, `皇后在后面 -> 皇后在後面`, and `只有一只猫 -> 只有一隻貓`; a compiled regression now runs in the macOS CI job. The option remains documented as generic Traditional rather than complete Taiwan/Hong Kong localization.
+- Simulator settings regression: a fresh local settings repair persisted `ios_chinese_script = simplified`, preserving the existing default until the user explicitly selects `繁體`.
+- Expanded the iOS runtime candidate page from five to nine entries; long candidates remain readable in a horizontally scrollable strip, while group navigation stays fixed outside the scroll content.
+- Added a dedicated `#+=` iOS symbol page covering the requested bracket, operator, book-title, punctuation, ellipsis, and separator characters without replacing the existing numeric/basic-symbol page.
 - `bash scripts/check_ios_keyboard_sources.sh` and `bash scripts/run_ios_smoke_readiness.sh`: passed with Xcode 27 and the iOS 27 Simulator build.
 - `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed after the shared OI-045 decoder was included.
 - iPhone 17 Pro / iOS 27 Simulator visual smoke: Station Cat colors, compact candidate strip, balanced QWERTY, adaptive nine-key controls, Shift/delete symbols, and inline preferences rendered without clipping.
@@ -102,6 +110,15 @@ Current status: the bounded Rust ranker, versioned 426-byte approved coefficient
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review: submitted; `BUILD-STATUS` and `BETA-REVIEW-STATE` are both `WAITING_FOR_REVIEW`.
+
+## iOS 0.1.21 (17) TestFlight Upload
+
+- Container app and Keyboard Extension versions were advanced together to `0.1.21 (17)` in release commit `ab1fd88`.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0`.
+- Signed archive `dist/ios/PrivatePinyin-0.1.21-build17-xcode26.xcarchive` reports version `0.1.21`, build `17`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- External TestFlight review: ready for the Owner to finish the test-content form, assign build `17` to the external group, and submit it for Beta App Review.
 
 ## Completed Work
 
@@ -737,7 +754,7 @@ Current status: the bounded Rust ranker, versioned 426-byte approved coefficient
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
-- Monitor external Beta App Review for build `0.1.20 (16)` and publish tester access after approval.
+- Submit build `0.1.21 (17)` to the external TestFlight group, monitor Beta App Review, and publish tester access after approval.
 - Run real-device smoke tests in Notes, Safari, password, and phone fields, including Full Access-off App Group behavior and local learning persistence under distribution provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.

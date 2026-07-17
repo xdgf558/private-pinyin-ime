@@ -15,9 +15,11 @@ required_files=(
   "platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements"
   "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
   "platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift"
+  "platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift"
   "platform/ios_keyboard/KeyboardExtension/Info.plist"
   "platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements"
   "scripts/build_ios_keyboard.sh"
+  "scripts/test_ios_chinese_transform.sh"
 )
 
 for file in "${required_files[@]}"; do
@@ -86,12 +88,34 @@ grep -q 'static let accent = UIColor(hex: 0xE8804A)' platform/ios_keyboard/Keybo
 grep -q 'systemImageName: "ellipsis"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq 'currentCandidates.first?.pinyin' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'title = "回车"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'scriptSegmentedControl = UISegmentedControl(items: \["简体", "繁體"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'IosChineseTextConverter.convert(text, to: chineseScript)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'settings\["ios_chinese_script"\] = IosChineseScript.simplified.rawValue' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q '"Simplified-Traditional" as CFString' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q '系统通用繁体，非完整台港本地化' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '裡面頭髮發展乾嘛麵條' platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift
+if grep -q '"换行"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
+  echo "The iOS Return key must use the generic 回车 label rather than implying newline-only behavior." >&2
+  exit 1
+fi
 if grep -q 'microphoneButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
   echo "iOS supplies dictation outside third-party keyboards; do not duplicate a non-functional microphone." >&2
   exit 1
 fi
 grep -q "ios_keyboard_layout" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "keyboardCandidatePageSize = 5" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "ios_chinese_script" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "keyboardCandidatePageSize = 9" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq '"【", "】", "{", "}", "#", "%", "^", "*", "+", "="' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq '"_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 if sed -n '/func feedCharacter/,/func handleTextKey/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then

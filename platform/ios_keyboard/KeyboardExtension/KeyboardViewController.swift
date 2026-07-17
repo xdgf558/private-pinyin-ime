@@ -14,6 +14,7 @@ final class KeyboardViewController: UIInputViewController {
     private let previousCandidatePageButton = UIButton(type: .system)
     private let nextCandidatePageButton = UIButton(type: .system)
     private let layoutSegmentedControl = UISegmentedControl(items: ["全键", "九宫"])
+    private let scriptSegmentedControl = UISegmentedControl(items: ["简体", "繁體"])
     private let predictionSwitch = UISwitch()
     private let learningSwitch = UISwitch()
     private let preferencesStatusLabel = UILabel()
@@ -25,11 +26,13 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
-    private let visibleCandidateCount = 5
+    private let visibleCandidateCount = 9
     private var shifted = false
     private var symbolsVisible = false
+    private var extendedSymbolsVisible = false
     private var englishMode = false
     private var preferredLayout = IosSettingsStore.keyboardLayout()
+    private var chineseScript = IosSettingsStore.chineseScript()
     private var preferencesVisible = false
     private var isPerformingTextOperation = false
     private var lastNeedsInputModeSwitchKey = true
@@ -140,6 +143,8 @@ final class KeyboardViewController: UIInputViewController {
         candidateScrollView.showsVerticalScrollIndicator = false
         candidateScrollView.alwaysBounceHorizontal = true
         candidateScrollView.delaysContentTouches = false
+        candidateScrollView.accessibilityLabel = "候选词"
+        candidateScrollView.accessibilityHint = "左右滑动查看更多候选"
         candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         candidateScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -156,7 +161,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateStack.axis = .horizontal
         candidateStack.alignment = .center
         candidateStack.distribution = .fill
-        candidateStack.spacing = 20
+        candidateStack.spacing = 16
         candidateStack.translatesAutoresizingMaskIntoConstraints = false
         candidateScrollView.addSubview(candidateStack)
 
@@ -268,20 +273,18 @@ final class KeyboardViewController: UIInputViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         preferencesView.addSubview(stack)
 
-        layoutSegmentedControl.selectedSegmentTintColor = StationKeyboardTheme.accent
-        layoutSegmentedControl.backgroundColor = StationKeyboardTheme.trayBottom
-        layoutSegmentedControl.setTitleTextAttributes([
-            .foregroundColor: StationKeyboardTheme.secondaryText,
-            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
-        ], for: .normal)
-        layoutSegmentedControl.setTitleTextAttributes([
-            .foregroundColor: StationKeyboardTheme.returnText,
-            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
-        ], for: .selected)
-        layoutSegmentedControl.accessibilityLabel = "拼音键盘布局"
-        layoutSegmentedControl.addAction(UIAction { [weak self] _ in
+        configurePreferenceSegmentedControl(
+            layoutSegmentedControl,
+            accessibilityLabel: "拼音键盘布局"
+        ) { [weak self] in
             self?.setPreferredLayout()
-        }, for: .valueChanged)
+        }
+        configurePreferenceSegmentedControl(
+            scriptSegmentedControl,
+            accessibilityLabel: "中文输出字形"
+        ) { [weak self] in
+            self?.setChineseScript()
+        }
 
         predictionSwitch.onTintColor = StationKeyboardTheme.accent
         predictionSwitch.accessibilityLabel = "显示预测候选"
@@ -295,7 +298,17 @@ final class KeyboardViewController: UIInputViewController {
             self?.setLearningEnabled()
         }, for: .valueChanged)
 
-        stack.addArrangedSubview(makeLayoutPreferenceRow())
+        stack.addArrangedSubview(makeSegmentedPreferenceRow(
+            title: "拼音布局",
+            detail: "全键与九宫格可随时切换",
+            control: layoutSegmentedControl
+        ))
+        stack.addArrangedSubview(makeDivider())
+        stack.addArrangedSubview(makeSegmentedPreferenceRow(
+            title: "输出字形",
+            detail: "系统通用繁体，非完整台港本地化",
+            control: scriptSegmentedControl
+        ))
         stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makePreferenceRow(
             title: "显示预测候选",
@@ -317,6 +330,25 @@ final class KeyboardViewController: UIInputViewController {
             stack.topAnchor.constraint(equalTo: preferencesView.topAnchor),
             stack.bottomAnchor.constraint(equalTo: preferencesView.bottomAnchor),
         ])
+    }
+
+    private func configurePreferenceSegmentedControl(
+        _ control: UISegmentedControl,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) {
+        control.selectedSegmentTintColor = StationKeyboardTheme.accent
+        control.backgroundColor = StationKeyboardTheme.trayBottom
+        control.setTitleTextAttributes([
+            .foregroundColor: StationKeyboardTheme.secondaryText,
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+        ], for: .normal)
+        control.setTitleTextAttributes([
+            .foregroundColor: StationKeyboardTheme.returnText,
+            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+        ], for: .selected)
+        control.accessibilityLabel = accessibilityLabel
+        control.addAction(UIAction { _ in action() }, for: .valueChanged)
     }
 
     private func makePreferenceRow(title: String, detail: String, toggle: UISwitch) -> UIView {
@@ -344,14 +376,18 @@ final class KeyboardViewController: UIInputViewController {
         return row
     }
 
-    private func makeLayoutPreferenceRow() -> UIView {
+    private func makeSegmentedPreferenceRow(
+        title: String,
+        detail: String,
+        control: UISegmentedControl
+    ) -> UIView {
         let titleLabel = UILabel()
-        titleLabel.text = "拼音布局"
+        titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
         titleLabel.textColor = StationKeyboardTheme.primaryText
 
         let detailLabel = UILabel()
-        detailLabel.text = "全键与九宫格可随时切换"
+        detailLabel.text = detail
         detailLabel.font = UIFont.systemFont(ofSize: 11, weight: .regular)
         detailLabel.textColor = StationKeyboardTheme.weakText
 
@@ -359,14 +395,14 @@ final class KeyboardViewController: UIInputViewController {
         labels.axis = .vertical
         labels.spacing = 2
 
-        let row = UIStackView(arrangedSubviews: [labels, layoutSegmentedControl])
+        let row = UIStackView(arrangedSubviews: [labels, control])
         row.axis = .horizontal
         row.alignment = .center
         row.spacing = 12
         row.isLayoutMarginsRelativeArrangement = true
         row.layoutMargins = UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12)
         row.heightAnchor.constraint(equalToConstant: 58).isActive = true
-        layoutSegmentedControl.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        control.widthAnchor.constraint(equalToConstant: 130).isActive = true
         return row
     }
 
@@ -422,7 +458,7 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             rows = letterRows()
         }
-        minimumHeightConstraint?.constant = usesNineKeyLayout ? 310 : 278
+        refreshMinimumHeight()
         for (rowIndex, row) in rows.enumerated() {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
@@ -467,7 +503,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func rowHorizontalInset(at index: Int) -> CGFloat {
-        guard !usesNineKeyLayout, index == 1 else {
+        guard !usesNineKeyLayout, index == 1, !extendedSymbolsVisible else {
             return 0
         }
         return symbolsVisible ? 14 : 18
@@ -496,16 +532,33 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func symbolRows() -> [[KeySpec]] {
-        [
+        if extendedSymbolsVisible {
+            return [
+                ["【", "】", "{", "}", "#", "%", "^", "*", "+", "="].map { .text($0) },
+                ["_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"].map { .text($0) },
+                [.symbols.weighted(1.25), .text("…", title: "..."), .text("，"),
+                 .text("^^"), .text("?"), .text("!"), .text("'"),
+                 .backspace.weighted(1.25)],
+                qwertyCommandRow(),
+            ]
+        }
+
+        return [
             "1234567890".map { .text(String($0)) },
             [".", ",", "?", "!", "'", "-", ":", ";", "/"].map { .text($0) },
-            [.text("("), .text(")"), .text("@"), .text("#"), .text("$"), .text("&"), .backspace],
+            [.extendedSymbols.weighted(1.25), .text("("), .text(")"), .text("@"),
+             .text("#"), .text("$"), .text("&"), .backspace.weighted(1.25)],
             qwertyCommandRow(),
         ]
     }
 
     private func qwertyCommandRow() -> [KeySpec] {
-        let leadingKey = symbolsVisible ? KeySpec.letters : .symbols
+        let leadingKey: KeySpec
+        if symbolsVisible, preferredLayout == .nineKey, !englishMode {
+            leadingKey = .nineKeyLayout
+        } else {
+            leadingKey = symbolsVisible ? .letters : .symbols
+        }
         var row = [
             leadingKey.weighted(1.6),
         ]
@@ -529,7 +582,7 @@ final class KeyboardViewController: UIInputViewController {
         case .modeToggle:
             title = englishMode ? "英" : "中"
         case .enter:
-            title = "换行"
+            title = "回车"
         default:
             title = key.title
         }
@@ -550,6 +603,9 @@ final class KeyboardViewController: UIInputViewController {
         button.addAction(UIAction { [weak self] _ in
             self?.handle(key)
         }, for: key.activationEvent)
+        if case .enter = key.kind {
+            button.accessibilityHint = "提交当前输入，或执行当前输入框的回车操作"
+        }
 
         switch key.kind {
         case .shift:
@@ -598,10 +654,11 @@ final class KeyboardViewController: UIInputViewController {
             || currentCandidates.count < visibleCandidateCount
             || candidatePageReachedEnd
 
-        let showPreedit = !currentPreedit.isEmpty || !hasCandidates
+        let visiblePreedit = displayedPreedit
+        let showPreedit = !visiblePreedit.isEmpty || !hasCandidates
         preeditLabel.text = currentPreedit.isEmpty && coreUnavailable
             ? "输入引擎暂时不可用，请再试一次"
-            : currentPreedit
+            : visiblePreedit
         preeditLabel.isHidden = !showPreedit
         candidateDivider.isHidden = preeditLabel.isHidden || currentPreedit.isEmpty
 
@@ -611,8 +668,9 @@ final class KeyboardViewController: UIInputViewController {
                 button.isHidden = true
                 continue
             }
-            button.setTitle(currentCandidates[index].text, for: .normal)
-            button.accessibilityLabel = "候选词 \(currentCandidates[index].text)"
+            let candidateText = displayText(currentCandidates[index].text)
+            button.setTitle(candidateText, for: .normal)
+            button.accessibilityLabel = "候选词 \(candidateText)"
             button.isHidden = false
         }
         candidateScrollView.setContentOffset(.zero, animated: false)
@@ -641,15 +699,23 @@ final class KeyboardViewController: UIInputViewController {
             advanceToNextInputMode()
         case .symbols:
             symbolsVisible = true
+            extendedSymbolsVisible = false
+            rebuildKeyboard()
+        case .extendedSymbols:
+            symbolsVisible = true
+            extendedSymbolsVisible = true
             rebuildKeyboard()
         case .letters:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             rebuildKeyboard()
         case .nineKeyLayout:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             selectKeyboardLayout(.nineKey)
         case .qwertyLayout:
             symbolsVisible = false
+            extendedSymbolsVisible = false
             selectKeyboardLayout(.qwerty)
         case .modeToggle:
             apply(ensureCore()?.toggleMode())
@@ -765,7 +831,7 @@ private extension KeyboardViewController {
         englishMode = output.isEnglishMode
 
         if output.shouldCommit, !output.commitText.isEmpty {
-            insertDocumentText(output.commitText)
+            insertDocumentText(displayText(output.commitText))
         }
 
         if output.shouldUpdatePreedit || output.shouldCommit {
@@ -781,6 +847,7 @@ private extension KeyboardViewController {
         }
         if modeChanged {
             symbolsVisible = false
+            extendedSymbolsVisible = false
             rebuildKeyboard()
         }
         updateCandidateBar()
@@ -835,6 +902,29 @@ private extension KeyboardViewController {
         preferredLayout == .nineKey && !englishMode && !symbolsVisible
     }
 
+    var displayedPreedit: String {
+        guard usesNineKeyLayout, !currentPreedit.isEmpty else {
+            return currentPreedit
+        }
+        guard let pinyin = currentCandidates.first?.pinyin
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !pinyin.isEmpty
+        else {
+            return currentPreedit
+        }
+        return pinyin
+    }
+
+    func displayText(_ text: String) -> String {
+        IosChineseTextConverter.convert(text, to: chineseScript)
+    }
+
+    func refreshMinimumHeight() {
+        minimumHeightConstraint?.constant = preferencesVisible
+            ? 368
+            : (usesNineKeyLayout ? 310 : 278)
+    }
+
     func selectKeyboardLayout(_ layout: IosKeyboardLayout) {
         guard preferredLayout != layout else {
             rebuildKeyboard()
@@ -858,6 +948,7 @@ private extension KeyboardViewController {
         preferencesVisible.toggle()
         keyRowsStack.isHidden = preferencesVisible
         preferencesView.isHidden = !preferencesVisible
+        refreshMinimumHeight()
         if preferencesVisible {
             currentCandidates = []
             candidatePage = 0
@@ -868,6 +959,8 @@ private extension KeyboardViewController {
 
     func refreshPreferenceControls() {
         layoutSegmentedControl.selectedSegmentIndex = preferredLayout == .nineKey ? 1 : 0
+        chineseScript = IosSettingsStore.chineseScript()
+        scriptSegmentedControl.selectedSegmentIndex = chineseScript == .traditional ? 1 : 0
         predictionSwitch.isOn = IosSettingsStore.isPredictionEnabled()
         learningSwitch.isOn = IosSettingsStore.isLearningEnabled()
         learningSwitch.isEnabled = IosSettingsStore.canEnableLearning
@@ -882,6 +975,20 @@ private extension KeyboardViewController {
             : .qwerty
         selectKeyboardLayout(layout)
         preferencesStatusLabel.text = layout == .nineKey ? "已切换为九宫格拼音" : "已切换为全键拼音"
+    }
+
+    func setChineseScript() {
+        let script: IosChineseScript = scriptSegmentedControl.selectedSegmentIndex == 1
+            ? .traditional
+            : .simplified
+        guard IosSettingsStore.setChineseScript(script) else {
+            scriptSegmentedControl.selectedSegmentIndex = chineseScript == .traditional ? 1 : 0
+            preferencesStatusLabel.text = "无法保存中文输出字形"
+            return
+        }
+        chineseScript = script
+        updateCandidateBar()
+        preferencesStatusLabel.text = script == .traditional ? "已切换为繁体中文" : "已切换为简体中文"
     }
 
     func setPredictionEnabled() {
@@ -942,6 +1049,7 @@ private struct KeySpec {
         case shift
         case globe
         case symbols
+        case extendedSymbols
         case letters
         case nineKeyLayout
         case qwertyLayout
@@ -963,7 +1071,7 @@ private struct KeySpec {
              .space, .enter, .backspace:
             return .touchDown
         case .shift, .globe, .symbols, .letters, .nineKeyLayout,
-             .qwertyLayout, .modeToggle, .spacer:
+             .extendedSymbols, .qwertyLayout, .modeToggle, .spacer:
             return .touchUpInside
         }
     }
@@ -979,7 +1087,8 @@ private struct KeySpec {
         case .enter:
             return .returnKey
         case .nineKeyPunctuation, .backspace, .shift, .globe,
-             .symbols, .letters, .nineKeyLayout, .qwertyLayout, .spacer:
+             .symbols, .extendedSymbols, .letters, .nineKeyLayout,
+             .qwertyLayout, .spacer:
             return .function
         }
     }
@@ -992,7 +1101,7 @@ private struct KeySpec {
             return UIFont.systemFont(ofSize: 22, weight: .semibold)
         case .text, .nineKeyPunctuation:
             return UIFont.systemFont(ofSize: 18, weight: .medium)
-        case .space, .modeToggle, .enter, .symbols, .letters,
+        case .space, .modeToggle, .enter, .symbols, .extendedSymbols, .letters,
              .nineKeyLayout, .qwertyLayout:
             return UIFont.systemFont(ofSize: 15, weight: .semibold)
         case .backspace, .shift, .globe, .spacer:
@@ -1025,9 +1134,13 @@ private struct KeySpec {
     }
 
     static func text(_ value: String) -> Self {
+        text(value, title: value)
+    }
+
+    static func text(_ value: String, title: String) -> Self {
         Self(
             kind: .text(value),
-            title: value,
+            title: title,
             systemImageName: nil,
             accessibilityLabel: value,
             isCommand: false,
@@ -1094,6 +1207,15 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.2
     )
+    static let extendedSymbols = Self(
+        kind: .extendedSymbols,
+        title: "#+=",
+        systemImageName: nil,
+        accessibilityLabel: "更多符号",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1.2
+    )
     static let letters = Self(
         kind: .letters,
         title: "ABC",
@@ -1141,9 +1263,9 @@ private struct KeySpec {
     )
     static let enter = Self(
         kind: .enter,
-        title: "换行",
+        title: "回车",
         systemImageName: nil,
-        accessibilityLabel: "换行",
+        accessibilityLabel: "回车",
         isCommand: true,
         isWide: true,
         widthWeight: 1.2

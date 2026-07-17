@@ -113,6 +113,11 @@ jobs:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/check_update03_sources.sh
 
+      - name: Run iOS Chinese transform regression
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_ios_chinese_transform.sh
+
   windows-tsf:
     runs-on: windows-2022
 
