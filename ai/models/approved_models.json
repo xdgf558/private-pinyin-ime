@@ -1,4 +1,11 @@
 {
   "schema_version": 1,
-  "approvals": []
+  "approvals": [
+    {
+      "approval_id": "owner-ai06-lite-ranker-v1",
+      "model_id": "private-pinyin.ai-lite-ranker",
+      "version": "1.0.1",
+      "manifest_fingerprint_sha256": "8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439"
+    }
+  ]
 }

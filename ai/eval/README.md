@@ -52,6 +52,23 @@ Rules mode prepends only bounded correction or canonical English-term suggestion
 the synthetic opportunity cases. It does not connect the rule engine to a platform host
 or change the production input path.
 
+Run the AI-06 approved Lite-ranker quality gate:
+
+```bash
+bash scripts/run_ai_eval.sh --ranker --require-ranker-improvements 8
+```
+
+`ai06_ranker_cases.json` is a strict first-party JSON dataset with eight improvement
+cases and four preservation cases. The gate compares baseline Top-1/MRR with the verified
+ranker, requires all targeted improvements, and rejects any preservation regression. Its
+content declarations prohibit user data, real application context, prompts, model
+outputs, and network dependencies.
+
+Before AI-07 host integration, expand this gate with owner-approved public or manually
+authored cases for common typo patterns, mixed English terms, and longer candidate lists.
+Do not collect, retain, anonymize, or replay production typing; benchmark provenance must
+remain auditable and independent of user input.
+
 Capture report-only latency measurements in a release build:
 
 ```bash

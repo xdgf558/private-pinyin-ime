@@ -1,0 +1,3 @@
+# AI model text artifacts are verified as exact bytes and must not receive CRLF conversion.
+ai/models/**/*.json text eol=lf
+ai/models/**/*.md text eol=lf

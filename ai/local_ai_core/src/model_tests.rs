@@ -4,7 +4,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::model_verifier::ModelApprovalRegistry;
 use crate::{
-    AiErrorCode, HardwareProfile, HardwareTier, ModelManifest, ModelPackageVerifier, ModelPlatform,
+    AiErrorCode, AiLiteRanker, HardwareProfile, HardwareTier, ModelManifest, ModelPackageVerifier,
+    ModelPlatform,
 };
 
 static NEXT_TEST_DIRECTORY: AtomicU64 = AtomicU64::new(1);
@@ -115,9 +116,33 @@ fn hardware_tiers_follow_the_four_eight_sixteen_twenty_four_gib_policy() {
 }
 
 #[test]
-fn embedded_registry_starts_with_no_approved_model() {
+fn embedded_registry_contains_the_owner_approved_ai06_ranker() {
     let registry = ModelApprovalRegistry::embedded().expect("embedded registry must parse");
-    assert_eq!(registry.approval_count(), 0);
+    assert_eq!(registry.approval_count(), 1);
+}
+
+#[test]
+fn checked_in_ai06_ranker_verifies_and_loads_on_every_declared_platform() {
+    let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../models/private-pinyin-ai-lite-ranker-v1");
+    let manifest_json = fs::read_to_string(package_root.join("manifest.json"))
+        .expect("read checked-in ranker manifest");
+    let manifest = ModelManifest::from_json(&manifest_json).expect("parse ranker manifest");
+
+    for platform in [
+        ModelPlatform::Macos,
+        ModelPlatform::Windows,
+        ModelPlatform::Ios,
+    ] {
+        let verified = ModelPackageVerifier::new(platform, supported_hardware())
+            .expect("embedded registry must parse")
+            .verify(&package_root, &manifest)
+            .expect("approved ranker package must verify");
+        let ranker = AiLiteRanker::from_verified_package(&verified)
+            .expect("approved ranker model must load");
+        assert_eq!(ranker.model_id(), "private-pinyin.ai-lite-ranker");
+        assert_eq!(ranker.model_version(), "1.0.1");
+    }
 }
 
 #[test]

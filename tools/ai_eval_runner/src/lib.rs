@@ -6,6 +6,13 @@ use ime_core::{Candidate, CandidateSource, ImeEngine};
 use private_pinyin_local_ai_core::{EnglishTermPreserver, PinyinCorrector};
 use serde::Serialize;
 
+mod ranker_eval;
+
+pub use ranker_eval::{
+    evaluate_ranker_package, load_ranker_cases, RankerCaseResult, RankerEvaluationReport,
+    RankerGate, RankerMetrics,
+};
+
 const EXPECTED_HEADER: &str =
     "id\tfeature\tinput_kind\tinput\texpected_texts\tmax_rank\tgate\tprovenance";
 

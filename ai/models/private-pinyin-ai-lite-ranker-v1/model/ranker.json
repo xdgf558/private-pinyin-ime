@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "ranker_version": "ai06-v1",
+  "feature_schema_version": 1,
+  "model_id": "private-pinyin.ai-lite-ranker",
+  "model_version": "1.0.1",
+  "feature_scale": 1000,
+  "intercept_milli": 0,
+  "weights_milli": {
+    "base_rank": 400,
+    "base_score": 250,
+    "frequency": 700,
+    "segmentation": 750,
+    "bigram": 700,
+    "trigram": 900,
+    "typo_correction": 800,
+    "term_preservation": 850
+  }
+}

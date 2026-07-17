@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the AI-06 shared fixed-point Rust Lite ranker with bounded frequency, segmentation, bigram, trigram, typo-correction, and English-term features; an Owner-approved 426-byte first-party coefficient package with explicit ranker/feature-schema compatibility; stable reason-coded ranking; overflow boundaries; bounded cancellation; a strict 12-case offline quality gate; and AI-05 integrity/license/platform/hardware enforcement without platform-host integration.
 - Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.
 - Added an executable regression for phrase-aware iOS Traditional conversion and documented that the system transform provides generic Traditional output rather than complete Taiwan/Hong Kong vocabulary localization.
 - Expanded each iOS candidate group from five to nine selectable entries with a horizontally scrollable candidate strip and fixed group-navigation controls.

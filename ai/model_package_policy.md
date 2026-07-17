@@ -1,10 +1,13 @@
 # Local AI Model Package Policy
 
-Status: AI-05 supply-chain gate
+Status: AI-06 first approved AI Lite package
 
-No local AI model is currently approved. The embedded registry at
-`ai/models/approved_models.json` is intentionally empty, and no weight file is tracked
-in this repository.
+The embedded registry at `ai/models/approved_models.json` currently approves exactly one
+package: `private-pinyin.ai-lite-ranker` version `1.0.1`, with approval fingerprint
+`8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439`.
+Its 426-byte JSON coefficient artifact is first-party, hand-calibrated from repository
+regressions and synthetic cases, and contains no user data. No neural or Writer model is
+approved.
 
 ## Package Workflow
 
@@ -49,6 +52,9 @@ in this repository.
 - Every artifact is verified by exact byte size and lowercase SHA-256. Verification
   stops as soon as a file exceeds its declared size. Primary model bytes are verified
   again while being read for inference.
+- Compact ranker files declare both `ranker_version` and
+  `feature_schema_version`; unsupported execution logic or feature layouts fail closed
+  before any coefficient is used.
 - The declared platform must match the host. Writer-class models are prohibited on iOS.
 - Privacy declarations must state local execution, no network requirement, and no input
   storage.
@@ -68,3 +74,7 @@ in this repository.
 
 The manifest may require more memory or a GPU. AI-07 and AI-08 must supply trustworthy
 platform memory/GPU profiles and calibrate real-device behavior before enabling a model.
+
+Any coefficient, artifact, source, license, platform, hardware, capability, or manifest
+change requires a new model version, a new fingerprint, fresh evaluation evidence, and a
+new reviewed registry entry. Editing the manifest approval bit alone cannot authorize it.

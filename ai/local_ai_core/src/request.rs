@@ -1,7 +1,80 @@
 use std::fmt;
 use std::time::Instant;
 
-use crate::{AiBudget, AiCandidateSetHash, AiDeadline, AiFeature, AiRequestIdentity, HardwareTier};
+use crate::{
+    AiBudget, AiCandidateSetHash, AiDeadline, AiError, AiErrorCode, AiFeature, AiRequestIdentity,
+    HardwareTier,
+};
+
+pub const AI_LITE_FEATURE_SCALE: u16 = 1_000;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AiLiteCandidateFeatures {
+    frequency: u16,
+    segmentation: u16,
+    bigram: u16,
+    trigram: u16,
+    typo_correction: u16,
+    term_preservation: u16,
+}
+
+impl AiLiteCandidateFeatures {
+    pub const fn new(
+        frequency: u16,
+        segmentation: u16,
+        bigram: u16,
+        trigram: u16,
+        typo_correction: u16,
+        term_preservation: u16,
+    ) -> Result<Self, AiError> {
+        let features = Self {
+            frequency,
+            segmentation,
+            bigram,
+            trigram,
+            typo_correction,
+            term_preservation,
+        };
+        if features.is_valid() {
+            Ok(features)
+        } else {
+            Err(AiError::new(AiErrorCode::RankerFeatureInvalid))
+        }
+    }
+
+    pub const fn frequency(self) -> u16 {
+        self.frequency
+    }
+
+    pub const fn segmentation(self) -> u16 {
+        self.segmentation
+    }
+
+    pub const fn bigram(self) -> u16 {
+        self.bigram
+    }
+
+    pub const fn trigram(self) -> u16 {
+        self.trigram
+    }
+
+    pub const fn typo_correction(self) -> u16 {
+        self.typo_correction
+    }
+
+    pub const fn term_preservation(self) -> u16 {
+        self.term_preservation
+    }
+
+    pub(crate) const fn is_valid(self) -> bool {
+        self.frequency <= AI_LITE_FEATURE_SCALE
+            && self.segmentation <= AI_LITE_FEATURE_SCALE
+            && self.bigram <= AI_LITE_FEATURE_SCALE
+            && self.trigram <= AI_LITE_FEATURE_SCALE
+            && self.typo_correction <= AI_LITE_FEATURE_SCALE
+            && self.term_preservation <= AI_LITE_FEATURE_SCALE
+    }
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct AiCandidateInput {
@@ -9,6 +82,7 @@ pub struct AiCandidateInput {
     pinyin: Option<String>,
     base_rank: usize,
     base_score: i64,
+    lite_features: AiLiteCandidateFeatures,
 }
 
 impl AiCandidateInput {
@@ -18,6 +92,7 @@ impl AiCandidateInput {
             pinyin: None,
             base_rank,
             base_score: 0,
+            lite_features: AiLiteCandidateFeatures::default(),
         }
     }
 
@@ -28,6 +103,11 @@ impl AiCandidateInput {
 
     pub const fn with_base_score(mut self, base_score: i64) -> Self {
         self.base_score = base_score;
+        self
+    }
+
+    pub const fn with_lite_features(mut self, lite_features: AiLiteCandidateFeatures) -> Self {
+        self.lite_features = lite_features;
         self
     }
 
@@ -46,6 +126,10 @@ impl AiCandidateInput {
     pub const fn base_score(&self) -> i64 {
         self.base_score
     }
+
+    pub const fn lite_features(&self) -> AiLiteCandidateFeatures {
+        self.lite_features
+    }
 }
 
 impl fmt::Debug for AiCandidateInput {
@@ -56,6 +140,10 @@ impl fmt::Debug for AiCandidateInput {
             .field("has_pinyin", &self.pinyin.is_some())
             .field("base_rank", &self.base_rank)
             .field("base_score", &self.base_score)
+            .field(
+                "has_lite_features",
+                &self.lite_features.ne(&AiLiteCandidateFeatures::default()),
+            )
             .finish()
     }
 }

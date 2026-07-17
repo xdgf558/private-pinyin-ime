@@ -41,9 +41,15 @@ AI-04 adds bounded deterministic correction, canonical English-term preservation
 read-only cleanup suggestions. AI-05 adds the model supply-chain boundary: strict JSON
 manifests, external Owner approval fingerprints, streaming SHA-256 and size checks,
 relative-path and symlink rejection, privacy/platform/hardware gates, and an atomic local
-packager. The embedded approval registry is empty, so no model can load after AI-05.
-No model weight, inference provider, FFI change, host integration, setting, or visible
-input behavior is included. See
+packager.
+
+AI-06 adds the first approved package: a 426-byte first-party fixed-point coefficient
+table for `AiLiteRanker`. It scores only structured `0..1000` frequency, segmentation,
+bigram, trigram, typo-correction, and term-preservation signals plus bounded base-order
+priors. The model contains no user data, performs no network access, stores no input,
+keeps stable ties in base order, and returns reason-coded candidate references. It is not
+connected to FFI or any platform host; AI-07 must add bounded worker queues, trustworthy
+secure-input/revision signals, and stale-result rejection. See
 [`model_package_policy.md`](model_package_policy.md) before evaluating any artifact.
 
 The approved implementation sequence is tracked in

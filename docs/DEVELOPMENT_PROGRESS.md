@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-17 23:29
-Current stage: AI-05 local model supply-chain gate
-Current status: strict manifests, dual-control Owner approval, artifact integrity/path/privacy/platform/hardware checks, atomic model packaging, tests, and CI wiring are ready for review with an empty approval registry and no bundled model
+Last updated: 2026-07-18 07:32
+Current stage: AI-06 shared fixed-point AI Lite ranker
+Current status: AI-06 is approved for merge with the latest iOS 0.1.21 work; the bounded Rust ranker, versioned 426-byte approved coefficient package, 12-case quality gate, overflow regressions, supply-chain checks, tests, and CI wiring remain disconnected from platform hosts until AI-07
 
 ## Stage Status
 
@@ -41,8 +41,22 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 | AI-02 | Runtime contracts and mock provider | completed | 2026-07-16 06:40 | Isolated zero-dependency contracts, bounded budgets/deadlines, full request identity, scoped cancellation, redacted debug output, deterministic mock behavior, non-cryptographic fingerprint limits, worker-queue-only host guidance, and CI source checks are ready for review |
 | AI-03 | Privacy guard and source gates | completed | 2026-07-16 10:04 | Merged to `main` through PR #25; guarded construction, secure/sensitive/oversized rejection, eight-token context minimization, code-only errors, and no-network/no-content-log source gates remain isolated from production input |
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
-| AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Strict schema, compile-time-only external Owner approval registry, bounded SHA-256/size/use-time verification, safe paths, symlink rejection, local-only privacy, platform/hardware gates, atomic packager, empty registry, and CI checks are ready for review; no model or host behavior is added |
-| AI-06 to AI-12 | AI Lite, platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
+| AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
+| AI-07 to AI-12 | Platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+
+## AI-06 Validation
+
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- `bash scripts/check_ai05_model_gate_sources.sh`: validates the approved package, exact files, hashes, sizes, external fingerprint, license, privacy, platform, and hardware declarations.
+- `bash scripts/check_ai06_lite_ranker_sources.sh`: validates bounded source contracts and requires eight targeted improvements with zero preservation regressions.
+- `.gitattributes` pins hashed model JSON and notice files to LF so Windows checkout cannot alter approved artifact bytes.
+- Offline quality: baseline Top-1 `4/12`, MRR `0.653`; AI Lite Top-1 `12/12`, MRR `1.000`; 8 improved, 0 regressed, 0 gate failures.
+- Local arm64 macOS reference inference: maximum `5 us`, mean `2.1 us` across the 12-case dataset; CI uses the deterministic 30 ms contract test rather than portable latency claims.
+- Artifact: model version `1.0.1`, ranker `ai06-v1`, feature schema `1`, SHA-256 `340a2e54f2f5aace39728b38e968a1e4fee8740aab7c41c20af00923e8b85dbd`, 426 bytes; approval fingerprint `8bc7977a88f64a818fd232b7cfafd19af477232259e700d690ea37dfa639d439`.
+- Boundary regressions cover maximum approved features, weights, candidate count, `i64` base-score extremes, and a `usize::MAX` rank-normalization input without arithmetic overflow.
+- `AI-OI-009` tracks broader owner-approved typo, mixed-English, and long-candidate benchmarks before AI-07 without collecting production typing data.
+- Production behavior: unchanged. No FFI, macOS, Windows, iOS, settings, or input-thread path invokes the ranker before AI-07.
 
 ## Update Status
 
@@ -746,32 +760,30 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
 - Replace the 20-entry starter bigram predictor with a licensed production prediction data source.
 - Capture Windows, Intel macOS, and real-device iOS latency and resident-memory baselines before calibrating AI Lite budgets.
-- Select owner-approved training sources and a compact shared AI Lite scoring method without using user data.
 - Detect and calibrate trustworthy memory/GPU profiles on macOS, Windows, and iOS before host model integration.
 - Publish and smoke-test the fixed macOS stable manifest after the versioned pkg and release page are live.
 
 ## Files Changed In Latest Stage
 
 - `.github/workflows/rust.yml`
-- `.gitignore`
-- `Cargo.lock`
-- `Cargo.toml`
+- `.gitattributes`
 - `CHANGELOG.md`
 - `README.md`
 - `ai/README.md`
-- `ai/local_ai_core/Cargo.toml`
+- `ai/eval/README.md`
+- `ai/eval/ai06_ranker_cases.json`
+- `ai/eval/ai06_ranker_report.md`
 - `ai/local_ai_core/src/error.rs`
-- `ai/local_ai_core/src/feature.rs`
-- `ai/local_ai_core/src/hardware.rs`
 - `ai/local_ai_core/src/lib.rs`
-- `ai/local_ai_core/src/model_integrity.rs`
-- `ai/local_ai_core/src/model_manifest.rs`
+- `ai/local_ai_core/src/lite_ranker.rs`
 - `ai/local_ai_core/src/model_tests.rs`
-- `ai/local_ai_core/src/model_verifier.rs`
-- `ai/model_manifest.schema.json`
-- `ai/model_manifest.template.example.json`
+- `ai/local_ai_core/src/request.rs`
+- `ai/local_ai_core/src/response.rs`
 - `ai/model_package_policy.md`
 - `ai/models/approved_models.json`
+- `ai/models/private-pinyin-ai-lite-ranker-v1/MODEL_NOTICE.md`
+- `ai/models/private-pinyin-ai-lite-ranker-v1/manifest.json`
+- `ai/models/private-pinyin-ai-lite-ranker-v1/model/ranker.json`
 - `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
 - `docs/OPEN_ITEMS.md`
@@ -779,12 +791,14 @@ Current status: strict manifests, dual-control Owner approval, artifact integrit
 - `docs/privacy_spec.md`
 - `scripts/README.md`
 - `scripts/check_ai05_model_gate_sources.sh`
-- `tools/model_packager/Cargo.toml`
-- `tools/model_packager/src/lib.rs`
-- `tools/model_packager/src/main.rs`
+- `scripts/check_ai06_lite_ranker_sources.sh`
+- `tools/README.md`
+- `tools/ai_eval_runner/src/lib.rs`
+- `tools/ai_eval_runner/src/main.rs`
+- `tools/ai_eval_runner/src/ranker_eval.rs`
 
 ## Next Step
 
-- Review AI-05. After approval and merge, AI-06 may evaluate a compact shared Rust AI
-  Lite ranker, but no artifact may enter the registry without Owner provenance/license
-  approval and an exact AI-05 fingerprint.
+- Review AI-06. After approval and merge, AI-07 may integrate the approved ranker into
+  macOS and Windows only through bounded worker queues with trustworthy secure-input and
+  composition-revision signals; visible candidate identity must remain stable.

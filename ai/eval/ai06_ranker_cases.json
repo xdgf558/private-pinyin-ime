@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "dataset_id": "private-pinyin-ai06-lite-ranker-v1",
+  "provenance": [
+    "First-party synthetic ranking examples written for this repository",
+    "Project-owned regression categories from the shared input engine"
+  ],
+  "contains_user_data": false,
+  "contains_real_application_context": false,
+  "contains_prompts_or_model_outputs": false,
+  "network_required": false,
+  "cases": [
+    {
+      "id": "frequency_promotes_common_word",
+      "gate": "improve",
+      "expected_text": "今天",
+      "candidates": [
+        { "text": "今添", "pinyin": "jin tian", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "今天", "pinyin": "jin tian", "base_rank": 1, "base_score": 90, "features": { "frequency": 1000, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "segmentation_promotes_complete_phrase",
+      "gate": "improve",
+      "expected_text": "开发方案",
+      "candidates": [
+        { "text": "开发方安", "pinyin": "kai fa fang an", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "开发方案", "pinyin": "kai fa fang an", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 1000, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "bigram_promotes_contextual_next_word",
+      "gate": "improve",
+      "expected_text": "预报",
+      "candidates": [
+        { "text": "日报", "pinyin": "yu bao", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "预报", "pinyin": "yu bao", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 1000, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "trigram_promotes_two_token_context",
+      "gate": "improve",
+      "expected_text": "完成",
+      "candidates": [
+        { "text": "玩成", "pinyin": "wan cheng", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "完成", "pinyin": "wan cheng", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 1000, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "typo_rule_promotes_corrected_candidate",
+      "gate": "improve",
+      "expected_text": "中国",
+      "candidates": [
+        { "text": "中果", "pinyin": "zhong guo", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "中国", "pinyin": "zhong guo", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 1000, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "term_rule_promotes_canonical_spelling",
+      "gate": "improve",
+      "expected_text": "GitHub",
+      "candidates": [
+        { "text": "Github", "pinyin": "github", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "GitHub", "pinyin": "github", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 1000 } }
+      ]
+    },
+    {
+      "id": "combined_context_promotes_third_candidate",
+      "gate": "improve",
+      "expected_text": "开始测试",
+      "candidates": [
+        { "text": "开始", "pinyin": "kai shi ce shi", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "开始侧试", "pinyin": "kai shi ce shi", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 100, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "开始测试", "pinyin": "kai shi ce shi", "base_rank": 2, "base_score": 80, "features": { "frequency": 0, "segmentation": 700, "bigram": 700, "trigram": 700, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "combined_frequency_and_segmentation",
+      "gate": "improve",
+      "expected_text": "本地输入法",
+      "candidates": [
+        { "text": "本地输入发", "pinyin": "ben di shu ru fa", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "本地输入法", "pinyin": "ben di shu ru fa", "base_rank": 1, "base_score": 90, "features": { "frequency": 600, "segmentation": 600, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "preserve_clear_base_winner",
+      "gate": "preserve",
+      "expected_text": "你好",
+      "candidates": [
+        { "text": "你好", "pinyin": "ni hao", "base_rank": 0, "base_score": 100, "features": { "frequency": 200, "segmentation": 200, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "你号", "pinyin": "ni hao", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "preserve_against_weak_frequency_noise",
+      "gate": "preserve",
+      "expected_text": "天气",
+      "candidates": [
+        { "text": "天气", "pinyin": "tian qi", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "添气", "pinyin": "tian qi", "base_rank": 1, "base_score": 90, "features": { "frequency": 500, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "preserve_against_weak_bigram_noise",
+      "gate": "preserve",
+      "expected_text": "概率",
+      "candidates": [
+        { "text": "概率", "pinyin": "gai lv", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } },
+        { "text": "盖率", "pinyin": "gai lv", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 300, "trigram": 0, "typo_correction": 0, "term_preservation": 0 } }
+      ]
+    },
+    {
+      "id": "preserve_against_weak_term_noise",
+      "gate": "preserve",
+      "expected_text": "API 文档",
+      "candidates": [
+        { "text": "API 文档", "pinyin": "api wen dang", "base_rank": 0, "base_score": 100, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 500 } },
+        { "text": "api 文档", "pinyin": "api wen dang", "base_rank": 1, "base_score": 90, "features": { "frequency": 0, "segmentation": 0, "bigram": 0, "trigram": 0, "typo_correction": 0, "term_preservation": 300 } }
+      ]
+    }
+  ]
+}

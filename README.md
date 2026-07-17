@@ -110,10 +110,10 @@ The root `Cargo.toml` defines a workspace with:
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
 - `tools/settings_cli` manages settings snapshots and user lexicon clear/export actions for installer scripts.
 - `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
-- `tools/ai_eval_runner` freezes required pre-AI behavior and reports improvement opportunities from first-party offline cases.
+- `tools/ai_eval_runner` freezes required pre-AI behavior and evaluates the approved AI Lite ranker against first-party offline cases.
 - `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
 - `tools/model_packager` computes an atomic local model manifest with exact artifact sizes, SHA-256 values, and an approval fingerprint; it cannot grant Owner approval.
-- `ai/local_ai_core` contains privacy-guarded runtime contracts plus bounded, deterministic AI-04 rule features; it remains independent from platform hosts and the production engine.
+- `ai/local_ai_core` contains privacy-guarded runtime contracts, bounded AI-04 rules, and the verified fixed-point AI-06 Lite ranker; it remains independent from platform hosts and the production engine.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -144,6 +144,7 @@ bash scripts/check_ai02_runtime_contracts.sh
 bash scripts/check_ai03_privacy_sources.sh
 bash scripts/check_ai04_rules_sources.sh
 bash scripts/check_ai05_model_gate_sources.sh
+bash scripts/check_ai06_lite_ranker_sources.sh
 bash scripts/check_update01_sources.sh
 bash scripts/check_update02_sources.sh
 bash scripts/run_ai_eval.sh
@@ -153,9 +154,10 @@ bash scripts/build_ios_keyboard.sh
 bash scripts/run_ios_smoke_readiness.sh
 ```
 
-## Next Stage
+## Local AI Status
 
-AI-05 now rejects malformed, unapproved, corrupt, platform-incompatible, privacy-unsafe,
-or hardware-incompatible local model packages. The approval registry remains empty and
-no model weight is bundled. AI-06 is the next local-AI stage; production host integration
-remains deferred to AI-07.
+AI-06 adds one Owner-approved, first-party fixed-point Lite ranker that consumes bounded
+frequency, segmentation, bigram, trigram, typo, and English-term signals. Its 426-byte
+coefficient artifact passes the AI-05 fingerprint and integrity gate and improves all
+eight targeted synthetic ranking cases without regressing four preservation cases.
+Production host integration remains deferred to AI-07.

@@ -27,7 +27,7 @@ Current scripts:
 - `check_stage14_ios_signing_sources.sh`: verifies Stage 14 iOS signing, bundle ID, export-options, and App Group build-setting wiring.
 - `check_stage15_ios_smoke_sources.sh`: verifies Stage 15 iOS smoke-readiness script and record coverage.
 - `check_stage16_ios_testflight_sources.sh`: verifies Stage 16 TestFlight archive/upload script, templates, and record coverage.
-- `run_ai_eval.sh`: runs the AI-01 offline quality baseline, or the report-only release benchmark with `--benchmark`.
+- `run_ai_eval.sh`: runs the AI-01 baseline, AI-04 rules gate, AI-06 ranker comparison, or the report-only release benchmark.
 - `test_macos_update_manifest.sh`: compiles and runs the UPDATE-01 manifest/version validation tests when `swiftc` is available.
 - `check_update01_sources.sh`: verifies the UPDATE-01 fixed-host, opt-in, strict-privacy, UI, manifest-validation, and documentation contract.
 - `test_macos_update_package.sh`: compiles and runs the macOS UPDATE-02 size, SHA-256, Developer ID, and notarization verifier tests.
@@ -38,6 +38,7 @@ Current scripts:
 - `check_ai_privacy_sources.sh`: validates guarded request construction, minimal context, sensitive-input rejection, code-only errors, forbidden-context absence, and no runtime content logging.
 - `check_ai03_privacy_sources.sh`: runs the complete AI-03 privacy and no-network gate.
 - `check_ai04_rules_sources.sh`: validates bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, and the rules-first quality gate.
-- `check_ai05_model_gate_sources.sh`: validates strict model manifests, external Owner approvals, SHA-256/size/path/symlink/platform/hardware/privacy gates, the model packager, and the no-weight default registry.
+- `check_ai05_model_gate_sources.sh`: validates strict model manifests, every external Owner approval, SHA-256/size/path/symlink/platform/hardware/privacy gate, and the model packager.
+- `check_ai06_lite_ranker_sources.sh`: validates the approved fixed-point ranker package, bounded runtime, first-party dataset declarations, and the 8-improvement/zero-regression quality gate.
 
 Planned scripts will be added with their owning AI stages.

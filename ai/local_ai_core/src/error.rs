@@ -13,10 +13,12 @@ pub enum AiErrorCode {
     InputRejectedByPrivacyGuard,
     OutputRejectedBySafetyGuard,
     ModelManifestInvalid,
+    ModelFormatInvalid,
     ModelIntegrityMismatch,
     ModelPlatformUnsupported,
     ModelLicenseNotApproved,
     HardwareTooLow,
+    RankerFeatureInvalid,
     Internal,
 }
 
@@ -34,10 +36,12 @@ impl AiErrorCode {
             Self::InputRejectedByPrivacyGuard => "AI_INPUT_REJECTED_BY_PRIVACY_GUARD",
             Self::OutputRejectedBySafetyGuard => "AI_OUTPUT_REJECTED_BY_SAFETY_GUARD",
             Self::ModelManifestInvalid => "AI_MODEL_MANIFEST_INVALID",
+            Self::ModelFormatInvalid => "AI_MODEL_FORMAT_INVALID",
             Self::ModelIntegrityMismatch => "AI_MODEL_INTEGRITY_MISMATCH",
             Self::ModelPlatformUnsupported => "AI_MODEL_PLATFORM_UNSUPPORTED",
             Self::ModelLicenseNotApproved => "AI_MODEL_LICENSE_NOT_APPROVED",
             Self::HardwareTooLow => "AI_HARDWARE_TOO_LOW",
+            Self::RankerFeatureInvalid => "AI_RANKER_FEATURE_INVALID",
             Self::Internal => "AI_INTERNAL_ERROR",
         }
     }

@@ -89,6 +89,9 @@ jobs:
       - name: Check AI-05 model supply-chain gates
         run: bash scripts/check_ai05_model_gate_sources.sh
 
+      - name: Check AI-06 fixed-point Lite ranker
+        run: bash scripts/check_ai06_lite_ranker_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
