@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-16 23:11
+Last updated: 2026-07-17 07:54
 Current stage: iOS keyboard UI and navigation follow-up
-Current status: Station Cat keyboard redesign, immediate touch response, persistent full-key/nine-key selection, and candidate paging are complete and ready for review; packaging remains intentionally deferred
+Current status: approved Station Cat keyboard changes are merged; TestFlight candidate `0.1.20 (16)` is valid, App Store eligible, and waiting for external Beta App Review
 
 ## Stage Status
 
@@ -23,8 +23,8 @@ Current status: Station Cat keyboard redesign, immediate touch response, persist
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-13 14:41 | App Store Connect app `6789098978` has processed build `0.1.18 (14)` with `VALID` and `APP_STORE_ELIGIBLE` status |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-16 23:11 | Station Cat full-key/nine-key UI, shorthand input, candidate paging, and one-shot nine-key commit passed iOS 27 Simulator smoke; real-device password/phone/App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-17 07:54 | TestFlight candidate `0.1.20 (16)` was archived with Xcode 26.6, uploaded as delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 07:54 | Station Cat full-key/nine-key UI, shorthand input, candidate paging, and one-shot nine-key commit passed iOS 27 Simulator smoke; build `16` is waiting for external Beta App Review and real-device password/phone/App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -76,6 +76,16 @@ Current status: Station Cat keyboard redesign, immediate touch response, persist
 - Full-key behavior: `nh` ranked `你好` first; an `a` candidate page moved forward and backward with fixed visible controls; touch-down typing produced one event per tap.
 - Nine-key behavior: the saved layout reopened correctly, `64426` ranked `你好` first, and one candidate tap inserted exactly one `你好` into Messages.
 - The system-owned bottom dictation key remains available when iOS provides it; the extension does not show a duplicate non-functional microphone control.
+
+## iOS 0.1.20 (16) TestFlight Upload
+
+- `plutil -lint`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- `bash scripts/run_ios_smoke_readiness.sh` with Xcode 26.6 (`17F109`) and iPhoneOS 26.5: passed with `BUILD SUCCEEDED`.
+- The device Rust static library was rebuilt with `IPHONEOS_DEPLOYMENT_TARGET=18.0`; `vtool` reports the bundled SQLite object as iOS `minos 18.0` / SDK 26.5.
+- Signed archive `dist/ios/PrivatePinyin-0.1.20-build16-xcode26.xcarchive` reports version `0.1.20`, build `16`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `9824d39f-ef1a-4fe2-a024-ad0bfd86b0be`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, and `IS-ON-APP-STORE-CONNECT: true`.
+- External TestFlight review: submitted; `BUILD-STATUS` and `BETA-REVIEW-STATE` are both `WAITING_FOR_REVIEW`.
 
 ## Completed Work
 
@@ -675,7 +685,7 @@ Current status: Station Cat keyboard redesign, immediate touch response, persist
 - Polish macOS candidate positioning and appearance.
 - Verify IMK candidate panel number-key routing on macOS.
 - Validate Windows installer and settings UI on Windows 11.
-- Assign processed build `0.1.12 (13)` to the external TestFlight group after deciding how to handle build `11`'s pending Beta App Review, then enable the public link after approval.
+- Monitor external Beta App Review for build `0.1.20 (16)` and publish tester access after approval.
 - Run real-device smoke tests in Notes, Safari, password, and phone fields, including Full Access-off App Group behavior and local learning persistence under distribution provisioning.
 - Expose sanitized core logging through host ABI callbacks.
 - Measure production lexicon engine initialization latency on macOS, Windows TSF, and iOS inline-settings reload before deciding whether precompiled data, lazy loading, or a runtime settings API is needed.
@@ -697,5 +707,5 @@ Current status: Station Cat keyboard redesign, immediate touch response, persist
 
 ## Next Step
 
-- Review the iOS keyboard UI/navigation branch as a standalone PR. Package and
-  upload the next TestFlight build only after approval and merge.
+- Wait for external Beta App Review of `0.1.20 (16)`, then complete the
+  real-device Stage 17 privacy and keyboard smoke checks.
