@@ -86,11 +86,23 @@ grep -q 'static let accent = UIColor(hex: 0xE8804A)' platform/ios_keyboard/Keybo
 grep -q 'systemImageName: "ellipsis"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq 'currentCandidates.first?.pinyin' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'title = "回车"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'scriptSegmentedControl = UISegmentedControl(items: \["简体", "繁體"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'IosChineseTextConverter.convert(text, to: chineseScript)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'settings\["ios_chinese_script"\] = IosChineseScript.simplified.rawValue' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q '"Simplified-Traditional" as CFString' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+if grep -q '"换行"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
+  echo "The iOS Return key must use the generic 回车 label rather than implying newline-only behavior." >&2
+  exit 1
+fi
 if grep -q 'microphoneButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
   echo "iOS supplies dictation outside third-party keyboards; do not duplicate a non-functional microphone." >&2
   exit 1
 fi
 grep -q "ios_keyboard_layout" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "ios_chinese_script" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "keyboardCandidatePageSize = 5" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 if sed -n '/func feedCharacter/,/func handleTextKey/p' \

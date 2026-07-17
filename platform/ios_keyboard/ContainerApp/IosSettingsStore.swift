@@ -1,8 +1,33 @@
 import Foundation
+import CoreFoundation
 
 enum IosKeyboardLayout: String {
     case qwerty
     case nineKey = "nine_key"
+}
+
+enum IosChineseScript: String {
+    case simplified
+    case traditional
+}
+
+enum IosChineseTextConverter {
+    static func convert(_ text: String, to script: IosChineseScript) -> String {
+        guard script == .traditional, !text.isEmpty else {
+            return text
+        }
+
+        let converted = NSMutableString(string: text)
+        guard CFStringTransform(
+            converted,
+            nil,
+            "Simplified-Traditional" as CFString,
+            false
+        ) else {
+            return text
+        }
+        return converted as String
+    }
 }
 
 enum IosSettingsStore {
@@ -111,6 +136,22 @@ enum IosSettingsStore {
         }
     }
 
+    static func chineseScript() -> IosChineseScript {
+        guard
+            let value = readSettings()["ios_chinese_script"] as? String,
+            let script = IosChineseScript(rawValue: value)
+        else {
+            return .simplified
+        }
+        return script
+    }
+
+    static func setChineseScript(_ script: IosChineseScript) -> Bool {
+        updateSettings { settings in
+            settings["ios_chinese_script"] = script.rawValue
+        }
+    }
+
     static func storageDescription() -> String {
         if usesAppGroupStorage {
             return "学习数据仅保存在本机共享容器中。"
@@ -163,6 +204,12 @@ enum IosSettingsStore {
             settings["candidate_page_size"] = keyboardCandidatePageSize
             needsWrite = true
         }
+        let configuredScript = (settings["ios_chinese_script"] as? String)
+            .flatMap(IosChineseScript.init(rawValue:))
+        if configuredScript == nil {
+            settings["ios_chinese_script"] = IosChineseScript.simplified.rawValue
+            needsWrite = true
+        }
         if needsWrite {
             try write(settings: settings)
         }
@@ -177,6 +224,7 @@ enum IosSettingsStore {
         settings["user_lexicon_path"] = userLexiconURL.path
         settings["candidate_page_size"] = keyboardCandidatePageSize
         settings["ios_keyboard_layout"] = IosKeyboardLayout.qwerty.rawValue
+        settings["ios_chinese_script"] = IosChineseScript.simplified.rawValue
         return settings
     }
 

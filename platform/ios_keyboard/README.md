@@ -80,6 +80,11 @@ break across iOS releases and create App Store review risk.
 5. Type `jintian`, tap `今天`, and confirm prediction candidates such as `天气` remain visible after commit.
 6. Confirm Full Access remains off.
 7. In the container app, enable Learn selected candidates, type/select a candidate again, and confirm the keyboard still works with the shared settings path.
+8. Open the keyboard's inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm `里面` returns.
+
+The Simplified/Traditional option uses the local system Chinese transform for
+candidate display, predictions, and committed text. It does not use a network
+service or duplicate the normalized core lexicon and learning records.
 
 Password and phone-number fields are expected to fall back to the system keyboard by iOS policy.
 
