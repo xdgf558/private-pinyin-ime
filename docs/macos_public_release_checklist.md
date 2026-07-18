@@ -12,19 +12,20 @@ The project can already build a local package:
 bash scripts/package_macos_pkg.sh
 ```
 
-The `0.1.17` release candidate is signed with Developer ID Application and
+The `0.1.22` release candidate is signed with Developer ID Application and
 Developer ID Installer, accepted by Apple notarization, stapled, and accepted
-by Gatekeeper. It still needs a clean-user install/upgrade/uninstall smoke test
-including immediate post-install input-source activation, plus four-host
-horizontal-candidate interaction validation and website checksum publication
-before public distribution.
+by Gatekeeper. It has also passed an installed-upgrade smoke in TextEdit,
+Chrome, and Safari. It still needs a clean-user install/uninstall smoke test,
+visible horizontal overflow and `1` through `9` candidate interaction checks,
+VS Code coverage, and website checksum publication before public distribution.
 
 Current artifact evidence:
 
-- Package: `dist/macos_imk/PrivatePinyin-0.1.17.pkg`
-- Notarization submission: `90edbce9-e28f-40a9-9f98-71830dad8839` (`Accepted`)
-- SHA256: `43bcec63708a16098dec51a6a0d7533795a0cf7b7d459040eb1e9abf449bdb79`
-- Previous installed-upgrade smoke: `0.1.15` passed on 2026-07-11; the `0.1.17` horizontal layout, stepping, overflow, `1` through `9` selection, and bounded trigram learning still require TextEdit/Safari/Chrome/VS Code validation before release.
+- Package: `dist/macos_imk/PrivatePinyin-0.1.22.pkg`
+- Notarization submission: `5b4d744d-9251-4a2d-954d-c8e3415f6769` (`Accepted`)
+- SHA256: `bbe3ab7ef99bb429e4be97fa0230fbfefc35dbde9fd483d7675c135d48e25b92`
+- Installed-upgrade smoke on 2026-07-19: TextEdit, Chrome, and Safari each committed `nihao -> 你好`; 20 rapid TextEdit commits completed without loss or duplication. The installed app reports `0.1.22 (22)`, and the packaged AI Lite dylib passed activation, secure fallback, and bounded pressure checks.
+- Unexecuted on this Mac: VS Code was not installed. Clean-user install/uninstall and visible horizontal overflow plus `1` through `9` candidate selection remain release gates.
 
 ## One-Time Owner Setup
 

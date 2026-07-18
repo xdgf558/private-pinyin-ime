@@ -109,6 +109,7 @@
 
 ### Changed
 
+- Bumped the macOS app and installer package to `0.1.22` for the reviewed AI-07 asynchronous AI Lite integration and installation-state validation.
 - Bumped the iOS container app and Keyboard Extension to `0.1.22 (18)` for persistent nine-key and script preferences, reliable candidate retention across delayed host callbacks, revised nine-key symbols/geometry, improved mixed shorthand decoding, and bounded input-path allocation.
 - Bounded dedicated mixed shorthand parsing to 16 characters, removed comparator-time string allocation and consumed lattice layers by move, and unified equal-tier mixed/continuous candidate ordering by rank score; longer input continues through the bounded continuous decoder.
 - Bumped the iOS container app and keyboard extension to `0.1.21 (17)` for readable nine-key composition, a generic Return label, local Simplified/Traditional output, nine-candidate groups, the expanded symbol page, and executable Traditional-conversion regression coverage.

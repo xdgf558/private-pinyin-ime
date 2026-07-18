@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 21:37
-Current stage: AI-07 desktop asynchronous integration
-Current status: macOS and Windows AI Lite host integration is implemented and locally validated; macOS compiles with the desktop feature, while Windows MSVC/TSF compilation and platform smoke remain PR/CI and real-host gates
+Last updated: 2026-07-19 06:36
+Current stage: AI-07 desktop asynchronous integration release validation
+Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarized, installed, and verified in TextEdit, Chrome, and Safari, while Windows 11 TSF password-field smoke and cross-platform hardware calibration remain open
 
 ## Stage Status
 
@@ -58,7 +58,7 @@ Current status: macOS and Windows AI Lite host integration is implemented and lo
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
-| AI-07 | macOS and Windows asynchronous integration | in_review | 2026-07-18 21:37 | Optional desktop FFI feature, fully reverified embedded AI-06 package, bounded worker/completion queues, non-blocking host polling, secure-input cancellation, complete revision/candidate/deadline rejection, physical-memory fallback, macOS IMK wiring, and Windows TSF wiring are ready for PR review; iOS remains unchanged |
+| AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete; iOS remains unchanged |
 | AI-08 to AI-12 | iOS integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
 
 ## AI-07 Validation
@@ -69,7 +69,10 @@ Current status: macOS and Windows AI Lite host integration is implemented and lo
 - `bash scripts/check_ai03_privacy_sources.sh`, `check_ai05_model_gate_sources.sh`, `check_ai06_lite_ranker_sources.sh`, and `check_ai07_desktop_integration_sources.sh`: passed; no network/external AI runtime or content log was introduced.
 - `bash scripts/run_c_demo.sh`, `check_macos_imk_sources.sh`, and `check_windows_tsf_sources.sh`: passed.
 - `bash scripts/build_macos_imk.sh`: passed with the `desktop-ai` FFI feature and produced `dist/macos_imk/PrivatePinyin.app`.
-- Windows `windows-2022` MSVC/TSF compilation, password-field classification, rapid stale-result behavior, and fail-open input remain required PR CI/real-host evidence before merge.
+- GitHub Actions run `29653165683` passed Rust, macOS lifecycle, and Windows `windows-2022` MSVC/TSF jobs after the AI-07 merge.
+- Physical MacBook Air M5 validation passed bounded queue pressure, expired/mismatched/invalid-order rejection, secure-input cancellation and base fallback, and exact 4096/8191/8192/16384-MiB hardware-threshold checks.
+- Real secure-input probes observed the platform signal in a native `NSSecureTextField`, Chrome password field, and Safari password field; the signal returned to normal after the test fields closed.
+- Windows 11 TSF password-field behavior and queue-pressure smoke still require a real Windows host; they cannot be closed by the macOS build or CI compiler alone.
 - iOS build scripts do not enable `desktop-ai`; AI-08 remains the separate iOS memory/privacy integration stage.
 
 ## AI-06 Validation
@@ -620,6 +623,17 @@ Current status: macOS and Windows AI Lite host integration is implemented and lo
 - Result: passed
 - Notes: Developer ID Installer and Application signatures are valid, Gatekeeper reports `Notarized Developer ID`, and SHA-256 is `43bcec63708a16098dec51a6a0d7533795a0cf7b7d459040eb1e9abf449bdb79`.
 
+### macOS 0.1.22 AI-07 Validation Package
+
+- Command: signed and notarized `bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and the `private-pinyin-notary` profile
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.22.pkg`; Apple notarization submission `5b4d744d-9251-4a2d-954d-c8e3415f6769` returned `Accepted`, stapling succeeded, and the full public-release preflight passed.
+- SHA-256: `bbe3ab7ef99bb429e4be97fa0230fbfefc35dbde9fd483d7675c135d48e25b92`
+- Install smoke: installed over the existing input method; the installed bundle reports `0.1.22 (22)`, its nested dylib passes strict code-signature verification, and Gatekeeper reports `Notarized Developer ID`.
+- Host input smoke: TextEdit, Chrome, and Safari each committed `nihao -> 你好`; a 20-cycle rapid TextEdit run produced exactly 20 `你好` commits without a lost or duplicated key. VS Code was not installed on the validation Mac and remains unexecuted.
+- Installed-artifact AI smoke: the packaged dylib enabled AI Lite at 8192/16384 MiB, rejected 4096/8191 MiB, preserved five base candidates, and kept secure-input base fallback functional. A 3250-call pressure run completed with 1.734-ms mean, 8.395-ms P95, 8.536-ms P99, and 10.202-ms maximum feed latency.
+- Remaining release gates: clean-user install/uninstall, visible horizontal overflow and `1` through `9` candidate selection, VS Code host coverage, website checksum publication, and a real Windows 11 TSF password/pressure smoke.
+
 ### Windows 0.1.13 Unsigned Internal-Test Package
 
 - Command: GitHub Actions `Windows Unsigned Package`, run `29180177697`, version input `0.1.13`
@@ -802,40 +816,18 @@ Current status: macOS and Windows AI Lite host integration is implemented and lo
 
 ## Files Changed In Latest Stage
 
-- `.github/workflows/rust.yml`
-- `.gitattributes`
 - `CHANGELOG.md`
-- `README.md`
-- `ai/README.md`
-- `ai/eval/README.md`
-- `ai/eval/ai06_ranker_cases.json`
-- `ai/eval/ai06_ranker_report.md`
-- `ai/local_ai_core/src/error.rs`
-- `ai/local_ai_core/src/lib.rs`
-- `ai/local_ai_core/src/lite_ranker.rs`
-- `ai/local_ai_core/src/model_tests.rs`
-- `ai/local_ai_core/src/request.rs`
-- `ai/local_ai_core/src/response.rs`
-- `ai/model_package_policy.md`
-- `ai/models/approved_models.json`
-- `ai/models/private-pinyin-ai-lite-ranker-v1/MODEL_NOTICE.md`
-- `ai/models/private-pinyin-ai-lite-ranker-v1/manifest.json`
-- `ai/models/private-pinyin-ai-lite-ranker-v1/model/ranker.json`
-- `docs/DECISIONS.md`
 - `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/OPEN_ITEMS.md`
-- `docs/local_ai_development_plan.md`
-- `docs/privacy_spec.md`
-- `scripts/README.md`
-- `scripts/check_ai05_model_gate_sources.sh`
-- `scripts/check_ai06_lite_ranker_sources.sh`
-- `tools/README.md`
-- `tools/ai_eval_runner/src/lib.rs`
-- `tools/ai_eval_runner/src/main.rs`
-- `tools/ai_eval_runner/src/ranker_eval.rs`
+- `docs/macos_public_release_checklist.md`
+- `platform/macos_imk/README.md`
+- `platform/macos_imk/Resources/Info.plist`
+- `platform/macos_imk/Resources/ReleaseNotes.zh-Hans.txt`
+- `scripts/check_macos_public_release.sh`
+- `scripts/package_macos_pkg.sh`
 
 ## Next Step
 
-- Review AI-06. After approval and merge, AI-07 may integrate the approved ranker into
-  macOS and Windows only through bounded worker queues with trustworthy secure-input and
-  composition-revision signals; visible candidate identity must remain stable.
+- Review the macOS 0.1.22 release metadata and validation evidence. Before public distribution,
+  complete clean-user install/uninstall, visible `1` through `9` candidate selection, VS Code,
+  website checksum, and Windows 11 TSF password/queue-pressure smoke. Start AI-08 only as a
+  separate reviewed iOS memory/privacy integration stage.

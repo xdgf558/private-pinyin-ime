@@ -4,7 +4,9 @@ set -u -o pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-version="${PRIVATE_PINYIN_VERSION:-$(awk -F '"' '/^version = / { print $2; exit }' Cargo.toml)}"
+plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+  "$repo_root/platform/macos_imk/Resources/Info.plist")"
+version="${PRIVATE_PINYIN_VERSION:-$plist_version}"
 pkg_path="${PRIVATE_PINYIN_MAC_PKG_PATH:-$repo_root/dist/macos_imk/PrivatePinyin-${version}.pkg}"
 notary_profile="${PRIVATE_PINYIN_NOTARY_PROFILE:-private-pinyin-notary}"
 app_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:-Developer ID Application}"

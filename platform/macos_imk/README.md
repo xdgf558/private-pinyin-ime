@@ -50,7 +50,7 @@ bash scripts/package_macos_pkg.sh
 The package is written to:
 
 ```text
-dist/macos_imk/PrivatePinyin-0.1.20.pkg
+dist/macos_imk/PrivatePinyin-0.1.22.pkg
 ```
 
 The installer includes a post-install onboarding window. After installation it
@@ -65,7 +65,7 @@ System Settings, or logout/login before adding the input source.
 Install with:
 
 ```bash
-sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.20.pkg -target /
+sudo installer -pkg dist/macos_imk/PrivatePinyin-0.1.22.pkg -target /
 ```
 
 Release-candidate packages require Developer ID signing and notarization:
