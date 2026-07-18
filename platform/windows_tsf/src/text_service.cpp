@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <oleauto.h>
+#include <initguid.h>
 #include <inputscope.h>
 #include <shellapi.h>
 

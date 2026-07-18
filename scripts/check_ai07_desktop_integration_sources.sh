@@ -15,6 +15,7 @@ grep -q 'AiRequestIdentity::new' ffi/ime_ffi/src/desktop_ai.rs
 grep -q 'matches_current' ffi/ime_ffi/src/desktop_ai.rs
 grep -q 'ready.deadline.is_expired()' ffi/ime_ffi/src/desktop_ai.rs
 grep -q 'IsSecureEventInputEnabled' platform/macos_imk/Sources/CAbiBridge.swift
+grep -q 'initguid.h' platform/windows_tsf/src/text_service.cpp
 grep -q 'GUID_PROP_INPUTSCOPE' platform/windows_tsf/src/text_service.cpp
 grep -q -- '--features desktop-ai' scripts/build_macos_imk.sh
 grep -q -- '--features desktop-ai' scripts/build_windows_tsf.ps1
