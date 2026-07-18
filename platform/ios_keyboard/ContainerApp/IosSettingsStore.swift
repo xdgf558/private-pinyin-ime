@@ -34,7 +34,11 @@ enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
     private static let keyboardCandidatePageSize = 9
     private static let keyboardLayoutDefaultsKey = "private_pinyin.ios_keyboard_layout"
+    private static let keyboardLayoutUpdatedAtDefaultsKey =
+        "private_pinyin.ios_keyboard_layout_updated_at"
     private static let chineseScriptDefaultsKey = "private_pinyin.ios_chinese_script"
+    private static let chineseScriptUpdatedAtDefaultsKey =
+        "private_pinyin.ios_chinese_script_updated_at"
 
     static var appGroupIdentifier: String {
         guard
@@ -123,45 +127,71 @@ enum IosSettingsStore {
     }
 
     static func keyboardLayout() -> IosKeyboardLayout {
-        if let value = UserDefaults.standard.string(forKey: keyboardLayoutDefaultsKey),
-           let layout = IosKeyboardLayout(rawValue: value) {
-            return layout
+        let storedSettings = readStoredSettings()
+        let storedLayout = (storedSettings?["ios_keyboard_layout"] as? String)
+            .flatMap(IosKeyboardLayout.init(rawValue:))
+        let storedUpdatedAt = (storedSettings?["ios_keyboard_layout_updated_at"] as? NSNumber)?
+            .doubleValue ?? 0
+        let localLayout = UserDefaults.standard.string(forKey: keyboardLayoutDefaultsKey)
+            .flatMap(IosKeyboardLayout.init(rawValue:))
+        let localUpdatedAt = UserDefaults.standard.double(
+            forKey: keyboardLayoutUpdatedAtDefaultsKey
+        )
+
+        if let storedLayout,
+           localLayout == nil || storedUpdatedAt >= localUpdatedAt {
+            return storedLayout
         }
-        guard
-            let value = readSettings()["ios_keyboard_layout"] as? String,
-            let layout = IosKeyboardLayout(rawValue: value)
-        else {
-            return .qwerty
-        }
-        return layout
+        return localLayout ?? storedLayout ?? .qwerty
     }
 
     static func setKeyboardLayout(_ layout: IosKeyboardLayout) -> Bool {
+        let updatedAt = Date().timeIntervalSince1970
         let sharedSaved = updateSettings { settings in
             settings["ios_keyboard_layout"] = layout.rawValue
+            settings["ios_keyboard_layout_updated_at"] = updatedAt
         }
-        return saveLocalPreference(layout.rawValue, key: keyboardLayoutDefaultsKey) || sharedSaved
+        let localSaved = saveLocalPreference(
+            layout.rawValue,
+            key: keyboardLayoutDefaultsKey,
+            updatedAt: updatedAt,
+            updatedAtKey: keyboardLayoutUpdatedAtDefaultsKey
+        )
+        return sharedSaved || localSaved
     }
 
     static func chineseScript() -> IosChineseScript {
-        if let value = UserDefaults.standard.string(forKey: chineseScriptDefaultsKey),
-           let script = IosChineseScript(rawValue: value) {
-            return script
+        let storedSettings = readStoredSettings()
+        let storedScript = (storedSettings?["ios_chinese_script"] as? String)
+            .flatMap(IosChineseScript.init(rawValue:))
+        let storedUpdatedAt = (storedSettings?["ios_chinese_script_updated_at"] as? NSNumber)?
+            .doubleValue ?? 0
+        let localScript = UserDefaults.standard.string(forKey: chineseScriptDefaultsKey)
+            .flatMap(IosChineseScript.init(rawValue:))
+        let localUpdatedAt = UserDefaults.standard.double(
+            forKey: chineseScriptUpdatedAtDefaultsKey
+        )
+
+        if let storedScript,
+           localScript == nil || storedUpdatedAt >= localUpdatedAt {
+            return storedScript
         }
-        guard
-            let value = readSettings()["ios_chinese_script"] as? String,
-            let script = IosChineseScript(rawValue: value)
-        else {
-            return .simplified
-        }
-        return script
+        return localScript ?? storedScript ?? .simplified
     }
 
     static func setChineseScript(_ script: IosChineseScript) -> Bool {
+        let updatedAt = Date().timeIntervalSince1970
         let sharedSaved = updateSettings { settings in
             settings["ios_chinese_script"] = script.rawValue
+            settings["ios_chinese_script_updated_at"] = updatedAt
         }
-        return saveLocalPreference(script.rawValue, key: chineseScriptDefaultsKey) || sharedSaved
+        let localSaved = saveLocalPreference(
+            script.rawValue,
+            key: chineseScriptDefaultsKey,
+            updatedAt: updatedAt,
+            updatedAtKey: chineseScriptUpdatedAtDefaultsKey
+        )
+        return sharedSaved || localSaved
     }
 
     static func storageDescription() -> String {
@@ -241,12 +271,16 @@ enum IosSettingsStore {
     }
 
     private static func readSettings() -> [String: Any] {
+        readStoredSettings() ?? defaultSettings()
+    }
+
+    private static func readStoredSettings() -> [String: Any]? {
         guard
             let data = try? Data(contentsOf: settingsURL),
             let object = try? JSONSerialization.jsonObject(with: data),
             let settings = object as? [String: Any]
         else {
-            return defaultSettings()
+            return nil
         }
 
         return settings
@@ -276,9 +310,16 @@ enum IosSettingsStore {
         try data.write(to: settingsURL, options: [.atomic])
     }
 
-    private static func saveLocalPreference(_ value: String, key: String) -> Bool {
+    private static func saveLocalPreference(
+        _ value: String,
+        key: String,
+        updatedAt: TimeInterval,
+        updatedAtKey: String
+    ) -> Bool {
         UserDefaults.standard.set(value, forKey: key)
+        UserDefaults.standard.set(updatedAt, forKey: updatedAtKey)
         return UserDefaults.standard.string(forKey: key) == value
+            && UserDefaults.standard.double(forKey: updatedAtKey) == updatedAt
     }
 
     private static func bundledDefaultSettings() -> [String: Any]? {

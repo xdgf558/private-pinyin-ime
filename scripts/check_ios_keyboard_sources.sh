@@ -83,6 +83,9 @@ grep -q '\[.nineKeyPunctuation.weighted(1.15)' platform/ios_keyboard/KeyboardExt
 grep -q '.nineKeyDigit(4, letters: "GHI").weighted(1.15)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '\[.modeToggle.weighted(1.15), .space.weighted(2), .backspace.weighted(1.15)\]' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'selfTextChangeCallbackWindow: TimeInterval = 0.25' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'pendingSelfTextChangeDocumentIdentifier' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'textDocumentProxy.documentIdentifier' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'layoutSegmentedControl = UISegmentedControl(items: \["全键", "九宫"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyboardTheme' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -96,6 +99,9 @@ grep -q 'title = "回车"' platform/ios_keyboard/KeyboardExtension/KeyboardViewC
 grep -q 'scriptSegmentedControl = UISegmentedControl(items: \["简体", "繁體"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'IosChineseTextConverter.convert(text, to: chineseScript)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'settings\["ios_chinese_script"\] = IosChineseScript.simplified.rawValue' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'ios_keyboard_layout_updated_at' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'ios_chinese_script_updated_at' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'readStoredSettings' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q '"Simplified-Traditional" as CFString' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q '系统通用繁体，非完整台港本地化' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '裡面頭髮發展乾嘛麵條' platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift

@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
@@ -13,6 +14,7 @@ const CONTINUOUS_BEAM_WIDTH: usize = 32;
 const MAX_CONTINUOUS_CANDIDATES: usize = 12;
 const MAX_CONTINUOUS_OPTIONS_PER_EDGE: usize = 6;
 const MAX_MIXED_INPUT_PARSES: usize = 16;
+const MAX_MIXED_INPUT_CHARS: usize = 16;
 const MAX_PINYIN_SYLLABLE_CHARS: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,7 +272,6 @@ impl Lexicon {
 
         let mut candidates = Vec::new();
         let mut exact_candidates = Vec::new();
-        let mut mixed_exact_candidates = Vec::new();
         let mut continuous_candidates = Vec::new();
         let mut initial_exact_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
@@ -314,7 +315,7 @@ impl Lexicon {
             &mut seen,
             continuous_cache,
         ));
-        mixed_exact_candidates.extend(self.mixed_exact_candidates(raw_input, &mut seen));
+        continuous_candidates.extend(self.mixed_exact_candidates(raw_input, &mut seen));
         initial_exact_candidates.extend(self.initial_candidates(
             &normalized_input,
             &mut seen,
@@ -327,13 +328,11 @@ impl Lexicon {
         ));
 
         Ranker::sort_candidates(&mut exact_candidates);
-        Ranker::sort_candidates(&mut mixed_exact_candidates);
         Ranker::sort_candidates(&mut continuous_candidates);
         Ranker::sort_candidates(&mut initial_exact_candidates);
         Ranker::sort_candidates(&mut prefix_candidates);
         Ranker::sort_candidates(&mut initial_prefix_candidates);
         candidates.extend(exact_candidates);
-        candidates.extend(mixed_exact_candidates);
         candidates.extend(continuous_candidates);
         candidates.extend(initial_exact_candidates);
         candidates.extend(prefix_candidates);
@@ -480,7 +479,8 @@ impl Lexicon {
         seen: &mut HashSet<String>,
     ) -> Vec<Candidate> {
         let normalized = PinyinParser::normalize_raw(raw_input);
-        if normalized.contains('\'') || normalized.chars().count() < 3 {
+        let input_chars = normalized.chars().count();
+        if normalized.contains('\'') || !(3..=MAX_MIXED_INPUT_CHARS).contains(&input_chars) {
             return Vec::new();
         }
 
@@ -990,6 +990,10 @@ fn pinyin_initials(pinyin: &str) -> String {
 
 fn mixed_input_parses(input: &str) -> Vec<MixedInputParse> {
     let chars = input.chars().collect::<Vec<_>>();
+    if chars.len() > MAX_MIXED_INPUT_CHARS {
+        return Vec::new();
+    }
+
     let mut lattice = vec![Vec::<MixedInputParse>::new(); chars.len() + 1];
     lattice[0].push(MixedInputParse {
         tokens: Vec::new(),
@@ -998,7 +1002,7 @@ fn mixed_input_parses(input: &str) -> Vec<MixedInputParse> {
     });
 
     for start in 0..chars.len() {
-        let previous_parses = lattice[start].clone();
+        let previous_parses = std::mem::take(&mut lattice[start]);
         if previous_parses.is_empty() {
             continue;
         }
@@ -1043,27 +1047,28 @@ fn mixed_input_parses(input: &str) -> Vec<MixedInputParse> {
 }
 
 fn sort_mixed_input_parses(parses: &mut Vec<MixedInputParse>) {
-    parses.sort_by(|left, right| {
+    parses.sort_unstable_by(|left, right| {
         left.abbreviated_syllables
             .cmp(&right.abbreviated_syllables)
             .then_with(|| right.full_pinyin_chars.cmp(&left.full_pinyin_chars))
             .then_with(|| left.tokens.len().cmp(&right.tokens.len()))
-            .then_with(|| mixed_parse_key(left).cmp(&mixed_parse_key(right)))
+            .then_with(|| mixed_tokens_cmp(&left.tokens, &right.tokens))
     });
     parses.dedup_by(|left, right| left.tokens == right.tokens);
     parses.truncate(MAX_MIXED_INPUT_PARSES);
 }
 
-fn mixed_parse_key(parse: &MixedInputParse) -> String {
-    parse
-        .tokens
-        .iter()
-        .map(|token| {
-            let marker = if token.abbreviated { "i" } else { "f" };
-            format!("{marker}:{}", token.text)
-        })
-        .collect::<Vec<_>>()
-        .join("|")
+fn mixed_tokens_cmp(left: &[MixedInputToken], right: &[MixedInputToken]) -> Ordering {
+    for (left_token, right_token) in left.iter().zip(right) {
+        let ordering = left_token
+            .abbreviated
+            .cmp(&right_token.abbreviated)
+            .then_with(|| left_token.text.cmp(&right_token.text));
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+    left.len().cmp(&right.len())
 }
 
 fn mixed_parse_matches_pinyin(parse: &MixedInputParse, pinyin: &str) -> bool {
@@ -1163,6 +1168,12 @@ fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mixed_input_parser_stops_at_its_dedicated_length_limit() {
+        assert!(!mixed_input_parses("wojtxqcfjttqbcsj").is_empty());
+        assert!(mixed_input_parses("wojtxqcfjttqbcsja").is_empty());
+    }
 
     #[test]
     fn continuous_cache_reuses_prefixes_and_invalidates_changed_boundaries_or_context() {

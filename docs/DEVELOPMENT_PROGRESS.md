@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 15:19
+Last updated: 2026-07-18 16:54
 Current stage: Stage 17 iOS device regression closure
-Current status: Extension-local layout/script persistence, delayed self-change candidate retention, revised nine-key controls, and `zyao -> 主要` mixed shorthand are implemented on `codex/fix-ios-keyboard-regressions`; automated tests, Xcode 27 build, simulator install/launch, and full-simulator-restart persistence checks pass, with final host-app taps reserved for device review
+Current status: PR #32 review hardening now bounds the mixed shorthand decoder and removes its repeated sort allocations, preserves score ordering across mixed and continuous candidates, rejects unrelated delayed host callbacks by document identity/context, and resolves local/shared iOS preferences by freshness; automated tests and the Xcode 27 readiness build pass, with final host-app taps reserved for device review
 
 ## Stage Status
 
@@ -24,7 +24,7 @@ Current status: Extension-local layout/script persistence, delayed self-change c
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
 | 16 | TestFlight archive and upload | completed | 2026-07-17 23:29 | TestFlight candidate `0.1.21 (17)` was archived with Xcode 26.6, uploaded as delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 15:19 | Post-build-17 fixes preserve nine-key/script settings without Full Access, retain candidates across delayed host callbacks, make the nine-key symbol entry selectable, place GHI/Delete in the requested positions, and rank `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 16:54 | Post-build-17 fixes preserve the freshest nine-key/script setting without Full Access, retain candidates across verified self-generated callbacks, make the nine-key symbol entry selectable, place GHI/Delete in the requested positions, and rank `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -41,6 +41,11 @@ Current status: Extension-local layout/script persistence, delayed self-change c
 - Xcode 27.0 (`27A5194q`) simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator.
 - Wrote `nine_key` and `traditional` to the extension-local preference domain, fully restarted the simulator, and read both back unchanged: passed.
 - Production-lexicon regression ranks `zyao` as `主要 (zhu yao)` first: passed.
+- Mixed shorthand decoding is capped at 16 characters, avoids sort-comparator allocations, and keeps the 16-character regression below the shared 60-ms input budget: passed.
+- Common full-pinyin regressions keep `woshi -> 我是`, `jintian -> 今天`, and `zhongguo -> 中国` first after mixed/continuous candidates enter one score-sorted bucket: passed.
+- Delayed self-generated text callbacks now require a matching document identifier and captured text context inside a 250-ms window; unrelated field/app changes continue to reset composition.
+- Layout/script reads compare shared-JSON and extension-local timestamps, so the freshest successful write wins while either sandbox remains a usable fallback.
+- `scripts/run_ios_smoke_readiness.sh`: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension under Xcode 27.
 - Final TestFlight/device taps for candidate selection, top-left symbol navigation, revised geometry, and delayed host callbacks remain required before release.
 
 ## Local AI Status

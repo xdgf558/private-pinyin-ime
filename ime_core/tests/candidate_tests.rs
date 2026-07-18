@@ -229,6 +229,21 @@ fn leading_initial_plus_full_syllable_returns_the_joint_phrase() {
 }
 
 #[test]
+fn common_full_pinyin_keeps_expected_first_candidates() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+
+    for (raw_input, expected) in [("woshi", "我是"), ("jintian", "今天"), ("zhongguo", "中国")]
+    {
+        let candidates = engine.candidates_for_raw(raw_input);
+        assert_eq!(
+            candidates.first().map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "{raw_input} should keep {expected} first"
+        );
+    }
+}
+
+#[test]
 fn mixed_input_survives_backspace_and_reuses_the_same_ranking() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let mut session = engine.create_session();
@@ -262,10 +277,11 @@ fn mixed_input_survives_backspace_and_reuses_the_same_ranking() {
 #[test]
 fn mixed_decoder_stays_within_interactive_lookup_budget() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let raw_input = "wojtxqcfjttqbcsj";
     let iterations = 20;
     let started = Instant::now();
     for _ in 0..iterations {
-        let candidates = engine.candidates_for_raw("wojtxqcf");
+        let candidates = engine.candidates_for_raw(raw_input);
         assert!(!candidates.is_empty());
     }
     let average = started.elapsed() / iterations;
