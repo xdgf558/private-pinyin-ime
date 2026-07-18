@@ -108,6 +108,7 @@
 
 ### Changed
 
+- Bounded dedicated mixed shorthand parsing to 16 characters, removed comparator-time string allocation and consumed lattice layers by move, and unified equal-tier mixed/continuous candidate ordering by rank score; longer input continues through the bounded continuous decoder.
 - Bumped the iOS container app and keyboard extension to `0.1.21 (17)` for readable nine-key composition, a generic Return label, local Simplified/Traditional output, nine-candidate groups, the expanded symbol page, and executable Traditional-conversion regression coverage.
 - Bumped the iOS container app and keyboard extension to `0.1.20 (16)` for the Station Cat keyboard redesign, responsive touch handling, five-candidate paging, optional nine-key layout, and incremental mixed-pinyin decoding TestFlight build.
 - Changed iOS typing keys to respond on touch-down while keeping command keys on touch-up, and fixed the iOS candidate page size at five so previous/next group controls remain predictable on compact screens.
@@ -199,6 +200,12 @@
 
 ### Fixed
 
+- Fixed iOS self-generated text callback suppression so it uses a 250 ms window plus document identity and before/after context evidence instead of suppressing any callback for 750 ms.
+- Fixed iOS shared/local layout and script preference conflicts by timestamping both stores and choosing the freshest value, while retaining extension-local fallback when shared writes are unavailable.
+- Fixed iOS keyboard layout and Simplified/Traditional preferences so they persist in the extension-local sandbox when App Group writes are unavailable, including after switching apps or recreating the keyboard process.
+- Fixed iOS candidate state being cleared by delayed host callbacks after the keyboard's own text operations, preserving selectable candidates and post-commit predictions.
+- Fixed the nine-key punctuation key so it opens the symbol page, and rearranged the grid so `GHI` occupies the top-right position while Delete moves to the bottom-right.
+- Fixed mixed shorthand decoding for leading initials followed by full syllables, including `zyao -> 主要`, without weakening raw-English fallback behavior.
 - Fixed the iOS nine-key composition strip so valid digit signatures display the leading candidate's readable pinyin instead of exposing internal lookup digits, and renamed the generic bottom-right action from `换行` to `回车`.
 - Fixed iOS candidate paging so previous/next controls stay visible outside the horizontally scrolling candidate content and stop offering a no-op next page after the end is reached.
 - Fixed recoverable iOS keyboard startup failures by retrying core creation, and verified both `nh -> 你好` and nine-key `64426 -> 你好` commit exactly once in the iOS 27 Simulator.

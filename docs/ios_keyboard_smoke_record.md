@@ -82,3 +82,28 @@ continues.
 
 Password-field, phone-field, distribution App Group, and final real-device latency
 checks remain part of Stage 17 and are not replaced by this Simulator record.
+
+## iOS Keyboard Regression Readiness (2026-07-18)
+
+| Field | Value |
+|---|---|
+| Tester | Codex automated tests and headless iOS 27 Simulator readiness |
+| Simulator | iPhone 17 Pro, iOS 27.0 |
+| Xcode | 27.0 (`27A5194q`) |
+| Branch | `codex/fix-ios-keyboard-regressions` |
+| Build artifact | `build/ios_keyboard/Build/Products/Debug-iphonesimulator/PrivatePinyin.app` |
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Rust workspace | passed | `cargo test --workspace`, formatting, and Clippy with warnings denied passed |
+| iOS source gate | passed | `scripts/check_ios_keyboard_sources.sh` validates extension-local settings fallback, delayed self-change handling, symbol entry, and the revised grid contract |
+| Xcode build | passed | Xcode 27 Simulator build reported `BUILD SUCCEEDED` |
+| Simulator install/launch | passed | Installed and launched `com.privatepinyin.ios` on the iOS 27.0 simulator |
+| Layout/script persistence | passed (headless) | Wrote `nine_key` and `traditional` to the extension-local preference domain, fully restarted the simulator, and read both values back unchanged |
+| Nine-key core input | passed | Four focused tests cover `64426 -> 你好`, continuous digit segmentation, Backspace/commit behavior, and the interactive lookup budget |
+| Mixed shorthand | passed | `zyao` ranks `主要 (zhu yao)` first and the new regression passes with the production lexicon |
+| Host UI taps | pending device/manual pass | Recheck candidate taps, top-left symbol selection, revised nine-key geometry, and delayed callback behavior in the TestFlight/device build before release |
+
+The headless persistence pass verifies the regression that previously returned
+to QWERTY after switching apps. It does not replace the final host-app tap and
+layout pass on a real device.

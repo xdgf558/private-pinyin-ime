@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
@@ -5,12 +6,16 @@ use crate::error::{ImeError, ImeResult};
 use crate::nine_key::{is_valid_nine_key_input, pinyin_to_nine_key};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
+use crate::syllable::is_legal_syllable;
 
 const EMBEDDED_BASE_LEXICON: &str = include_str!("../assets/base_lexicon.tsv");
 pub const MAX_LOOKUP_CANDIDATES: usize = 50;
 const CONTINUOUS_BEAM_WIDTH: usize = 32;
 const MAX_CONTINUOUS_CANDIDATES: usize = 12;
 const MAX_CONTINUOUS_OPTIONS_PER_EDGE: usize = 6;
+const MAX_MIXED_INPUT_PARSES: usize = 16;
+const MAX_MIXED_INPUT_CHARS: usize = 16;
+const MAX_PINYIN_SYLLABLE_CHARS: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LexiconEntry {
@@ -68,6 +73,19 @@ enum ContinuousEdgeKind {
 struct ContinuousEdge<'a> {
     entry: &'a LexiconEntry,
     kind: ContinuousEdgeKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MixedInputToken {
+    text: String,
+    abbreviated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MixedInputParse {
+    tokens: Vec<MixedInputToken>,
+    abbreviated_syllables: usize,
+    full_pinyin_chars: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -297,6 +315,7 @@ impl Lexicon {
             &mut seen,
             continuous_cache,
         ));
+        continuous_candidates.extend(self.mixed_exact_candidates(raw_input, &mut seen));
         initial_exact_candidates.extend(self.initial_candidates(
             &normalized_input,
             &mut seen,
@@ -451,6 +470,55 @@ impl Lexicon {
             );
         }
 
+        candidates
+    }
+
+    fn mixed_exact_candidates(
+        &self,
+        raw_input: &str,
+        seen: &mut HashSet<String>,
+    ) -> Vec<Candidate> {
+        let normalized = PinyinParser::normalize_raw(raw_input);
+        let input_chars = normalized.chars().count();
+        if normalized.contains('\'') || !(3..=MAX_MIXED_INPUT_CHARS).contains(&input_chars) {
+            return Vec::new();
+        }
+
+        let mut candidates = Vec::new();
+        for parse in mixed_input_parses(&normalized) {
+            let initials = parse
+                .tokens
+                .iter()
+                .filter_map(|token| token.text.chars().next())
+                .collect::<String>();
+            let start = self
+                .initial_index
+                .partition_point(|entry| entry.initials.as_str() < initials.as_str());
+            let end = self
+                .initial_index
+                .partition_point(|entry| entry.initials.as_str() <= initials.as_str());
+
+            for indexed_entry in &self.initial_index[start..end] {
+                let entry = &self.entries[indexed_entry.entry_index];
+                if !mixed_parse_matches_pinyin(&parse, &entry.pinyin)
+                    || !seen.insert(entry.phrase.clone())
+                {
+                    continue;
+                }
+                candidates.push(
+                    Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                        .with_score(Ranker::score(entry.frequency))
+                        .with_rank_score(Ranker::score_match(
+                            entry.frequency,
+                            CandidateMatchKind::Segmented,
+                            CandidateSource::Base,
+                        )),
+                );
+            }
+        }
+
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_CONTINUOUS_CANDIDATES);
         candidates
     }
 
@@ -920,6 +988,101 @@ fn pinyin_initials(pinyin: &str) -> String {
         .collect()
 }
 
+fn mixed_input_parses(input: &str) -> Vec<MixedInputParse> {
+    let chars = input.chars().collect::<Vec<_>>();
+    if chars.len() > MAX_MIXED_INPUT_CHARS {
+        return Vec::new();
+    }
+
+    let mut lattice = vec![Vec::<MixedInputParse>::new(); chars.len() + 1];
+    lattice[0].push(MixedInputParse {
+        tokens: Vec::new(),
+        abbreviated_syllables: 0,
+        full_pinyin_chars: 0,
+    });
+
+    for start in 0..chars.len() {
+        let previous_parses = std::mem::take(&mut lattice[start]);
+        if previous_parses.is_empty() {
+            continue;
+        }
+
+        let initial = chars[start].to_string();
+        for previous in &previous_parses {
+            let mut next = previous.clone();
+            next.tokens.push(MixedInputToken {
+                text: initial.clone(),
+                abbreviated: true,
+            });
+            next.abbreviated_syllables += 1;
+            lattice[start + 1].push(next);
+        }
+        sort_mixed_input_parses(&mut lattice[start + 1]);
+
+        let end_limit = chars
+            .len()
+            .min(start.saturating_add(MAX_PINYIN_SYLLABLE_CHARS));
+        for end in (start + 2)..=end_limit {
+            let syllable = chars[start..end].iter().collect::<String>();
+            if !is_legal_syllable(&syllable) {
+                continue;
+            }
+            for previous in &previous_parses {
+                let mut next = previous.clone();
+                next.tokens.push(MixedInputToken {
+                    text: syllable.clone(),
+                    abbreviated: false,
+                });
+                next.full_pinyin_chars += syllable.chars().count();
+                lattice[end].push(next);
+            }
+            sort_mixed_input_parses(&mut lattice[end]);
+        }
+    }
+
+    let mut parses = lattice.pop().unwrap_or_default();
+    parses.retain(|parse| parse.abbreviated_syllables > 0 && parse.full_pinyin_chars >= 2);
+    sort_mixed_input_parses(&mut parses);
+    parses
+}
+
+fn sort_mixed_input_parses(parses: &mut Vec<MixedInputParse>) {
+    parses.sort_unstable_by(|left, right| {
+        left.abbreviated_syllables
+            .cmp(&right.abbreviated_syllables)
+            .then_with(|| right.full_pinyin_chars.cmp(&left.full_pinyin_chars))
+            .then_with(|| left.tokens.len().cmp(&right.tokens.len()))
+            .then_with(|| mixed_tokens_cmp(&left.tokens, &right.tokens))
+    });
+    parses.dedup_by(|left, right| left.tokens == right.tokens);
+    parses.truncate(MAX_MIXED_INPUT_PARSES);
+}
+
+fn mixed_tokens_cmp(left: &[MixedInputToken], right: &[MixedInputToken]) -> Ordering {
+    for (left_token, right_token) in left.iter().zip(right) {
+        let ordering = left_token
+            .abbreviated
+            .cmp(&right_token.abbreviated)
+            .then_with(|| left_token.text.cmp(&right_token.text));
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+    left.len().cmp(&right.len())
+}
+
+fn mixed_parse_matches_pinyin(parse: &MixedInputParse, pinyin: &str) -> bool {
+    let syllables = pinyin.split_whitespace().collect::<Vec<_>>();
+    parse.tokens.len() == syllables.len()
+        && parse.tokens.iter().zip(syllables).all(|(token, syllable)| {
+            if token.abbreviated {
+                syllable.starts_with(&token.text)
+            } else {
+                syllable == token.text
+            }
+        })
+}
+
 fn continuous_edge_priority(kind: ContinuousEdgeKind) -> u8 {
     match kind {
         ContinuousEdgeKind::FullPinyin => 0,
@@ -1005,6 +1168,12 @@ fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mixed_input_parser_stops_at_its_dedicated_length_limit() {
+        assert!(!mixed_input_parses("wojtxqcfjttqbcsj").is_empty());
+        assert!(mixed_input_parses("wojtxqcfjttqbcsja").is_empty());
+    }
 
     #[test]
     fn continuous_cache_reuses_prefixes_and_invalidates_changed_boundaries_or_context() {

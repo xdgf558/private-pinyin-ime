@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 07:32
-Current stage: AI-06 shared fixed-point AI Lite ranker
-Current status: AI-06 is approved for merge with the latest iOS 0.1.21 work; the bounded Rust ranker, versioned 426-byte approved coefficient package, 12-case quality gate, overflow regressions, supply-chain checks, tests, and CI wiring remain disconnected from platform hosts until AI-07
+Last updated: 2026-07-18 16:54
+Current stage: Stage 17 iOS device regression closure
+Current status: PR #32 review hardening now bounds the mixed shorthand decoder and removes its repeated sort allocations, preserves score ordering across mixed and continuous candidates, rejects unrelated delayed host callbacks by document identity/context, and resolves local/shared iOS preferences by freshness; automated tests and the Xcode 27 readiness build pass, with final host-app taps reserved for device review
 
 ## Stage Status
 
@@ -24,7 +24,7 @@ Current status: AI-06 is approved for merge with the latest iOS 0.1.21 work; the
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
 | 16 | TestFlight archive and upload | completed | 2026-07-17 23:29 | TestFlight candidate `0.1.21 (17)` was archived with Xcode 26.6, uploaded as delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-17 23:29 | Build `17` contains readable nine-key composition, local Simplified/Traditional output, nine-candidate paging, and expanded symbols; it is processed in App Store Connect and real-device password/phone/App Group checks remain |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 16:54 | Post-build-17 fixes preserve the freshest nine-key/script setting without Full Access, retain candidates across verified self-generated callbacks, make the nine-key symbol entry selectable, place GHI/Delete in the requested positions, and rank `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -32,6 +32,21 @@ Current status: AI-06 is approved for merge with the latest iOS 0.1.21 work; the
 | Item | Name | Status | Last checked | Notes |
 |---|---|---|---|---|
 | OI-045 | Incremental lattice caching and mixed full-pinyin/initial decoding | completed | 2026-07-16 11:28 | Session-local append/backspace prefix reuse, context/boundary invalidation, joint full/initial beam edges, `wojt -> 我今天`, raw-English fallback protection, C ABI coverage, and latency regression checks are ready for review |
+
+## iOS Regression Validation (2026-07-18)
+
+- `cargo test --workspace`, `cargo fmt --all -- --check`, and `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- Focused nine-key tests cover `64426 -> 你好`, continuous digit segmentation, Backspace/commit behavior, and the interactive lookup budget: passed.
+- `scripts/check_ios_keyboard_sources.sh`: passed with contracts for extension-local preference fallback, delayed self-change callback handling, revised nine-key geometry, and symbol entry.
+- Xcode 27.0 (`27A5194q`) simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator.
+- Wrote `nine_key` and `traditional` to the extension-local preference domain, fully restarted the simulator, and read both back unchanged: passed.
+- Production-lexicon regression ranks `zyao` as `主要 (zhu yao)` first: passed.
+- Mixed shorthand decoding is capped at 16 characters, avoids sort-comparator allocations, and keeps the 16-character regression below the shared 60-ms input budget: passed.
+- Common full-pinyin regressions keep `woshi -> 我是`, `jintian -> 今天`, and `zhongguo -> 中国` first after mixed/continuous candidates enter one score-sorted bucket: passed.
+- Delayed self-generated text callbacks now require a matching document identifier and captured text context inside a 250-ms window; unrelated field/app changes continue to reset composition.
+- Layout/script reads compare shared-JSON and extension-local timestamps, so the freshest successful write wins while either sandbox remains a usable fallback.
+- `scripts/run_ios_smoke_readiness.sh`: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension under Xcode 27.
+- Final TestFlight/device taps for candidate selection, top-left symbol navigation, revised geometry, and delayed host callbacks remain required before release.
 
 ## Local AI Status
 
