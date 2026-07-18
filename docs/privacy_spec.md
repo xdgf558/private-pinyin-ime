@@ -104,11 +104,17 @@ numbered candidate page is visible, asynchronous completion must not change the 
 of its entries.
 
 macOS uses the system secure-event-input signal and Windows uses the TSF password input
-scope. Entering a secure field cancels outstanding AI work and prevents new requests.
+scope. Windows treats an unavailable or failed input-scope probe as secure instead of
+allowing AI work to fail open. Entering a secure field cancels outstanding AI work and
+prevents new requests.
 These platform signals supplement the shared `PrivacyGuard`; neither host may inspect or
 send surrounding document content. The desktop integration has no request-content log,
 network transport, telemetry, persistent AI cache, or second learning database. iOS does
 not link the desktop AI feature and remains unchanged until AI-08.
+
+Strict privacy mode still permits the AI-07 candidate ranker because it is stateless,
+local-only, bounded to the current candidate page, and writes no learning or AI cache.
+Strict privacy continues to disable user-learning and contextual-statistics writes.
 
 ## Strict Privacy Mode
 

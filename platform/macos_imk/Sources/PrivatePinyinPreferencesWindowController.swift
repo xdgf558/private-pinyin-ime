@@ -516,7 +516,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             tag: "PRIVACY",
             titleLabel: label("严格隐私模式", font: .systemFont(ofSize: 17, weight: .semibold), color: StationTheme.textPrimary),
             detailLabel: wrappingLabel(
-                "只在本机计算，开启后会自动关闭「用户学习」。",
+                "关闭用户学习与统计；无状态的本地候选重排仍可使用。",
                 font: .systemFont(ofSize: 13, weight: .regular),
                 color: StationTheme.textSecondary
             ),

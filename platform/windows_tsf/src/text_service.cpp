@@ -221,21 +221,22 @@ class SecureInputEditSession final : public ITfEditSession {
 
   std::atomic<ULONG> ref_count_{1};
   ITfContext* context_;
-  bool secure_input_ = false;
+  // Fail closed until the TSF input scope has been read successfully.
+  bool secure_input_ = true;
 };
 
 bool context_uses_secure_input(TfClientId client_id, ITfContext* context) {
   if (client_id == TF_CLIENTID_NULL || context == nullptr) {
-    return false;
+    return true;
   }
   auto* edit_session = new (std::nothrow) SecureInputEditSession(context);
   if (edit_session == nullptr) {
-    return false;
+    return true;
   }
   HRESULT edit_result = E_FAIL;
   const HRESULT request_result = context->RequestEditSession(
       client_id, edit_session, TF_ES_SYNC | TF_ES_READ, &edit_result);
-  const bool secure_input = SUCCEEDED(request_result) && SUCCEEDED(edit_result) &&
+  const bool secure_input = FAILED(request_result) || FAILED(edit_result) ||
                             edit_session->secure_input();
   edit_session->Release();
   return secure_input;

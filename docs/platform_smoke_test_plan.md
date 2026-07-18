@@ -91,7 +91,7 @@ Checklist:
 | Candidate panel lifecycle | Switch repeatedly among TextEdit, Safari, and Chrome with candidates visible/hidden at least 20 times; typing keeps working and no new `PrivatePinyin` crash report appears | | |
 | AI Lite fallback | On a supported-memory machine, ordinary candidate selection still works when AI initialization is unavailable or deliberately rejected; no key, preedit, candidate, or commit is lost | | Record memory, initialization state, and sanitized error code only |
 | AI candidate stability | Type rapidly, backspace, switch candidate pages, and continue composing while AI work is pending; an already visible numbered page never changes identity and stale results never commit | | Repeat in TextEdit, Safari, Chrome, and VS Code |
-| Secure-input privacy | In a secure text field, base typing/fallback remains available while `IsSecureEventInputEnabled` prevents AI requests; leaving secure input starts a fresh composition with no stale result | | Do not record entered content in evidence |
+| Secure-input privacy | In native secure fields and Safari/Chrome webpage password fields, base typing/fallback remains available while secure-input detection prevents AI requests; leaving secure input starts a fresh composition with no stale result | | `IsSecureEventInputEnabled` is a best-effort global macOS signal, so record only whether AI was suppressed; never record entered content in evidence |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After the guided refresh or logout/login fallback, no pre-install PrivatePinyin PID remains before smoke testing | | |
