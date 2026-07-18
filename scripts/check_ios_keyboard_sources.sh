@@ -80,7 +80,9 @@ grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExt
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '\[.nineKeyPunctuation.weighted(1.15)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q '\[.modeToggle.weighted(1.15), .space.weighted(2), .enter.weighted(1.15)\]' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '.nineKeyDigit(4, letters: "GHI").weighted(1.15)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '\[.modeToggle.weighted(1.15), .space.weighted(2), .backspace.weighted(1.15)\]' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'layoutSegmentedControl = UISegmentedControl(items: \["全键", "九宫"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyboardTheme' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -107,6 +109,9 @@ if grep -q 'microphoneButton' platform/ios_keyboard/KeyboardExtension/KeyboardVi
 fi
 grep -q "ios_keyboard_layout" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "ios_chinese_script" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "keyboardLayoutDefaultsKey" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "chineseScriptDefaultsKey" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -Fq 'try data.write(to: settingsURL, options: [.atomic])' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "keyboardCandidatePageSize = 9" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

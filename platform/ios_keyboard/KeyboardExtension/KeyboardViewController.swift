@@ -34,7 +34,8 @@ final class KeyboardViewController: UIInputViewController {
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
     private var preferencesVisible = false
-    private var isPerformingTextOperation = false
+    private var pendingSelfTextChangeCallbacks = 0
+    private var selfTextChangeCallbackDeadline: TimeInterval = 0
     private var lastNeedsInputModeSwitchKey = true
     private var coreUnavailable = false
     private let trayGradient = CAGradientLayer()
@@ -50,7 +51,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     override func textWillChange(_ textInput: UITextInput?) {
-        if isPerformingTextOperation {
+        if consumePendingSelfTextChangeCallback() {
             return
         }
 
@@ -522,12 +523,12 @@ final class KeyboardViewController: UIInputViewController {
         let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout
         return [
             [.nineKeyPunctuation.weighted(1.15), .nineKeyDigit(2, letters: "ABC"),
-             .nineKeyDigit(3, letters: "DEF"), .backspace.weighted(1.15)],
-            [.symbols.weighted(1.15), .nineKeyDigit(4, letters: "GHI"),
-             .nineKeyDigit(5, letters: "JKL"), .nineKeyDigit(6, letters: "MNO").weighted(1.15)],
-            [globeKey.weighted(1.15), .nineKeyDigit(7, letters: "PQRS"),
-             .nineKeyDigit(8, letters: "TUV"), .nineKeyDigit(9, letters: "WXYZ").weighted(1.15)],
-            [.modeToggle.weighted(1.15), .space.weighted(2), .enter.weighted(1.15)],
+             .nineKeyDigit(3, letters: "DEF"), .nineKeyDigit(4, letters: "GHI").weighted(1.15)],
+            [.symbols.weighted(1.15), .nineKeyDigit(5, letters: "JKL"),
+             .nineKeyDigit(6, letters: "MNO"), .nineKeyDigit(7, letters: "PQRS").weighted(1.15)],
+            [globeKey.weighted(1.15), .nineKeyDigit(8, letters: "TUV"),
+             .nineKeyDigit(9, letters: "WXYZ"), .enter.weighted(1.15)],
+            [.modeToggle.weighted(1.15), .space.weighted(2), .backspace.weighted(1.15)],
         ]
     }
 
@@ -685,7 +686,9 @@ final class KeyboardViewController: UIInputViewController {
         case .nineKeyDigit(let value):
             feedNineKeyDigit(value)
         case .nineKeyPunctuation:
-            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.comma, text: ","), fallback: "，")
+            symbolsVisible = true
+            extendedSymbolsVisible = false
+            rebuildKeyboard()
         case .space:
             applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
         case .enter:
@@ -870,11 +873,19 @@ private extension KeyboardViewController {
     }
 
     func performTextOperation(_ operation: () -> Void) {
-        isPerformingTextOperation = true
-        defer {
-            isPerformingTextOperation = false
-        }
+        pendingSelfTextChangeCallbacks += 1
+        selfTextChangeCallbackDeadline = ProcessInfo.processInfo.systemUptime + 0.75
         operation()
+    }
+
+    func consumePendingSelfTextChangeCallback() -> Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard pendingSelfTextChangeCallbacks > 0, now <= selfTextChangeCallbackDeadline else {
+            pendingSelfTextChangeCallbacks = 0
+            return false
+        }
+        pendingSelfTextChangeCallbacks -= 1
+        return true
     }
 
     func coreKeyCode(for value: String) -> Int32? {
@@ -1067,10 +1078,9 @@ private struct KeySpec {
 
     var activationEvent: UIControl.Event {
         switch kind {
-        case .character, .text, .nineKeyDigit, .nineKeyPunctuation,
-             .space, .enter, .backspace:
+        case .character, .text, .nineKeyDigit, .space, .enter, .backspace:
             return .touchDown
-        case .shift, .globe, .symbols, .letters, .nineKeyLayout,
+        case .nineKeyPunctuation, .shift, .globe, .symbols, .letters, .nineKeyLayout,
              .extendedSymbols, .qwertyLayout, .modeToggle, .spacer:
             return .touchUpInside
         }
@@ -1165,8 +1175,8 @@ private struct KeySpec {
         kind: .nineKeyPunctuation,
         title: "，。？",
         systemImageName: nil,
-        accessibilityLabel: "中文逗号",
-        isCommand: false,
+        accessibilityLabel: "中文标点与符号",
+        isCommand: true,
         isWide: false,
         widthWeight: 1
     )

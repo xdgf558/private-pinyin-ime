@@ -212,6 +212,23 @@ fn mixed_full_pinyin_and_initials_rank_joint_candidate_first() {
 }
 
 #[test]
+fn leading_initial_plus_full_syllable_returns_the_joint_phrase() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let candidates = engine.candidates_for_raw("zyao");
+
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("主要")
+    );
+    assert_eq!(
+        candidates
+            .first()
+            .map(|candidate| candidate.pinyin.as_str()),
+        Some("zhu yao")
+    );
+}
+
+#[test]
 fn mixed_input_survives_backspace_and_reuses_the_same_ranking() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let mut session = engine.create_session();

@@ -33,6 +33,8 @@ enum IosChineseTextConverter {
 enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
     private static let keyboardCandidatePageSize = 9
+    private static let keyboardLayoutDefaultsKey = "private_pinyin.ios_keyboard_layout"
+    private static let chineseScriptDefaultsKey = "private_pinyin.ios_chinese_script"
 
     static var appGroupIdentifier: String {
         guard
@@ -121,6 +123,10 @@ enum IosSettingsStore {
     }
 
     static func keyboardLayout() -> IosKeyboardLayout {
+        if let value = UserDefaults.standard.string(forKey: keyboardLayoutDefaultsKey),
+           let layout = IosKeyboardLayout(rawValue: value) {
+            return layout
+        }
         guard
             let value = readSettings()["ios_keyboard_layout"] as? String,
             let layout = IosKeyboardLayout(rawValue: value)
@@ -131,12 +137,17 @@ enum IosSettingsStore {
     }
 
     static func setKeyboardLayout(_ layout: IosKeyboardLayout) -> Bool {
-        updateSettings { settings in
+        let sharedSaved = updateSettings { settings in
             settings["ios_keyboard_layout"] = layout.rawValue
         }
+        return saveLocalPreference(layout.rawValue, key: keyboardLayoutDefaultsKey) || sharedSaved
     }
 
     static func chineseScript() -> IosChineseScript {
+        if let value = UserDefaults.standard.string(forKey: chineseScriptDefaultsKey),
+           let script = IosChineseScript(rawValue: value) {
+            return script
+        }
         guard
             let value = readSettings()["ios_chinese_script"] as? String,
             let script = IosChineseScript(rawValue: value)
@@ -147,9 +158,10 @@ enum IosSettingsStore {
     }
 
     static func setChineseScript(_ script: IosChineseScript) -> Bool {
-        updateSettings { settings in
+        let sharedSaved = updateSettings { settings in
             settings["ios_chinese_script"] = script.rawValue
         }
+        return saveLocalPreference(script.rawValue, key: chineseScriptDefaultsKey) || sharedSaved
     }
 
     static func storageDescription() -> String {
@@ -261,19 +273,12 @@ enum IosSettingsStore {
             withJSONObject: settings,
             options: [.prettyPrinted, .sortedKeys]
         )
-        let tempURL = settingsURL.deletingLastPathComponent()
-            .appendingPathComponent("settings.json.\(UUID().uuidString).tmp", isDirectory: false)
-        try data.write(to: tempURL, options: [.atomic])
-        if FileManager.default.fileExists(atPath: settingsURL.path) {
-            _ = try FileManager.default.replaceItemAt(
-                settingsURL,
-                withItemAt: tempURL,
-                backupItemName: nil,
-                options: []
-            )
-        } else {
-            try FileManager.default.moveItem(at: tempURL, to: settingsURL)
-        }
+        try data.write(to: settingsURL, options: [.atomic])
+    }
+
+    private static func saveLocalPreference(_ value: String, key: String) -> Bool {
+        UserDefaults.standard.set(value, forKey: key)
+        return UserDefaults.standard.string(forKey: key) == value
     }
 
     private static func bundledDefaultSettings() -> [String: Any]? {

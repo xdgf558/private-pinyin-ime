@@ -199,6 +199,10 @@
 
 ### Fixed
 
+- Fixed iOS keyboard layout and Simplified/Traditional preferences so they persist in the extension-local sandbox when App Group writes are unavailable, including after switching apps or recreating the keyboard process.
+- Fixed iOS candidate state being cleared by delayed host callbacks after the keyboard's own text operations, preserving selectable candidates and post-commit predictions.
+- Fixed the nine-key punctuation key so it opens the symbol page, and rearranged the grid so `GHI` occupies the top-right position while Delete moves to the bottom-right.
+- Fixed mixed shorthand decoding for leading initials followed by full syllables, including `zyao -> 主要`, without weakening raw-English fallback behavior.
 - Fixed the iOS nine-key composition strip so valid digit signatures display the leading candidate's readable pinyin instead of exposing internal lookup digits, and renamed the generic bottom-right action from `换行` to `回车`.
 - Fixed iOS candidate paging so previous/next controls stay visible outside the horizontally scrolling candidate content and stop offering a no-op next page after the end is reached.
 - Fixed recoverable iOS keyboard startup failures by retrying core creation, and verified both `nh -> 你好` and nine-key `64426 -> 你好` commit exactly once in the iOS 27 Simulator.
