@@ -29,8 +29,14 @@ jobs:
       - name: Run clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      - name: Run desktop AI clippy
+        run: cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings
+
       - name: Run tests
         run: cargo test --workspace
+
+      - name: Run desktop AI FFI tests
+        run: cargo test -p private_pinyin_ime_ffi --features desktop-ai
 
       - name: Build and run C ABI demo
         run: bash scripts/run_c_demo.sh
@@ -92,6 +98,9 @@ jobs:
       - name: Check AI-06 fixed-point Lite ranker
         run: bash scripts/check_ai06_lite_ranker_sources.sh
 
+      - name: Check AI-07 desktop asynchronous integration
+        run: bash scripts/check_ai07_desktop_integration_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
@@ -107,6 +116,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Build macOS IMK with desktop AI
+        env:
+          PRIVATE_PINYIN_SKIP_CODESIGN: "1"
+        run: bash scripts/build_macos_imk.sh
 
       - name: Run UPDATE-03 Swift policy tests
         env:

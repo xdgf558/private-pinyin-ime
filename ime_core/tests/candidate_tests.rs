@@ -547,6 +547,43 @@ fn digit_selection_only_uses_visible_candidate_page() {
     );
 }
 
+#[test]
+fn candidate_page_reordering_requires_an_exact_permutation() {
+    let mut session = session_with_page_size(
+        "phrase\tpinyin\tfrequency\n你\tni\t100\n呢\tni\t90\n泥\tni\t80\n",
+        3,
+    );
+    session.feed_key(KeyEvent::from_char('n'));
+    session.feed_key(KeyEvent::from_char('i'));
+
+    let before = session
+        .current_page_candidates_snapshot()
+        .into_iter()
+        .map(|candidate| candidate.text)
+        .collect::<Vec<_>>();
+    assert!(session.reorder_current_candidate_page(&[2, 0, 1]));
+    let after = session
+        .current_page_candidates_snapshot()
+        .into_iter()
+        .map(|candidate| candidate.text)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        after,
+        vec![before[2].clone(), before[0].clone(), before[1].clone()]
+    );
+
+    assert!(!session.reorder_current_candidate_page(&[0, 0, 1]));
+    assert!(!session.reorder_current_candidate_page(&[0, 1]));
+    assert_eq!(
+        session
+            .current_page_candidates_snapshot()
+            .into_iter()
+            .map(|candidate| candidate.text)
+            .collect::<Vec<_>>(),
+        after
+    );
+}
+
 fn session_with_page_size(tsv: &str, candidate_page_size: usize) -> InputSession {
     InputSession::new(
         Arc::new(Lexicon::from_tsv(tsv).expect("test lexicon loads")),

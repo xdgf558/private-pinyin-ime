@@ -50,22 +50,32 @@ AI-06 uses that boundary for a shared fixed-point Rust ranker. The approved firs
 package is a 426-byte coefficient table over bounded base-order, frequency, segmentation,
 bigram, trigram, typo-correction, and English-term signals. Its 12-case synthetic and
 project-regression gate improves eight targeted ranks, preserves four base winners, and
-keeps all inference scratch state bounded. It remains disconnected from platform hosts;
-AI-07 owns asynchronous integration and visible-candidate stability.
+keeps all inference scratch state bounded.
+
+AI-07 connects that ranker to macOS and Windows only. The C ABI owns a bounded,
+non-blocking worker queue and complete request identity; host key/edit callbacks never
+call synchronous inference. macOS contributes the system secure-event-input signal,
+Windows contributes TSF password input-scope classification, and both contribute current
+physical-memory policy. A late, cancelled, mismatched, secure-field, unsupported-hardware,
+or unavailable-model result is ignored while the ordinary core candidates continue.
+The approved package is embedded in desktop FFI builds and is rechecked through the full
+AI-05 approval, platform, hardware, size, and SHA-256 gates before use. iOS remains
+unchanged until AI-08.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects
 sensitive and oversized content, retains no more than eight recent tokens, and adds
-no-network/no-content-log source gates. Host-generated secure-input and revision signals
-remain AI-07 work.
+no-network/no-content-log source gates. AI-07 supplies desktop secure-input and revision
+signals without changing the request contract.
 
 ## Candidate stability rule
 
 An asynchronous result must not reorder an already visible numbered candidate page.
-AI-07 may either add a separately marked suggestion without shifting `1` through `9`,
-or apply ranking to the next composition revision. A future provider may run before the
-first display only after measurements prove that it is consistently fast enough.
+AI-07 applies a ready result before first display when available without waiting, or to
+the next compatible composition revision. It never shifts `1` through `9` after that
+page has become visible. A future provider may use a different presentation only after
+its candidate identity and interaction semantics receive separate review.
 
 Every request must carry an opaque session ID, composition revision, candidate-set hash,
 secure-input flag, and deadline. Hosts discard results whose revision or candidate hash

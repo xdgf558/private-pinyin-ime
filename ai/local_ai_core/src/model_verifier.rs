@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::model_integrity::{
-    canonical_package_root, read_verified_package_artifact, verify_package_artifact,
+    canonical_package_root, read_verified_package_artifact, verify_embedded_artifact,
+    verify_package_artifact,
 };
 use crate::{
     AiError, AiErrorCode, HardwareProfile, ModelArtifactKind, ModelManifest, ModelPlatform,
@@ -13,6 +14,12 @@ use crate::{
 
 pub const MODEL_APPROVAL_REGISTRY_SCHEMA_VERSION: u32 = 1;
 const EMBEDDED_APPROVAL_REGISTRY_JSON: &str = include_str!("../../models/approved_models.json");
+const EMBEDDED_AI_LITE_MANIFEST_JSON: &str =
+    include_str!("../../models/private-pinyin-ai-lite-ranker-v1/manifest.json");
+const EMBEDDED_AI_LITE_MODEL: &[u8] =
+    include_bytes!("../../models/private-pinyin-ai-lite-ranker-v1/model/ranker.json");
+const EMBEDDED_AI_LITE_NOTICE: &[u8] =
+    include_bytes!("../../models/private-pinyin-ai-lite-ranker-v1/MODEL_NOTICE.md");
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -110,6 +117,38 @@ impl ModelPackageVerifier {
         package_root: &Path,
         manifest: &ModelManifest,
     ) -> Result<VerifiedModelPackage, AiError> {
+        self.validate_policy(manifest)?;
+
+        for artifact in manifest.artifacts() {
+            verify_package_artifact(
+                package_root,
+                artifact.path(),
+                artifact.sha256(),
+                artifact.size_bytes(),
+            )?;
+        }
+
+        Ok(VerifiedModelPackage {
+            source: VerifiedPackageSource::Directory(canonical_package_root(package_root)?),
+            manifest: manifest.clone(),
+        })
+    }
+
+    pub fn verify_embedded_ai_lite(&self) -> Result<VerifiedModelPackage, AiError> {
+        let manifest = ModelManifest::from_json(EMBEDDED_AI_LITE_MANIFEST_JSON)?;
+        self.validate_policy(&manifest)?;
+        for artifact in manifest.artifacts() {
+            let bytes = embedded_ai_lite_artifact(artifact.path()).ok_or_else(manifest_invalid)?;
+            verify_embedded_artifact(bytes, artifact.sha256(), artifact.size_bytes())?;
+        }
+
+        Ok(VerifiedModelPackage {
+            source: VerifiedPackageSource::EmbeddedAiLite,
+            manifest,
+        })
+    }
+
+    fn validate_policy(&self, manifest: &ModelManifest) -> Result<(), AiError> {
         manifest.validate_final()?;
         if !manifest.license().redistribution_allowed()
             || !manifest.license().owner_approved()
@@ -128,26 +167,18 @@ impl ModelPackageVerifier {
         {
             return Err(AiError::new(AiErrorCode::HardwareTooLow));
         }
-
-        for artifact in manifest.artifacts() {
-            verify_package_artifact(
-                package_root,
-                artifact.path(),
-                artifact.sha256(),
-                artifact.size_bytes(),
-            )?;
-        }
-
-        Ok(VerifiedModelPackage {
-            package_root: canonical_package_root(package_root)?,
-            manifest: manifest.clone(),
-        })
+        Ok(())
     }
 }
 
 pub struct VerifiedModelPackage {
-    package_root: PathBuf,
+    source: VerifiedPackageSource,
     manifest: ModelManifest,
+}
+
+enum VerifiedPackageSource {
+    Directory(PathBuf),
+    EmbeddedAiLite,
 }
 
 impl VerifiedModelPackage {
@@ -166,13 +197,32 @@ impl VerifiedModelPackage {
             .iter()
             .find(|artifact| artifact.kind() == ModelArtifactKind::Model)
             .ok_or_else(manifest_invalid)?;
-        read_verified_package_artifact(
-            &self.package_root,
-            artifact.path(),
-            artifact.sha256(),
-            artifact.size_bytes(),
-            maximum_size_bytes,
-        )
+        if artifact.size_bytes() > maximum_size_bytes {
+            return Err(AiError::new(AiErrorCode::ModelIntegrityMismatch));
+        }
+        match &self.source {
+            VerifiedPackageSource::Directory(package_root) => read_verified_package_artifact(
+                package_root,
+                artifact.path(),
+                artifact.sha256(),
+                artifact.size_bytes(),
+                maximum_size_bytes,
+            ),
+            VerifiedPackageSource::EmbeddedAiLite => {
+                let bytes =
+                    embedded_ai_lite_artifact(artifact.path()).ok_or_else(manifest_invalid)?;
+                verify_embedded_artifact(bytes, artifact.sha256(), artifact.size_bytes())?;
+                Ok(bytes.to_vec())
+            }
+        }
+    }
+}
+
+fn embedded_ai_lite_artifact(path: &str) -> Option<&'static [u8]> {
+    match path {
+        "model/ranker.json" => Some(EMBEDDED_AI_LITE_MODEL),
+        "MODEL_NOTICE.md" => Some(EMBEDDED_AI_LITE_NOTICE),
+        _ => None,
     }
 }
 

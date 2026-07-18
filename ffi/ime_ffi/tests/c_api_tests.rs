@@ -8,6 +8,8 @@ use private_pinyin_ime::{
     ime_output_free, ime_session_commit_candidate, ime_session_feed_key, ime_session_free,
     ime_session_new, ImeKeyEvent,
 };
+#[cfg(feature = "desktop-ai")]
+use private_pinyin_ime::{ime_engine_enable_desktop_ai, ime_session_set_secure_input};
 
 #[test]
 fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
@@ -113,6 +115,35 @@ fn c_api_can_feed_mixed_full_pinyin_and_initials() {
             "wo jin tian"
         );
         ime_output_free(output);
+        ime_session_free(session);
+        ime_engine_free(engine);
+    }
+}
+
+#[cfg(feature = "desktop-ai")]
+#[test]
+fn desktop_ai_never_blocks_base_input_and_secure_mode_cancels_optional_work() {
+    unsafe {
+        let engine = ime_engine_new(ptr::null());
+        assert!(!engine.is_null());
+        assert_eq!(ime_engine_enable_desktop_ai(engine, 1, 8 * 1024, 0), 1);
+        let session = ime_session_new(engine);
+        assert!(!session.is_null());
+
+        assert_eq!(ime_session_set_secure_input(session, 1), 1);
+        let text = CString::new("n").unwrap();
+        let output = ime_session_feed_key(session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        assert_eq!(CStr::from_ptr((*output).preedit).to_str().unwrap(), "n");
+        ime_output_free(output);
+
+        assert_eq!(ime_session_set_secure_input(session, 0), 1);
+        let text = CString::new("i").unwrap();
+        let output = ime_session_feed_key(session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        assert!((*output).candidate_count > 0);
+        ime_output_free(output);
+
         ime_session_free(session);
         ime_engine_free(engine);
     }

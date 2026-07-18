@@ -10,5 +10,9 @@ name = "private_pinyin_ime"
 path = "src/lib.rs"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
+[features]
+desktop-ai = ["dep:private_pinyin_local_ai_core"]
+
 [dependencies]
 ime_core = { path = "../../ime_core" }
+private_pinyin_local_ai_core = { path = "../../ai/local_ai_core", optional = true }

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added AI-07 asynchronous AI Lite integration for macOS and Windows with an AI-05-verified embedded coefficient package, bounded non-blocking worker queues, complete session/revision/candidate identity, stale-result cancellation, visible-candidate stability, platform secure-input signals, hardware fallback, and unchanged base input on every AI failure; iOS remains disabled until AI-08.
 - Added the AI-06 shared fixed-point Rust Lite ranker with bounded frequency, segmentation, bigram, trigram, typo-correction, and English-term features; an Owner-approved 426-byte first-party coefficient package with explicit ranker/feature-schema compatibility; stable reason-coded ranking; overflow boundaries; bounded cancellation; a strict 12-case offline quality gate; and AI-05 integrity/license/platform/hardware enforcement without platform-host integration.
 - Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.
 - Added an executable regression for phrase-aware iOS Traditional conversion and documented that the system transform provides generic Traditional output rather than complete Taiwan/Hong Kong vocabulary localization.

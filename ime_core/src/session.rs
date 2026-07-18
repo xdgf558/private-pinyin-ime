@@ -74,6 +74,33 @@ impl InputSession {
         self.mode
     }
 
+    pub fn current_page_candidates_snapshot(&self) -> Vec<Candidate> {
+        self.current_page_candidates()
+    }
+
+    pub fn reorder_current_candidate_page(&mut self, order: &[usize]) -> bool {
+        let start = self.page_start().min(self.candidates.len());
+        let end = (start + self.page_size()).min(self.candidates.len());
+        let page_len = end.saturating_sub(start);
+        if order.len() != page_len {
+            return false;
+        }
+
+        let mut seen = vec![false; page_len];
+        for &index in order {
+            if index >= page_len || seen[index] {
+                return false;
+            }
+            seen[index] = true;
+        }
+
+        let original = self.candidates[start..end].to_vec();
+        for (target_index, &source_index) in order.iter().enumerate() {
+            self.candidates[start + target_index] = original[source_index].clone();
+        }
+        true
+    }
+
     pub fn feed_key(&mut self, event: KeyEvent) -> ImeOutput {
         if self.is_toggle_event(&event) {
             return self.toggle_mode();

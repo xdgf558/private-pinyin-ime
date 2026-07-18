@@ -165,6 +165,17 @@ pub(crate) fn sha256_bytes(bytes: &[u8]) -> String {
     encode_lower_hex(&Sha256::digest(bytes))
 }
 
+pub(crate) fn verify_embedded_artifact(
+    bytes: &[u8],
+    expected_sha256: &str,
+    expected_size_bytes: u64,
+) -> Result<(), AiError> {
+    if bytes.len() as u64 != expected_size_bytes || sha256_bytes(bytes) != expected_sha256 {
+        return Err(integrity_mismatch());
+    }
+    Ok(())
+}
+
 fn encode_lower_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut output = String::with_capacity(bytes.len() * 2);

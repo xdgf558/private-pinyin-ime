@@ -34,6 +34,7 @@ class CoreBridge {
   bool initialize();
   void reset();
   void reset_session();
+  void set_secure_input(bool secure_input);
   bool clear_user_lexicon();
   bool export_user_lexicon(const std::wstring& export_path);
 

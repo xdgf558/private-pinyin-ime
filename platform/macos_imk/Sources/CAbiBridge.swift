@@ -1,3 +1,4 @@
+import Carbon
 import Foundation
 import PrivatePinyinC
 
@@ -49,6 +50,7 @@ final class PinyinCoreBridge {
         guard let session else {
             return nil
         }
+        syncSecureInput(session)
 
         return mappedKey.text.withCString { textPointer in
             let event = ImeKeyEvent(
@@ -69,6 +71,7 @@ final class PinyinCoreBridge {
         guard let session else {
             return nil
         }
+        syncSecureInput(session)
         return takeOutput(ime_session_commit_candidate(session, Int32(index)))
     }
 
@@ -111,11 +114,17 @@ final class PinyinCoreBridge {
         guard let engine else {
             return nil
         }
+        let physicalMemoryMb = ProcessInfo.processInfo.physicalMemory / (1024 * 1024)
+        _ = ime_engine_enable_desktop_ai(engine, 1, physicalMemoryMb, 0)
         guard let session = ime_session_new(engine) else {
             ime_engine_free(engine)
             return nil
         }
         return (engine, session)
+    }
+
+    private func syncSecureInput(_ session: OpaquePointer) {
+        _ = ime_session_set_secure_input(session, IsSecureEventInputEnabled() ? 1 : 0)
     }
 
     private func close() {

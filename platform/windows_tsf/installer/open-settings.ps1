@@ -281,7 +281,7 @@ $privacy.Size = New-Object System.Drawing.Size(220, 28)
 $privacy.Font = New-UiFont -Size 10 -Style ([System.Drawing.FontStyle]::Bold)
 $privacy.Checked = [bool]$settings.strict_privacy_mode
 $privacyPage.Controls.Add($privacy)
-[void](New-UiLabel -Parent $privacyPage -Text "开启后停止记录新的用户词频，现有本地词库不会上传。" -X 46 -Y 59 -Width 600 -Height 24 -Size 8 -Color $colors.Muted)
+[void](New-UiLabel -Parent $privacyPage -Text "停止用户学习与统计；无状态的本地候选重排仍可使用，输入内容不会上传。" -X 46 -Y 59 -Width 600 -Height 24 -Size 8 -Color $colors.Muted)
 
 $learning = New-Object System.Windows.Forms.CheckBox
 $learning.Text = "启用用户学习"

@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 19:07
-Current stage: Stage 17 iOS device regression closure
-Current status: PR #32 is merged; iOS `0.1.22 (18)` was archived with Xcode 26.6, uploaded as delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`, and validated as App Store eligible; external-group submission and final host-app taps remain
+Last updated: 2026-07-18 21:37
+Current stage: AI-07 desktop asynchronous integration
+Current status: macOS and Windows AI Lite host integration is implemented and locally validated; macOS compiles with the desktop feature, while Windows MSVC/TSF compilation and platform smoke remain PR/CI and real-host gates
 
 ## Stage Status
 
@@ -58,7 +58,19 @@ Current status: PR #32 is merged; iOS `0.1.22 (18)` was archived with Xcode 26.6
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
-| AI-07 to AI-12 | Platform integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-07 | macOS and Windows asynchronous integration | in_review | 2026-07-18 21:37 | Optional desktop FFI feature, fully reverified embedded AI-06 package, bounded worker/completion queues, non-blocking host polling, secure-input cancellation, complete revision/candidate/deadline rejection, physical-memory fallback, macOS IMK wiring, and Windows TSF wiring are ready for PR review; iOS remains unchanged |
+| AI-08 to AI-12 | iOS integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+
+## AI-07 Validation
+
+- `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings`: passed.
+- `cargo test --workspace`: passed, including 53 local-AI core tests and the new exact-permutation candidate-page mutation guard.
+- `cargo test -p private_pinyin_ime_ffi --features desktop-ai`: passed with worker-backed desktop C ABI coverage, secure-input fallback, stable partial-order completion, mismatch rejection, and an executable expired-ready-result no-reorder regression.
+- `bash scripts/check_ai03_privacy_sources.sh`, `check_ai05_model_gate_sources.sh`, `check_ai06_lite_ranker_sources.sh`, and `check_ai07_desktop_integration_sources.sh`: passed; no network/external AI runtime or content log was introduced.
+- `bash scripts/run_c_demo.sh`, `check_macos_imk_sources.sh`, and `check_windows_tsf_sources.sh`: passed.
+- `bash scripts/build_macos_imk.sh`: passed with the `desktop-ai` FFI feature and produced `dist/macos_imk/PrivatePinyin.app`.
+- Windows `windows-2022` MSVC/TSF compilation, password-field classification, rapid stale-result behavior, and fail-open input remain required PR CI/real-host evidence before merge.
+- iOS build scripts do not enable `desktop-ai`; AI-08 remains the separate iOS memory/privacy integration stage.
 
 ## AI-06 Validation
 

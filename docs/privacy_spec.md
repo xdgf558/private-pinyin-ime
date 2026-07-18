@@ -89,6 +89,33 @@ request, send data over a network, or log candidate content. Its checked-in eval
 dataset contains only first-party synthetic/project-regression cases and explicitly
 declares that it contains no user data or real application context.
 
+## Desktop AI Host Integration
+
+AI-07 enables the approved AI Lite ranker only in macOS and Windows desktop FFI builds.
+Synchronous provider inference runs exclusively on a bounded worker thread. IMK key
+handling and TSF edit sessions may submit or poll work but must never wait for it. Queue
+saturation, worker failure, cancellation, deadline expiry, model rejection, or hardware
+rejection must preserve ordinary input and candidates.
+
+Each desktop request is scoped to an opaque session ID, monotonic composition revision,
+request ID, lifecycle-only candidate hash, exact candidate snapshot, secure-input state,
+and deadline. Results that do not still match every relevant field are discarded. Once a
+numbered candidate page is visible, asynchronous completion must not change the identity
+of its entries.
+
+macOS uses the system secure-event-input signal and Windows uses the TSF password input
+scope. Windows treats an unavailable or failed input-scope probe as secure instead of
+allowing AI work to fail open. Entering a secure field cancels outstanding AI work and
+prevents new requests.
+These platform signals supplement the shared `PrivacyGuard`; neither host may inspect or
+send surrounding document content. The desktop integration has no request-content log,
+network transport, telemetry, persistent AI cache, or second learning database. iOS does
+not link the desktop AI feature and remains unchanged until AI-08.
+
+Strict privacy mode still permits the AI-07 candidate ranker because it is stateless,
+local-only, bounded to the current candidate page, and writes no learning or AI cache.
+Strict privacy continues to disable user-learning and contextual-statistics writes.
+
 ## Strict Privacy Mode
 
 When strict privacy mode is enabled, the engine must not write new learning data, user lexicon updates, or contextual statistics.

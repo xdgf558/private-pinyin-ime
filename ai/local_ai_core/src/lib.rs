@@ -16,6 +16,7 @@ mod request;
 mod request_builder;
 mod response;
 mod rules;
+mod worker;
 
 pub use budget::{AiBudget, AiDeadline};
 pub use error::{AiError, AiErrorCode};
@@ -54,6 +55,10 @@ pub use rules::{
     LexiconCleanupSuggestion, MixedInputSegment, MixedInputSegmentKind, MixedInputSegmentation,
     PinyinCorrectionReason, PinyinCorrectionSuggestion, PinyinCorrector, UserLexiconSnapshotEntry,
     MAX_CLEANUP_ENTRIES, MAX_CLEANUP_SUGGESTIONS, MAX_MIXED_INPUT_BYTES, MAX_PINYIN_CORRECTIONS,
+};
+pub use worker::{
+    AiSubmitStatus, AiWorkerCompletion, BoundedAiWorker, DEFAULT_AI_COMPLETION_CAPACITY,
+    DEFAULT_AI_WORK_QUEUE_CAPACITY,
 };
 
 #[cfg(test)]

@@ -26,9 +26,9 @@ ABI, or any platform host. AI-03 adds the only public request-construction path 
 stale-result disposal.
 
 `AiCandidateSetHash` is a non-cryptographic request-lifecycle fingerprint, not a
-persistent or cross-process cache key. Although `LocalAiProvider::infer` is synchronous
-at the provider boundary, AI-07 hosts must call it only from a bounded worker queue;
-deadlines do not make direct calls from an IMK, TSF, or iOS input thread safe.
+persistent or cross-process cache key. `LocalAiProvider::infer` remains synchronous at
+the provider boundary. AI-07 dispatches it through `BoundedAiWorker` for macOS and
+Windows; deadlines do not make direct calls from an IMK, TSF, or iOS input thread safe.
 
 AI-03 rejects secure-input, sensitive, oversized, disabled, unlicensed-model, unsupported
 hardware, expanded-budget, and implicit rewrite/translation requests before inference.
@@ -47,9 +47,14 @@ AI-06 adds the first approved package: a 426-byte first-party fixed-point coeffi
 table for `AiLiteRanker`. It scores only structured `0..1000` frequency, segmentation,
 bigram, trigram, typo-correction, and term-preservation signals plus bounded base-order
 priors. The model contains no user data, performs no network access, stores no input,
-keeps stable ties in base order, and returns reason-coded candidate references. It is not
-connected to FFI or any platform host; AI-07 must add bounded worker queues, trustworthy
-secure-input/revision signals, and stale-result rejection. See
+keeps stable ties in base order, and returns reason-coded candidate references.
+
+AI-07 embeds and re-verifies that approved package in the optional `desktop-ai` FFI
+feature. macOS and Windows submit guarded candidate snapshots to a bounded worker,
+cancel stale work by complete identity, and never block their input/edit threads.
+Platform secure-input signals cancel or suppress inference, while every unavailable,
+rejected, late, or saturated path leaves ordinary candidates untouched. iOS does not
+link this feature and remains AI-off until AI-08. See
 [`model_package_policy.md`](model_package_policy.md) before evaluating any artifact.
 
 The approved implementation sequence is tracked in
