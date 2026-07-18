@@ -133,7 +133,7 @@ Checklist:
 | Script persistence | Reopen the keyboard after selecting `繁體`; candidates, committed text, and predictions remain Traditional while pinyin preedit and the shared local-learning ranking remain unchanged | | |
 | Mixed shorthand | In QWERTY mode, type `zyao`; `主要` is the first candidate and can be committed exactly once | | |
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
-| Self-change callback | Commit several candidates quickly and switch host fields; delayed callbacks caused by the keyboard's own insert/delete operations do not clear the new candidate or prediction state, while real external field changes still reset composition | | |
+| Self-change callback | Commit several candidates quickly and switch host fields; delayed `textDidChange` callbacks caused by the keyboard's own insert/delete operations do not clear the new candidate or prediction state, while real external field changes still reset composition | | |
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |
 | Password fallback | Password fields force the system keyboard | | |
 | Phone fallback | Phone-number fields force the system keyboard | | |
