@@ -113,7 +113,7 @@ The root `Cargo.toml` defines a workspace with:
 - `tools/ai_eval_runner` freezes required pre-AI behavior and evaluates the approved AI Lite ranker against first-party offline cases.
 - `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
 - `tools/model_packager` computes an atomic local model manifest with exact artifact sizes, SHA-256 values, and an approval fingerprint; it cannot grant Owner approval.
-- `ai/local_ai_core` contains privacy-guarded runtime contracts, bounded AI-04 rules, and the verified fixed-point AI-06 Lite ranker; it remains independent from platform hosts and the production engine.
+- `ai/local_ai_core` contains privacy-guarded runtime contracts, bounded AI-04 rules, the verified fixed-point AI-06 Lite ranker, and the bounded AI-07 desktop worker used through the optional FFI feature.
 - `Cargo.lock` must be committed to keep CLI and release builds reproducible.
 
 Validation:
@@ -121,7 +121,9 @@ Validation:
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings
 cargo test --workspace
+cargo test -p private_pinyin_ime_ffi --features desktop-ai
 cargo run -p test_cli -- nihao
 cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_settings.json
 cargo run -p private_pinyin_lexicon -- build-base --format private-pinyin-tsv --input ime_core/assets/base_lexicon_sample.tsv --output /tmp/private_pinyin_base.tsv --manifest /tmp/private_pinyin_lexicon_manifest.json --source-name "PrivatePinyin sample" --source-license "project-internal sample data"
@@ -145,6 +147,7 @@ bash scripts/check_ai03_privacy_sources.sh
 bash scripts/check_ai04_rules_sources.sh
 bash scripts/check_ai05_model_gate_sources.sh
 bash scripts/check_ai06_lite_ranker_sources.sh
+bash scripts/check_ai07_desktop_integration_sources.sh
 bash scripts/check_update01_sources.sh
 bash scripts/check_update02_sources.sh
 bash scripts/run_ai_eval.sh
@@ -160,4 +163,6 @@ AI-06 adds one Owner-approved, first-party fixed-point Lite ranker that consumes
 frequency, segmentation, bigram, trigram, typo, and English-term signals. Its 426-byte
 coefficient artifact passes the AI-05 fingerprint and integrity gate and improves all
 eight targeted synthetic ranking cases without regressing four preservation cases.
-Production host integration remains deferred to AI-07.
+AI-07 enables that package for macOS and Windows through an optional desktop FFI feature,
+bounded non-blocking worker dispatch, platform secure-input signals, complete stale-result
+identity checks, and fail-open base input. iOS remains unchanged until AI-08.

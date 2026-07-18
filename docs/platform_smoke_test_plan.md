@@ -44,6 +44,9 @@ Checklist:
 | Idle keys | Idle digits, arrows, Backspace, PageUp/PageDown are not swallowed | | |
 | Focus cleanup | Start `nihao`, switch to another window, return and type `a`; no stale `nihao` or phantom `nihaoa` composition appears | | |
 | Multi-process learning | Use the IME in two apps and select candidates in both; learned selections persist without visible write failures | | |
+| AI Lite fallback | On a supported-memory machine, ordinary candidate selection still works when AI initialization is unavailable or deliberately rejected; no key, preedit, candidate, or commit is lost | | Record memory, initialization state, and sanitized error code only |
+| AI candidate stability | Type rapidly, backspace, switch candidate pages, and continue composing while AI work is pending; an already visible numbered page never changes identity and stale results never commit | | Repeat in Notepad and one Chromium/Electron app |
+| Password-field privacy | In a password field exposing TSF `IS_PASSWORD`, base typing/fallback remains available while no AI result is applied; leaving the field starts a fresh composition with no stale result | | Do not record entered content in evidence |
 | Settings UI | Privacy, learning, prediction, clear, and export actions run | | |
 | Uninstall | Unregister/uninstall removes the input method from the user account | | |
 
@@ -86,6 +89,9 @@ Checklist:
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |
 | Candidate panel lifecycle | Switch repeatedly among TextEdit, Safari, and Chrome with candidates visible/hidden at least 20 times; typing keeps working and no new `PrivatePinyin` crash report appears | | |
+| AI Lite fallback | On a supported-memory machine, ordinary candidate selection still works when AI initialization is unavailable or deliberately rejected; no key, preedit, candidate, or commit is lost | | Record memory, initialization state, and sanitized error code only |
+| AI candidate stability | Type rapidly, backspace, switch candidate pages, and continue composing while AI work is pending; an already visible numbered page never changes identity and stale results never commit | | Repeat in TextEdit, Safari, Chrome, and VS Code |
+| Secure-input privacy | In a secure text field, base typing/fallback remains available while `IsSecureEventInputEnabled` prevents AI requests; leaving secure input starts a fresh composition with no stale result | | Do not record entered content in evidence |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After the guided refresh or logout/login fallback, no pre-install PrivatePinyin PID remains before smoke testing | | |

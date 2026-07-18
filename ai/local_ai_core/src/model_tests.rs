@@ -146,6 +146,20 @@ fn checked_in_ai06_ranker_verifies_and_loads_on_every_declared_platform() {
 }
 
 #[test]
+fn embedded_ai06_ranker_reuses_all_approval_and_integrity_gates() {
+    for platform in [ModelPlatform::Macos, ModelPlatform::Windows] {
+        let verified = ModelPackageVerifier::new(platform, supported_hardware())
+            .expect("embedded registry must parse")
+            .verify_embedded_ai_lite()
+            .expect("embedded desktop ranker must verify");
+        let ranker = AiLiteRanker::from_verified_package(&verified)
+            .expect("embedded ranker model must load");
+        assert_eq!(ranker.model_id(), "private-pinyin.ai-lite-ranker");
+        assert_eq!(ranker.model_version(), "1.0.1");
+    }
+}
+
+#[test]
 fn exact_external_approval_and_integrity_allow_a_synthetic_package() {
     let package = TestPackage::new();
     let packaged = packaged_manifest(&package);

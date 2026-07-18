@@ -25,7 +25,7 @@ if (-not $BuildDirectory) {
     $BuildDirectory = Join-Path $repoRoot "build\windows_tsf\$directoryName"
 }
 
-cargo build -p private_pinyin_ime_ffi --release --target $RustTarget
+cargo build -p private_pinyin_ime_ffi --release --target $RustTarget --features desktop-ai
 if ($LASTEXITCODE -ne 0) {
     throw "Rust FFI build failed for $RustTarget."
 }

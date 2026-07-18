@@ -220,6 +220,14 @@ bool CoreBridge::initialize() {
     return false;
   }
 
+  MEMORYSTATUSEX memory_status{};
+  memory_status.dwLength = sizeof(memory_status);
+  if (GlobalMemoryStatusEx(&memory_status) != FALSE) {
+    const uint64_t physical_memory_mb = memory_status.ullTotalPhys / (1024ULL * 1024ULL);
+    (void)ime_engine_enable_desktop_ai(
+        engine_, IME_AI_PLATFORM_WINDOWS, physical_memory_mb, 0);
+  }
+
   session_ = ime_session_new(engine_);
   if (session_ == nullptr) {
     reset();
@@ -246,6 +254,13 @@ void CoreBridge::reset_session() {
     return;
   }
   (void)take_output(ime_session_reset(session_));
+}
+
+void CoreBridge::set_secure_input(bool secure_input) {
+  if (session_ == nullptr) {
+    return;
+  }
+  (void)ime_session_set_secure_input(session_, secure_input ? 1 : 0);
 }
 
 bool CoreBridge::clear_user_lexicon() {

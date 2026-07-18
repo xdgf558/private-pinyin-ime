@@ -16,7 +16,7 @@ resources_dir="$contents_dir/Resources"
 codesign_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:--}"
 skip_codesign="${PRIVATE_PINYIN_SKIP_CODESIGN:-0}"
 
-cargo build -p private_pinyin_ime_ffi
+cargo build -p private_pinyin_ime_ffi --features desktop-ai
 
 rm -rf "$build_dir" "$app_dir"
 mkdir -p "$module_dir" "$module_cache_dir" "$macos_dir" "$frameworks_dir" "$resources_dir"

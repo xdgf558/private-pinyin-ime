@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <oleauto.h>
+#include <inputscope.h>
 #include <shellapi.h>
 
 #include "com_ptr.h"
@@ -123,6 +124,120 @@ HRESULT launch_preferences(HWND parent) {
     CloseHandle(execute_info.hProcess);
   }
   return S_OK;
+}
+
+class SecureInputEditSession final : public ITfEditSession {
+ public:
+  explicit SecureInputEditSession(ITfContext* context) : context_(context) {
+    context_->AddRef();
+  }
+
+  HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
+    if (object == nullptr) {
+      return E_POINTER;
+    }
+    *object = nullptr;
+    if (iid == IID_IUnknown || iid == IID_ITfEditSession) {
+      *object = static_cast<ITfEditSession*>(this);
+      AddRef();
+      return S_OK;
+    }
+    return E_NOINTERFACE;
+  }
+
+  ULONG STDMETHODCALLTYPE AddRef() override {
+    return ++ref_count_;
+  }
+
+  ULONG STDMETHODCALLTYPE Release() override {
+    const ULONG value = --ref_count_;
+    if (value == 0) {
+      delete this;
+    }
+    return value;
+  }
+
+  HRESULT STDMETHODCALLTYPE DoEditSession(TfEditCookie cookie) override {
+    TF_SELECTION selection{};
+    ULONG fetched = 0;
+    HRESULT hr = context_->GetSelection(cookie, TF_DEFAULT_SELECTION, 1, &selection, &fetched);
+    if (FAILED(hr) || fetched == 0 || selection.range == nullptr) {
+      return SUCCEEDED(hr) ? S_FALSE : hr;
+    }
+
+    ComPtr<ITfProperty> property;
+    hr = context_->GetProperty(GUID_PROP_INPUTSCOPE, property.put());
+    if (SUCCEEDED(hr)) {
+      VARIANT value;
+      VariantInit(&value);
+      hr = property->GetValue(cookie, selection.range, &value);
+      if (SUCCEEDED(hr)) {
+        secure_input_ = variant_contains_password_scope(value);
+      }
+      VariantClear(&value);
+    }
+    selection.range->Release();
+    return SUCCEEDED(hr) ? S_OK : hr;
+  }
+
+  bool secure_input() const {
+    return secure_input_;
+  }
+
+ private:
+  ~SecureInputEditSession() {
+    context_->Release();
+  }
+
+  static bool variant_contains_password_scope(const VARIANT& value) {
+    if (value.vt == VT_I4) {
+      return value.lVal == IS_PASSWORD;
+    }
+    if (value.vt != VT_UNKNOWN || value.punkVal == nullptr) {
+      return false;
+    }
+
+    ComPtr<ITfInputScope> input_scope;
+    if (FAILED(value.punkVal->QueryInterface(IID_ITfInputScope,
+                                             reinterpret_cast<void**>(input_scope.put())))) {
+      return false;
+    }
+    InputScope* scopes = nullptr;
+    UINT count = 0;
+    if (FAILED(input_scope->GetInputScopes(&scopes, &count))) {
+      return false;
+    }
+    bool is_password = false;
+    for (UINT index = 0; index < count; ++index) {
+      if (scopes[index] == IS_PASSWORD) {
+        is_password = true;
+        break;
+      }
+    }
+    CoTaskMemFree(scopes);
+    return is_password;
+  }
+
+  std::atomic<ULONG> ref_count_{1};
+  ITfContext* context_;
+  bool secure_input_ = false;
+};
+
+bool context_uses_secure_input(TfClientId client_id, ITfContext* context) {
+  if (client_id == TF_CLIENTID_NULL || context == nullptr) {
+    return false;
+  }
+  auto* edit_session = new (std::nothrow) SecureInputEditSession(context);
+  if (edit_session == nullptr) {
+    return false;
+  }
+  HRESULT edit_result = E_FAIL;
+  const HRESULT request_result = context->RequestEditSession(
+      client_id, edit_session, TF_ES_SYNC | TF_ES_READ, &edit_result);
+  const bool secure_input = SUCCEEDED(request_result) && SUCCEEDED(edit_result) &&
+                            edit_session->secure_input();
+  edit_session->Release();
+  return secure_input;
 }
 
 class EditSession final : public ITfEditSession {
@@ -275,6 +390,7 @@ HRESULT TextService::OnSetFocus(BOOL foreground) {
     shift_pressed_ = false;
     shift_used_as_modifier_ = false;
     core_.reset_session();
+    core_.set_secure_input(false);
   }
   return S_OK;
 }
@@ -318,6 +434,7 @@ HRESULT TextService::OnKeyDown(ITfContext* context, WPARAM key, LPARAM flags, BO
   }
 
   ImeKeyEvent event = to_ime_key_event(message);
+  core_.set_secure_input(context_uses_secure_input(client_id_, context));
   std::optional<OutputSnapshot> output = core_.feed_key(event);
   if (!output.has_value()) {
     return S_OK;
@@ -367,6 +484,7 @@ HRESULT TextService::OnKeyUp(ITfContext* context, WPARAM key, LPARAM flags,
   }
 
   const KeyMessage message = map_windows_key(key, flags);
+  core_.set_secure_input(context_uses_secure_input(client_id_, context));
   std::optional<OutputSnapshot> output = core_.feed_key(to_ime_key_event(message));
   if (output.has_value()) {
     apply_core_output(context, *output);

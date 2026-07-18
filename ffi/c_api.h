@@ -33,6 +33,11 @@ typedef enum {
 } ImeMode;
 
 typedef enum {
+  IME_AI_PLATFORM_MACOS = 1,
+  IME_AI_PLATFORM_WINDOWS = 2
+} ImeAiPlatform;
+
+typedef enum {
   IME_KEY_UNKNOWN = 0,
   IME_KEY_SPACE = 1,
   IME_KEY_ENTER = 2,
@@ -90,12 +95,19 @@ typedef struct {
 // back to built-in defaults; user lexicon database failures may still return
 // NULL. The engine snapshots settings at creation time.
 ImeEngine* ime_engine_new(const char* config_json_path);
+// Optional local AI is desktop-only in AI-07. It always falls back to the base
+// engine on verification, hardware, queue, timeout, or provider failure. Call
+// before ime_session_new. Returns 1 when enabled and 0 when unavailable.
+int ime_engine_enable_desktop_ai(ImeEngine* engine, int platform,
+                                 uint64_t physical_memory_mb, int gpu_available);
 int ime_engine_clear_user_lexicon(ImeEngine* engine);
 int ime_engine_export_user_lexicon(ImeEngine* engine, const char* export_tsv_path);
 void ime_engine_free(ImeEngine* engine);
 
 ImeSession* ime_session_new(ImeEngine* engine);
 void ime_session_free(ImeSession* session);
+// Secure fields disable and cancel optional AI work. Base IME input remains active.
+int ime_session_set_secure_input(ImeSession* session, int secure_input);
 
 ImeOutput* ime_session_feed_key(ImeSession* session, ImeKeyEvent event);
 ImeOutput* ime_session_commit_candidate(ImeSession* session, int index);
