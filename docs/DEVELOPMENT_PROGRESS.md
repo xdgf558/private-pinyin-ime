@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-18 16:54
+Last updated: 2026-07-18 19:07
 Current stage: Stage 17 iOS device regression closure
-Current status: PR #32 review hardening now bounds the mixed shorthand decoder and removes its repeated sort allocations, preserves score ordering across mixed and continuous candidates, rejects unrelated delayed host callbacks by document identity/context, and resolves local/shared iOS preferences by freshness; automated tests and the Xcode 27 readiness build pass, with final host-app taps reserved for device review
+Current status: PR #32 is merged; iOS `0.1.22 (18)` was archived with Xcode 26.6, uploaded as delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`, and validated as App Store eligible; external-group submission and final host-app taps remain
 
 ## Stage Status
 
@@ -23,8 +23,8 @@ Current status: PR #32 review hardening now bounds the mixed shorthand decoder a
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-17 23:29 | TestFlight candidate `0.1.21 (17)` was archived with Xcode 26.6, uploaded as delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 16:54 | Post-build-17 fixes preserve the freshest nine-key/script setting without Full Access, retain candidates across verified self-generated callbacks, make the nine-key symbol entry selectable, place GHI/Delete in the requested positions, and rank `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-18 19:01 | TestFlight candidate `0.1.22 (18)` was archived with Xcode 26.6, uploaded as delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 19:07 | PR #32 is merged and build `18` is processed; it preserves the freshest nine-key/script setting without Full Access, retains candidates across verified self-generated callbacks, makes the nine-key symbol entry selectable, places GHI/Delete in the requested positions, and ranks `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -134,6 +134,16 @@ Current status: PR #32 review hardening now bounds the mixed shorthand decoder a
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `cd60fb42-9506-4aee-a7e8-4d71bb9d55cb`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review: ready for the Owner to finish the test-content form, assign build `17` to the external group, and submit it for Beta App Review.
+
+## iOS 0.1.22 (18) TestFlight Upload
+
+- PR #32 was approved and merged to `main` as `3e33c42`; container app and Keyboard Extension versions were advanced together in release commit `4c1cae9`.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0`.
+- Signed archive `dist/ios/PrivatePinyin-0.1.22-build18-xcode26.xcarchive` reports version `0.1.22`, build `18`, and arm64.
+- `plutil -lint` for both release plists and `bash scripts/check_ios_keyboard_sources.sh`: passed.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- External TestFlight review: ready for the Owner to add build `18` to the external group, provide test content, and submit it for Beta App Review.
 
 ## Completed Work
 
