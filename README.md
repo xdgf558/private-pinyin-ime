@@ -13,7 +13,8 @@ Rust 核心引擎、C ABI、macOS InputMethodKit 原型、Windows TSF 原型、i
 ### 主要特性
 
 - 本地拼音解析和候选排序，默认不依赖云端服务。
-- 已导入 AOSP/pinyin-data 来源的基础词库，覆盖常用单字和常用词。
+- 已导入经审核的 AOSP/pinyin-data/phrase-pinyin-data 宽松许可基础词库，覆盖常用单字和常用词。
+- macOS、Windows 和 iOS 都可导入用户自己选择的 Rime YAML 词库；导入层独立保存，升级不会覆盖。项目不打包或下载 GPL 词库，例如雾凇拼音只能由用户在本机自行选择导入。
 - 支持本地用户词库学习：会记录你选过的候选词、拼音、频率和更新时间，用于后续排序。
 - 支持本地 bigram、短句和 trigram 联想；最近两个已选词可以共同影响下一个候选，目前基础 bigram 数据仍较小。
 - iOS 键盘内可在「简体」与「繁體」输出之间切换；转换完全在本机完成，候选、预测和提交字形保持一致，共用同一套本地学习排序。该选项使用系统通用繁体转换，不等同于完整的台湾或香港词汇本地化。
@@ -108,8 +109,8 @@ The root `Cargo.toml` defines a workspace with:
 - `ime_core` is the core engine crate.
 - `ffi/ime_ffi` exposes the C ABI as `libprivate_pinyin_ime`.
 - `tools/test_cli` is a CLI package that depends on `ime_core`.
-- `tools/settings_cli` manages settings snapshots and user lexicon clear/export actions for installer scripts.
-- `tools/lexicon_builder` converts local lexicon source files into the project base-lexicon TSV format and writes an audit manifest.
+- `tools/settings_cli` manages settings snapshots, user lexicon clear/export, and local Rime dictionary import actions for installer scripts.
+- `tools/lexicon_builder` converts local lexicon source files, including MIT phrase-pinyin-data, into the project base-lexicon TSV format and writes an audit manifest.
 - `tools/ai_eval_runner` freezes required pre-AI behavior and evaluates the approved AI Lite ranker against first-party offline cases.
 - `tools/ai_benchmark` records report-only initialization and lookup latency percentiles for local AI planning.
 - `tools/model_packager` computes an atomic local model manifest with exact artifact sizes, SHA-256 values, and an approval fingerprint; it cannot grant Owner approval.
@@ -127,6 +128,7 @@ cargo test -p private_pinyin_ime_ffi --features desktop-ai
 cargo run -p test_cli -- nihao
 cargo run -p private_pinyin_settings -- write-default --settings /tmp/private_pinyin_settings.json
 cargo run -p private_pinyin_lexicon -- build-base --format private-pinyin-tsv --input ime_core/assets/base_lexicon_sample.tsv --output /tmp/private_pinyin_base.tsv --manifest /tmp/private_pinyin_lexicon_manifest.json --source-name "PrivatePinyin sample" --source-license "project-internal sample data"
+cargo run -p private_pinyin_settings -- import-rime-lexicon --settings /tmp/private_pinyin_settings.json --input /path/to/user.dict.yaml
 bash scripts/run_c_demo.sh
 bash scripts/check_windows_tsf_sources.sh
 bash scripts/check_macos_imk_sources.sh
@@ -138,6 +140,7 @@ bash scripts/check_stage10_platform_host_sources.sh
 bash scripts/check_stage11_settings_privacy_sources.sh
 bash scripts/check_stage12_release_sources.sh
 bash scripts/check_stage13_lexicon_sources.sh
+bash scripts/check_local_lexicon_import_sources.sh
 bash scripts/check_stage14_ios_signing_sources.sh
 bash scripts/check_stage15_ios_smoke_sources.sh
 bash scripts/check_stage16_ios_testflight_sources.sh

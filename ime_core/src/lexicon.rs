@@ -1,8 +1,12 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
 use crate::error::{ImeError, ImeResult};
+use crate::imported_lexicon::{
+    read_utf8_file_bounded, validate_imported_entries, MAX_IMPORTED_FILE_BYTES,
+};
 use crate::nine_key::{is_valid_nine_key_input, pinyin_to_nine_key};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
@@ -157,6 +161,34 @@ impl Lexicon {
         Self::from_tsv(EMBEDDED_BASE_LEXICON)
     }
 
+    pub fn load_embedded_with_imported(path: impl AsRef<Path>) -> ImeResult<Self> {
+        let path = path.as_ref();
+        let mut entries = Self::load_embedded()?.entries;
+        let imported = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
+        let imported_entries = Self::from_tsv(&imported)
+            .map_err(|_| ImeError::ImportedLexiconParse)?
+            .entries;
+        validate_imported_entries(&imported_entries)?;
+        entries.extend(imported_entries);
+
+        let mut identities = HashMap::<(String, String), u32>::new();
+        for entry in entries {
+            identities
+                .entry((entry.phrase, entry.pinyin))
+                .and_modify(|frequency| *frequency = (*frequency).max(entry.frequency))
+                .or_insert(entry.frequency);
+        }
+        let entries = identities
+            .into_iter()
+            .map(|((phrase, pinyin), frequency)| LexiconEntry {
+                phrase,
+                pinyin,
+                frequency,
+            })
+            .collect();
+        Ok(Self::from_entries(entries))
+    }
+
     pub fn from_tsv(tsv: &str) -> ImeResult<Self> {
         let mut entries = Vec::new();
 
@@ -195,6 +227,10 @@ impl Lexicon {
             });
         }
 
+        Ok(Self::from_entries(entries))
+    }
+
+    fn from_entries(entries: Vec<LexiconEntry>) -> Self {
         let compact_index = build_compact_index(&entries);
         let initial_index = build_initial_index(&entries);
         let nine_key_index = build_nine_key_index(&entries);
@@ -214,7 +250,7 @@ impl Lexicon {
             .max()
             .unwrap_or_default();
 
-        Ok(Self {
+        Self {
             entries,
             compact_index,
             initial_index,
@@ -222,7 +258,7 @@ impl Lexicon {
             max_compact_pinyin_chars,
             max_initial_chars,
             max_nine_key_chars,
-        })
+        }
     }
 
     pub fn entries(&self) -> &[LexiconEntry] {

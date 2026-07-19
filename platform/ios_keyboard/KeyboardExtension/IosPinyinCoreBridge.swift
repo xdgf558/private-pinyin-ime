@@ -46,14 +46,7 @@ final class IosPinyinCoreBridge {
 
     init?() {
         let settingsPath = IosSettingsStore.ensureSettingsFile()
-        let configuredEngine = settingsPath.flatMap { path in
-            path.withCString { pathPointer in
-                ime_engine_new(pathPointer)
-            }
-        }
-        let enginePointer = configuredEngine ?? ime_engine_new(nil)
-
-        guard let engine = enginePointer else {
+        guard let engine = Self.openEngine(settingsPath: settingsPath) else {
             return nil
         }
         guard let session = ime_session_new(engine) else {
@@ -119,6 +112,15 @@ final class IosPinyinCoreBridge {
             return nil
         }
         return takeOutput(ime_session_reset(session))
+    }
+
+    private static func openEngine(settingsPath: String?) -> OpaquePointer? {
+        let configuredEngine = settingsPath.flatMap { path in
+            path.withCString { pathPointer in
+                ime_engine_new(pathPointer)
+            }
+        }
+        return configuredEngine ?? ime_engine_new(nil)
     }
 
     private func close() {

@@ -39,6 +39,7 @@ enum IosSettingsStore {
     private static let chineseScriptDefaultsKey = "private_pinyin.ios_chinese_script"
     private static let chineseScriptUpdatedAtDefaultsKey =
         "private_pinyin.ios_chinese_script_updated_at"
+    private static let lastRimeImportStatusKey = "ios_last_rime_import_status"
 
     static var appGroupIdentifier: String {
         guard
@@ -78,6 +79,10 @@ enum IosSettingsStore {
 
     static var userLexiconURL: URL {
         supportDirectory.appendingPathComponent("user_lexicon.sqlite", isDirectory: false)
+    }
+
+    static var importedLexiconURL: URL {
+        supportDirectory.appendingPathComponent("imported_lexicon.tsv", isDirectory: false)
     }
 
     static func ensureSettingsFile() -> String? {
@@ -222,6 +227,31 @@ enum IosSettingsStore {
         return removed
     }
 
+    static func rimeImportStatusText() -> String? {
+        switch readSettings()[lastRimeImportStatusKey] as? String {
+        case "success":
+            return "Rime 词库已导入，键盘会使用新的独立词库层。"
+        case "partial":
+            return "部分 Rime 词库已导入，其他文件需检查后重试。"
+        case "failure":
+            return "最近一次 Rime 词库导入失败，请确认文件包含明确拼音列。"
+        default:
+            return nil
+        }
+    }
+
+    static func clearImportedLexiconArtifacts() throws -> Int {
+        var removed = 0
+        if FileManager.default.fileExists(atPath: importedLexiconURL.path) {
+            try FileManager.default.removeItem(at: importedLexiconURL)
+            removed += 1
+        }
+        _ = updateSettings { settings in
+            settings.removeValue(forKey: lastRimeImportStatusKey)
+        }
+        return removed
+    }
+
     private static let appGroupContainerURL = FileManager.default.containerURL(
         forSecurityApplicationGroupIdentifier: appGroupIdentifier
     )
@@ -240,6 +270,11 @@ enum IosSettingsStore {
         let expectedPath = userLexiconURL.path
         if settings["user_lexicon_path"] as? String != expectedPath {
             settings["user_lexicon_path"] = expectedPath
+            needsWrite = true
+        }
+        let expectedImportedPath = importedLexiconURL.path
+        if settings["imported_lexicon_path"] as? String != expectedImportedPath {
+            settings["imported_lexicon_path"] = expectedImportedPath
             needsWrite = true
         }
         if settings["candidate_page_size"] as? Int != keyboardCandidatePageSize {
@@ -264,6 +299,7 @@ enum IosSettingsStore {
         ]
         settings["enable_user_learning"] = false
         settings["user_lexicon_path"] = userLexiconURL.path
+        settings["imported_lexicon_path"] = importedLexiconURL.path
         settings["candidate_page_size"] = keyboardCandidatePageSize
         settings["ios_keyboard_layout"] = IosKeyboardLayout.qwerty.rawValue
         settings["ios_chinese_script"] = IosChineseScript.simplified.rawValue
@@ -295,6 +331,12 @@ enum IosSettingsStore {
             return true
         } catch {
             return false
+        }
+    }
+
+    static func recordRimeImportStatus(_ status: String) {
+        _ = updateSettings { settings in
+            settings[lastRimeImportStatusKey] = status
         }
     }
 

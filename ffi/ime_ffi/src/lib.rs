@@ -184,6 +184,34 @@ pub extern "C" fn ime_engine_export_user_lexicon(
 }
 
 #[no_mangle]
+pub extern "C" fn ime_engine_import_rime_lexicon(
+    engine: *mut ImeEngine,
+    source_path: *const c_char,
+) -> c_int {
+    catch_unwind(AssertUnwindSafe(|| {
+        let engine = unsafe { engine.as_ref()? };
+        let source_path = read_c_string(source_path);
+        if source_path.is_empty() {
+            return None;
+        }
+        let report = engine.inner.import_rime_lexicon(source_path).ok()?;
+        c_int::try_from(report.accepted_rows).ok()
+    }))
+    .ok()
+    .flatten()
+    .unwrap_or(-1)
+}
+
+#[no_mangle]
+pub extern "C" fn ime_engine_clear_imported_lexicon(engine: *mut ImeEngine) -> c_int {
+    catch_status(|| {
+        let engine = unsafe { engine.as_ref()? };
+        engine.inner.clear_imported_lexicon().ok()?;
+        Some(())
+    })
+}
+
+#[no_mangle]
 pub extern "C" fn ime_engine_free(engine: *mut ImeEngine) {
     catch_unit(|| {
         if !engine.is_null() {

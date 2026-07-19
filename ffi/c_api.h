@@ -102,6 +102,14 @@ int ime_engine_enable_desktop_ai(ImeEngine* engine, int platform,
                                  uint64_t physical_memory_mb, int gpu_available);
 int ime_engine_clear_user_lexicon(ImeEngine* engine);
 int ime_engine_export_user_lexicon(ImeEngine* engine, const char* export_tsv_path);
+// Imports explicit-pinyin entries from a user-selected Rime YAML dictionary
+// into the separately configured imported_lexicon_path. Returns the number of
+// accepted source rows, or -1 on error. Hosts should recreate their engine and
+// sessions after a successful import so the new snapshot becomes active.
+int ime_engine_import_rime_lexicon(ImeEngine* engine, const char* source_path);
+// Removes only the separately configured imported lexicon layer. The bundled
+// base lexicon and learned user lexicon remain unchanged. Returns 1 on success.
+int ime_engine_clear_imported_lexicon(ImeEngine* engine);
 void ime_engine_free(ImeEngine* engine);
 
 ImeSession* ime_session_new(ImeEngine* engine);

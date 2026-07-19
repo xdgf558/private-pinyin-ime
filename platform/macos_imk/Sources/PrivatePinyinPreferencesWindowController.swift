@@ -1,4 +1,5 @@
 import Cocoa
+import UniformTypeIdentifiers
 
 private enum StationTheme {
     static let windowBackground = NSColor(srgbRed: 0x14 / 255, green: 0x1B / 255, blue: 0x2D / 255, alpha: 1)
@@ -254,6 +255,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let automaticUpdateDetailLabel = NSTextField(labelWithString: "每天最多读取一次固定的公开版本清单，不上传输入内容。")
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
     private let updateDetailLabel = NSTextField(labelWithString: "输入功能始终不依赖更新服务。")
+    private let lexiconCore = PinyinCoreBridge()
     private let boardScrollView = NSScrollView(frame: .zero)
     private let boardView = StationBoardBackgroundView(
         frame: NSRect(x: 0, y: 0, width: boardWidth, height: initialBoardHeight)
@@ -345,6 +347,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         let privacyCard = makePrivacyCard()
         let settingsGrid = makeSettingsGrid()
         let pathSection = makePathSection()
+        let importedLexiconSection = makeImportedLexiconSection()
         let versionSection = makeVersionSection()
         let footer = makeFooterRow()
 
@@ -359,6 +362,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             privacyCard,
             settingsGrid,
             pathSection,
+            importedLexiconSection,
             versionSection,
             footer,
         ])
@@ -378,6 +382,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             privacyCard.widthAnchor.constraint(equalTo: root.widthAnchor),
             settingsGrid.widthAnchor.constraint(equalTo: root.widthAnchor),
             pathSection.widthAnchor.constraint(equalTo: root.widthAnchor),
+            importedLexiconSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             versionSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
@@ -660,6 +665,73 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         return column
     }
 
+    private func makeImportedLexiconSection() -> NSView {
+        let title = label(
+            "本地导入词库",
+            font: .systemFont(ofSize: 15, weight: .semibold),
+            color: StationTheme.textPrimary
+        )
+        let detail = wrappingLabel(
+            "导入带明确拼音列的 Rime YAML 词典。数据与内置词库分层保存，升级不会覆盖。",
+            font: .systemFont(ofSize: 12, weight: .regular),
+            color: StationTheme.textSecondary
+        )
+        detail.maximumNumberOfLines = 2
+
+        let textColumn = NSStackView(views: [title, detail])
+        textColumn.orientation = .vertical
+        textColumn.alignment = .leading
+        textColumn.spacing = 5
+
+        let importButton = StationButton(
+            title: "导入 Rime...",
+            target: self,
+            action: #selector(importRimeLexicon(_:)),
+            normalBackground: StationTheme.lampYellow,
+            hoverBackground: StationTheme.lampYellowHover,
+            pressedBackground: StationTheme.lampYellowPressed,
+            titleColor: StationTheme.onLamp
+        )
+        importButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 126).isActive = true
+
+        let clearButton = StationButton(
+            title: "清空导入",
+            target: self,
+            action: #selector(clearImportedLexicon(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        clearButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 104).isActive = true
+
+        let buttons = NSStackView(views: [importButton, clearButton])
+        buttons.orientation = .horizontal
+        buttons.alignment = .centerY
+        buttons.spacing = 10
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [textColumn, spacer, buttons])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 16
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
+        card.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
+            detail.widthAnchor.constraint(lessThanOrEqualToConstant: 390),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 92),
+        ])
+        return card
+    }
+
     private func makeVersionSection() -> NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -863,6 +935,65 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             return
         }
         NSWorkspace.shared.open(PrivatePinyinSettingsStore.settingsURL)
+    }
+
+    @objc private func importRimeLexicon(_ sender: Any?) {
+        guard let window else {
+            showAlert("偏好设置窗口尚未就绪。")
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = ["yaml", "yml", "dict"].compactMap {
+            UTType(filenameExtension: $0)
+        }
+        panel.message = "选择带有明确拼音列的 Rime YAML 词典。导入数据只保存在本机。"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self else {
+                return
+            }
+
+            var accepted = 0
+            for url in panel.urls {
+                guard let count = lexiconCore?.importRimeLexicon(from: url.path) else {
+                    if accepted > 0 {
+                        NotificationCenter.default.post(
+                            name: .privatePinyinSettingsChanged,
+                            object: self
+                        )
+                        showAlert(
+                            "已导入 \(accepted) 条记录，但后续文件导入失败。请检查剩余文件的格式和大小。"
+                        )
+                    } else {
+                        showAlert("无法导入 Rime 词库。请确认文件格式和大小。")
+                    }
+                    return
+                }
+                accepted += count
+            }
+
+            NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
+            showAlert("已导入 \(accepted) 条词库记录。")
+        }
+    }
+
+    @objc private func clearImportedLexicon(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "清空导入词库？"
+        alert.informativeText = "只会删除手动导入的词库，不影响内置词库和用户学习数据。"
+        alert.addButton(withTitle: "清空")
+        alert.addButton(withTitle: "取消")
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+
+        if lexiconCore?.clearImportedLexicon() == true {
+            NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
+            showAlert("导入词库已清空。")
+        } else {
+            showAlert("无法清空导入词库。")
+        }
     }
 
     @objc private func reloadButtonPressed(_ sender: Any?) {

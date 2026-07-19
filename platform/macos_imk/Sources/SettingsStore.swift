@@ -19,6 +19,10 @@ enum PrivatePinyinSettingsStore {
         supportDirectory.appendingPathComponent("user_lexicon.sqlite", isDirectory: false)
     }
 
+    static var importedLexiconURL: URL {
+        supportDirectory.appendingPathComponent("imported_lexicon.tsv", isDirectory: false)
+    }
+
     static func ensureSettingsFile() -> String? {
         do {
             try FileManager.default.createDirectory(
@@ -27,7 +31,7 @@ enum PrivatePinyinSettingsStore {
             )
 
             if FileManager.default.fileExists(atPath: settingsURL.path) {
-                try migrateCandidatePageSizeIfNeeded()
+                try repairRuntimeSettingsIfNeeded()
             } else {
                 try write(settings: defaultSettings())
             }
@@ -74,6 +78,7 @@ enum PrivatePinyinSettingsStore {
         ]
         settings["candidate_page_size"] = macOSCandidatePageSize
         settings["user_lexicon_path"] = userLexiconURL.path
+        settings["imported_lexicon_path"] = importedLexiconURL.path
         return settings
     }
 
@@ -93,18 +98,32 @@ enum PrivatePinyinSettingsStore {
         return settings
     }
 
-    private static func migrateCandidatePageSizeIfNeeded() throws {
+    private static func repairRuntimeSettingsIfNeeded() throws {
         guard var settings = readSettingsFile() else {
+            try write(settings: defaultSettings())
             return
         }
 
+        var needsWrite = false
         let pageSize = (settings["candidate_page_size"] as? NSNumber)?.intValue
-        guard pageSize == nil || pageSize == previousDefaultCandidatePageSize else {
-            return
+        if pageSize == nil || pageSize == previousDefaultCandidatePageSize {
+            settings["candidate_page_size"] = macOSCandidatePageSize
+            needsWrite = true
+        }
+        let configuredUserLexiconPath = (settings["user_lexicon_path"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if configuredUserLexiconPath?.isEmpty != false {
+            settings["user_lexicon_path"] = userLexiconURL.path
+            needsWrite = true
+        }
+        if settings["imported_lexicon_path"] as? String != importedLexiconURL.path {
+            settings["imported_lexicon_path"] = importedLexiconURL.path
+            needsWrite = true
         }
 
-        settings["candidate_page_size"] = macOSCandidatePageSize
-        try write(settings: settings)
+        if needsWrite {
+            try write(settings: settings)
+        }
     }
 
     private static func write(settings: [String: Any]) throws {

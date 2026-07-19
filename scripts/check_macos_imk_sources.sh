@@ -70,10 +70,12 @@ grep -q "PrivatePinyinCandidatePanelStore" platform/macos_imk/Sources/PrivatePin
 grep -q "static var panel: IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "sharedPanel(for: server)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "macOSCandidatePageSize = 9" platform/macos_imk/Sources/SettingsStore.swift
-grep -q "migrateCandidatePageSizeIfNeeded" platform/macos_imk/Sources/SettingsStore.swift
+grep -q "repairRuntimeSettingsIfNeeded" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_session_reset" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "ime_engine_clear_user_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "ime_engine_import_rime_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "ime_engine_clear_imported_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_engine_new(nil)" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
@@ -89,6 +91,7 @@ grep -q "猫栈拼音偏好设置" platform/macos_imk/Sources/PrivatePinyinPrefe
 grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "记住你常选的词" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "打开设置文件" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "本地导入词库" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "a small station, still lit at night" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "STATION BOARD" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "CFBundleShortVersionString" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
@@ -137,6 +140,8 @@ grep -q "NSWindow" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowCont
 grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "清空用户词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "导出用户词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "导入 Rime 词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "清空导入词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "打开设置文件" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "updateComposition" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "InputMethodConnectionName" platform/macos_imk/Resources/Info.plist

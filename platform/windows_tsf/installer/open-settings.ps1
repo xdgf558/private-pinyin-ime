@@ -14,6 +14,7 @@ Add-Type -AssemblyName System.Drawing
 $dataDir = Join-Path $env:LOCALAPPDATA "PrivatePinyin"
 $settingsPath = Join-Path $dataDir "settings.json"
 $userLexiconPath = Join-Path $dataDir "user_lexicon.sqlite"
+$importedLexiconPath = Join-Path $dataDir "imported_lexicon.tsv"
 $iconPath = Join-Path $PSScriptRoot "PrivatePinyinInstaller.ico"
 $logoPath = Join-Path $PSScriptRoot "PrivatePinyinLogo.png"
 
@@ -56,6 +57,7 @@ function Get-AppVersion {
 function Get-DefaultSettings {
     $settings = Get-Content -Raw -Path (Get-DefaultSettingsTemplatePath) | ConvertFrom-Json
     $settings.user_lexicon_path = $userLexiconPath.Replace("\", "/")
+    $settings.imported_lexicon_path = $importedLexiconPath.Replace("\", "/")
     return $settings
 }
 
@@ -63,6 +65,26 @@ function Ensure-SettingsFile {
     New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
     if (-not (Test-Path $settingsPath)) {
         $settings = Get-DefaultSettings
+        $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
+        return
+    }
+
+    $settings = Get-Content -Raw -Path $settingsPath | ConvertFrom-Json
+    $needsWrite = $false
+    $expectedUserPath = $userLexiconPath.Replace("\", "/")
+    $expectedImportedPath = $importedLexiconPath.Replace("\", "/")
+    if ($settings.user_lexicon_path -ne $expectedUserPath) {
+        $settings.user_lexicon_path = $expectedUserPath
+        $needsWrite = $true
+    }
+    if ($null -eq $settings.PSObject.Properties["imported_lexicon_path"]) {
+        $settings | Add-Member -NotePropertyName "imported_lexicon_path" -NotePropertyValue $expectedImportedPath
+        $needsWrite = $true
+    } elseif ($settings.imported_lexicon_path -ne $expectedImportedPath) {
+        $settings.imported_lexicon_path = $expectedImportedPath
+        $needsWrite = $true
+    }
+    if ($needsWrite) {
         $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
     }
 }
@@ -272,6 +294,7 @@ $generalPage.Controls.Add($theme)
 $privacyPage = New-Object System.Windows.Forms.TabPage
 $privacyPage.Text = "隐私与词库"
 $privacyPage.BackColor = $colors.White
+$privacyPage.AutoScroll = $true
 $tabs.TabPages.Add($privacyPage)
 
 $privacy = New-Object System.Windows.Forms.CheckBox
@@ -319,6 +342,27 @@ $openJson.Location = New-Object System.Drawing.Point(298, 298)
 $openJson.Size = New-Object System.Drawing.Size(140, 36)
 $openJson.Font = New-UiFont -Size 9
 $privacyPage.Controls.Add($openJson)
+
+Add-Separator -Parent $privacyPage -Y 352
+[void](New-UiLabel -Parent $privacyPage -Text "本地导入词库" -X 22 -Y 370 -Width 180 -Height 26 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
+[void](New-UiLabel -Parent $privacyPage -Text "支持带明确拼音列的 Rime YAML；与内置词库分层保存，升级不会覆盖。" -X 24 -Y 401 -Width 650 -Height 24 -Size 8 -Color $colors.Muted)
+$importedPathLabel = New-UiLabel -Parent $privacyPage -Text $importedLexiconPath -X 24 -Y 430 -Width 640 -Height 24 -Size 8 -Color $colors.Text
+$importedPathLabel.AutoEllipsis = $true
+
+$importRime = New-Object System.Windows.Forms.Button
+$importRime.Text = "导入 Rime..."
+$importRime.Location = New-Object System.Drawing.Point(24, 466)
+$importRime.Size = New-Object System.Drawing.Size(140, 36)
+$importRime.Font = New-UiFont -Size 9
+$privacyPage.Controls.Add($importRime)
+
+$clearImported = New-Object System.Windows.Forms.Button
+$clearImported.Text = "清空导入词库"
+$clearImported.Location = New-Object System.Drawing.Point(176, 466)
+$clearImported.Size = New-Object System.Drawing.Size(140, 36)
+$clearImported.Font = New-UiFont -Size 9
+$clearImported.ForeColor = $colors.Danger
+$privacyPage.Controls.Add($clearImported)
 
 $aboutPage = New-Object System.Windows.Forms.TabPage
 $aboutPage.Text = "关于"
@@ -427,6 +471,42 @@ $export.Add_Click({
         $statusLabel.Text = if ($ok) { "用户词库已导出" } else { "无法导出用户词库" }
         $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
     }
+})
+
+$importRime.Add_Click({
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.Multiselect = $true
+    $dialog.Filter = "Rime 词典 (*.yaml;*.yml;*.dict)|*.yaml;*.yml;*.dict|所有文件 (*.*)|*.*"
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        return
+    }
+
+    foreach ($fileName in $dialog.FileNames) {
+        $ok = Run-SettingsTool @("import-rime-lexicon", "--settings", $settingsPath, "--input", $fileName)
+        if (-not $ok) {
+            $statusLabel.Text = "无法导入 Rime 词库"
+            $statusLabel.ForeColor = $colors.Danger
+            return
+        }
+    }
+    $statusLabel.Text = "Rime 词库已导入，重新切换一次输入法后生效"
+    $statusLabel.ForeColor = $colors.Success
+})
+
+$clearImported.Add_Click({
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+        "确定清空手动导入的词库吗？内置词库和用户学习数据不会受影响。",
+        "清空导入词库",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    $ok = Run-SettingsTool @("clear-imported-lexicon", "--settings", $settingsPath)
+    $statusLabel.Text = if ($ok) { "导入词库已清空，重新切换一次输入法后生效" } else { "无法清空导入词库" }
+    $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
 })
 
 $openJson.Add_Click({ Start-Process notepad.exe $settingsPath })
