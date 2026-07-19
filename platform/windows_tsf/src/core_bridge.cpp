@@ -123,6 +123,7 @@ std::string default_settings_template() {
          "  \"enable_user_learning\": true,\n"
          "  \"strict_privacy_mode\": false,\n"
          "  \"user_lexicon_path\": null,\n"
+         "  \"imported_lexicon_path\": null,\n"
          "  \"fuzzy_pinyin\": {\n"
          "    \"zh_z\": false,\n"
          "    \"ch_c\": false,\n"
@@ -180,9 +181,12 @@ std::string ensure_settings_file() {
 
   const std::wstring settings_path = support_dir + L"\\settings.json";
   const std::wstring user_lexicon_path = support_dir + L"\\user_lexicon.sqlite";
+  const std::wstring imported_lexicon_path = support_dir + L"\\imported_lexicon.tsv";
   if (!file_exists(settings_path)) {
     std::string user_lexicon_utf8 = wide_to_utf8(user_lexicon_path);
     std::replace(user_lexicon_utf8.begin(), user_lexicon_utf8.end(), '\\', '/');
+    std::string imported_lexicon_utf8 = wide_to_utf8(imported_lexicon_path);
+    std::replace(imported_lexicon_utf8.begin(), imported_lexicon_utf8.end(), '\\', '/');
 
     std::string contents;
     const std::wstring template_path = module_directory() + L"\\default_settings.json";
@@ -195,6 +199,11 @@ std::string ensure_settings_file() {
     const std::string replacement =
         "\"user_lexicon_path\": \"" + json_escape(user_lexicon_utf8) + "\"";
     if (!replace_first(contents, "\"user_lexicon_path\": null", replacement)) {
+      return {};
+    }
+    const std::string imported_replacement =
+        "\"imported_lexicon_path\": \"" + json_escape(imported_lexicon_utf8) + "\"";
+    if (!replace_first(contents, "\"imported_lexicon_path\": null", imported_replacement)) {
       return {};
     }
 

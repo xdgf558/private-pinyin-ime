@@ -98,6 +98,23 @@ final class PinyinCoreBridge {
         }
     }
 
+    func importRimeLexicon(from path: String) -> Int? {
+        guard let engine else {
+            return nil
+        }
+        let imported = path.withCString { pathPointer in
+            ime_engine_import_rime_lexicon(engine, pathPointer)
+        }
+        return imported >= 0 ? Int(imported) : nil
+    }
+
+    func clearImportedLexicon() -> Bool {
+        guard let engine else {
+            return false
+        }
+        return ime_engine_clear_imported_lexicon(engine) != 0
+    }
+
     private static func openEngine(settingsPath: String?) -> (OpaquePointer, OpaquePointer)? {
         var engine: OpaquePointer?
         if let settingsPath {

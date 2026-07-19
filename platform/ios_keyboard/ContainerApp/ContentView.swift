@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 private enum StationTheme {
     static let background = Color(red: 0x13 / 255, green: 0x1A / 255, blue: 0x26 / 255)
@@ -17,6 +18,8 @@ private enum StationTheme {
 struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
+    @State private var lexiconStatusText = ""
+    @State private var showingRimeImporter = false
 
     var body: some View {
         ZStack {
@@ -29,6 +32,7 @@ struct ContentView: View {
                     welcomeSection
                     setupSection
                     privacySection
+                    lexiconSection
                     footer
                 }
                 .frame(maxWidth: 620)
@@ -42,7 +46,14 @@ struct ContentView: View {
         .onAppear {
             _ = IosSettingsStore.ensureSettingsFile()
             learningEnabled = IosSettingsStore.isLearningEnabled()
+            lexiconStatusText = IosSettingsStore.rimeImportStatusText() ?? ""
         }
+        .fileImporter(
+            isPresented: $showingRimeImporter,
+            allowedContentTypes: rimeDocumentTypes,
+            allowsMultipleSelection: true,
+            onCompletion: handleRimeImportSelection
+        )
     }
 
     private var brandRow: some View {
@@ -188,6 +199,67 @@ struct ContentView: View {
         }
     }
 
+    private var lexiconSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("本地导入词库", icon: "books.vertical.fill")
+
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("导入 Rime 词典")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(StationTheme.textPrimary)
+                    Text("支持带明确拼音列的 YAML 词典。导入层单独保存在本机，升级不会覆盖。")
+                        .font(.system(size: 13))
+                        .foregroundStyle(StationTheme.textSecondary)
+                        .lineSpacing(3)
+                }
+                .padding(16)
+
+                divider
+
+                HStack(spacing: 12) {
+                    Button(action: { showingRimeImporter = true }) {
+                        Label("选择文件", systemImage: "square.and.arrow.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(StationTheme.onLamp)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(StationTheme.lamp)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!IosSettingsStore.usesAppGroupStorage)
+
+                    Button(action: clearImportedLexicon) {
+                        Label("清空导入", systemImage: "trash")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(StationTheme.lamp)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .stroke(StationTheme.border, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+
+                if !lexiconStatusText.isEmpty {
+                    divider
+                    Text(lexiconStatusText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(StationTheme.textSecondary)
+                        .padding(16)
+                }
+            }
+            .background(StationTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(StationTheme.border, lineWidth: 1)
+            }
+        }
+    }
+
     private var footer: some View {
         HStack {
             Text("小小驿站，夜里也亮着灯")
@@ -208,6 +280,13 @@ struct ContentView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         return "版本 \(version)（\(build)）"
+    }
+
+    private var rimeDocumentTypes: [UTType] {
+        let types = ["yaml", "yml", "dict"].compactMap { extensionName in
+            UTType(filenameExtension: extensionName)
+        }
+        return types.isEmpty ? [.data] : types
     }
 
     private func sectionTitle(_ text: String, icon: String) -> some View {
@@ -265,6 +344,46 @@ struct ContentView: View {
             statusText = removed == 0 ? "没有发现本机学习记录。" : "本机学习记录已清除。"
         } catch {
             statusText = "无法清除本机学习记录。"
+        }
+    }
+
+    private func handleRimeImportSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            let accessed = urls.filter { $0.startAccessingSecurityScopedResource() }
+            defer {
+                for url in accessed {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                let count = try IosSettingsStore.importRimeLexicons(from: accessed)
+                lexiconStatusText = count == 0
+                    ? "没有选择可导入的词库文件。"
+                    : "已在本机导入 \(count) 条词库记录。重新切换到猫栈拼音后生效。"
+            } catch IosLexiconImportError.sharedStorageUnavailable {
+                lexiconStatusText = "App Group 暂不可用，无法保存导入词库。"
+            } catch IosLexiconImportError.tooManyFiles {
+                lexiconStatusText = "一次最多选择 8 个词库文件，请分批导入。"
+            } catch IosLexiconImportError.sourceTooLarge {
+                lexiconStatusText = "单个词库文件不能超过 16 MiB。"
+            } catch {
+                lexiconStatusText = "导入失败，请确认词库包含明确的拼音列。"
+            }
+        case .failure:
+            lexiconStatusText = "未能打开所选词库文件。"
+        }
+    }
+
+    private func clearImportedLexicon() {
+        do {
+            let removed = try IosSettingsStore.clearImportedLexiconArtifacts()
+            lexiconStatusText = removed == 0
+                ? "没有发现手动导入的词库。"
+                : "导入词库已清空，重新切换键盘后生效。"
+        } catch {
+            lexiconStatusText = "无法清空导入词库。"
         }
     }
 }

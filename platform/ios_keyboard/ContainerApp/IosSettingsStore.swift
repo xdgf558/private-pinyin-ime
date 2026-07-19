@@ -1,5 +1,6 @@
 import Foundation
 import CoreFoundation
+import PrivatePinyinC
 
 enum IosKeyboardLayout: String {
     case qwerty
@@ -30,6 +31,15 @@ enum IosChineseTextConverter {
     }
 }
 
+enum IosLexiconImportError: Error {
+    case sharedStorageUnavailable
+    case tooManyFiles
+    case sourceTooLarge
+    case unreadableSource
+    case engineUnavailable
+    case importFailed
+}
+
 enum IosSettingsStore {
     private static let fallbackAppGroupIdentifier = "group.com.privatepinyin.ios"
     private static let keyboardCandidatePageSize = 9
@@ -39,6 +49,9 @@ enum IosSettingsStore {
     private static let chineseScriptDefaultsKey = "private_pinyin.ios_chinese_script"
     private static let chineseScriptUpdatedAtDefaultsKey =
         "private_pinyin.ios_chinese_script_updated_at"
+    private static let lastRimeImportStatusKey = "ios_last_rime_import_status"
+    private static let maxRimeImportsPerBatch = 8
+    private static let maxRimeSourceBytes = 16 * 1024 * 1024
 
     static var appGroupIdentifier: String {
         guard
@@ -78,6 +91,10 @@ enum IosSettingsStore {
 
     static var userLexiconURL: URL {
         supportDirectory.appendingPathComponent("user_lexicon.sqlite", isDirectory: false)
+    }
+
+    static var importedLexiconURL: URL {
+        supportDirectory.appendingPathComponent("imported_lexicon.tsv", isDirectory: false)
     }
 
     static func ensureSettingsFile() -> String? {
@@ -222,6 +239,79 @@ enum IosSettingsStore {
         return removed
     }
 
+    static func importRimeLexicons(from sourceURLs: [URL]) throws -> Int {
+        guard usesAppGroupStorage else {
+            throw IosLexiconImportError.sharedStorageUnavailable
+        }
+        guard !sourceURLs.isEmpty else {
+            return 0
+        }
+        guard sourceURLs.count <= maxRimeImportsPerBatch else {
+            throw IosLexiconImportError.tooManyFiles
+        }
+        guard let settingsPath = ensureSettingsFile() else {
+            throw IosLexiconImportError.sharedStorageUnavailable
+        }
+        guard let engine = settingsPath.withCString({ ime_engine_new($0) }) else {
+            recordRimeImportStatus("failure")
+            throw IosLexiconImportError.engineUnavailable
+        }
+        defer {
+            ime_engine_free(engine)
+        }
+
+        do {
+            var acceptedRows = 0
+            for sourceURL in sourceURLs {
+                let values: URLResourceValues
+                do {
+                    values = try sourceURL.resourceValues(forKeys: [.fileSizeKey])
+                } catch {
+                    throw IosLexiconImportError.unreadableSource
+                }
+                if let fileSize = values.fileSize, fileSize > maxRimeSourceBytes {
+                    throw IosLexiconImportError.sourceTooLarge
+                }
+
+                let result = sourceURL.path.withCString { sourcePath in
+                    ime_engine_import_rime_lexicon(engine, sourcePath)
+                }
+                guard result >= 0 else {
+                    throw IosLexiconImportError.importFailed
+                }
+                acceptedRows += Int(result)
+            }
+            recordRimeImportStatus("success")
+            return acceptedRows
+        } catch {
+            recordRimeImportStatus("failure")
+            throw error
+        }
+    }
+
+    static func rimeImportStatusText() -> String? {
+        switch readSettings()[lastRimeImportStatusKey] as? String {
+        case "success":
+            return "Rime 词库已导入，键盘会使用新的独立词库层。"
+        case "failure":
+            return "最近一次 Rime 词库导入失败，请确认文件包含明确拼音列。"
+        default:
+            return nil
+        }
+    }
+
+    static func clearImportedLexiconArtifacts() throws -> Int {
+        var removed = 0
+        if FileManager.default.fileExists(atPath: importedLexiconURL.path) {
+            try FileManager.default.removeItem(at: importedLexiconURL)
+            removed += 1
+        }
+        _ = updateSettings { settings in
+            settings.removeValue(forKey: lastRimeImportStatusKey)
+        }
+        return removed
+    }
+
     private static let appGroupContainerURL = FileManager.default.containerURL(
         forSecurityApplicationGroupIdentifier: appGroupIdentifier
     )
@@ -240,6 +330,11 @@ enum IosSettingsStore {
         let expectedPath = userLexiconURL.path
         if settings["user_lexicon_path"] as? String != expectedPath {
             settings["user_lexicon_path"] = expectedPath
+            needsWrite = true
+        }
+        let expectedImportedPath = importedLexiconURL.path
+        if settings["imported_lexicon_path"] as? String != expectedImportedPath {
+            settings["imported_lexicon_path"] = expectedImportedPath
             needsWrite = true
         }
         if settings["candidate_page_size"] as? Int != keyboardCandidatePageSize {
@@ -264,6 +359,7 @@ enum IosSettingsStore {
         ]
         settings["enable_user_learning"] = false
         settings["user_lexicon_path"] = userLexiconURL.path
+        settings["imported_lexicon_path"] = importedLexiconURL.path
         settings["candidate_page_size"] = keyboardCandidatePageSize
         settings["ios_keyboard_layout"] = IosKeyboardLayout.qwerty.rawValue
         settings["ios_chinese_script"] = IosChineseScript.simplified.rawValue
@@ -295,6 +391,12 @@ enum IosSettingsStore {
             return true
         } catch {
             return false
+        }
+    }
+
+    private static func recordRimeImportStatus(_ status: String) {
+        _ = updateSettings { settings in
+            settings[lastRimeImportStatusKey] = status
         }
     }
 

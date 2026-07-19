@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::candidate::Candidate;
 use crate::error::ImeResult;
+use crate::imported_lexicon::{self, ImportedLexiconReport};
 use crate::key_event::KeyEvent;
 use crate::lexicon::Lexicon;
 use crate::logger;
@@ -63,8 +64,19 @@ impl ImeEngine {
             .transpose()?
             .map(Arc::new);
 
+        let lexicon = match settings.imported_lexicon_path.as_ref() {
+            Some(path) if path.exists() => match Lexicon::load_embedded_with_imported(path) {
+                Ok(lexicon) => lexicon,
+                Err(error) => {
+                    logger::emit_error(error);
+                    Lexicon::load_embedded()?
+                }
+            },
+            _ => Lexicon::load_embedded()?,
+        };
+
         Ok(Self {
-            lexicon: Arc::new(Lexicon::load_embedded()?),
+            lexicon: Arc::new(lexicon),
             predictor: Arc::new(Predictor::load_embedded()?),
             user_lexicon,
             settings,
@@ -97,6 +109,27 @@ impl ImeEngine {
         } else {
             UserLexicon::export_empty_tsv(path)
         }
+    }
+
+    pub fn import_rime_lexicon(
+        &self,
+        source_path: impl AsRef<Path>,
+    ) -> ImeResult<ImportedLexiconReport> {
+        let destination_path = self
+            .settings
+            .imported_lexicon_path
+            .as_ref()
+            .ok_or(crate::error::ImeError::ImportedLexiconNotConfigured)?;
+        imported_lexicon::import_rime_file(source_path, destination_path)
+    }
+
+    pub fn clear_imported_lexicon(&self) -> ImeResult<()> {
+        let destination_path = self
+            .settings
+            .imported_lexicon_path
+            .as_ref()
+            .ok_or(crate::error::ImeError::ImportedLexiconNotConfigured)?;
+        imported_lexicon::clear_imported_file(destination_path)
     }
 
     pub fn candidates_for_raw(&self, raw_input: &str) -> Vec<Candidate> {

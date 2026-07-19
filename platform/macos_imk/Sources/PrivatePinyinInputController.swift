@@ -1,5 +1,6 @@
 import Cocoa
 import InputMethodKit
+import UniformTypeIdentifiers
 
 private enum PrivatePinyinCandidatePanelStore {
     private static let selectionKeyCodes = [18, 19, 20, 21, 23, 22, 26, 28, 25]
@@ -128,6 +129,26 @@ final class PrivatePinyinInputController: IMKInputController {
         )
         exportItem.target = self
         menu.addItem(exportItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let importItem = NSMenuItem(
+            title: "导入 Rime 词库...",
+            action: #selector(importRimeLexicon(_:)),
+            keyEquivalent: ""
+        )
+        importItem.target = self
+        menu.addItem(importItem)
+
+        let clearImportedItem = NSMenuItem(
+            title: "清空导入词库",
+            action: #selector(clearImportedLexicon(_:)),
+            keyEquivalent: ""
+        )
+        clearImportedItem.target = self
+        menu.addItem(clearImportedItem)
+
+        menu.addItem(NSMenuItem.separator())
 
         let openSettingsItem = NSMenuItem(
             title: "打开设置文件",
@@ -361,6 +382,54 @@ final class PrivatePinyinInputController: IMKInputController {
             } else {
                 self.showSettingsAlert("无法导出用户词库。")
             }
+        }
+    }
+
+    @objc private func importRimeLexicon(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = ["yaml", "yml", "dict"].compactMap {
+            UTType(filenameExtension: $0)
+        }
+        panel.message = "选择带有明确拼音列的 Rime YAML 词典。导入数据只保存在本机。"
+        panel.begin { [weak self] response in
+            guard response == .OK, let self else {
+                return
+            }
+
+            var accepted = 0
+            for url in panel.urls {
+                guard let count = self.core?.importRimeLexicon(from: url.path) else {
+                    self.showSettingsAlert("无法导入 Rime 词库。请确认文件格式和大小。")
+                    return
+                }
+                accepted += count
+            }
+
+            resetComposition()
+            _ = core?.reload()
+            showSettingsAlert("已导入 \(accepted) 条词库记录。")
+        }
+    }
+
+    @objc private func clearImportedLexicon(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "清空导入词库？"
+        alert.informativeText = "只会删除手动导入的词库，不影响内置词库和用户学习数据。"
+        alert.addButton(withTitle: "清空")
+        alert.addButton(withTitle: "取消")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+
+        resetComposition()
+        if core?.clearImportedLexicon() == true, core?.reload() == true {
+            showSettingsAlert("导入词库已清空。")
+        } else {
+            showSettingsAlert("无法清空导入词库。")
         }
     }
 

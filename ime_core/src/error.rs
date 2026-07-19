@@ -4,6 +4,10 @@ pub type ImeResult<T> = Result<T, ImeError>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImeError {
+    ImportedLexiconIo,
+    ImportedLexiconLimit,
+    ImportedLexiconNotConfigured,
+    ImportedLexiconParse,
     InvalidLexiconFormat,
     InvalidLexiconFrequency,
     InvalidSettingsValue,
@@ -16,6 +20,10 @@ pub enum ImeError {
 impl ImeError {
     pub fn code(&self) -> &'static str {
         match self {
+            Self::ImportedLexiconIo => "IMPORTED_LEXICON_IO",
+            Self::ImportedLexiconLimit => "IMPORTED_LEXICON_LIMIT",
+            Self::ImportedLexiconNotConfigured => "IMPORTED_LEXICON_NOT_CONFIGURED",
+            Self::ImportedLexiconParse => "IMPORTED_LEXICON_PARSE",
             Self::InvalidLexiconFormat => "INVALID_LEXICON_FORMAT",
             Self::InvalidLexiconFrequency => "INVALID_LEXICON_FREQUENCY",
             Self::InvalidSettingsValue => "INVALID_SETTINGS_VALUE",

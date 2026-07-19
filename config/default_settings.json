@@ -6,6 +6,7 @@
   "enable_user_learning": true,
   "strict_privacy_mode": false,
   "user_lexicon_path": null,
+  "imported_lexicon_path": null,
   "fuzzy_pinyin": {
     "zh_z": false,
     "ch_c": false,

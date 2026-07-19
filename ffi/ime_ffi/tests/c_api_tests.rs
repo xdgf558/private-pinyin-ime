@@ -4,9 +4,10 @@ use std::ptr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use private_pinyin_ime::{
-    ime_engine_clear_user_lexicon, ime_engine_export_user_lexicon, ime_engine_free, ime_engine_new,
-    ime_output_free, ime_session_commit_candidate, ime_session_feed_key, ime_session_free,
-    ime_session_new, ImeKeyEvent,
+    ime_engine_clear_imported_lexicon, ime_engine_clear_user_lexicon,
+    ime_engine_export_user_lexicon, ime_engine_free, ime_engine_import_rime_lexicon,
+    ime_engine_new, ime_output_free, ime_session_commit_candidate, ime_session_feed_key,
+    ime_session_free, ime_session_new, ImeKeyEvent,
 };
 #[cfg(feature = "desktop-ai")]
 use private_pinyin_ime::{ime_engine_enable_desktop_ai, ime_session_set_secure_input};
@@ -154,9 +155,51 @@ fn c_api_null_handles_are_safe_noops() {
     assert!(ime_session_new(ptr::null_mut()).is_null());
     assert!(ime_session_feed_key(ptr::null_mut(), key_event(ptr::null())).is_null());
     assert_eq!(ime_engine_clear_user_lexicon(ptr::null_mut()), 0);
+    assert_eq!(
+        ime_engine_import_rime_lexicon(ptr::null_mut(), ptr::null()),
+        -1
+    );
+    assert_eq!(ime_engine_clear_imported_lexicon(ptr::null_mut()), 0);
     ime_output_free(ptr::null_mut());
     ime_session_free(ptr::null_mut());
     ime_engine_free(ptr::null_mut());
+}
+
+#[test]
+fn c_api_imports_and_clears_a_separate_rime_lexicon() {
+    let imported_path = temp_path("ffi_imported_lexicon", "tsv");
+    let source_path = temp_path("ffi_rime_source", "dict.yaml");
+    let settings_path = temp_path("ffi_imported_lexicon_settings", "json");
+    std::fs::write(
+        &source_path,
+        "---\nname: demo\n...\n测试词条\tce shi ci tiao\t500\n",
+    )
+    .expect("write Rime fixture");
+    std::fs::write(
+        &settings_path,
+        format!(
+            r#"{{
+  "imported_lexicon_path": "{}"
+}}"#,
+            imported_path.to_string_lossy().replace('\\', "/")
+        ),
+    )
+    .expect("write settings");
+    let settings_path = CString::new(settings_path.to_string_lossy().as_bytes()).unwrap();
+    let source_path = CString::new(source_path.to_string_lossy().as_bytes()).unwrap();
+
+    let engine = ime_engine_new(settings_path.as_ptr());
+    assert!(!engine.is_null());
+    assert_eq!(
+        ime_engine_import_rime_lexicon(engine, source_path.as_ptr()),
+        1
+    );
+    assert!(std::fs::read_to_string(&imported_path)
+        .expect("read imported lexicon")
+        .contains("测试词条\tce shi ci tiao\t500"));
+    assert_eq!(ime_engine_clear_imported_lexicon(engine), 1);
+    assert!(!imported_path.exists());
+    ime_engine_free(engine);
 }
 
 #[test]

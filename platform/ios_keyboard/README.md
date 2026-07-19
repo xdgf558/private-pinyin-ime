@@ -10,6 +10,7 @@ The iOS host remains thin:
 - `KeyboardExtension/KeyboardViewController.swift` renders the candidate bar, QWERTY rows, Globe key, symbols toggle, Chinese/English toggle, Space, Delete, and Return.
 - `KeyboardExtension/Info.plist` sets `RequestsOpenAccess` to `false`.
 - `ContainerApp/IosSettingsStore.swift` creates a shared App Group settings file and keeps user learning off until the user opts in.
+- The container App imports user-selected local Rime YAML files through the same Rust parser into the App Group; the keyboard extension only reads the resulting independent lexicon layer.
 
 ## Build
 
@@ -83,6 +84,7 @@ break across iOS releases and create App Store review risk.
 8. Open the keyboard's inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm `里面` returns.
 9. Enter pinyin with more than three results and swipe the candidate strip to confirm up to nine candidates in the group remain selectable before using the fixed next-group control.
 10. Open `123`, then `#+=`, and verify the extended symbol rows match the requested bracket/operator/book-title/punctuation set; tap `123` to return to the original numeric page.
+11. In the container App, choose a small Rime dictionary containing explicit `phrase<TAB>pinyin` rows. Switch to 猫栈拼音, then verify the imported phrase appears; clear the imported layer and verify the bundled base still works. Repeat once with App Group storage unavailable and confirm importing is disabled without breaking typing.
 
 The Simplified/Traditional option uses the local system Chinese transform for
 candidate display, predictions, and committed text. It does not use a network
@@ -103,6 +105,7 @@ Password and phone-number fields are expected to fall back to the system keyboar
 - If App Group storage is unavailable, the learning toggle stays disabled rather than writing learned data into a private, extension-only sandbox.
 - If the keyboard extension cannot open shared settings while Full Access is off, it falls back to built-in defaults so typing still works without learning.
 - The container app can clear local lexicon artifacts, including SQLite WAL/SHM sidecar files.
+- Rime imports are local-only. The container App holds security-scoped access only while the shared Rust parser writes the bounded App Group lexicon; the keyboard extension remains read-only and needs no Full Access.
 
 ## Known Gaps
 

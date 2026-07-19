@@ -31,12 +31,17 @@ grep -q "clear_user_lexicon" ime_core/src/api.rs
 grep -q "export_user_lexicon" ime_core/src/api.rs
 grep -q "ime_engine_clear_user_lexicon" ffi/c_api.h
 grep -q "ime_engine_export_user_lexicon" ffi/c_api.h
+grep -q "ime_engine_import_rime_lexicon" ffi/c_api.h
+grep -q "ime_engine_clear_imported_lexicon" ffi/c_api.h
 grep -q "config_json_path" ffi/c_api.h
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "导入 Rime 词库" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "default_settings.json" platform/windows_tsf/src/core_bridge.cpp
 grep -q "default_settings.json" platform/windows_tsf/installer/open-settings.ps1
+grep -q "本地导入词库" platform/windows_tsf/installer/open-settings.ps1
+grep -q "imported_lexicon_path" platform/windows_tsf/src/core_bridge.cpp
 grep -q "version.txt" platform/windows_tsf/installer/open-settings.ps1
 grep -q 'Text = "常规"' platform/windows_tsf/installer/open-settings.ps1
 grep -q 'Text = "隐私与词库"' platform/windows_tsf/installer/open-settings.ps1

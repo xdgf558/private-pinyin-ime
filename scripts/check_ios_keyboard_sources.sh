@@ -52,7 +52,15 @@ grep -q "default_settings.json in Resources" platform/ios_keyboard/PrivatePinyin
 grep -q "enable_user_learning.*false" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "appGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "fallbackAppGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "importRimeLexicons" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "maxRimeSourceBytes = 16 \* 1024 \* 1024" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "ime_engine_import_rime_lexicon" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "ime_engine_new(pathPointer)" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+if grep -q "ime_engine_import_rime_lexicon\|processPendingRimeLexicons" \
+  platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift; then
+  echo "The iOS keyboard extension must remain a read-only consumer of imported lexicons." >&2
+  exit 1
+fi
 grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
@@ -140,9 +148,13 @@ grep -q "setPredictionEnabled" platform/ios_keyboard/ContainerApp/IosSettingsSto
 grep -q "../../../ffi/c_api.h" platform/ios_keyboard/PrivatePinyinC/module.modulemap
 grep -q "crate-type = \\[\"cdylib\", \"staticlib\", \"rlib\"\\]" ffi/ime_ffi/Cargo.toml
 grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
+test "$(grep -c 'libprivate_pinyin_ime.a' platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj)" -eq 4
 grep -q "com.apple.keyboard-service" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -q "猫栈拼音" platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q "UIApplication.openSettingsURLString" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q '\.fileImporter(' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'allowedContentTypes: rimeDocumentTypes' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q '"本地导入词库"' platform/ios_keyboard/ContainerApp/ContentView.swift
 if grep -q "App-Prefs" platform/ios_keyboard/ContainerApp/ContentView.swift; then
   echo "iOS onboarding must use the public Settings URL, not App-Prefs." >&2
   exit 1

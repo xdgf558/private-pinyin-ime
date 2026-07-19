@@ -39,6 +39,7 @@ fn build_base_lexicon(args: BuildBaseArgs) -> Result<(), String> {
         SourceFormat::PinyinData => {
             parse_pinyin_data(&input, args.default_frequency, char_frequencies.as_ref())?
         }
+        SourceFormat::PhrasePinyinData => parse_phrase_pinyin_data(&input, args.default_frequency)?,
         SourceFormat::AospRawdict => parse_aosp_rawdict(&input, args.frequency_scale)?,
     };
 
@@ -48,6 +49,15 @@ fn build_base_lexicon(args: BuildBaseArgs) -> Result<(), String> {
             &supplemental_input,
             args.default_frequency,
             char_frequencies.as_ref(),
+        )?);
+        entries = dedup_and_sort(entries);
+    }
+
+    if let Some(path) = &args.supplemental_phrase_pinyin_data {
+        let supplemental_input = read_source_text(SourceFormat::PhrasePinyinData, path)?;
+        entries.extend(parse_phrase_pinyin_data(
+            &supplemental_input,
+            args.default_frequency,
         )?);
         entries = dedup_and_sort(entries);
     }
@@ -81,6 +91,10 @@ fn build_base_lexicon(args: BuildBaseArgs) -> Result<(), String> {
                 .map(|path| path.display().to_string()),
             supplemental_pinyin_data: args
                 .supplemental_pinyin_data
+                .as_ref()
+                .map(|path| path.display().to_string()),
+            supplemental_phrase_pinyin_data: args
+                .supplemental_phrase_pinyin_data
                 .as_ref()
                 .map(|path| path.display().to_string()),
         },
@@ -126,6 +140,7 @@ struct BuildBaseArgs {
     frequency_scale: f64,
     char_frequency_input: Option<PathBuf>,
     supplemental_pinyin_data: Option<PathBuf>,
+    supplemental_phrase_pinyin_data: Option<PathBuf>,
     release_approved: bool,
 }
 
@@ -134,6 +149,7 @@ enum SourceFormat {
     PrivatePinyinTsv,
     CcCedict,
     PinyinData,
+    PhrasePinyinData,
     AospRawdict,
 }
 
@@ -143,8 +159,9 @@ impl SourceFormat {
             "private-pinyin-tsv" => Ok(Self::PrivatePinyinTsv),
             "cc-cedict" => Ok(Self::CcCedict),
             "pinyin-data" => Ok(Self::PinyinData),
+            "phrase-pinyin-data" => Ok(Self::PhrasePinyinData),
             "aosp-rawdict" => Ok(Self::AospRawdict),
-            _ => Err("Unsupported --format; expected private-pinyin-tsv, cc-cedict, pinyin-data, or aosp-rawdict".to_owned()),
+            _ => Err("Unsupported --format; expected private-pinyin-tsv, cc-cedict, pinyin-data, phrase-pinyin-data, or aosp-rawdict".to_owned()),
         }
     }
 
@@ -153,6 +170,7 @@ impl SourceFormat {
             Self::PrivatePinyinTsv => "private-pinyin-tsv",
             Self::CcCedict => "cc-cedict",
             Self::PinyinData => "pinyin-data",
+            Self::PhrasePinyinData => "phrase-pinyin-data",
             Self::AospRawdict => "aosp-rawdict",
         }
     }
@@ -187,6 +205,7 @@ impl BuildBaseArgs {
         let mut frequency_scale = 1.0;
         let mut char_frequency_input = None;
         let mut supplemental_pinyin_data = None;
+        let mut supplemental_phrase_pinyin_data = None;
         let mut release_approved = false;
 
         let mut index = 0;
@@ -225,6 +244,10 @@ impl BuildBaseArgs {
                 "--supplemental-pinyin-data" => {
                     supplemental_pinyin_data = Some(PathBuf::from(next_value(args, &mut index)?))
                 }
+                "--supplemental-phrase-pinyin-data" => {
+                    supplemental_phrase_pinyin_data =
+                        Some(PathBuf::from(next_value(args, &mut index)?))
+                }
                 "--release-approved" => release_approved = true,
                 _ => return Err(usage()),
             }
@@ -244,6 +267,7 @@ impl BuildBaseArgs {
             frequency_scale,
             char_frequency_input,
             supplemental_pinyin_data,
+            supplemental_phrase_pinyin_data,
             release_approved,
         })
     }
@@ -382,6 +406,42 @@ fn parse_pinyin_data(
                 .map_err(|error| format!("{error} at line {}", line_index + 1))?;
             entries.push(entry);
         }
+    }
+    Ok(dedup_and_sort(entries))
+}
+
+fn parse_phrase_pinyin_data(
+    input: &str,
+    default_frequency: u32,
+) -> Result<Vec<BaseLexiconEntry>, String> {
+    let mut entries = Vec::new();
+    for (line_index, line) in input.lines().enumerate() {
+        let line = line
+            .split_once('#')
+            .map(|(head, _comment)| head)
+            .unwrap_or(line)
+            .trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let (phrase, reading) = line
+            .split_once(':')
+            .ok_or_else(|| format!("Invalid phrase-pinyin-data line {}", line_index + 1))?;
+        let phrase = phrase.trim();
+        if !is_supported_han_phrase(phrase) {
+            continue;
+        }
+        let Some(pinyin) = normalize_marked_pinyin(reading.trim()) else {
+            continue;
+        };
+        let entry = BaseLexiconEntry {
+            phrase: phrase.to_owned(),
+            pinyin,
+            frequency: default_frequency,
+        };
+        validate_entry(&entry).map_err(|error| format!("{error} at line {}", line_index + 1))?;
+        entries.push(entry);
     }
     Ok(dedup_and_sort(entries))
 }
@@ -667,7 +727,7 @@ fn current_unix_time() -> u64 {
 }
 
 fn usage() -> String {
-    "Usage: private-pinyin-lexicon build-base --format <private-pinyin-tsv|cc-cedict|pinyin-data|aosp-rawdict> --input <path> --output <path> --manifest <path> --source-name <name> --source-license <license> [--source-url <url>] [--source-version <version>] [--default-frequency <u32>] [--frequency-scale <number>] [--char-frequency-input <path>] [--supplemental-pinyin-data <path>] [--release-approved]".to_owned()
+    "Usage: private-pinyin-lexicon build-base --format <private-pinyin-tsv|cc-cedict|pinyin-data|phrase-pinyin-data|aosp-rawdict> --input <path> --output <path> --manifest <path> --source-name <name> --source-license <license> [--source-url <url>] [--source-version <version>] [--default-frequency <u32>] [--frequency-scale <number>] [--char-frequency-input <path>] [--supplemental-pinyin-data <path>] [--supplemental-phrase-pinyin-data <path>] [--release-approved]".to_owned()
 }
 
 #[derive(Serialize)]
@@ -695,6 +755,8 @@ struct ManifestSource {
     char_frequency_input: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     supplemental_pinyin_data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplemental_phrase_pinyin_data: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -755,6 +817,20 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn phrase_pinyin_data_imports_marked_multi_character_readings() {
+        let entries =
+            parse_phrase_pinyin_data("# version: test\n头发: tóu fà\n面条: miàn tiáo\n", 25)
+                .expect("phrase pinyin data imports");
+
+        assert!(entries.iter().any(|entry| {
+            entry.phrase == "头发" && entry.pinyin == "tou fa" && entry.frequency == 25
+        }));
+        assert!(entries.iter().any(|entry| {
+            entry.phrase == "面条" && entry.pinyin == "mian tiao" && entry.frequency == 25
+        }));
     }
 
     #[test]

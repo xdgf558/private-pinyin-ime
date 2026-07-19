@@ -4,6 +4,8 @@
 
 ### Added
 
+- Expanded the bundled permissive base lexicon from 100,669 to 137,699 entries with MIT `mozillazg/phrase-pinyin-data` phrase readings at conservative supplemental frequency.
+- Added bounded local Rime YAML import into an upgrade-safe `imported_lexicon.tsv` layer, including atomic merge/dedup, sanitized errors, C ABI and settings CLI commands, macOS menu/preferences controls, Windows settings controls, an iOS system document-picker with container-side App Group import, and fail-soft engine loading. GPL dictionaries such as rime-ice are supported only when supplied locally by the user and are never bundled.
 - Added AI-07 asynchronous AI Lite integration for macOS and Windows with an AI-05-verified embedded coefficient package, bounded non-blocking worker queues, complete session/revision/candidate identity, stale-result cancellation, visible-candidate stability, platform secure-input signals, hardware fallback, and unchanged base input on every AI failure; iOS remains disabled until AI-08.
 - Added the AI-06 shared fixed-point Rust Lite ranker with bounded frequency, segmentation, bigram, trigram, typo-correction, and English-term features; an Owner-approved 426-byte first-party coefficient package with explicit ranker/feature-schema compatibility; stable reason-coded ranking; overflow boundaries; bounded cancellation; a strict 12-case offline quality gate; and AI-05 integrity/license/platform/hardware enforcement without platform-host integration.
 - Added an iOS inline `简体` / `繁體` output option. Candidate display, predictions, and committed text are converted locally with the system Chinese transform while the shared core lexicon and learning identity remain normalized.

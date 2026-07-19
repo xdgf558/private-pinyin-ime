@@ -792,6 +792,28 @@ Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarize
 - Result: passed
 - Notes: The update status and action controls fit the Station Board preferences window without clipping or overlap. A successful live signed-package handoff remains pending `UPDATE-OI-001`.
 
+### Permissive Base + Local Rime Import Validation
+
+- Command: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`
+- Result: passed
+- Notes: The complete workspace is formatted and warning-free. Import tests cover source and canonical size limits, explicit-pinyin parsing, deduplication, malformed-layer fail-soft loading, independent storage, and new-engine visibility; the production input regressions remain green against the 137,699-entry base.
+
+- Command: `cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings` and `cargo test -p private_pinyin_ime_ffi --features desktop-ai`
+- Result: passed
+- Notes: The optional AI-07 desktop FFI remains compatible with the expanded engine settings and import ABI; secure-mode, stale-result, and candidate-permutation tests remain green.
+
+- Command: `bash scripts/check_local_lexicon_import_sources.sh`, `bash scripts/check_stage13_lexicon_sources.sh`, and `bash scripts/run_c_demo.sh`
+- Result: passed
+- Notes: The bounded CLI import/clear smoke produced one canonical row, the approved manifest reports exactly 137,699 base entries, and the unchanged C demo still commits `你好`.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`, `bash scripts/check_windows_tsf_sources.sh`, `bash scripts/check_installers_settings_sources.sh`, and `bash scripts/check_ios_keyboard_sources.sh`
+- Result: passed
+- Notes: All three hosts expose the isolated import layer while preserving platform privacy contracts. iOS source gates pin the document picker, container-side Rust import into the App Group, and a read-only keyboard extension so Full Access remains unnecessary.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: The complete InputMethodKit app compiles successfully with the expanded bundled base and local import controls. The earlier iOS queue prototype compiled under Xcode 27; after replacing it with the no-Full-Access container-side Rust importer, the source contracts pass but the final Xcode app/extension build must be rerun before release evidence is recorded.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
@@ -816,18 +838,23 @@ Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarize
 
 ## Files Changed In Latest Stage
 
-- `CHANGELOG.md`
-- `docs/DEVELOPMENT_PROGRESS.md`
-- `docs/macos_public_release_checklist.md`
-- `platform/macos_imk/README.md`
-- `platform/macos_imk/Resources/Info.plist`
-- `platform/macos_imk/Resources/ReleaseNotes.zh-Hans.txt`
-- `scripts/check_macos_public_release.sh`
-- `scripts/package_macos_pkg.sh`
+- `ime_core/assets/base_lexicon.tsv`
+- `ime_core/assets/lexicon_manifest.json`
+- `ime_core/src/imported_lexicon.rs`
+- `ime_core/src/lexicon.rs`
+- `ffi/c_api.h`
+- `ffi/ime_ffi/src/lib.rs`
+- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
+- `platform/windows_tsf/installer/open-settings.ps1`
+- `platform/ios_keyboard/ContainerApp/ContentView.swift`
+- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
+- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
+- `docs/local_rime_lexicon_import.md`
+- `scripts/check_local_lexicon_import_sources.sh`
 
 ## Next Step
 
-- Review the macOS 0.1.22 release metadata and validation evidence. Before public distribution,
-  complete clean-user install/uninstall, visible `1` through `9` candidate selection, VS Code,
-  website checksum, and Windows 11 TSF password/queue-pressure smoke. Start AI-08 only as a
-  separate reviewed iOS memory/privacy integration stage.
+- Review the permissive base-lexicon expansion and isolated local Rime import design. Before release,
+  run the documented iOS real-device document-picker/App Group import and clear smoke, measure the
+  larger engine snapshot on all three hosts, and keep GPL dictionaries such as rime-ice outside every
+  distributed artifact. Resume AI-08 only after this lexicon PR is approved and merged.
