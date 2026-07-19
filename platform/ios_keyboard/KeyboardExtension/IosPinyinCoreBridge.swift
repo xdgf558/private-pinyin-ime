@@ -38,8 +38,11 @@ struct IosPinyinOutput {
 }
 
 final class IosPinyinCoreBridge {
+    static let preferredCandidatePageSize = 9
+    private static let fallbackCandidatePageSize = 5
     private var engine: OpaquePointer?
     private var session: OpaquePointer?
+    let candidatePageSize: Int
 
     init?() {
         let settingsPath = IosSettingsStore.ensureSettingsFile()
@@ -50,6 +53,18 @@ final class IosPinyinCoreBridge {
             ime_engine_free(engine)
             return nil
         }
+        let configuredPageSize = ime_session_set_candidate_page_size(
+            session,
+            Int32(Self.preferredCandidatePageSize)
+        ) == 1
+        candidatePageSize = configuredPageSize
+            ? Self.preferredCandidatePageSize
+            : Self.fallbackCandidatePageSize
+#if DEBUG
+        if !configuredPageSize {
+            print("ios_candidate_page_size_fallback")
+        }
+#endif
         self.engine = engine
         self.session = session
     }

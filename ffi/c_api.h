@@ -114,6 +114,9 @@ ImeSession* ime_session_new(ImeEngine* engine);
 void ime_session_free(ImeSession* session);
 // Secure fields disable and cancel optional AI work. Base IME input remains active.
 int ime_session_set_secure_input(ImeSession* session, int secure_input);
+// Overrides the candidate page size for this host session. Returns 1 on
+// success; valid values are 1 through the core candidate limit.
+int ime_session_set_candidate_page_size(ImeSession* session, int page_size);
 
 ImeOutput* ime_session_feed_key(ImeSession* session, ImeKeyEvent event);
 ImeOutput* ime_session_commit_candidate(ImeSession* session, int index);
