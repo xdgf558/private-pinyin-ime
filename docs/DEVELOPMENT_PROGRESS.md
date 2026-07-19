@@ -656,6 +656,21 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 - Installed-artifact AI smoke: the packaged dylib enabled AI Lite at 8192/16384 MiB, rejected 4096/8191 MiB, preserved five base candidates, and kept secure-input base fallback functional. A 3250-call pressure run completed with 1.734-ms mean, 8.395-ms P95, 8.536-ms P99, and 10.202-ms maximum feed latency.
 - Remaining release gates: clean-user install/uninstall, visible horizontal overflow and `1` through `9` candidate selection, VS Code host coverage, website checksum publication, and a real Windows 11 TSF password/pressure smoke.
 
+### Desktop 0.1.23 Lexicon Release Packages
+
+- Command: signed and notarized `PRIVATE_PINYIN_VERSION=0.1.23 bash scripts/package_macos_pkg.sh` with Developer ID Application, Developer ID Installer, and the `private-pinyin-notary` profile
+- Result: passed
+- Notes: Built `dist/macos_imk/PrivatePinyin-0.1.23.pkg`; Apple notarization submission `9dd8e96f-f94a-464e-8a7c-2cc293765b59` returned `Accepted`, stapling succeeded, Gatekeeper accepted the package as `Notarized Developer ID`, and the full public-release preflight passed.
+- macOS SHA-256: `ee057e94e55ac68f4c193d4e4e57967c20f163c88d9f84fa9739381805104e66`
+- Release scope: expanded reviewed permissive base lexicon plus upgrade-safe, separately stored local Rime text-dictionary import. A `0.1.23` installed-upgrade smoke remains pending.
+
+- Command: GitHub Actions `Windows Unsigned Package`, run `29688158295`, version input `0.1.23`
+- Result: passed
+- Notes: The `windows-2022` job built and uploaded NSIS EXE, WiX MSI, and ZIP packages from commit `9931a12`; the downloaded ZIP reports `0.1.23`, includes x64 and x86 TSF components, and carries the matching Simplified Chinese release notes. These Windows artifacts remain unsigned internal-test packages.
+- EXE SHA-256: `8ed9510556d14a7744547355881f3cfcfa8b58e5e36db0150ac298cf26f5fa7c`
+- MSI SHA-256: `42d46d0f4f3b4733397a511702c8e034b7a8bd96860a4988f32773b27ba85a7f`
+- ZIP SHA-256: `70b8d19b2f130e93bec24343674702049616a0c0f3ee727c2e3d5c5e0ccb0496`
+
 ### Windows 0.1.13 Unsigned Internal-Test Package
 
 - Command: GitHub Actions `Windows Unsigned Package`, run `29180177697`, version input `0.1.13`
