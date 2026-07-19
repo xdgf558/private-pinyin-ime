@@ -7,6 +7,7 @@ required_files=(
   "ime_core/src/imported_lexicon.rs"
   "ime_core/tests/imported_lexicon_tests.rs"
   "docs/local_rime_lexicon_import.md"
+  "platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift"
 )
 
 for file in "${required_files[@]}"; do
@@ -25,8 +26,12 @@ grep -q '导入 Rime 词库' platform/macos_imk/Sources/PrivatePinyinInputContro
 grep -q '本地导入词库' platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q '本地导入词库' platform/windows_tsf/installer/open-settings.ps1
 grep -q 'importedLexiconURL' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q 'importRimeLexicons' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q 'ime_engine_import_rime_lexicon' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'importRimeLexicons' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'ime_engine_import_rime_lexicon' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+if grep -q 'import PrivatePinyinC' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift; then
+  echo "The shared iOS settings store must stay independent from the C import bridge." >&2
+  exit 1
+fi
 if grep -q 'ime_engine_import_rime_lexicon\|processPendingRimeLexicons' \
   platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift; then
   echo "The iOS keyboard extension must not write the imported lexicon layer." >&2

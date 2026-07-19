@@ -358,7 +358,7 @@ struct ContentView: View {
             }
 
             do {
-                let count = try IosSettingsStore.importRimeLexicons(from: accessed)
+                let count = try IosLexiconImportBridge.importRimeLexicons(from: accessed)
                 lexiconStatusText = count == 0
                     ? "没有选择可导入的词库文件。"
                     : "已在本机导入 \(count) 条词库记录。重新切换到猫栈拼音后生效。"

@@ -10,6 +10,7 @@ required_files=(
   "platform/ios_keyboard/ContainerApp/PrivatePinyinApp.swift"
   "platform/ios_keyboard/ContainerApp/ContentView.swift"
   "platform/ios_keyboard/ContainerApp/IosSettingsStore.swift"
+  "platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift"
   "platform/ios_keyboard/ContainerApp/Assets.xcassets/BrandMark.imageset/Contents.json"
   "platform/ios_keyboard/ContainerApp/Info.plist"
   "platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements"
@@ -52,9 +53,14 @@ grep -q "default_settings.json in Resources" platform/ios_keyboard/PrivatePinyin
 grep -q "enable_user_learning.*false" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "appGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "fallbackAppGroupIdentifier" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "importRimeLexicons" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "maxRimeSourceBytes = 16 \* 1024 \* 1024" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "ime_engine_import_rime_lexicon" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q "importRimeLexicons" platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q "maxRimeSourceBytes = 16 \* 1024 \* 1024" platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q "ime_engine_import_rime_lexicon" platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q "IosLexiconImportBridge.swift in Sources" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
+if grep -q "import PrivatePinyinC" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift; then
+  echo "Pure iOS settings and text conversion must not depend on the C bridge." >&2
+  exit 1
+fi
 grep -q "ime_engine_new(pathPointer)" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 if grep -q "ime_engine_import_rime_lexicon\|processPendingRimeLexicons" \
   platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift; then

@@ -17,6 +17,7 @@
 		8A0001010000000000000008 /* default_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000009 /* default_settings.json */; };
 		8A0001010000000000000009 /* default_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0002010000000000000009 /* default_settings.json */; };
 		8A000101000000000000000A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A000201000000000000000C /* Assets.xcassets */; };
+		8A000101000000000000000B /* IosLexiconImportBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000201000000000000000D /* IosLexiconImportBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 		8A000201000000000000000A /* PrivatePinyin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivatePinyin.entitlements; sourceTree = "<group>"; };
 		8A000201000000000000000B /* PrivatePinyinKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivatePinyinKeyboard.entitlements; sourceTree = "<group>"; };
 		8A000201000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8A000201000000000000000D /* IosLexiconImportBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLexiconImportBridge.swift; sourceTree = "<group>"; };
 		8A0003010000000000000001 /* PrivatePinyin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivatePinyin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0003010000000000000002 /* PrivatePinyinKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrivatePinyinKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -95,6 +97,7 @@
 				8A0002010000000000000001 /* PrivatePinyinApp.swift */,
 				8A0002010000000000000002 /* ContentView.swift */,
 				8A0002010000000000000003 /* IosSettingsStore.swift */,
+				8A000201000000000000000D /* IosLexiconImportBridge.swift */,
 				8A000201000000000000000C /* Assets.xcassets */,
 				8A0002010000000000000006 /* ContainerApp Info.plist */,
 				8A000201000000000000000A /* PrivatePinyin.entitlements */,
@@ -244,6 +247,7 @@
 				8A0001010000000000000001 /* PrivatePinyinApp.swift in Sources */,
 				8A0001010000000000000002 /* ContentView.swift in Sources */,
 				8A0001010000000000000003 /* IosSettingsStore.swift in Sources */,
+				8A000101000000000000000B /* IosLexiconImportBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
