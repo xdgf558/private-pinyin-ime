@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use private_pinyin_ime::{
     ime_engine_clear_user_lexicon, ime_engine_export_user_lexicon, ime_engine_free, ime_engine_new,
     ime_output_free, ime_session_commit_candidate, ime_session_feed_key, ime_session_free,
-    ime_session_new, ImeKeyEvent,
+    ime_session_new, ime_session_set_candidate_page_size, ImeKeyEvent,
 };
 #[cfg(feature = "desktop-ai")]
 use private_pinyin_ime::{ime_engine_enable_desktop_ai, ime_session_set_secure_input};
@@ -81,6 +81,57 @@ fn c_api_can_feed_nine_key_nihao() {
             CStr::from_ptr(first_candidate.text).to_str().unwrap(),
             "你好"
         );
+        ime_output_free(output);
+        ime_session_free(session);
+        ime_engine_free(engine);
+    }
+}
+
+#[test]
+fn c_api_ios_page_size_keeps_mao_candidate_on_first_nine_key_page() {
+    unsafe {
+        let engine = ime_engine_new(ptr::null());
+        assert!(!engine.is_null());
+        let session = ime_session_new(engine);
+        assert!(!session.is_null());
+        assert_eq!(ime_session_set_candidate_page_size(session, 9), 1);
+        assert_eq!(ime_session_set_candidate_page_size(session, 0), 0);
+        assert_eq!(ime_session_set_candidate_page_size(session, 1_000), 0);
+
+        let mut output = ptr::null_mut();
+        for (index, digit) in ["6", "2", "6"].into_iter().enumerate() {
+            let text = CString::new(digit).unwrap();
+            output = ime_session_feed_key(session, nine_key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            if index < 2 {
+                ime_output_free(output);
+            }
+        }
+
+        let output_ref = &*output;
+        assert_eq!(output_ref.candidate_count, 9);
+        let candidates =
+            std::slice::from_raw_parts(output_ref.candidates, output_ref.candidate_count as usize);
+        let first_page = candidates
+            .iter()
+            .map(|candidate| CStr::from_ptr(candidate.text).to_str().unwrap().to_owned())
+            .collect::<Vec<_>>();
+        assert!(candidates
+            .iter()
+            .any(|candidate| { CStr::from_ptr(candidate.text).to_str().unwrap() == "猫" }));
+
+        ime_output_free(output);
+        let output = ime_session_feed_key(session, command_event(15));
+        assert!(!output.is_null());
+        let output_ref = &*output;
+        assert!(output_ref.candidate_count > 0);
+        let second_page =
+            std::slice::from_raw_parts(output_ref.candidates, output_ref.candidate_count as usize);
+        assert!(second_page.iter().all(|candidate| {
+            let text = CStr::from_ptr(candidate.text).to_str().unwrap();
+            !first_page.iter().any(|first| first == text)
+        }));
+
         ime_output_free(output);
         ime_session_free(session);
         ime_engine_free(engine);
@@ -262,6 +313,19 @@ fn nine_key_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
     ImeKeyEvent {
         key_code: 102,
         text,
+        shift: 0,
+        ctrl: 0,
+        alt: 0,
+        meta: 0,
+        is_repeat: 0,
+        timestamp_ms: 0,
+    }
+}
+
+fn command_event(key_code: i32) -> ImeKeyEvent {
+    ImeKeyEvent {
+        key_code,
+        text: ptr::null(),
         shift: 0,
         ctrl: 0,
         alt: 0,

@@ -141,6 +141,9 @@ Checklist:
 | Prediction retention | `jintian -> 今天` keeps prediction candidates such as `天气` after commit | | |
 | Self-change callback | Commit several candidates quickly and switch host fields within 250 ms; delayed `textDidChange` callbacks caused by the keyboard's own insert/delete operations do not clear the new candidate or prediction state, while document-identity/context changes from a real external field still reset composition | | |
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |
+| Nine-key compact height | In landscape, the five-column nine-key grid fits without constraint warnings, clipping, or overlapping controls; Globe/layout, `中/英`, `候选`, Delete, and Return remain reachable | | |
+| Nine-key mode control | Tap `中/英` in nine-key mode; English QWERTY appears, and switching back to Chinese restores the saved nine-key layout and active controls | | |
+| Haptic fallback | With Full Access off, every key remains responsive whether iOS emits or suppresses the optional haptic feedback | | |
 | Password fallback | Password fields force the system keyboard | | |
 | Phone fallback | Phone-number fields force the system keyboard | | |
 | No network | With Full Access off, there is no network API usage or network prompt | | |

@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-19 06:36
-Current stage: AI-07 desktop asynchronous integration release validation
-Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarized, installed, and verified in TextEdit, Chrome, and Safari, while Windows 11 TSF password-field smoke and cross-platform hardware calibration remain open
+Last updated: 2026-07-19 17:05
+Current stage: Stage 17 iOS nine-key candidate and touch-response regression fix
+Current status: The iOS fix branch enforces nine-candidate sessions, keeps `626 -> 猫` on the first page, adds a direct `候选` next-page key, adopts the requested five-column nine-key layout, and improves candidate panning and key hit feedback; TestFlight device interaction remains pending review and packaging
 
 ## Stage Status
 
@@ -24,7 +24,7 @@ Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarize
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
 | 16 | TestFlight archive and upload | completed | 2026-07-18 19:01 | TestFlight candidate `0.1.22 (18)` was archived with Xcode 26.6, uploaded as delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-18 19:07 | PR #32 is merged and build `18` is processed; it preserves the freshest nine-key/script setting without Full Access, retains candidates across verified self-generated callbacks, makes the nine-key symbol entry selectable, places GHI/Delete in the requested positions, and ranks `zyao -> 主要`; final real-device host taps, password/phone fallback, and App Group checks remain |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-19 17:05 | The current review branch fixes the five-candidate fallback that hid `猫` for `626`, adds explicit nine-key candidate paging, implements the requested five-column layout, and improves candidate panning, haptics, and the `A`/`L` edge hit regions; final TestFlight host taps, password/phone fallback, and App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -47,6 +47,18 @@ Current status: AI-07 is merged through PR #33; macOS 0.1.22 is signed, notarize
 - Layout/script reads compare shared-JSON and extension-local timestamps, so the freshest successful write wins while either sandbox remains a usable fallback.
 - `scripts/run_ios_smoke_readiness.sh`: passed with `BUILD SUCCEEDED` for both the container app and Keyboard Extension under Xcode 27.
 - Final TestFlight/device taps for candidate selection, top-left symbol navigation, revised geometry, and delayed host callbacks remain required before release.
+
+## iOS Nine-Key Candidate and Touch Validation (2026-07-19)
+
+- Added a bounded session-level candidate-page setter to the Rust core and C ABI; iOS requests exactly nine entries even when engine construction falls back to default settings.
+- Added executable C ABI coverage proving nine-key `626` returns nine visible candidates, includes `猫` on the first page, and produces a distinct non-empty second page: passed.
+- Added a dedicated `候选` key for the next candidate group; the fixed previous/next controls above the horizontally scrolling strip remain available.
+- Rebuilt the nine-key surface into the requested five-column geometry, restored the required Globe and Chinese/English controls, removed the placeholder key, and made row heights adapt to compact-height layouts.
+- Candidate-page configuration now has one bridge-owned preferred size and degrades to the core default without making the keyboard unavailable; haptics remain best-effort because the extension does not request Full Access.
+- Added cancellable candidate-button tracking, preserved scroll position, and expanded non-overlapping `A`/`L` edge hit regions.
+- `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `scripts/check_ios_keyboard_sources.sh`: passed.
+- Xcode Beta simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator.
+- TestFlight device validation is still required for candidate-strip inertial dragging, `A` accuracy, optional haptic behavior, five-column portrait/landscape geometry, required Globe access, Chinese/English switching, `626 -> 猫`, and repeated `候选` paging before release.
 
 ## Local AI Status
 

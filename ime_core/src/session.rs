@@ -3,7 +3,9 @@ use std::sync::Arc;
 use crate::api::ImeOutput;
 use crate::candidate::Candidate;
 use crate::key_event::{KeyCode, KeyEvent};
-use crate::lexicon::{merge_user_and_base_candidates, ContinuousDecodeCache, Lexicon};
+use crate::lexicon::{
+    merge_user_and_base_candidates, ContinuousDecodeCache, Lexicon, MAX_LOOKUP_CANDIDATES,
+};
 use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::{merge_prediction_candidates, Predictor};
@@ -76,6 +78,16 @@ impl InputSession {
 
     pub fn current_page_candidates_snapshot(&self) -> Vec<Candidate> {
         self.current_page_candidates()
+    }
+
+    pub fn set_candidate_page_size(&mut self, page_size: usize) -> bool {
+        if !(1..=MAX_LOOKUP_CANDIDATES).contains(&page_size) {
+            return false;
+        }
+
+        self.settings_snapshot.candidate_page_size = page_size;
+        self.candidate_page = 0;
+        true
     }
 
     pub fn reorder_current_candidate_page(&mut self, order: &[usize]) -> bool {
