@@ -23,7 +23,7 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-18 19:01 | TestFlight candidate `0.1.22 (18)` was archived with Xcode 26.6, uploaded as delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`, and validated as App Store eligible |
+| 16 | TestFlight archive and upload | completed | 2026-07-19 20:44 | TestFlight candidate `0.1.23 (19)` was archived with Xcode 26.6, uploaded as delivery `586c1d52-6389-4564-a097-db40555f32ad`, and validated as App Store eligible |
 | 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-19 17:05 | The current review branch fixes the five-candidate fallback that hid `猫` for `626`, adds explicit nine-key candidate paging, implements the requested five-column layout, and improves candidate panning, haptics, and the `A`/`L` edge hit regions; final TestFlight host taps, password/phone fallback, and App Group checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
@@ -171,6 +171,16 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `fe40dc42-10f0-4c4c-abd5-5bd9da81e122`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review: ready for the Owner to add build `18` to the external group, provide test content, and submit it for Beta App Review.
+
+## iOS 0.1.23 (19) TestFlight Upload
+
+- PR #35 was merged as `b44eb7f` and PR #34 was merged as `a915ec6`; container app and Keyboard Extension versions were advanced together in release commit `c56a9a3`.
+- `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, both release-plist lints, the iOS source gate, and the local Rime import source gate passed.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0`.
+- Signed archive `dist/ios/PrivatePinyin-0.1.23-build19-xcode26.xcarchive` reports version `0.1.23`, build `19`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `586c1d52-6389-4564-a097-db40555f32ad`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- External TestFlight review remains a separate Owner action: assign build `19` to the external group, provide test content, and submit it for Beta App Review.
 
 ## Completed Work
 
