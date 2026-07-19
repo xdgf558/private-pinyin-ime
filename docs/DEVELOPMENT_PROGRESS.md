@@ -53,10 +53,12 @@ Current status: The iOS fix branch enforces nine-candidate sessions, keeps `626 
 - Added a bounded session-level candidate-page setter to the Rust core and C ABI; iOS requests exactly nine entries even when engine construction falls back to default settings.
 - Added executable C ABI coverage proving nine-key `626` returns nine visible candidates, includes `猫` on the first page, and produces a distinct non-empty second page: passed.
 - Added a dedicated `候选` key for the next candidate group; the fixed previous/next controls above the horizontally scrolling strip remain available.
-- Rebuilt the nine-key surface into the requested five-column geometry and added local selection haptics, cancellable candidate-button tracking, preserved scroll position, and expanded non-overlapping `A`/`L` edge hit regions.
+- Rebuilt the nine-key surface into the requested five-column geometry, restored the required Globe and Chinese/English controls, removed the placeholder key, and made row heights adapt to compact-height layouts.
+- Candidate-page configuration now has one bridge-owned preferred size and degrades to the core default without making the keyboard unavailable; haptics remain best-effort because the extension does not request Full Access.
+- Added cancellable candidate-button tracking, preserved scroll position, and expanded non-overlapping `A`/`L` edge hit regions.
 - `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `scripts/check_ios_keyboard_sources.sh`: passed.
 - Xcode Beta simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator.
-- TestFlight device validation is still required for candidate-strip inertial dragging, `A` accuracy, haptic comfort, five-column geometry, `626 -> 猫`, and repeated `候选` paging before release.
+- TestFlight device validation is still required for candidate-strip inertial dragging, `A` accuracy, optional haptic behavior, five-column portrait/landscape geometry, required Globe access, Chinese/English switching, `626 -> 猫`, and repeated `候选` paging before release.
 
 ## Local AI Status
 

@@ -26,7 +26,6 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
-    private let visibleCandidateCount = 9
     private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
     private var renderedCandidateSignature: [String] = []
     private var shifted = false
@@ -72,6 +71,7 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
+        refreshMinimumHeight()
         if lastNeedsInputModeSwitchKey != needsInputModeSwitchKey {
             lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
             rebuildKeyboard()
@@ -183,7 +183,7 @@ final class KeyboardViewController: UIInputViewController {
             candidateStack.heightAnchor.constraint(equalTo: candidateScrollView.frameLayoutGuide.heightAnchor),
         ])
 
-        for index in 0..<visibleCandidateCount {
+        for index in 0..<IosPinyinCoreBridge.preferredCandidatePageSize {
             let button = makeCandidateButton(index: index)
             button.isHidden = true
             candidateButtons.append(button)
@@ -535,24 +535,24 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func makeNineKeyGrid() -> UIView {
-        let topRow = makeFixedHeightKeyRow([
+        let topRow = makeAdaptiveKeyRow([
             .symbols,
             .nineKeyPunctuation,
             .nineKeyDigit(2, letters: "ABC"),
             .nineKeyDigit(3, letters: "DEF"),
             .backspace,
         ])
-        let middleRow = makeFixedHeightKeyRow([
+        let middleRow = makeAdaptiveKeyRow([
             .nineKeyMoreSymbols,
             .nineKeyDigit(4, letters: "GHI"),
             .nineKeyDigit(5, letters: "JKL"),
             .nineKeyDigit(6, letters: "MNO"),
-            .text("^^"),
+            .modeToggle,
         ])
 
-        let qwertyButton = makeKeyButton(.qwertyLayout)
+        let leadingButton = makeKeyButton(needsInputModeSwitchKey ? .globe : .qwertyLayout)
         let enterButton = makeKeyButton(.enter)
-        let lowerCenterTop = makeFixedHeightKeyRow([
+        let lowerCenterTop = makeAdaptiveKeyRow([
             .nineKeyDigit(7, letters: "PQRS"),
             .nineKeyDigit(8, letters: "TUV"),
             .nineKeyDigit(9, letters: "WXYZ"),
@@ -564,7 +564,6 @@ final class KeyboardViewController: UIInputViewController {
         lowerCenterBottom.alignment = .fill
         lowerCenterBottom.distribution = .fill
         lowerCenterBottom.spacing = 7
-        lowerCenterBottom.heightAnchor.constraint(equalToConstant: 52).isActive = true
         candidateButton.widthAnchor.constraint(
             equalTo: lowerCenterTop.buttons[0].widthAnchor
         ).isActive = true
@@ -575,14 +574,21 @@ final class KeyboardViewController: UIInputViewController {
         lowerCenter.distribution = .fill
         lowerCenter.spacing = 9
 
-        let lowerRow = UIStackView(arrangedSubviews: [qwertyButton, lowerCenter, enterButton])
+        let lowerRow = UIStackView(arrangedSubviews: [leadingButton, lowerCenter, enterButton])
         lowerRow.axis = .horizontal
         lowerRow.alignment = .fill
         lowerRow.distribution = .fill
         lowerRow.spacing = 7
-        lowerRow.heightAnchor.constraint(equalToConstant: 113).isActive = true
-        qwertyButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+        leadingButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
         enterButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+        middleRow.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
+        lowerCenterTop.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
+        lowerCenterBottom.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
+        lowerRow.heightAnchor.constraint(
+            equalTo: topRow.stack.heightAnchor,
+            multiplier: 2,
+            constant: 9
+        ).isActive = true
 
         for button in middleRow.buttons {
             button.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
@@ -599,14 +605,13 @@ final class KeyboardViewController: UIInputViewController {
         return grid
     }
 
-    private func makeFixedHeightKeyRow(_ keys: [KeySpec]) -> (stack: UIStackView, buttons: [UIButton]) {
+    private func makeAdaptiveKeyRow(_ keys: [KeySpec]) -> (stack: UIStackView, buttons: [UIButton]) {
         let buttons = keys.map(makeKeyButton)
         let row = UIStackView(arrangedSubviews: buttons)
         row.axis = .horizontal
         row.alignment = .fill
         row.distribution = .fillEqually
         row.spacing = 7
-        row.heightAnchor.constraint(equalToConstant: 52).isActive = true
         return (row, buttons)
     }
 
@@ -678,6 +683,8 @@ final class KeyboardViewController: UIInputViewController {
         button.titleLabel?.minimumScaleFactor = 0.75
         button.cornerRadius = usesNineKeyLayout ? 7 : 6
         if case .character(let value) = key.kind {
+            // The middle QWERTY row leaves a 10-point outer margin for these
+            // edge expansions, so neither hit region overlaps S or K.
             if value == "a" {
                 button.hitTestOutsets.left = 10
             } else if value == "l" {
@@ -740,7 +747,7 @@ final class KeyboardViewController: UIInputViewController {
         renderedCandidateSignature = candidateSignature
         previousCandidatePageButton.isHidden = !hasCandidates || candidatePage == 0
         nextCandidatePageButton.isHidden = !hasCandidates
-            || currentCandidates.count < visibleCandidateCount
+            || currentCandidates.count < sessionCandidatePageSize
             || candidatePageReachedEnd
 
         let visiblePreedit = displayedPreedit
@@ -908,7 +915,7 @@ private extension KeyboardViewController {
         let nextSignature = output.candidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         if nextSignature != previousSignature {
             candidatePage = max(0, candidatePage + delta)
-            candidatePageReachedEnd = output.candidates.count < visibleCandidateCount
+            candidatePageReachedEnd = output.candidates.count < sessionCandidatePageSize
         } else if delta > 0 {
             candidatePageReachedEnd = true
         }
@@ -1057,6 +1064,10 @@ private extension KeyboardViewController {
         preferredLayout == .nineKey && !englishMode && !symbolsVisible
     }
 
+    var sessionCandidatePageSize: Int {
+        core?.candidatePageSize ?? IosPinyinCoreBridge.preferredCandidatePageSize
+    }
+
     var displayedPreedit: String {
         guard usesNineKeyLayout, !currentPreedit.isEmpty else {
             return currentPreedit
@@ -1075,9 +1086,13 @@ private extension KeyboardViewController {
     }
 
     func refreshMinimumHeight() {
-        minimumHeightConstraint?.constant = preferencesVisible
-            ? 368
-            : (usesNineKeyLayout ? 310 : 278)
+        if preferencesVisible {
+            minimumHeightConstraint?.constant = 368
+        } else if traitCollection.verticalSizeClass == .compact {
+            minimumHeightConstraint?.constant = 216
+        } else {
+            minimumHeightConstraint?.constant = usesNineKeyLayout ? 310 : 278
+        }
     }
 
     func selectKeyboardLayout(_ layout: IosKeyboardLayout) {

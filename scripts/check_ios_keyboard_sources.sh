@@ -57,6 +57,9 @@ grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyin
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_set_candidate_page_size" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "static let preferredCandidatePageSize = 9" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "private static let fallbackCandidatePageSize = 5" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "let candidatePageSize: Int" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "nineKeyDigit: Int32 = 102" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "pageUp: Int32 = 14" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "pageDown: Int32 = 15" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
@@ -82,6 +85,9 @@ grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardView
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '.nineKeyDigit(4, letters: "GHI")' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q '.nineKeyDigit(7, letters: "PQRS")' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'needsInputModeSwitchKey ? .globe : .qwertyLayout' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'makeAdaptiveKeyRow' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'traitCollection.verticalSizeClass == .compact' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let nineKeyMoreSymbols' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let candidateNextPage' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "候选"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -125,7 +131,17 @@ grep -q "keyboardLayoutDefaultsKey" platform/ios_keyboard/ContainerApp/IosSettin
 grep -q "chineseScriptDefaultsKey" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -Fq 'try data.write(to: settingsURL, options: [.atomic])' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "keyboardCandidatePageSize = 9" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
-grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+if grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
+  echo "iOS candidate page size must have one source of truth in IosPinyinCoreBridge." >&2
+  exit 1
+fi
+if sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q 'equalToConstant: \(52\|113\)'; then
+  echo "The iOS nine-key grid must adapt to compact-height layouts." >&2
+  exit 1
+fi
+sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q '\.modeToggle'
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
