@@ -38,6 +38,7 @@ struct IosPinyinOutput {
 }
 
 final class IosPinyinCoreBridge {
+    private static let iosCandidatePageSize: Int32 = 9
     private var engine: OpaquePointer?
     private var session: OpaquePointer?
 
@@ -54,6 +55,11 @@ final class IosPinyinCoreBridge {
             return nil
         }
         guard let session = ime_session_new(engine) else {
+            ime_engine_free(engine)
+            return nil
+        }
+        guard ime_session_set_candidate_page_size(session, Self.iosCandidatePageSize) == 1 else {
+            ime_session_free(session)
             ime_engine_free(engine)
             return nil
         }

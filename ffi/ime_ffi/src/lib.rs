@@ -252,6 +252,20 @@ pub extern "C" fn ime_session_set_secure_input(
 }
 
 #[no_mangle]
+pub extern "C" fn ime_session_set_candidate_page_size(
+    session: *mut ImeSession,
+    page_size: c_int,
+) -> c_int {
+    catch_status(|| {
+        let session = unsafe { session.as_mut()? };
+        if page_size <= 0 || !session.inner.set_candidate_page_size(page_size as usize) {
+            return None;
+        }
+        Some(())
+    })
+}
+
+#[no_mangle]
 pub extern "C" fn ime_session_commit_candidate(
     session: *mut ImeSession,
     index: c_int,

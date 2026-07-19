@@ -4,7 +4,7 @@ final class KeyboardViewController: UIInputViewController {
     private var core: IosPinyinCoreBridge?
     private let rootStack = UIStackView()
     private let candidateBar = UIStackView()
-    private let candidateScrollView = UIScrollView()
+    private let candidateScrollView = CandidateScrollView()
     private let candidateStack = UIStackView()
     private let keyRowsStack = UIStackView()
     private let preferencesView = UIView()
@@ -27,6 +27,8 @@ final class KeyboardViewController: UIInputViewController {
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
     private let visibleCandidateCount = 9
+    private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
+    private var renderedCandidateSignature: [String] = []
     private var shifted = false
     private var symbolsVisible = false
     private var extendedSymbolsVisible = false
@@ -47,6 +49,7 @@ final class KeyboardViewController: UIInputViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         _ = ensureCore()
+        keyFeedbackGenerator.prepare()
         setupView()
         rebuildKeyboard()
         updateCandidateBar()
@@ -146,7 +149,10 @@ final class KeyboardViewController: UIInputViewController {
         candidateScrollView.showsHorizontalScrollIndicator = false
         candidateScrollView.showsVerticalScrollIndicator = false
         candidateScrollView.alwaysBounceHorizontal = true
+        candidateScrollView.canCancelContentTouches = true
         candidateScrollView.delaysContentTouches = false
+        candidateScrollView.isDirectionalLockEnabled = true
+        candidateScrollView.decelerationRate = .fast
         candidateScrollView.accessibilityLabel = "候选词"
         candidateScrollView.accessibilityHint = "左右滑动查看更多候选"
         candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -213,7 +219,10 @@ final class KeyboardViewController: UIInputViewController {
         button.tintColor = StationKeyboardTheme.toolText
         button.backgroundColor = .clear
         button.accessibilityLabel = accessibilityLabel
-        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in
+            self?.provideSelectionFeedback()
+            action()
+        }, for: .touchUpInside)
         button.widthAnchor.constraint(equalToConstant: 34).isActive = true
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
     }
@@ -228,7 +237,10 @@ final class KeyboardViewController: UIInputViewController {
         button.tintColor = StationKeyboardTheme.secondaryText
         button.backgroundColor = .clear
         button.accessibilityLabel = accessibilityLabel
-        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in
+            self?.provideSelectionFeedback()
+            action()
+        }, for: .touchUpInside)
         button.widthAnchor.constraint(equalToConstant: 22).isActive = true
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
         button.isHidden = true
@@ -454,14 +466,14 @@ final class KeyboardViewController: UIInputViewController {
         modeButton = nil
         spaceButton = nil
 
-        let rows: [[KeySpec]]
-        if symbolsVisible {
-            rows = symbolRows()
-        } else if usesNineKeyLayout {
-            rows = nineKeyRows()
-        } else {
-            rows = letterRows()
+        if !symbolsVisible, usesNineKeyLayout {
+            keyRowsStack.addArrangedSubview(makeNineKeyGrid())
+            refreshMinimumHeight()
+            refreshKeyStates()
+            return
         }
+
+        let rows = symbolsVisible ? symbolRows() : letterRows()
         refreshMinimumHeight()
         for (rowIndex, row) in rows.enumerated() {
             let rowStack = UIStackView()
@@ -510,7 +522,7 @@ final class KeyboardViewController: UIInputViewController {
         guard !usesNineKeyLayout, index == 1, !extendedSymbolsVisible else {
             return 0
         }
-        return symbolsVisible ? 14 : 18
+        return symbolsVisible ? 14 : 10
     }
 
     private func letterRows() -> [[KeySpec]] {
@@ -522,17 +534,80 @@ final class KeyboardViewController: UIInputViewController {
         ]
     }
 
-    private func nineKeyRows() -> [[KeySpec]] {
-        let globeKey = needsInputModeSwitchKey ? KeySpec.globe : .qwertyLayout
-        return [
-            [.nineKeyPunctuation.weighted(1.15), .nineKeyDigit(2, letters: "ABC"),
-             .nineKeyDigit(3, letters: "DEF"), .nineKeyDigit(4, letters: "GHI").weighted(1.15)],
-            [.symbols.weighted(1.15), .nineKeyDigit(5, letters: "JKL"),
-             .nineKeyDigit(6, letters: "MNO"), .nineKeyDigit(7, letters: "PQRS").weighted(1.15)],
-            [globeKey.weighted(1.15), .nineKeyDigit(8, letters: "TUV"),
-             .nineKeyDigit(9, letters: "WXYZ"), .enter.weighted(1.15)],
-            [.modeToggle.weighted(1.15), .space.weighted(2), .backspace.weighted(1.15)],
-        ]
+    private func makeNineKeyGrid() -> UIView {
+        let topRow = makeFixedHeightKeyRow([
+            .symbols,
+            .nineKeyPunctuation,
+            .nineKeyDigit(2, letters: "ABC"),
+            .nineKeyDigit(3, letters: "DEF"),
+            .backspace,
+        ])
+        let middleRow = makeFixedHeightKeyRow([
+            .nineKeyMoreSymbols,
+            .nineKeyDigit(4, letters: "GHI"),
+            .nineKeyDigit(5, letters: "JKL"),
+            .nineKeyDigit(6, letters: "MNO"),
+            .text("^^"),
+        ])
+
+        let qwertyButton = makeKeyButton(.qwertyLayout)
+        let enterButton = makeKeyButton(.enter)
+        let lowerCenterTop = makeFixedHeightKeyRow([
+            .nineKeyDigit(7, letters: "PQRS"),
+            .nineKeyDigit(8, letters: "TUV"),
+            .nineKeyDigit(9, letters: "WXYZ"),
+        ])
+        let candidateButton = makeKeyButton(.candidateNextPage)
+        let spaceButton = makeKeyButton(.space)
+        let lowerCenterBottom = UIStackView(arrangedSubviews: [candidateButton, spaceButton])
+        lowerCenterBottom.axis = .horizontal
+        lowerCenterBottom.alignment = .fill
+        lowerCenterBottom.distribution = .fill
+        lowerCenterBottom.spacing = 7
+        lowerCenterBottom.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        candidateButton.widthAnchor.constraint(
+            equalTo: lowerCenterTop.buttons[0].widthAnchor
+        ).isActive = true
+
+        let lowerCenter = UIStackView(arrangedSubviews: [lowerCenterTop.stack, lowerCenterBottom])
+        lowerCenter.axis = .vertical
+        lowerCenter.alignment = .fill
+        lowerCenter.distribution = .fill
+        lowerCenter.spacing = 9
+
+        let lowerRow = UIStackView(arrangedSubviews: [qwertyButton, lowerCenter, enterButton])
+        lowerRow.axis = .horizontal
+        lowerRow.alignment = .fill
+        lowerRow.distribution = .fill
+        lowerRow.spacing = 7
+        lowerRow.heightAnchor.constraint(equalToConstant: 113).isActive = true
+        qwertyButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+        enterButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+
+        for button in middleRow.buttons {
+            button.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+        }
+        for button in lowerCenterTop.buttons {
+            button.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
+        }
+
+        let grid = UIStackView(arrangedSubviews: [topRow.stack, middleRow.stack, lowerRow])
+        grid.axis = .vertical
+        grid.alignment = .fill
+        grid.distribution = .fill
+        grid.spacing = 9
+        return grid
+    }
+
+    private func makeFixedHeightKeyRow(_ keys: [KeySpec]) -> (stack: UIStackView, buttons: [UIButton]) {
+        let buttons = keys.map(makeKeyButton)
+        let row = UIStackView(arrangedSubviews: buttons)
+        row.axis = .horizontal
+        row.alignment = .fill
+        row.distribution = .fillEqually
+        row.spacing = 7
+        row.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        return (row, buttons)
     }
 
     private func symbolRows() -> [[KeySpec]] {
@@ -602,6 +677,13 @@ final class KeyboardViewController: UIInputViewController {
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.75
         button.cornerRadius = usesNineKeyLayout ? 7 : 6
+        if case .character(let value) = key.kind {
+            if value == "a" {
+                button.hitTestOutsets.left = 10
+            } else if value == "l" {
+                button.hitTestOutsets.right = 10
+            }
+        }
         button.isEnabled = key.kind.isInteractive
         button.alpha = key.kind.isInteractive ? 1 : 0
         button.addAction(UIAction { [weak self] _ in
@@ -653,6 +735,9 @@ final class KeyboardViewController: UIInputViewController {
         settingsButton.alpha = settingsButton.isEnabled ? 1.0 : 0.45
 
         let hasCandidates = !currentCandidates.isEmpty
+        let candidateSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
+        let candidatesChanged = candidateSignature != renderedCandidateSignature
+        renderedCandidateSignature = candidateSignature
         previousCandidatePageButton.isHidden = !hasCandidates || candidatePage == 0
         nextCandidatePageButton.isHidden = !hasCandidates
             || currentCandidates.count < visibleCandidateCount
@@ -677,10 +762,13 @@ final class KeyboardViewController: UIInputViewController {
             button.accessibilityLabel = "候选词 \(candidateText)"
             button.isHidden = false
         }
-        candidateScrollView.setContentOffset(.zero, animated: false)
+        if candidatesChanged {
+            candidateScrollView.setContentOffset(.zero, animated: false)
+        }
     }
 
     private func handle(_ key: KeySpec) {
+        provideSelectionFeedback()
         switch key.kind {
         case .character(let value):
             feedCharacter(value)
@@ -723,6 +811,8 @@ final class KeyboardViewController: UIInputViewController {
             symbolsVisible = false
             extendedSymbolsVisible = false
             selectKeyboardLayout(.qwerty)
+        case .candidateNextPage:
+            turnCandidatePage(1)
         case .modeToggle:
             apply(ensureCore()?.toggleMode())
         case .spacer:
@@ -775,7 +865,13 @@ private extension KeyboardViewController {
     }
 
     func commitCandidate(_ index: Int) {
+        provideSelectionFeedback()
         apply(ensureCore()?.commitCandidate(index: index))
+    }
+
+    func provideSelectionFeedback() {
+        keyFeedbackGenerator.selectionChanged()
+        keyFeedbackGenerator.prepare()
     }
 
     func applyOrInsert(_ output: IosPinyinOutput?, fallback: String) {
@@ -1112,6 +1208,7 @@ private struct KeySpec {
         case letters
         case nineKeyLayout
         case qwertyLayout
+        case candidateNextPage
         case modeToggle
         case spacer
     }
@@ -1129,7 +1226,7 @@ private struct KeySpec {
         case .character, .text, .nineKeyDigit, .space, .enter, .backspace:
             return .touchDown
         case .nineKeyPunctuation, .shift, .globe, .symbols, .letters, .nineKeyLayout,
-             .extendedSymbols, .qwertyLayout, .modeToggle, .spacer:
+             .extendedSymbols, .qwertyLayout, .candidateNextPage, .modeToggle, .spacer:
             return .touchUpInside
         }
     }
@@ -1146,7 +1243,7 @@ private struct KeySpec {
             return .returnKey
         case .nineKeyPunctuation, .backspace, .shift, .globe,
              .symbols, .extendedSymbols, .letters, .nineKeyLayout,
-             .qwertyLayout, .spacer:
+             .qwertyLayout, .candidateNextPage, .spacer:
             return .function
         }
     }
@@ -1160,7 +1257,7 @@ private struct KeySpec {
         case .text, .nineKeyPunctuation:
             return UIFont.systemFont(ofSize: 18, weight: .medium)
         case .space, .modeToggle, .enter, .symbols, .extendedSymbols, .letters,
-             .nineKeyLayout, .qwertyLayout:
+             .nineKeyLayout, .qwertyLayout, .candidateNextPage:
             return UIFont.systemFont(ofSize: 15, weight: .semibold)
         case .backspace, .shift, .globe, .spacer:
             return UIFont.systemFont(ofSize: 16, weight: .medium)
@@ -1274,6 +1371,15 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.2
     )
+    static let nineKeyMoreSymbols = Self(
+        kind: .extendedSymbols,
+        title: "#@\u{00a5}",
+        systemImageName: nil,
+        accessibilityLabel: "更多符号",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
+    )
     static let letters = Self(
         kind: .letters,
         title: "ABC",
@@ -1294,12 +1400,21 @@ private struct KeySpec {
     )
     static let qwertyLayout = Self(
         kind: .qwertyLayout,
-        title: "全键",
+        title: "ABC",
         systemImageName: nil,
         accessibilityLabel: "切换到全键拼音",
         isCommand: true,
         isWide: true,
         widthWeight: 1.2
+    )
+    static let candidateNextPage = Self(
+        kind: .candidateNextPage,
+        title: "候选",
+        systemImageName: nil,
+        accessibilityLabel: "显示下一组候选",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
     )
     static let space = Self(
         kind: .space,
@@ -1386,10 +1501,20 @@ private enum StationKeyboardTheme {
     static let returnText = UIColor(hex: 0x231703)
 }
 
+private final class CandidateScrollView: UIScrollView {
+    override func touchesShouldCancel(in view: UIView) -> Bool {
+        if view is UIControl {
+            return true
+        }
+        return super.touchesShouldCancel(in: view)
+    }
+}
+
 private final class StationKeyButton: UIButton {
     private let keyStyle: StationKeyVisualStyle
     private let gradientLayer = CAGradientLayer()
     private let centeredImageView = UIImageView()
+    var hitTestOutsets = UIEdgeInsets.zero
 
     var cornerRadius: CGFloat = 6 {
         didSet {
@@ -1441,6 +1566,18 @@ private final class StationKeyButton: UIButton {
     override func layoutSubviews() {
         super.layoutSubviews()
         gradientLayer.frame = bounds
+    }
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        let hitBounds = bounds.inset(
+            by: UIEdgeInsets(
+                top: -hitTestOutsets.top,
+                left: -hitTestOutsets.left,
+                bottom: -hitTestOutsets.bottom,
+                right: -hitTestOutsets.right
+            )
+        )
+        return hitBounds.contains(point)
     }
 
     override var isHighlighted: Bool {

@@ -203,6 +203,9 @@
 
 ### Fixed
 
+- Fixed iOS nine-key sessions silently falling back to five candidates when shared settings are unavailable; the extension now enforces a nine-candidate page through the C ABI, keeping `626 -> 猫` on the first page and exposing the next group through the `候选` key.
+- Rebuilt the iOS nine-key keyboard as the requested five-column layout with dedicated number, punctuation, symbol, candidate-page, Space, Return, QWERTY, and Delete controls, plus subtle local haptic feedback for key and candidate actions.
+- Improved iOS candidate-strip dragging by allowing its scroll view to cancel candidate-button tracking, preserving the horizontal position during unchanged renders, and using faster directional deceleration; widened the QWERTY middle row and expanded the outer hit regions of `A` and `L` without overlapping adjacent keys.
 - Fixed iOS self-generated text callback suppression so it uses a 250 ms window plus document identity and before/after context evidence instead of suppressing any callback for 750 ms.
 - Fixed iOS shared/local layout and script preference conflicts by timestamping both stores and choosing the freshest value, while retaining extension-local fallback when shared writes are unavailable.
 - Fixed iOS keyboard layout and Simplified/Traditional preferences so they persist in the extension-local sandbox when App Group writes are unavailable, including after switching apps or recreating the keyboard process.
