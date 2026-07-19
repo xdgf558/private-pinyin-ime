@@ -96,6 +96,7 @@ fn c_api_ios_page_size_keeps_mao_candidate_on_first_nine_key_page() {
         assert!(!session.is_null());
         assert_eq!(ime_session_set_candidate_page_size(session, 9), 1);
         assert_eq!(ime_session_set_candidate_page_size(session, 0), 0);
+        assert_eq!(ime_session_set_candidate_page_size(session, 1_000), 0);
 
         let mut output = ptr::null_mut();
         for (index, digit) in ["6", "2", "6"].into_iter().enumerate() {
