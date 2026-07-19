@@ -11,7 +11,9 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
-desktop-ai = ["dep:private_pinyin_local_ai_core"]
+local-ai = ["dep:private_pinyin_local_ai_core"]
+desktop-ai = ["local-ai"]
+ios-ai = ["local-ai"]
 
 [dependencies]
 ime_core = { path = "../../ime_core" }

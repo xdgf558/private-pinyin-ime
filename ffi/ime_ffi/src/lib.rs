@@ -1,8 +1,9 @@
 #![allow(unsafe_code)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-#[cfg(feature = "desktop-ai")]
-mod desktop_ai;
+#[cfg(feature = "local-ai")]
+#[path = "desktop_ai.rs"]
+mod local_ai;
 
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
@@ -16,9 +17,9 @@ use ime_core::{
     KeyCode, KeyEvent, Modifiers,
 };
 
-#[cfg(feature = "desktop-ai")]
-use desktop_ai::{DesktopAiRuntime, DesktopAiSession};
-#[cfg(feature = "desktop-ai")]
+#[cfg(feature = "local-ai")]
+use local_ai::{LocalAiRuntime, LocalAiSession};
+#[cfg(feature = "local-ai")]
 use private_pinyin_local_ai_core::ModelPlatform;
 
 const IME_KEY_UNKNOWN: c_int = 0;
@@ -45,22 +46,24 @@ const IME_KEY_NINE_KEY_DIGIT: c_int = 102;
 
 pub struct ImeEngine {
     inner: CoreImeEngine,
-    #[cfg(feature = "desktop-ai")]
-    desktop_ai: Option<std::sync::Arc<DesktopAiRuntime>>,
+    #[cfg(feature = "local-ai")]
+    local_ai: Option<std::sync::Arc<LocalAiRuntime>>,
     _not_thread_safe: PhantomData<Rc<()>>,
 }
 
 pub struct ImeSession {
     inner: InputSession,
-    #[cfg(feature = "desktop-ai")]
-    desktop_ai: Option<DesktopAiSession>,
+    #[cfg(feature = "local-ai")]
+    local_ai: Option<LocalAiSession>,
     _not_thread_safe: PhantomData<Rc<()>>,
 }
 
-#[cfg(feature = "desktop-ai")]
+#[cfg(feature = "local-ai")]
 const IME_AI_PLATFORM_MACOS: c_int = 1;
-#[cfg(feature = "desktop-ai")]
+#[cfg(feature = "local-ai")]
 const IME_AI_PLATFORM_WINDOWS: c_int = 2;
+#[cfg(feature = "local-ai")]
+const IME_AI_PLATFORM_IOS: c_int = 3;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,8 +125,8 @@ pub extern "C" fn ime_engine_new(config_json_path: *const c_char) -> *mut ImeEng
         };
         Some(Box::into_raw(Box::new(ImeEngine {
             inner,
-            #[cfg(feature = "desktop-ai")]
-            desktop_ai: None,
+            #[cfg(feature = "local-ai")]
+            local_ai: None,
             _not_thread_safe: PhantomData,
         })))
     })
@@ -136,21 +139,31 @@ pub extern "C" fn ime_engine_enable_desktop_ai(
     physical_memory_mb: u64,
     gpu_available: c_int,
 ) -> c_int {
+    ime_engine_enable_local_ai(engine, platform, physical_memory_mb, gpu_available)
+}
+
+#[no_mangle]
+pub extern "C" fn ime_engine_enable_local_ai(
+    engine: *mut ImeEngine,
+    platform: c_int,
+    physical_memory_mb: u64,
+    gpu_available: c_int,
+) -> c_int {
     catch_status(|| {
         let engine = unsafe { engine.as_mut()? };
-        #[cfg(feature = "desktop-ai")]
+        #[cfg(feature = "local-ai")]
         {
             let platform = match platform {
                 IME_AI_PLATFORM_MACOS => ModelPlatform::Macos,
                 IME_AI_PLATFORM_WINDOWS => ModelPlatform::Windows,
+                IME_AI_PLATFORM_IOS => ModelPlatform::Ios,
                 _ => return None,
             };
-            engine.desktop_ai =
-                DesktopAiRuntime::new(platform, physical_memory_mb, gpu_available != 0);
-            engine.desktop_ai.as_ref()?;
+            engine.local_ai = LocalAiRuntime::new(platform, physical_memory_mb, gpu_available != 0);
+            engine.local_ai.as_ref()?;
             Some(())
         }
-        #[cfg(not(feature = "desktop-ai"))]
+        #[cfg(not(feature = "local-ai"))]
         {
             let _ = (engine, platform, physical_memory_mb, gpu_available);
             None
@@ -229,11 +242,11 @@ pub extern "C" fn ime_session_new(engine: *mut ImeEngine) -> *mut ImeSession {
         let inner = engine.inner.create_session();
         Some(Box::into_raw(Box::new(ImeSession {
             inner,
-            #[cfg(feature = "desktop-ai")]
-            desktop_ai: engine
-                .desktop_ai
+            #[cfg(feature = "local-ai")]
+            local_ai: engine
+                .local_ai
                 .as_ref()
-                .map(|runtime| DesktopAiSession::new(std::sync::Arc::clone(runtime))),
+                .map(|runtime| LocalAiSession::new(std::sync::Arc::clone(runtime))),
             _not_thread_safe: PhantomData,
         })))
     })
@@ -269,11 +282,11 @@ pub extern "C" fn ime_session_set_secure_input(
 ) -> c_int {
     catch_status(|| {
         let session = unsafe { session.as_mut()? };
-        #[cfg(feature = "desktop-ai")]
-        if let Some(desktop_ai) = session.desktop_ai.as_mut() {
-            desktop_ai.set_secure_input(secure_input != 0);
+        #[cfg(feature = "local-ai")]
+        if let Some(local_ai) = session.local_ai.as_mut() {
+            local_ai.set_secure_input(secure_input != 0);
         }
-        #[cfg(not(feature = "desktop-ai"))]
+        #[cfg(not(feature = "local-ai"))]
         let _ = (session, secure_input);
         Some(())
     })
@@ -353,15 +366,15 @@ fn catch_unit(f: impl FnOnce()) {
     let _ = catch_unwind(AssertUnwindSafe(f));
 }
 
-#[cfg(feature = "desktop-ai")]
+#[cfg(feature = "local-ai")]
 fn alloc_session_output(session: &mut ImeSession, mut output: CoreImeOutput) -> *mut ImeOutput {
-    if let Some(desktop_ai) = session.desktop_ai.as_mut() {
-        desktop_ai.process_output(&mut session.inner, &mut output);
+    if let Some(local_ai) = session.local_ai.as_mut() {
+        local_ai.process_output(&mut session.inner, &mut output);
     }
     alloc_output(output)
 }
 
-#[cfg(not(feature = "desktop-ai"))]
+#[cfg(not(feature = "local-ai"))]
 fn alloc_session_output(_session: &mut ImeSession, output: CoreImeOutput) -> *mut ImeOutput {
     alloc_output(output)
 }

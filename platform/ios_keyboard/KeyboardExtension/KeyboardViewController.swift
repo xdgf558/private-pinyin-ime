@@ -927,7 +927,19 @@ private extension KeyboardViewController {
             core = IosPinyinCoreBridge()
         }
         coreUnavailable = core == nil
+        core?.setSecureInput(shouldDisableAiForCurrentInputContext)
         return core
+    }
+
+    var shouldDisableAiForCurrentInputContext: Bool {
+        // iOS replaces third-party keyboards in secure text fields. Numeric and
+        // phone traits remain visible, so optional AI fails closed for them too.
+        switch textDocumentProxy.keyboardType {
+        case .phonePad, .namePhonePad, .numberPad, .decimalPad, .asciiCapableNumberPad:
+            return true
+        default:
+            return false
+        }
     }
 
     func apply(_ output: IosPinyinOutput?) {

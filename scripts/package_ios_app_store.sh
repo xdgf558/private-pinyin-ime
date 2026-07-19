@@ -140,7 +140,7 @@ fi
 mkdir -p "$(dirname "$archive_path")" "$export_path"
 
 export IPHONEOS_DEPLOYMENT_TARGET="$deployment_target"
-cargo build -p private_pinyin_ime_ffi --release --target "$rust_target"
+cargo build -p private_pinyin_ime_ffi --release --target "$rust_target" --features ios-ai
 
 xcodebuild archive \
   -project "$project" \
