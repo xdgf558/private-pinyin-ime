@@ -205,6 +205,8 @@
 
 ### Fixed
 
+- Preserved explicit custom macOS user-lexicon paths during runtime settings repair, reported partial multi-file Rime imports accurately on macOS and iOS, and made iOS document-access failures distinguishable from empty selection.
+- Added cumulative local-import coverage and a 200,000-entry boundary regression proving that a rejected merge leaves the existing imported lexicon byte-for-byte unchanged; documented parser delimiters, damaged-layer recovery, partial batches, and concurrent-writer limits.
 - Fixed iOS nine-key sessions silently falling back to five candidates when shared settings are unavailable; the extension now enforces a nine-candidate page through the C ABI, keeping `626 -> 猫` on the first page and exposing the next group through the `候选` key.
 - Rebuilt the iOS nine-key keyboard as the requested five-column layout with dedicated number, punctuation, symbol, candidate-page, Space, Return, layout/Globe, Chinese/English, and Delete controls; geometry now adapts to compact-height layouts, and haptic feedback remains best-effort where iOS permits it without Full Access.
 - Kept iOS keyboard construction available when the preferred nine-candidate page size cannot be applied by falling back to the core default instead of failing the complete bridge initialization.

@@ -110,7 +110,9 @@ enum PrivatePinyinSettingsStore {
             settings["candidate_page_size"] = macOSCandidatePageSize
             needsWrite = true
         }
-        if settings["user_lexicon_path"] as? String != userLexiconURL.path {
+        let configuredUserLexiconPath = (settings["user_lexicon_path"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if configuredUserLexiconPath?.isEmpty != false {
             settings["user_lexicon_path"] = userLexiconURL.path
             needsWrite = true
         }

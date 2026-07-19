@@ -231,6 +231,8 @@ enum IosSettingsStore {
         switch readSettings()[lastRimeImportStatusKey] as? String {
         case "success":
             return "Rime 词库已导入，键盘会使用新的独立词库层。"
+        case "partial":
+            return "部分 Rime 词库已导入，其他文件需检查后重试。"
         case "failure":
             return "最近一次 Rime 词库导入失败，请确认文件包含明确拼音列。"
         default:

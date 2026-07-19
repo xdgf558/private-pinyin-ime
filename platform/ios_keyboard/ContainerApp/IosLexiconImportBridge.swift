@@ -8,6 +8,7 @@ enum IosLexiconImportError: Error {
     case unreadableSource
     case engineUnavailable
     case importFailed
+    case partialImport(acceptedRows: Int)
 }
 
 enum IosLexiconImportBridge {
@@ -35,8 +36,8 @@ enum IosLexiconImportBridge {
             ime_engine_free(engine)
         }
 
+        var acceptedRows = 0
         do {
-            var acceptedRows = 0
             for sourceURL in sourceURLs {
                 let values: URLResourceValues
                 do {
@@ -59,6 +60,10 @@ enum IosLexiconImportBridge {
             IosSettingsStore.recordRimeImportStatus("success")
             return acceptedRows
         } catch {
+            if acceptedRows > 0 {
+                IosSettingsStore.recordRimeImportStatus("partial")
+                throw IosLexiconImportError.partialImport(acceptedRows: acceptedRows)
+            }
             IosSettingsStore.recordRimeImportStatus("failure")
             throw error
         }

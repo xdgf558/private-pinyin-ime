@@ -107,6 +107,8 @@ int ime_engine_export_user_lexicon(ImeEngine* engine, const char* export_tsv_pat
 // accepted source rows, or -1 on error. Hosts should recreate their engine and
 // sessions after a successful import so the new snapshot becomes active.
 int ime_engine_import_rime_lexicon(ImeEngine* engine, const char* source_path);
+// Removes only the separately configured imported lexicon layer. The bundled
+// base lexicon and learned user lexicon remain unchanged. Returns 1 on success.
 int ime_engine_clear_imported_lexicon(ImeEngine* engine);
 void ime_engine_free(ImeEngine* engine);
 

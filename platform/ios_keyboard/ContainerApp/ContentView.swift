@@ -356,6 +356,10 @@ struct ContentView: View {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
+            guard accessed.count == urls.count else {
+                lexiconStatusText = "无法获得所选词库文件的读取权限，请重新选择后再试。"
+                return
+            }
 
             do {
                 let count = try IosLexiconImportBridge.importRimeLexicons(from: accessed)
@@ -368,6 +372,8 @@ struct ContentView: View {
                 lexiconStatusText = "一次最多选择 8 个词库文件，请分批导入。"
             } catch IosLexiconImportError.sourceTooLarge {
                 lexiconStatusText = "单个词库文件不能超过 16 MiB。"
+            } catch IosLexiconImportError.partialImport(let acceptedRows) {
+                lexiconStatusText = "已导入 \(acceptedRows) 条记录，但后续文件导入失败。请检查剩余文件。"
             } catch {
                 lexiconStatusText = "导入失败，请确认词库包含明确的拼音列。"
             }

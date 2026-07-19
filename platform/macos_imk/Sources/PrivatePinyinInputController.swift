@@ -402,7 +402,15 @@ final class PrivatePinyinInputController: IMKInputController {
             var accepted = 0
             for url in panel.urls {
                 guard let count = self.core?.importRimeLexicon(from: url.path) else {
-                    self.showSettingsAlert("无法导入 Rime 词库。请确认文件格式和大小。")
+                    if accepted > 0 {
+                        resetComposition()
+                        _ = core?.reload()
+                        self.showSettingsAlert(
+                            "已导入 \(accepted) 条记录，但后续文件导入失败。请检查剩余文件的格式和大小。"
+                        )
+                    } else {
+                        self.showSettingsAlert("无法导入 Rime 词库。请确认文件格式和大小。")
+                    }
                     return
                 }
                 accepted += count

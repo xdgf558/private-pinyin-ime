@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-19 17:05
-Current stage: Stage 17 iOS nine-key candidate and touch-response regression fix
-Current status: The iOS fix branch enforces nine-candidate sessions, keeps `626 -> 猫` on the first page, adds a direct `候选` next-page key, adopts the requested five-column nine-key layout, and improves candidate panning and key hit feedback; TestFlight device interaction remains pending review and packaging
+Last updated: 2026-07-19 19:52
+Current stage: Permissive base and local Rime import review
+Current status: PR #34 keeps the reviewed permissive base separate from user-supplied Rime data; review hardening now preserves custom macOS learning paths, reports partial batches and iOS document-access failures accurately, documents recovery/concurrency limits, and adds cumulative plus full-capacity preservation regressions
 
 ## Stage Status
 
@@ -806,9 +806,11 @@ Current status: The iOS fix branch enforces nine-candidate sessions, keeps `626 
 
 ### Permissive Base + Local Rime Import Validation
 
+- Review hardening preserves a non-empty custom macOS `user_lexicon_path`, reports the accepted row count when a later selected file fails, rejects unavailable iOS security-scoped documents with a precise message, and documents the current sequential batch and damaged-layer recovery contract.
+- Executable regressions now prove repeated imports merge cumulatively and a merge beyond 200,000 entries returns `ImportedLexiconLimit` without changing the existing canonical file.
 - Command: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`
 - Result: passed
-- Notes: The complete workspace is formatted and warning-free. Import tests cover source and canonical size limits, explicit-pinyin parsing, deduplication, malformed-layer fail-soft loading, independent storage, and new-engine visibility; the production input regressions remain green against the 137,699-entry base.
+- Notes: The complete workspace is formatted and warning-free. Import tests cover source and canonical size limits, cumulative merge, byte-preserving limit failure, explicit-pinyin parsing, deduplication, malformed-layer fail-soft loading, independent storage, and new-engine visibility; the production input regressions remain green against the 137,699-entry base.
 
 - Command: `cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings` and `cargo test -p private_pinyin_ime_ffi --features desktop-ai`
 - Result: passed
@@ -824,7 +826,11 @@ Current status: The iOS fix branch enforces nine-candidate sessions, keeps `626 
 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: The complete InputMethodKit app compiles successfully with the expanded bundled base and local import controls. The earlier iOS queue prototype compiled under Xcode 27; after replacing it with the no-Full-Access container-side Rust importer, the source contracts pass but the final Xcode app/extension build must be rerun before release evidence is recorded.
+- Notes: The complete InputMethodKit app compiles successfully with the expanded bundled base and hardened local import controls.
+
+- Command: Beta Xcode `scripts/build_ios_keyboard.sh` plus `scripts/test_ios_chinese_transform.sh`
+- Result: passed (`BUILD SUCCEEDED`)
+- Notes: The iOS container App and Keyboard Extension compile with the isolated C import bridge, partial-import status, and security-scoped document handling; the standalone Chinese conversion regression also remains green.
 
 ## Open Items
 

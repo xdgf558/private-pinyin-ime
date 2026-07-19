@@ -23,6 +23,16 @@ Clearing one writable layer does not clear the other. Importing or clearing a Ri
 
 Each source file is capped at 16 MiB, the canonical imported file at 32 MiB, individual lines at 4 KiB, phrases at 32 Han characters, and the merged imported layer at 200,000 entries. The importer never follows a URL, invokes Rime code, or loads schema plugins.
 
+The 4 KiB line limit is checked before comments are discarded. A line containing only `---` starts a YAML header and a line containing only `...` ends it; those delimiter-only lines are therefore reserved and must not appear in dictionary data. An unclosed header causes the remaining rows to be ignored and the import fails when no usable rows remain.
+
+## Merge, Failure, and Recovery
+
+Imports are cumulative. Re-importing a phrase/pinyin identity keeps the highest supplied weight, and a successful single-file import replaces the canonical layer atomically. If the merged result would exceed a size or entry limit, the existing canonical file remains unchanged.
+
+Multi-file selection is currently processed one file at a time. If a later file fails, earlier files remain imported and the host reports the accepted row count; the selection is not an all-or-nothing transaction. Do not start imports concurrently from multiple processes because the last atomic replacement can supersede another process's newly imported rows.
+
+If `imported_lexicon.tsv` is damaged, normal engine creation ignores that layer and preserves base typing, but a later merge is refused to avoid silently deleting local data. Use `Clear Imported Lexicon` and import the source dictionaries again. The importer never deletes a damaged layer automatically.
+
 ## Licensing
 
 PrivatePinyin does not bundle or redistribute rime-ice. Its upstream GPL license is not used for the default asset. A user who imports rime-ice or another Rime dictionary supplies that local copy and remains responsible for its license terms.
