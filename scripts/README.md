@@ -20,6 +20,7 @@ Current scripts:
 - `run_ios_smoke_readiness.sh`: builds the iOS simulator app and verifies automated smoke-readiness gates before manual keyboard testing.
 - `check_ios_keyboard_sources.sh`: verifies the iOS keyboard source scaffold, plist privacy defaults, and Xcode project wiring.
 - `check_local_lexicon_import_sources.sh`: validates bounded local Rime import, separate upgrade-safe storage, platform entry points, and a CLI import/clear smoke test.
+- `test_macos_imported_lexicon_source.sh`: compiles and runs the macOS source-label resolver regression for rime-ice/雾凇 and custom Rime dictionary filenames.
 - `check_platform_validation_sources.sh`: verifies Stage 8 platform smoke-test documentation and Windows TSF CI wiring.
 - `check_stage09_core_sources.sh`: verifies Stage 9 core hardening for indexed lookup, paging, ranking, logging, and lexicon data policy.
 - `check_stage10_platform_host_sources.sh`: verifies Stage 10 Windows/macOS host polish sources.

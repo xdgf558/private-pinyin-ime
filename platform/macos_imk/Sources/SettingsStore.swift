@@ -11,6 +11,14 @@ enum PrivatePinyinSettingsStore {
     private static let previousDefaultCandidatePageSize = 5
     private static let importedLexiconManifestSchemaVersion = 1
     private static let maximumRecordedImportedSources = 32
+    private static let knownRimeIceDictionaryNames: Set<String> = [
+        "8105",
+        "41448",
+        "base",
+        "ext",
+        "others",
+        "tencent",
+    ]
 
     private struct ImportedLexiconManifest: Codable {
         let schemaVersion: Int
@@ -103,7 +111,7 @@ enum PrivatePinyinSettingsStore {
             return "当前导入词库：尚未导入"
         }
         guard let manifest = readImportedLexiconManifest(), !manifest.sources.isEmpty else {
-            return "当前导入词库：本地词库（来源记录不可用）"
+            return "当前导入词库：本地词库（旧版未记录来源，重新导入可识别）"
         }
 
         let names = manifest.sources.map { source in
@@ -115,6 +123,31 @@ enum PrivatePinyinSettingsStore {
         let visible = names.prefix(3).joined(separator: "、")
         let remainder = names.count > 3 ? " 等 \(names.count) 项" : ""
         return "当前导入词库：\(visible)\(remainder)"
+    }
+
+    static func importedLexiconSourceDescriptor(
+        for sourceURL: URL
+    ) -> PrivatePinyinImportedLexiconSource {
+        let components = sourceURL.pathComponents
+        let rimeIceComponentIndex = components.firstIndex(where: isRimeIcePathComponent)
+        let dictionaryName = friendlyDictionaryName(for: sourceURL)
+        let isKnownRimeIceDictionary = knownRimeIceDictionaryNames.contains(
+            dictionaryName.lowercased()
+        )
+
+        if let rimeIceComponentIndex, isKnownRimeIceDictionary {
+            return PrivatePinyinImportedLexiconSource(
+                displayName: "雾凇拼音",
+                sourceKind: "rime_ice_local",
+                version: versionString(in: components[rimeIceComponentIndex...])
+            )
+        }
+
+        return PrivatePinyinImportedLexiconSource(
+            displayName: friendlyDictionaryName(for: sourceURL),
+            sourceKind: "local_file",
+            version: nil
+        )
     }
 
     @discardableResult
@@ -286,6 +319,53 @@ enum PrivatePinyinSettingsStore {
             to: importedLexiconManifestURL,
             options: [.atomic]
         )
+    }
+
+    private static func friendlyDictionaryName(for sourceURL: URL) -> String {
+        var name = sourceURL.lastPathComponent
+        let suffixes = [".dict.yaml", ".dict.yml", ".yaml", ".yml", ".dict"]
+        for suffix in suffixes where name.lowercased().hasSuffix(suffix) {
+            name.removeLast(suffix.count)
+            break
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "本地 Rime 词库" : trimmed
+    }
+
+    private static func isRimeIcePathComponent(_ component: String) -> Bool {
+        let normalized = component
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        return normalized.contains("rime-ice")
+            || component.contains("雾凇")
+            || component.contains("霧凇")
+    }
+
+    private static func versionString(
+        in sourceComponents: ArraySlice<String>
+    ) -> String? {
+        let pattern = #"(?<!\d)(20\d{2})[._-](\d{1,2})[._-](\d{1,2})(?!\d)"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+        for component in sourceComponents {
+            guard
+                let match = expression.firstMatch(
+                    in: component,
+                    range: NSRange(component.startIndex..., in: component)
+                ),
+                match.numberOfRanges == 4,
+                let yearRange = Range(match.range(at: 1), in: component),
+                let monthRange = Range(match.range(at: 2), in: component),
+                let dayRange = Range(match.range(at: 3), in: component)
+            else {
+                continue
+            }
+            return "\(component[yearRange]).\(component[monthRange]).\(component[dayRange])"
+        }
+        return nil
     }
 
     private static func bundledDefaultSettings() -> [String: Any]? {
