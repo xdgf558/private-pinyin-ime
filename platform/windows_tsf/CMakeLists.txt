@@ -20,6 +20,7 @@ endif()
 
 add_library(PrivatePinyinTsf SHARED
   PrivatePinyinTsf.def
+  src/ai_helper_client.cpp
   src/candidate_window.cpp
   src/class_factory.cpp
   src/core_bridge.cpp
@@ -29,9 +30,18 @@ add_library(PrivatePinyinTsf SHARED
   src/text_service.cpp
 )
 
+add_executable(PrivatePinyinAIHelperProbe
+  src/ai_helper_client.cpp
+  src/ai_helper_probe_main.cpp
+)
+
 target_include_directories(PrivatePinyinTsf PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_SOURCE_DIR}/../../ffi
+)
+
+target_include_directories(PrivatePinyinAIHelperProbe PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_compile_definitions(PrivatePinyinTsf PRIVATE
@@ -41,8 +51,16 @@ target_compile_definitions(PrivatePinyinTsf PRIVATE
   WIN32_LEAN_AND_MEAN
 )
 
+target_compile_definitions(PrivatePinyinAIHelperProbe PRIVATE
+  NOMINMAX
+  UNICODE
+  _UNICODE
+  WIN32_LEAN_AND_MEAN
+)
+
 if(MSVC)
   target_compile_options(PrivatePinyinTsf PRIVATE /utf-8)
+  target_compile_options(PrivatePinyinAIHelperProbe PRIVATE /utf-8)
 endif()
 
 if(DEFINED PRIVATE_PINYIN_IME_LIB AND NOT "${PRIVATE_PINYIN_IME_LIB}" STREQUAL "")
@@ -53,12 +71,18 @@ endif()
 
 target_link_libraries(PrivatePinyinTsf PRIVATE
   advapi32
+  bcrypt
   gdi32
   ole32
   oleaut32
   shell32
   user32
   uuid
+)
+
+target_link_libraries(PrivatePinyinAIHelperProbe PRIVATE
+  advapi32
+  bcrypt
 )
 
 set_target_properties(PrivatePinyinTsf PROPERTIES

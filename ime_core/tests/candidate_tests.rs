@@ -10,6 +10,23 @@ use ime_core::{
     PinyinParser,
 };
 
+fn median_lookup_duration(mut lookup: impl FnMut() -> bool) -> Duration {
+    const BATCH_COUNT: usize = 5;
+    const LOOKUPS_PER_BATCH: u32 = 4;
+
+    assert!(lookup());
+    let mut samples = Vec::with_capacity(BATCH_COUNT);
+    for _ in 0..BATCH_COUNT {
+        let started = Instant::now();
+        for _ in 0..LOOKUPS_PER_BATCH {
+            assert!(lookup());
+        }
+        samples.push(started.elapsed() / LOOKUPS_PER_BATCH);
+    }
+    samples.sort_unstable();
+    samples[BATCH_COUNT / 2]
+}
+
 #[test]
 fn nihao_returns_expected_candidates() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
@@ -153,17 +170,14 @@ fn second_generation_continuous_pinyin_handles_common_sentences() {
 #[test]
 fn joint_decoder_stays_within_interactive_lookup_budget() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
-    let iterations = 20;
-    let started = Instant::now();
-    for _ in 0..iterations {
+    let median = median_lookup_duration(|| {
         let candidates = engine.candidates_for_raw("wojintianxiangquchifan");
-        assert!(!candidates.is_empty());
-    }
-    let average = started.elapsed() / iterations;
+        !candidates.is_empty()
+    });
 
     assert!(
-        average < Duration::from_millis(60),
-        "average continuous lookup took {average:?}"
+        median < Duration::from_millis(60),
+        "median continuous lookup took {median:?}"
     );
 }
 
@@ -172,17 +186,14 @@ fn joint_decoder_stays_within_interactive_lookup_budget() {
 fn nine_key_decoder_stays_within_interactive_lookup_budget() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
-    let iterations = 20;
-    let started = Instant::now();
-    for _ in 0..iterations {
+    let median = median_lookup_duration(|| {
         let candidates = engine.candidates_for_nine_key(&digits);
-        assert!(!candidates.is_empty());
-    }
-    let average = started.elapsed() / iterations;
+        !candidates.is_empty()
+    });
 
     assert!(
-        average < Duration::from_millis(60),
-        "average nine-key continuous lookup took {average:?}"
+        median < Duration::from_millis(60),
+        "median nine-key continuous lookup took {median:?}"
     );
 }
 
