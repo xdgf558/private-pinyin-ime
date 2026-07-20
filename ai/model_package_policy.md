@@ -78,3 +78,13 @@ platform memory/GPU profiles and calibrate real-device behavior before enabling 
 Any coefficient, artifact, source, license, platform, hardware, capability, or manifest
 change requires a new model version, a new fingerprint, fresh evaluation evidence, and a
 new reviewed registry entry. Editing the manifest approval bit alone cannot authorize it.
+
+## Evaluation-Only Writer Candidates
+
+AI-10 candidate files under `ai/writer_feasibility` are evidence inputs, not approved
+model packages. They must keep `owner_approved=false` and
+`redistribution_allowed=false`, must not appear in `approved_models.json`, and cannot be
+loaded by the product or AI-09 Helper. No GGUF weights or llama.cpp binaries may be
+tracked or bundled. A later Writer candidate becomes eligible only after it passes the
+quality, size, startup, memory, and cancellation gates and then completes the normal
+exact-artifact Owner/license approval workflow above.

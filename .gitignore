@@ -36,6 +36,12 @@ platform/ios_keyboard/AppStoreMetadata/Signing.env
 local/
 
 # Local AI model artifacts require explicit Owner approval before repository inclusion.
+*.gguf
+*.onnx
+*.ort
+*.safetensors
+*.mlmodel
+*.mlpackage/
 ai/models/**/*.bin
 ai/models/**/*.gguf
 ai/models/**/*.onnx

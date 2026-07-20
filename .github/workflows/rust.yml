@@ -116,6 +116,9 @@ jobs:
       - name: Check AI-09 desktop Helper boundary
         run: bash scripts/check_ai09_desktop_helper_sources.sh
 
+      - name: Check AI-10 Writer feasibility evidence
+        run: bash scripts/check_ai10_writer_feasibility_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
