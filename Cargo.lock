@@ -210,6 +210,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "private_pinyin_ai_helper"
+version = "0.1.23"
+dependencies = [
+ "private_pinyin_ai_helper_protocol",
+]
+
+[[package]]
+name = "private_pinyin_ai_helper_protocol"
+version = "0.1.23"
+
+[[package]]
 name = "private_pinyin_ime_ffi"
 version = "0.1.23"
 dependencies = [

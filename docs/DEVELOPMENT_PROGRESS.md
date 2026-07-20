@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-20 16:30
 Current stage: macOS runtime memory hardening
-Current status: macOS IMK controllers now share one process-wide parsed engine snapshot while retaining one isolated composition session per client; changed settings/imported lexicons rebuild the shared snapshot once per configuration rather than once per controller
+Current status: AI-09 is merged; macOS IMK controllers now share one process-wide parsed engine snapshot while retaining one isolated composition session per client, and changed settings/imported lexicons rebuild the shared snapshot once per configuration rather than once per controller
 
 ## macOS Shared Engine Memory Validation (2026-07-20)
 
@@ -94,7 +94,17 @@ Current status: macOS IMK controllers now share one process-wide parsed engine s
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
 | AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete |
 | AI-08 | iOS AI Lite integration | completed | 2026-07-20 | Merged to `main` through PR #36; isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
-| AI-09 to AI-12 | Optional Writer and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-09 | Authenticated desktop Helper boundary | completed | 2026-07-20 15:46 | Shared bounded protocol and helper, controlled macOS pipes, current-user-only Windows request/response named-pipe pair, per-launch authentication, health/cancel/crash/restart/shutdown/idle lifecycle, packaging/signing hooks, and CI probes are ready for review; no Writer model or input-path dependency is added |
+| AI-10 to AI-12 | Optional Writer feasibility and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+
+## AI-09 Validation
+
+- Shared protocol tests cover deterministic framing, 64-KiB fail-before-allocation limits, redacted diagnostics, constant-time fail-closed authentication, bounded payload decoding, and the ten-minute maximum idle policy.
+- Helper process tests cover authentication, health, bounded mock work, completed-worker handle reclamation, cancellation, graceful shutdown, unauthenticated rejection, and idle process exit without logging request payloads.
+- macOS builds the helper in release mode and separately signs `Contents/Helpers/PrivatePinyinAIHelper`; the Swift controlled-child test exercises authentication, health, cancellation, forced termination, automatic restart, and clean shutdown over anonymous pipes.
+- Windows builds and packages `PrivatePinyinAIHelper.exe`; its lifecycle probe uses a random current-user-only request/response named-pipe pair with `PIPE_REJECT_REMOTE_CLIENTS`, verifies both connected clients match the spawned helper PID, terminates one authenticated helper, relaunches another, then exercises cancellation and shutdown.
+- CI now runs the shared source/privacy gate on Ubuntu, the compiled controlled-process test on macOS, and the compiled named-pipe lifecycle probe on `windows-2022`.
+- AI-09 is infrastructure only. Basic pinyin, user learning, AI Lite ranking, and iOS do not invoke the helper. `AI-OI-010` tracks real signed-package identity, hang/timeout fault injection, and ten-minute idle smoke before Writer features are enabled.
 
 ## AI-08 Validation
 

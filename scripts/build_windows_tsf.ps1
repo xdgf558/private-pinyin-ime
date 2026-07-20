@@ -30,6 +30,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Rust FFI build failed for $RustTarget."
 }
 
+cargo build -p private_pinyin_ai_helper --release --target $RustTarget
+if ($LASTEXITCODE -ne 0) {
+    throw "AI Helper build failed for $RustTarget."
+}
+
 $rustReleaseDir = Join-Path $repoRoot "target\$RustTarget\release"
 
 $candidateLibs = @(
@@ -60,3 +65,11 @@ if (-not $tsfDll) {
 }
 
 Write-Host "Built Windows TSF DLL ($Architecture / $RustTarget): $($tsfDll.FullName)"
+
+$helperProbe = Get-ChildItem -Path $BuildDirectory -Filter "PrivatePinyinAIHelperProbe.exe" -Recurse |
+    Where-Object { $_.FullName -like "*\$Configuration\*" } |
+    Select-Object -First 1
+if (-not $helperProbe) {
+    throw "Could not find PrivatePinyinAIHelperProbe.exe under $BuildDirectory after build."
+}
+Write-Host "Built Windows AI Helper probe: $($helperProbe.FullName)"

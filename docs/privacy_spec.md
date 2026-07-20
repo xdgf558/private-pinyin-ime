@@ -124,6 +124,28 @@ These platform signals supplement the shared `PrivacyGuard`; neither host may in
 send surrounding document content. The desktop integration has no request-content log,
 network transport, telemetry, persistent AI cache, or second learning database.
 
+## Desktop AI Helper Boundary
+
+AI-09 packages a dormant, separately signed desktop helper for future optional Writer
+features. It is not used by ordinary input or AI Lite ranking. Every launch uses a new
+random 32-byte authentication token; unauthenticated, malformed, oversized, or
+version-mismatched frames fail closed. Frames are capped at 64 KiB, active work and
+response queues are bounded, diagnostics redact payloads, and only content-free error
+codes may be emitted.
+
+macOS may communicate only with the helper process it launched through anonymous child
+pipes. Windows may communicate only through a random unidirectional request/response
+named-pipe pair protected by current-user-only DACLs with remote clients rejected.
+Neither transport is a network or localhost service. The helper must not access cloud APIs, telemetry, clipboard,
+surrounding documents, persistent request/output caches, or content logs, and exits
+after ten minutes without activity.
+
+Helper absence, failed authentication, queue saturation, cancellation, timeout, crash,
+or restart must affect only the optional enhancement. IMK key callbacks and TSF edit
+sessions must never wait for helper work. Future AI-10/AI-11 payloads still require the
+same `PrivacyGuard`, explicit action policy, bounded context, deadline, complete request
+identity, stale-result rejection, and user confirmation rules established above.
+
 ## iOS AI Host Integration
 
 AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite

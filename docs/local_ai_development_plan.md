@@ -73,6 +73,18 @@ keyboard and candidate order unchanged. Simulator builds and deterministic fallb
 are automated; real-device latency, resident memory, memory-pressure behavior, and secure
 field replacement remain the stage release gate before lowering the approved 8-GiB policy.
 
+AI-09 establishes the desktop process boundary before any heavy Writer feasibility work.
+The shared Rust helper speaks a fixed binary protocol with a 64-KiB payload ceiling,
+per-launch 256-bit authentication, bounded active work and response queues, health,
+cancellation, graceful shutdown, content-free diagnostics, and a ten-minute idle exit.
+macOS launches a separately signed bundled helper through anonymous child pipes. Windows
+uses a random unidirectional request/response named-pipe pair protected by
+current-user-only DACLs and remote-client rejection.
+Lifecycle probes exercise authentication, cancellation, forced helper termination,
+restart, and clean shutdown. The helper is deliberately dormant: ordinary typing and AI
+Lite ranking never depend on it, and AI-10/AI-11 must keep every real request off IMK and
+TSF input threads behind PrivacyGuard, deadlines, and stale-result rejection.
+
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects
