@@ -2,7 +2,6 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 #[cfg(feature = "local-ai")]
-#[path = "desktop_ai.rs"]
 mod local_ai;
 
 use std::ffi::{CStr, CString};

@@ -71,7 +71,7 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
 | AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete |
-| AI-08 | iOS AI Lite integration | in review | 2026-07-19 | Isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, memory and secure-input fallback, and iOS 27 simulator build are complete; real-device latency/RSS and memory-pressure calibration remain release gates |
+| AI-08 | iOS AI Lite integration | in review | 2026-07-20 | Isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
 | AI-09 to AI-12 | Optional Writer and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
 
 ## AI-08 Validation
@@ -81,7 +81,8 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 - `cargo clippy -p private_pinyin_ime_ffi --all-targets --features ios-ai -- -D warnings`, `cargo fmt --all`, `check_ai08_ios_integration_sources.sh`, `check_ai07_desktop_integration_sources.sh`, and `check_ios_keyboard_sources.sh`: passed.
 - Xcode Beta iOS 27 simulator build through `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` with Rust `aarch64-apple-ios-sim`, the C support module, container App, and Keyboard Extension.
 - The iOS build enables only `ios-ai`, keeps `RequestsOpenAccess=false`, embeds no heavy neural model, and contains no keyboard-extension network API or URL.
-- Real-device iOS measurements remain required for first-enable latency, extension resident memory, available-memory rejection/recovery, secure-field system fallback, numeric/phone fail-closed behavior, queue saturation, and unchanged base typing before release approval or hardware-policy changes.
+- `didReceiveMemoryWarning` now cancels optional AI through the secure-input path and keeps it suspended for the controller lifetime while preserving the current composition and ordinary input path.
+- Real-device iOS measurements remain required for first-enable latency, extension resident memory, available-memory rejection/recovery, secure-field system fallback, numeric/phone fail-closed behavior, queue saturation, and unchanged base typing before release approval or hardware-policy changes. The matrix must include at least one 8-GiB device that exercises the enabled path and one sub-8-GiB device that verifies fallback.
 
 ## AI-07 Validation
 

@@ -42,6 +42,7 @@ final class KeyboardViewController: UIInputViewController {
     private let selfTextChangeCallbackWindow: TimeInterval = 0.25
     private var lastNeedsInputModeSwitchKey = true
     private var coreUnavailable = false
+    private var localAiSuspendedForMemoryPressure = false
     private let trayGradient = CAGradientLayer()
     private var minimumHeightConstraint: NSLayoutConstraint?
 
@@ -81,6 +82,12 @@ final class KeyboardViewController: UIInputViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         trayGradient.frame = view.bounds
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        localAiSuspendedForMemoryPressure = true
+        core?.setSecureInput(true)
     }
 
     private func setupView() {
@@ -927,7 +934,9 @@ private extension KeyboardViewController {
             core = IosPinyinCoreBridge()
         }
         coreUnavailable = core == nil
-        core?.setSecureInput(shouldDisableAiForCurrentInputContext)
+        core?.setSecureInput(
+            localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext
+        )
         return core
     }
 

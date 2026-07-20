@@ -20,8 +20,8 @@ grep -q 'ime_engine_enable_local_ai' ffi/c_api.h
 grep -q 'ModelPlatform::Ios' ffi/ime_ffi/src/lib.rs
 grep -q 'sync_channel::<AiRequest>' ai/local_ai_core/src/worker.rs
 grep -q 'try_send(request)' ai/local_ai_core/src/worker.rs
-grep -q 'ready.deadline.is_expired()' ffi/ime_ffi/src/desktop_ai.rs
-grep -q 'ready.candidate_texts != current_texts' ffi/ime_ffi/src/desktop_ai.rs
+grep -q 'ready.deadline.is_expired()' ffi/ime_ffi/src/local_ai.rs
+grep -q 'ready.candidate_texts != current_texts' ffi/ime_ffi/src/local_ai.rs
 grep -q '"runtime": "rust_compact"' \
   ai/models/private-pinyin-ai-lite-ranker-v1/manifest.json
 grep -q '"size_bytes": 426' \
@@ -37,6 +37,12 @@ grep -q 'ime_engine_enable_local_ai' \
 grep -q 'ime_session_set_secure_input' \
   platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q 'shouldDisableAiForCurrentInputContext' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'didReceiveMemoryWarning' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'localAiSuspendedForMemoryPressure = true' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'case .phonePad, .namePhonePad, .numberPad, .decimalPad, .asciiCapableNumberPad' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

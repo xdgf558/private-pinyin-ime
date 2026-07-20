@@ -98,7 +98,8 @@ typedef struct {
 ImeEngine* ime_engine_new(const char* config_json_path);
 // Optional local AI always falls back to the base engine on verification,
 // hardware, queue, timeout, or provider failure. Call before ime_session_new.
-// Returns 1 when enabled and 0 when unavailable.
+// platform must be one of IME_AI_PLATFORM_MACOS, IME_AI_PLATFORM_WINDOWS, or
+// IME_AI_PLATFORM_IOS. Returns 1 when enabled and 0 when unavailable.
 int ime_engine_enable_local_ai(ImeEngine* engine, int platform,
                                uint64_t physical_memory_mb, int gpu_available);
 // Compatibility alias retained for AI-07 desktop hosts.
