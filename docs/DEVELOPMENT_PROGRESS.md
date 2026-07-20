@@ -1,16 +1,19 @@
 # Development Progress
 
-Last updated: 2026-07-20 09:30
+Last updated: 2026-07-20 11:49
 Current stage: Imported lexicon visibility and optional iOS reviewed-source import
-Current status: macOS and iOS now track display-only source metadata separately from dictionary rows; the iOS container offers a consent-gated, release/size/SHA-pinned `rime-ice` essentials import while the keyboard extension remains network-free and the GPL data remains outside every package
+Current status: PR #36 AI-08 is merged and PR #37 is rebased through that decision; macOS and iOS track display-only source metadata separately from dictionary rows, while the iOS container offers a consent-gated, release/size/SHA-pinned `rime-ice` essentials import without placing GPL data or network access in the keyboard extension
 
 ## Imported Lexicon Visibility Validation (2026-07-20)
 
 - macOS and iOS display imported-source metadata from a separate atomic JSON manifest; clearing the imported layer also clears its source record.
 - The optional iOS `rime-ice` import is container-App-only, requires an explicit confirmation, uses an ephemeral session, and pins release, final HTTPS host, exact byte count, and SHA-256 for every reviewed file.
 - Partial reviewed-source imports are labelled as partial and are replaced by the complete status after a successful retry.
-- `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, macOS source/build checks, iOS source/privacy checks, and local-import source checks: passed.
-- Xcode Beta simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator, with the container onboarding rendering without clipping or overlap.
+- The official `cn_dicts.zip` release asset and all three fixed raw tag URLs were independently downloaded on 2026-07-20; exact byte counts and SHA-256 values match, and the evidence/tooling is recorded in `docs/local_rime_lexicon_import.md`.
+- Decision 037 remains the merged AI-08 policy; the optional verified upstream lexicon import is Decision 038 and explicitly directs GitHub-restricted networks to the local document-picker path instead of an unofficial mirror.
+- Local document-picker parsing/import now runs on a user-initiated worker queue while security-scoped access remains active; only progress and completion state return to the main thread.
+- `cargo test --workspace`, `cargo test -p private_pinyin_ime_ffi --features ios-ai`, `cargo test -p private_pinyin_ime_ffi --features desktop-ai`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, macOS source/build checks, AI-07/AI-08 source checks, iOS source checks, and local-import source checks: passed.
+- Xcode 27.0 Beta (`27A5194q`) simulator-target build: `BUILD SUCCEEDED` for the container App and Keyboard Extension.
 - Real-device download/import remains a release smoke item because this branch deliberately does not automate a network action on the owner's phone.
 
 ## Stage Status
@@ -79,8 +82,19 @@ Current status: macOS and iOS now track display-only source metadata separately 
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
-| AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete; iOS remains unchanged |
-| AI-08 to AI-12 | iOS integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete |
+| AI-08 | iOS AI Lite integration | completed | 2026-07-20 | Merged to `main` through PR #36; isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
+| AI-09 to AI-12 | Optional Writer and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+
+## AI-08 Validation
+
+- `cargo test -p private_pinyin_ime_ffi --features ios-ai`: passed, including iOS platform enablement, secure-input base fallback, unsupported-memory rejection, invalid-platform rejection, and ordinary input after every rejected AI path.
+- `cargo test -p private_pinyin_ime_ffi --features desktop-ai`: passed, confirming the generic local-AI ABI preserves AI-07 desktop behavior.
+- `cargo clippy -p private_pinyin_ime_ffi --all-targets --features ios-ai -- -D warnings`, `cargo fmt --all`, `check_ai08_ios_integration_sources.sh`, `check_ai07_desktop_integration_sources.sh`, and `check_ios_keyboard_sources.sh`: passed.
+- Xcode Beta iOS 27 simulator build through `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` with Rust `aarch64-apple-ios-sim`, the C support module, container App, and Keyboard Extension.
+- The iOS build enables only `ios-ai`, keeps `RequestsOpenAccess=false`, embeds no heavy neural model, and contains no keyboard-extension network API or URL.
+- `didReceiveMemoryWarning` now cancels optional AI through the secure-input path and keeps it suspended for the controller lifetime while preserving the current composition and ordinary input path.
+- Real-device iOS measurements remain required for first-enable latency, extension resident memory, available-memory rejection/recovery, secure-field system fallback, numeric/phone fail-closed behavior, queue saturation, and unchanged base typing before release approval or hardware-policy changes. The matrix must include at least one 8-GiB device that exercises the enabled path and one sub-8-GiB device that verifies fallback.
 
 ## AI-07 Validation
 
@@ -94,7 +108,7 @@ Current status: macOS and iOS now track display-only source metadata separately 
 - Physical MacBook Air M5 validation passed bounded queue pressure, expired/mismatched/invalid-order rejection, secure-input cancellation and base fallback, and exact 4096/8191/8192/16384-MiB hardware-threshold checks.
 - Real secure-input probes observed the platform signal in a native `NSSecureTextField`, Chrome password field, and Safari password field; the signal returned to normal after the test fields closed.
 - Windows 11 TSF password-field behavior and queue-pressure smoke still require a real Windows host; they cannot be closed by the macOS build or CI compiler alone.
-- iOS build scripts do not enable `desktop-ai`; AI-08 remains the separate iOS memory/privacy integration stage.
+- iOS build scripts do not enable `desktop-ai`; AI-08 uses the isolated `ios-ai` feature and the same bounded local worker without desktop host code.
 
 ## AI-06 Validation
 
@@ -906,7 +920,6 @@ Current status: macOS and iOS now track display-only source metadata separately 
 
 ## Next Step
 
-- Review the permissive base-lexicon expansion and isolated local Rime import design. Before release,
-  run the documented iOS real-device document-picker/App Group import and clear smoke, measure the
-  larger engine snapshot on all three hosts, and keep GPL dictionaries such as rime-ice outside every
-  distributed artifact. Resume AI-08 only after this lexicon PR is approved and merged.
+- Review AI-08, then run its real-device latency, resident-memory, memory-pressure, secure-field,
+  numeric/phone, stale-result, and queue-saturation smoke before release approval. Keep the current
+  8-GiB AI-05 policy unchanged until those measurements support a separately reviewed threshold.

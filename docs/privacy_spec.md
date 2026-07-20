@@ -122,8 +122,23 @@ allowing AI work to fail open. Entering a secure field cancels outstanding AI wo
 prevents new requests.
 These platform signals supplement the shared `PrivacyGuard`; neither host may inspect or
 send surrounding document content. The desktop integration has no request-content log,
-network transport, telemetry, persistent AI cache, or second learning database. iOS does
-not link the desktop AI feature and remains unchanged until AI-08.
+network transport, telemetry, persistent AI cache, or second learning database.
+
+## iOS AI Host Integration
+
+AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite
+ranker used by the desktop hosts. It does not request Full Access, add a network API,
+read clipboard or surrounding document content, persist AI requests or responses, or
+create a second learning store. The Keyboard Extension remains `RequestsOpenAccess=false`.
+
+The extension checks current process-available memory before optional AI initialization
+and then applies the AI-05 physical-memory policy. iOS replaces third-party keyboards in
+secure text fields; numeric and phone input traits additionally fail closed and cancel
+optional AI work. A rejected model, unsupported hardware, low available memory, secure
+or numeric context, full queue, cancelled request, expired deadline, stale revision,
+mismatched candidate identity, or invalid permutation leaves ordinary input and the base
+candidate order unchanged. Provider inference runs only on the bounded worker and never
+inside a keyboard input/UI callback.
 
 Strict privacy mode still permits the AI-07 candidate ranker because it is stateless,
 local-only, bounded to the current candidate page, and writes no learning or AI cache.

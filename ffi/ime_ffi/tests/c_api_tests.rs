@@ -3,14 +3,16 @@ use std::path::PathBuf;
 use std::ptr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(feature = "desktop-ai")]
+use private_pinyin_ime::ime_engine_enable_desktop_ai;
 use private_pinyin_ime::{
     ime_engine_clear_imported_lexicon, ime_engine_clear_user_lexicon,
     ime_engine_export_user_lexicon, ime_engine_free, ime_engine_import_rime_lexicon,
     ime_engine_new, ime_output_free, ime_session_commit_candidate, ime_session_feed_key,
     ime_session_free, ime_session_new, ime_session_set_candidate_page_size, ImeKeyEvent,
 };
-#[cfg(feature = "desktop-ai")]
-use private_pinyin_ime::{ime_engine_enable_desktop_ai, ime_session_set_secure_input};
+#[cfg(feature = "local-ai")]
+use private_pinyin_ime::{ime_engine_enable_local_ai, ime_session_set_secure_input};
 
 #[test]
 fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
@@ -198,6 +200,50 @@ fn desktop_ai_never_blocks_base_input_and_secure_mode_cancels_optional_work() {
 
         ime_session_free(session);
         ime_engine_free(engine);
+    }
+}
+
+#[cfg(feature = "local-ai")]
+#[test]
+fn ios_ai_uses_the_approved_model_and_falls_back_below_the_memory_gate() {
+    unsafe {
+        let enabled_engine = ime_engine_new(ptr::null());
+        assert!(!enabled_engine.is_null());
+        assert_eq!(
+            ime_engine_enable_local_ai(enabled_engine, 3, 8 * 1024, 0),
+            1
+        );
+        let session = ime_session_new(enabled_engine);
+        assert!(!session.is_null());
+
+        assert_eq!(ime_session_set_secure_input(session, 1), 1);
+        let text = CString::new("n").unwrap();
+        let output = ime_session_feed_key(session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        assert_eq!(CStr::from_ptr((*output).preedit).to_str().unwrap(), "n");
+        ime_output_free(output);
+        ime_session_free(session);
+        ime_engine_free(enabled_engine);
+
+        let fallback_engine = ime_engine_new(ptr::null());
+        assert!(!fallback_engine.is_null());
+        assert_eq!(
+            ime_engine_enable_local_ai(fallback_engine, 3, 4 * 1024, 0),
+            0
+        );
+        assert_eq!(
+            ime_engine_enable_local_ai(fallback_engine, 99, 8 * 1024, 0),
+            0
+        );
+        let fallback_session = ime_session_new(fallback_engine);
+        assert!(!fallback_session.is_null());
+        let text = CString::new("n").unwrap();
+        let output = ime_session_feed_key(fallback_session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        assert_eq!(CStr::from_ptr((*output).preedit).to_str().unwrap(), "n");
+        ime_output_free(output);
+        ime_session_free(fallback_session);
+        ime_engine_free(fallback_engine);
     }
 }
 

@@ -46,6 +46,12 @@ The reviewed iOS action is pinned to official release `2026.03.26` and imports o
 | `cn_dicts/41448.dict.yaml` | 387281 | `873df74783f565e01581938b14bdf41b4e03a8834791f8778ebcbd70054a26d0` |
 | `cn_dicts/others.dict.yaml` | 16862 | `6a6b1a77d94c7cdf9203cf426e67f350215d2d73259fe3769c97d2a18f521c28` |
 
+### Hash provenance (2026-07-20)
+
+The values above were independently captured from the official `iDvel/rime-ice` GitHub release `2026.03.26`, published at `2026-03-26T10:48:41Z`. The official `cn_dicts.zip` release asset was 14,711,733 bytes and reported the GitHub digest `sha256:4539b66898fa585a75a8680bf72854ccc09beeeed78f61c3b35123c04f7e91f1`.
+
+The review downloaded that asset with `gh release download`, extracted it with `/usr/bin/unzip`, and calculated each selected file with `/usr/bin/shasum -a 256`. A second capture downloaded the three fixed raw tag URLs with `/usr/bin/curl --fail --location`; their byte counts and SHA-256 values exactly matched the files extracted from the official release asset. CI intentionally makes no network request and instead pins these reviewed values. Any upstream tag movement or asset replacement therefore fails closed until the Owner reviews and records a new release.
+
 This is deliberately labeled `雾凇拼音精选`, not a complete upstream installation. The larger `base`, `ext`, and `tencent` dictionaries do not fit the current per-source or 200,000-entry import policy and are not downloaded.
 
 The default supplemental phrase data comes from `mozillazg/phrase-pinyin-data` v0.19.0 under MIT; its exact revision and notice are recorded in `ime_core/assets/lexicon_manifest.json` and `THIRD_PARTY_NOTICES.md`.

@@ -103,6 +103,7 @@ checks remain part of Stage 17 and are not replaced by this Simulator record.
 | Nine-key core input | passed | Four focused tests cover `64426 -> 你好`, continuous digit segmentation, Backspace/commit behavior, and the interactive lookup budget |
 | Mixed shorthand | passed | `zyao` ranks `主要 (zhu yao)` first and the new regression passes with the production lexicon |
 | Host UI taps | pending device/manual pass | Recheck candidate taps, top-left symbol selection, revised nine-key geometry, and delayed callback behavior in the TestFlight/device build before release |
+| AI Lite hardware matrix | pending device/manual pass | Use at least one 8-GiB iPhone to exercise enabled AI and one sub-8-GiB iPhone to confirm unchanged base-order fallback; capture first-enable latency, extension RSS, and memory-warning behavior without recording input content |
 
 The headless persistence pass verifies the regression that previously returned
 to QWERTY after switching apps. It does not replace the final host-app tap and

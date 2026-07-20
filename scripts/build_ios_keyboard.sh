@@ -21,7 +21,7 @@ if ! rustup target list --installed | grep -qx "$rust_target"; then
 fi
 
 export IPHONEOS_DEPLOYMENT_TARGET="$deployment_target"
-cargo build -p private_pinyin_ime_ffi --release --target "$rust_target"
+cargo build -p private_pinyin_ime_ffi --release --target "$rust_target" --features ios-ai
 
 xcodebuild \
   -project "$project" \

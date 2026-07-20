@@ -41,6 +41,9 @@ grep -q '873df74783f565e01581938b14bdf41b4e03a8834791f8778ebcbd70054a26d0' \
 grep -q '6a6b1a77d94c7cdf9203cf426e67f350215d2d73259fe3769c97d2a18f521c28' \
   platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
 grep -q '一键导入雾凇精选' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'DispatchQueue.global(qos: .userInitiated).async' \
+  platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q '无法连接 GitHub 官方源' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q '当前导入词库' platform/macos_imk/Sources/SettingsStore.swift
 if grep -q 'import PrivatePinyinC' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift; then
   echo "The shared iOS settings store must stay independent from the C import bridge." >&2
@@ -53,6 +56,10 @@ if grep -q 'ime_engine_import_rime_lexicon\|processPendingRimeLexicons' \
 fi
 grep -q 'fileImporter' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q 'rime-ice' docs/local_rime_lexicon_import.md
+grep -q '## Decision 038: Explicit Verified iOS Upstream Lexicon Import' docs/DECISIONS.md
+grep -q 'users in mainland China or other GitHub-restricted networks' docs/DECISIONS.md
+grep -q 'sha256:4539b66898fa585a75a8680bf72854ccc09beeeed78f61c3b35123c04f7e91f1' \
+  docs/local_rime_lexicon_import.md
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT

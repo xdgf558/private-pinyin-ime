@@ -12,12 +12,12 @@ use private_pinyin_local_ai_core::{
 
 static NEXT_AI_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 
-pub(crate) struct DesktopAiRuntime {
+pub(crate) struct LocalAiRuntime {
     worker: Arc<BoundedAiWorker>,
     hardware_tier: HardwareTier,
 }
 
-impl DesktopAiRuntime {
+impl LocalAiRuntime {
     pub(crate) fn new(
         platform: ModelPlatform,
         physical_memory_mb: u64,
@@ -40,8 +40,8 @@ impl DesktopAiRuntime {
     }
 }
 
-pub(crate) struct DesktopAiSession {
-    runtime: Arc<DesktopAiRuntime>,
+pub(crate) struct LocalAiSession {
+    runtime: Arc<LocalAiRuntime>,
     session_id: AiSessionId,
     revision: u64,
     next_request_id: u64,
@@ -70,8 +70,8 @@ struct ReadyRanking {
     order: Vec<usize>,
 }
 
-impl DesktopAiSession {
-    pub(crate) fn new(runtime: Arc<DesktopAiRuntime>) -> Self {
+impl LocalAiSession {
+    pub(crate) fn new(runtime: Arc<LocalAiRuntime>) -> Self {
         let sequence = NEXT_AI_SESSION_ID.fetch_add(1, Ordering::Relaxed);
         let process = u128::from(std::process::id());
         Self {
@@ -265,7 +265,7 @@ impl DesktopAiSession {
     }
 }
 
-impl Drop for DesktopAiSession {
+impl Drop for LocalAiSession {
     fn drop(&mut self) {
         self.cancel_inflight();
     }
@@ -429,9 +429,9 @@ mod tests {
         let mut output = input_session.feed_key(KeyEvent::from_char('i'));
         assert!(output.candidates.len() >= 2);
 
-        let runtime = DesktopAiRuntime::new(ModelPlatform::Macos, 8 * 1024, false)
+        let runtime = LocalAiRuntime::new(ModelPlatform::Macos, 8 * 1024, false)
             .expect("approved embedded ranker");
-        let mut ai_session = DesktopAiSession::new(runtime);
+        let mut ai_session = LocalAiSession::new(runtime);
         ai_session.revision = 2;
         let candidate_texts = output
             .candidates

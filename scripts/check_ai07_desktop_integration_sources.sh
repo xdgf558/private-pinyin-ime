@@ -11,9 +11,9 @@ grep -q 'verify_embedded_ai_lite' ai/local_ai_core/src/model_verifier.rs
 grep -q 'desktop-ai' ffi/ime_ffi/Cargo.toml
 grep -q 'ime_engine_enable_desktop_ai' ffi/c_api.h
 grep -q 'ime_session_set_secure_input' ffi/c_api.h
-grep -q 'AiRequestIdentity::new' ffi/ime_ffi/src/desktop_ai.rs
-grep -q 'matches_current' ffi/ime_ffi/src/desktop_ai.rs
-grep -q 'ready.deadline.is_expired()' ffi/ime_ffi/src/desktop_ai.rs
+grep -q 'AiRequestIdentity::new' ffi/ime_ffi/src/local_ai.rs
+grep -q 'matches_current' ffi/ime_ffi/src/local_ai.rs
+grep -q 'ready.deadline.is_expired()' ffi/ime_ffi/src/local_ai.rs
 grep -q 'IsSecureEventInputEnabled' platform/macos_imk/Sources/CAbiBridge.swift
 grep -q 'initguid.h' platform/windows_tsf/src/text_service.cpp
 grep -q 'GUID_PROP_INPUTSCOPE' platform/windows_tsf/src/text_service.cpp

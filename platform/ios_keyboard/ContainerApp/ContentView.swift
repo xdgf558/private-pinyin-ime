@@ -419,33 +419,51 @@ struct ContentView: View {
         switch result {
         case .success(let urls):
             let accessed = urls.filter { $0.startAccessingSecurityScopedResource() }
-            defer {
+            guard accessed.count == urls.count else {
                 for url in accessed {
                     url.stopAccessingSecurityScopedResource()
                 }
-            }
-            guard accessed.count == urls.count else {
                 lexiconOperationText = "无法获得所选词库文件的读取权限，请重新选择后再试。"
                 return
             }
+            lexiconOperationText = "正在读取并导入所选词库…"
+            DispatchQueue.global(qos: .userInitiated).async {
+                defer {
+                    for url in accessed {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
 
-            do {
-                let count = try IosLexiconImportBridge.importRimeLexicons(from: accessed)
-                lexiconOperationText = count == 0
-                    ? "没有选择可导入的词库文件。"
-                    : "已在本机导入 \(count) 条词库记录。重新切换到猫栈拼音后生效。"
-                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
-            } catch IosLexiconImportError.sharedStorageUnavailable {
-                lexiconOperationText = "App Group 暂不可用，无法保存导入词库。"
-            } catch IosLexiconImportError.tooManyFiles {
-                lexiconOperationText = "一次最多选择 8 个词库文件，请分批导入。"
-            } catch IosLexiconImportError.sourceTooLarge {
-                lexiconOperationText = "单个词库文件不能超过 16 MiB。"
-            } catch IosLexiconImportError.partialImport(let acceptedRows) {
-                lexiconOperationText = "已导入 \(acceptedRows) 条记录，但后续文件导入失败。请检查剩余文件。"
-                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
-            } catch {
-                lexiconOperationText = "导入失败，请确认词库包含明确的拼音列。"
+                let outcome: (message: String, refreshStatus: Bool)
+                do {
+                    let count = try IosLexiconImportBridge.importRimeLexicons(from: accessed)
+                    outcome = (
+                        count == 0
+                            ? "没有选择可导入的词库文件。"
+                            : "已在本机导入 \(count) 条词库记录。重新切换到猫栈拼音后生效。",
+                        count > 0
+                    )
+                } catch IosLexiconImportError.sharedStorageUnavailable {
+                    outcome = ("App Group 暂不可用，无法保存导入词库。", false)
+                } catch IosLexiconImportError.tooManyFiles {
+                    outcome = ("一次最多选择 8 个词库文件，请分批导入。", false)
+                } catch IosLexiconImportError.sourceTooLarge {
+                    outcome = ("单个词库文件不能超过 16 MiB。", false)
+                } catch IosLexiconImportError.partialImport(let acceptedRows) {
+                    outcome = (
+                        "已导入 \(acceptedRows) 条记录，但后续文件导入失败。请检查剩余文件。",
+                        true
+                    )
+                } catch {
+                    outcome = ("导入失败，请确认词库包含明确的拼音列。", false)
+                }
+
+                DispatchQueue.main.async {
+                    lexiconOperationText = outcome.message
+                    if outcome.refreshStatus {
+                        lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
+                    }
+                }
             }
         case .failure:
             lexiconOperationText = "未能打开所选词库文件。"
@@ -467,7 +485,7 @@ struct ContentView: View {
             case .failure(IosLexiconImportError.integrityCheckFailed):
                 lexiconOperationText = "下载文件未通过完整性校验，已拒绝导入。"
             case .failure(IosLexiconImportError.downloadFailed):
-                lexiconOperationText = "暂时无法连接雾凇拼音官方源，请检查网络后重试。"
+                lexiconOperationText = "无法连接 GitHub 官方源；如你所在网络无法访问 GitHub，可改用「选择文件」导入本地词典。"
             case .failure(IosLexiconImportError.partialImport(let acceptedRows)):
                 lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
                 lexiconOperationText = "已导入 \(acceptedRows) 条记录，但完整导入未完成。"
