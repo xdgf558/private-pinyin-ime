@@ -11,6 +11,14 @@ enum PrivatePinyinSettingsStore {
     private static let previousDefaultCandidatePageSize = 5
     private static let importedLexiconManifestSchemaVersion = 1
     private static let maximumRecordedImportedSources = 32
+    private static let knownRimeIceDictionaryNames: Set<String> = [
+        "8105",
+        "41448",
+        "base",
+        "ext",
+        "others",
+        "tencent",
+    ]
 
     private struct ImportedLexiconManifest: Codable {
         let schemaVersion: Int
@@ -120,21 +128,18 @@ enum PrivatePinyinSettingsStore {
     static func importedLexiconSourceDescriptor(
         for sourceURL: URL
     ) -> PrivatePinyinImportedLexiconSource {
-        let sourcePath = sourceURL.path
-        let normalizedPath = sourcePath
-            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-            .lowercased()
-            .replacingOccurrences(of: "_", with: "-")
-            .replacingOccurrences(of: " ", with: "-")
-        let isRimeIce = normalizedPath.contains("rime-ice")
-            || sourcePath.contains("雾凇")
-            || sourcePath.contains("霧凇")
+        let components = sourceURL.pathComponents
+        let rimeIceComponentIndex = components.firstIndex(where: isRimeIcePathComponent)
+        let dictionaryName = friendlyDictionaryName(for: sourceURL)
+        let isKnownRimeIceDictionary = knownRimeIceDictionaryNames.contains(
+            dictionaryName.lowercased()
+        )
 
-        if isRimeIce {
+        if let rimeIceComponentIndex, isKnownRimeIceDictionary {
             return PrivatePinyinImportedLexiconSource(
                 displayName: "雾凇拼音",
                 sourceKind: "rime_ice_local",
-                version: versionString(in: sourcePath)
+                version: versionString(in: components[rimeIceComponentIndex...])
             )
         }
 
@@ -327,22 +332,40 @@ enum PrivatePinyinSettingsStore {
         return trimmed.isEmpty ? "本地 Rime 词库" : trimmed
     }
 
-    private static func versionString(in sourcePath: String) -> String? {
+    private static func isRimeIcePathComponent(_ component: String) -> Bool {
+        let normalized = component
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        return normalized.contains("rime-ice")
+            || component.contains("雾凇")
+            || component.contains("霧凇")
+    }
+
+    private static func versionString(
+        in sourceComponents: ArraySlice<String>
+    ) -> String? {
         let pattern = #"(?<!\d)(20\d{2})[._-](\d{1,2})[._-](\d{1,2})(?!\d)"#
-        guard
-            let expression = try? NSRegularExpression(pattern: pattern),
-            let match = expression.firstMatch(
-                in: sourcePath,
-                range: NSRange(sourcePath.startIndex..., in: sourcePath)
-            ),
-            match.numberOfRanges == 4,
-            let yearRange = Range(match.range(at: 1), in: sourcePath),
-            let monthRange = Range(match.range(at: 2), in: sourcePath),
-            let dayRange = Range(match.range(at: 3), in: sourcePath)
-        else {
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
             return nil
         }
-        return "\(sourcePath[yearRange]).\(sourcePath[monthRange]).\(sourcePath[dayRange])"
+        for component in sourceComponents {
+            guard
+                let match = expression.firstMatch(
+                    in: component,
+                    range: NSRange(component.startIndex..., in: component)
+                ),
+                match.numberOfRanges == 4,
+                let yearRange = Range(match.range(at: 1), in: component),
+                let monthRange = Range(match.range(at: 2), in: component),
+                let dayRange = Range(match.range(at: 3), in: component)
+            else {
+                continue
+            }
+            return "\(component[yearRange]).\(component[monthRange]).\(component[dayRange])"
+        }
+        return nil
     }
 
     private static func bundledDefaultSettings() -> [String: Any]? {

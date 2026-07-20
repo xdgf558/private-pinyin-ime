@@ -7,7 +7,7 @@ Current status: the imported-source status is no longer vertically clipped, new 
 ## macOS Imported Source Status Validation (2026-07-20)
 
 - The imported-source label is a single-line, vertically resistant AppKit field with a full-text tooltip, preventing compact Station Board scaling from clipping glyphs.
-- macOS menu and preferences imports share one source resolver. Paths containing `rime-ice`, `雾凇`, or `霧凇` record `雾凇拼音`; ordinary files use a cleaned filename, and date-like rime-ice directory versions are retained in the metadata-only manifest.
+- macOS menu and preferences imports share one source resolver. Known upstream files under `rime-ice`, `雾凇`, or `霧凇` record `雾凇拼音`; custom files keep their cleaned filename, and only dates at or below the matched source directory are retained as metadata-only versions.
 - Existing `imported_lexicon.tsv` layers without `imported_lexicon_manifest.json` remain usable but are labelled as legacy. The app does not invent provenance from normalized phrase/pinyin rows or retain the user's original path.
 - `scripts/test_macos_imported_lexicon_source.sh`, local-import and macOS source checks, the complete macOS IMK build, `cargo fmt --all -- --check`, `cargo test --workspace`, and strict workspace Clippy: passed.
 

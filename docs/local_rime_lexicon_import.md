@@ -13,7 +13,7 @@ The three layers are independent:
 
 Clearing one writable layer does not clear the other. Importing or clearing a Rime dictionary takes effect after the engine/session is recreated; platform controls perform or request that reload.
 
-Source labels are captured only when an import succeeds. On macOS, files selected from a path containing `rime-ice`, `雾凇`, or `霧凇` are shown as `雾凇拼音`; other dictionaries use a cleaned filename. Legacy imported layers created before the source manifest existed cannot reconstruct their origin from normalized phrase/pinyin rows, so the preferences UI asks the user to re-import the original files. Re-importing is cumulative and deduplicated, and records the source label without duplicating phrase/pinyin identities.
+Source labels are captured only when an import succeeds. On macOS, known upstream dictionary filenames selected under a `rime-ice`, `雾凇`, or `霧凇` directory are shown as `雾凇拼音`; custom dictionaries in the same directory retain their cleaned filename. Version dates are accepted only from the matched source directory and its descendants, so an ancestor backup-directory date is not presented as the dictionary version. Legacy imported layers created before the source manifest existed cannot reconstruct their origin from normalized phrase/pinyin rows, so the preferences UI asks the user to re-import the original files. Re-importing is cumulative and deduplicated, and records the source label without duplicating phrase/pinyin identities.
 
 ## Accepted Input
 
