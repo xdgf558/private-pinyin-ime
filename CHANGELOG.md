@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed runaway macOS InputMethodKit memory growth by sharing one parsed engine and immutable lexicon snapshot across per-application controllers while retaining isolated composition sessions. Settings and imported-lexicon reload fan-out now rebuilds the shared snapshot at most once per changed configuration, preserves the previous working snapshot when rebuilding fails, and emits only a content-free diagnostic error code for that failed fingerprint.
+
 ### Added
 
 - Added the AI-09 dormant desktop Helper boundary: a shared bounded binary protocol, per-launch 256-bit authentication, health/cancellation/shutdown commands, ten-minute idle exit, redacted diagnostics, a separately signed release-mode macOS controlled-child helper, and a current-user-only Windows named-pipe helper with remote-client rejection and spawned-process PID binding. Automated probes cover worker-handle reclamation, cancellation, forced termination, restart, and fallback without placing ordinary input or AI Lite ranking behind the helper.

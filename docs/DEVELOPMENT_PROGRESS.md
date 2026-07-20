@@ -1,8 +1,18 @@
 # Development Progress
 
-Last updated: 2026-07-20 15:46
-Current stage: AI-09 authenticated desktop Helper boundary
-Current status: Shared bounded protocol and helper, controlled macOS child process, current-user-only Windows named pipe, packaging/signing hooks, crash/restart probes, CI gates, privacy rules, and decision records are implemented on `codex/ai-09-desktop-helper`; ordinary input and AI Lite ranking remain independent of the dormant helper
+Last updated: 2026-07-20 16:30
+Current stage: macOS runtime memory hardening
+Current status: AI-09 is merged; macOS IMK controllers now share one process-wide parsed engine snapshot while retaining one isolated composition session per client, and changed settings/imported lexicons rebuild the shared snapshot once per configuration rather than once per controller
+
+## macOS Shared Engine Memory Validation (2026-07-20)
+
+- Activity Monitor investigation found 17 input controllers and 18 independently parsed engines in one long-running process; heap growth matched roughly one full lexicon/index allocation per engine rather than the tiny AI Lite coefficient package.
+- The macOS C ABI bridge now owns only a per-controller session. A locked process-wide pool owns the engine, serializes engine-level administration, and coalesces settings/imported-lexicon reload fan-out by exact settings data plus imported-file metadata.
+- Existing sessions remain valid while a changed shared snapshot is replaced because Rust sessions retain their own `Arc` references; every controller still has isolated raw input, candidate page, context, and secure-input state.
+- Replacement is constructed before the previous engine is released, deliberately accepting a short two-snapshot memory peak so a failed rebuild can preserve working input. Each failed configuration fingerprint emits one content-free Unified Logging error code and is not retried until its fingerprint changes.
+- `scripts/test_macos_shared_engine.sh` creates 24 bridges, asserts a single engine load, verifies two simultaneous compositions remain independent, reloads every bridge, and asserts unchanged configuration does not reparse the lexicon.
+- The native 24-session regression peaked at `53,280,768` bytes RSS (about 50.8 MiB) on the development Mac, compared with the diagnosed long-running process where 18 independent engine snapshots had grown to about 2.07 GB of Rust heap; this is local reference evidence, not a portable CI threshold.
+- Real installed-app Activity Monitor validation with 5 and 20 client apps remains required before closing the memory portion of OI-042.
 
 ## Imported Lexicon Visibility Validation (2026-07-20)
 
