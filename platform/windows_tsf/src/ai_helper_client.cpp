@@ -21,6 +21,7 @@ constexpr std::uint32_t kProtocolMagic = 0x50504139;
 constexpr std::uint16_t kProtocolVersion = 1;
 constexpr std::size_t kHeaderBytes = 20;
 constexpr std::size_t kMaximumPayloadBytes = 64 * 1024;
+constexpr ULONGLONG kPipeConnectTimeoutMilliseconds = 5000;
 constexpr wchar_t kTokenEnvironmentKey[] = L"PRIVATE_PINYIN_AI_HELPER_TOKEN";
 
 enum class Opcode : std::uint16_t {
@@ -253,7 +254,7 @@ bool create_user_only_security_attributes(SECURITY_ATTRIBUTES* attributes,
 }
 
 std::vector<wchar_t> child_environment(const std::wstring& token) {
-  std::vector<wchar_t> environment;
+  std::vector<std::wstring> entries;
   LPWCH inherited = GetEnvironmentStringsW();
   if (inherited != nullptr) {
     for (const wchar_t* entry = inherited; *entry != L'\0';) {
@@ -261,7 +262,7 @@ std::vector<wchar_t> child_environment(const std::wstring& token) {
       if (_wcsnicmp(entry, kTokenEnvironmentKey,
                     std::size(kTokenEnvironmentKey) - 1) != 0 ||
           entry[std::size(kTokenEnvironmentKey) - 1] != L'=') {
-        environment.insert(environment.end(), entry, entry + length + 1);
+        entries.emplace_back(entry, length);
       }
       entry += length + 1;
     }
@@ -269,10 +270,39 @@ std::vector<wchar_t> child_environment(const std::wstring& token) {
   }
   const std::wstring token_entry =
       std::wstring(kTokenEnvironmentKey) + L"=" + token;
-  environment.insert(environment.end(), token_entry.begin(), token_entry.end());
-  environment.push_back(L'\0');
+  entries.push_back(token_entry);
+  std::sort(entries.begin(), entries.end(), [](const std::wstring& left,
+                                                const std::wstring& right) {
+    return _wcsicmp(left.c_str(), right.c_str()) < 0;
+  });
+
+  std::vector<wchar_t> environment;
+  for (const auto& entry : entries) {
+    environment.insert(environment.end(), entry.begin(), entry.end());
+    environment.push_back(L'\0');
+  }
   environment.push_back(L'\0');
   return environment;
+}
+
+bool wait_for_pipe_connection(HANDLE pipe, HANDLE process) {
+  const ULONGLONG deadline =
+      GetTickCount64() + kPipeConnectTimeoutMilliseconds;
+  while (GetTickCount64() < deadline) {
+    if (ConnectNamedPipe(pipe, nullptr)) {
+      return true;
+    }
+    const DWORD error = GetLastError();
+    if (error == ERROR_PIPE_CONNECTED) {
+      return true;
+    }
+    if (error != ERROR_PIPE_LISTENING ||
+        WaitForSingleObject(process, 0) == WAIT_OBJECT_0) {
+      return false;
+    }
+    Sleep(10);
+  }
+  return false;
 }
 
 bool launch_helper(const std::filesystem::path& helper_executable,
@@ -334,7 +364,8 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
   }
   ScopedHandle pipe(CreateNamedPipeW(
       pipe_name.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
-      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT |
+          PIPE_REJECT_REMOTE_CLIENTS,
       1, static_cast<DWORD>(kMaximumPayloadBytes),
       static_cast<DWORD>(kMaximumPayloadBytes), 0, &security_attributes));
   if (!pipe.valid()) {
@@ -349,8 +380,12 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
   }
   ScopedHandle process(process_information.hProcess);
   ScopedHandle thread(process_information.hThread);
-  const BOOL connected = ConnectNamedPipe(pipe.get(), nullptr);
-  if (!connected && GetLastError() != ERROR_PIPE_CONNECTED) {
+  if (!wait_for_pipe_connection(pipe.get(), process.get())) {
+    TerminateProcess(process.get(), 1);
+    return false;
+  }
+  DWORD pipe_mode = PIPE_READMODE_BYTE | PIPE_WAIT;
+  if (!SetNamedPipeHandleState(pipe.get(), &pipe_mode, nullptr, nullptr)) {
     TerminateProcess(process.get(), 1);
     return false;
   }

@@ -35,7 +35,11 @@ grep -q 'SecRandomCopyBytes' \
   platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift
 grep -q 'Process()' \
   platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift
+grep -q 'transportGeneration' \
+  platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift
 grep -q 'PIPE_REJECT_REMOTE_CLIENTS' \
+  platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'wait_for_pipe_connection' \
   platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'D:P(A;;GA;;;' platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'BCryptGenRandom' platform/windows_tsf/src/ai_helper_client.cpp

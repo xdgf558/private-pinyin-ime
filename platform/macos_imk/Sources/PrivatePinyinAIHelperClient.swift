@@ -95,6 +95,7 @@ final class PrivatePinyinAIHelperClient {
     private var outputHandle: FileHandle?
     private var outputBuffer = Data()
     private var authenticated = false
+    private var transportGeneration: UInt64 = 0
     private var requestCounter: UInt64 = 0
     private var afterAuthentication: [(
         operation: () -> Void,
@@ -183,6 +184,11 @@ final class PrivatePinyinAIHelperClient {
             return
         }
         stopTransport(error: .helperUnavailable)
+        transportGeneration &+= 1
+        if transportGeneration == 0 {
+            transportGeneration = 1
+        }
+        let generation = transportGeneration
 
         guard let helperURL = Bundle.main.executableURL?
             .deletingLastPathComponent()
@@ -214,6 +220,7 @@ final class PrivatePinyinAIHelperClient {
         process.standardError = FileHandle.nullDevice
         process.terminationHandler = { [weak self] _ in
             self?.stateQueue.async {
+                guard self?.transportGeneration == generation else { return }
                 self?.stopTransport(error: .helperUnavailable)
             }
         }
@@ -223,7 +230,7 @@ final class PrivatePinyinAIHelperClient {
         outputHandle?.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             self?.stateQueue.async {
-                guard let self else { return }
+                guard let self, self.transportGeneration == generation else { return }
                 if data.isEmpty {
                     self.stopTransport(error: .helperUnavailable)
                     return
@@ -324,9 +331,14 @@ final class PrivatePinyinAIHelperClient {
     }
 
     private func stopTransport(error: PrivatePinyinAIHelperClientError) {
+        transportGeneration &+= 1
+        if transportGeneration == 0 {
+            transportGeneration = 1
+        }
         outputHandle?.readabilityHandler = nil
         try? inputHandle?.close()
         try? outputHandle?.close()
+        process?.terminationHandler = nil
         if process?.isRunning == true {
             process?.terminate()
         }
