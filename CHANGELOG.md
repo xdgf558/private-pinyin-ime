@@ -120,6 +120,7 @@
 
 ### Changed
 
+- Bumped the macOS app/pkg and Windows internal-test package defaults to `0.1.24` for the shared-engine macOS memory fix and the dormant AI-09 authenticated desktop Helper boundary.
 - Bumped the macOS app/pkg and Windows internal-test installers to `0.1.23` for the reviewed upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.
 - Bumped the iOS container app and Keyboard Extension to `0.1.23 (19)` for the PR #35 nine-key candidate, paging, touch, and persistence fixes plus the PR #34 upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.
 - Bumped the macOS app and installer package to `0.1.22` for the reviewed AI-07 asynchronous AI Lite integration and installation-state validation.

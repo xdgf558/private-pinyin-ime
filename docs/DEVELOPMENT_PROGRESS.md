@@ -900,6 +900,18 @@ Current status: AI-09 is merged; macOS IMK controllers now share one process-wid
 - Result: passed (`BUILD SUCCEEDED`)
 - Notes: The iOS container App and Keyboard Extension compile with the isolated C import bridge, partial-import status, and security-scoped document handling; the standalone Chinese conversion regression also remains green.
 
+### Desktop 0.1.24 macOS Public Package Validation
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.24 bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: The app and dormant AI-09 Helper were signed with `Developer ID Application`; the pkg was signed with `Developer ID Installer`, submitted to Apple, accepted under submission `54645912-7b0d-4d83-b670-453067f3897f`, and stapled successfully.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.24 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: The trusted installer signature, Gatekeeper `Notarized Developer ID` assessment, stapled ticket, notary profile, and package checksum all passed. Artifact: `dist/macos_imk/PrivatePinyin-0.1.24.pkg` (`3,800,887` bytes); SHA256 `ff0d2d73e0ee63daf06ac052b5a06cf7a17df309ae7d1713c0867d09d832fc7d`.
+
+- Release scope: macOS clients now share one immutable engine snapshot while retaining independent session state. Installed multi-client resident-memory and upgrade smokes remain manual release gates; the AI-09 Helper remains dormant and does not alter normal input behavior.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.

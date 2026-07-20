@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 !ifndef PRODUCT_VERSION
-!define PRODUCT_VERSION "0.1.23"
+!define PRODUCT_VERSION "0.1.24"
 !endif
 
 !define APP_DIR_NAME "app-${PRODUCT_VERSION}"
