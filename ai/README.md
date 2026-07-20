@@ -57,5 +57,12 @@ rejected, late, or saturated path leaves ordinary candidates untouched. iOS does
 link this feature and remains AI-off until AI-08. See
 [`model_package_policy.md`](model_package_policy.md) before evaluating any artifact.
 
+AI-09 adds the dormant desktop Helper boundary used by future Writer experiments.
+The helper is a separately signed executable with a bounded binary protocol,
+per-launch authentication, health checks, cancellation, crash recovery, and a
+ten-minute idle exit. macOS uses controlled-child anonymous pipes; Windows uses a
+random current-user-only named pipe that rejects remote clients. It is not connected
+to basic input or the AI Lite candidate path. See [`helper/README.md`](helper/README.md).
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).

@@ -41,5 +41,8 @@ Current scripts:
 - `check_ai04_rules_sources.sh`: validates bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, and the rules-first quality gate.
 - `check_ai05_model_gate_sources.sh`: validates strict model manifests, every external Owner approval, SHA-256/size/path/symlink/platform/hardware/privacy gate, and the model packager.
 - `check_ai06_lite_ranker_sources.sh`: validates the approved fixed-point ranker package, bounded runtime, first-party dataset declarations, and the 8-improvement/zero-regression quality gate.
+- `check_ai09_desktop_helper_sources.sh`: validates the AI-09 bounded local protocol, authenticated desktop Helper boundary, no-network contract, and platform packaging hooks.
+- `test_macos_ai_helper.sh`: compiles and runs the macOS controlled-child Helper lifecycle tests, including health, cancellation, crash recovery, and shutdown.
+- `test_windows_ai_helper.ps1`: builds and runs the Windows current-user named-pipe Helper lifecycle probe on an x64 runner.
 
 Planned scripts will be added with their owning AI stages.

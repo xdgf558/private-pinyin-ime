@@ -76,6 +76,12 @@ Unsigned internal-test packages can also be built from GitHub Actions:
 
 These artifacts are for internal testing only and are expected to show Windows SmartScreen or trust warnings until production signing is configured.
 
+Packages also contain `PrivatePinyinAIHelper.exe`, the dormant AI-09 process
+boundary for future optional Writer features. It is not loaded by normal TSF
+typing or AI Lite ranking. The host-side skeleton creates a random named pipe
+with a protected current-user-only DACL, rejects remote clients, and requires a
+random per-launch authentication token before accepting health or work frames.
+
 Release-candidate packaging must sign staged binaries and the MSI:
 
 ```powershell
@@ -149,6 +155,9 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 6. Press `Shift` to toggle Chinese/English mode.
 7. Type `nihao`, press `Esc`, and confirm composition is cancelled.
 8. Open QQ, focus a chat input box, switch to `猫栈拼音`, and repeat the `nihao` test.
+9. Run `.\scripts\test_windows_ai_helper.ps1` after the x64 build and confirm
+   authentication, health, cancellation, forced helper termination, restart,
+   and graceful shutdown all pass.
 
 ## Known Gaps
 

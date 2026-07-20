@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the AI-09 dormant desktop Helper boundary: a shared bounded binary protocol, per-launch 256-bit authentication, health/cancellation/shutdown commands, ten-minute idle exit, redacted diagnostics, a separately signed macOS controlled-child helper, and a current-user-only Windows named-pipe helper with remote-client rejection. Automated probes cover cancellation, forced termination, restart, and fallback without placing ordinary input or AI Lite ranking behind the helper.
 - Added a local imported-lexicon manifest so macOS Station Board and the iOS container App show which Rime dictionaries are currently present without storing source paths or dictionary content in the metadata.
 - Added an explicit, default-off iOS container action for downloading and importing the reviewed `rime-ice` 2026.03.26 Chinese essentials subset. The container verifies fixed HTTPS hosts, exact byte counts, and pinned SHA-256 values before invoking the existing bounded Rust importer; the GPL data is not bundled, and the keyboard extension remains network-free.
 - Added AI-08 optional iOS AI Lite candidate reranking behind an isolated `ios-ai` feature, reusing the bounded non-blocking local worker and complete stale-result checks from AI-07 without Full Access, network APIs, surrounding-document context, persistent AI state, or a heavy model. Unsupported hardware, low available memory, secure/numeric input traits, queue pressure, and every AI failure preserve the ordinary candidate order and typing path.

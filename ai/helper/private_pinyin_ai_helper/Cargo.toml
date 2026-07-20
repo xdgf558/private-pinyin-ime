@@ -1,0 +1,13 @@
+[package]
+name = "private_pinyin_ai_helper"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "private_pinyin_ai_helper"
+path = "src/main.rs"
+
+[dependencies]
+private_pinyin_ai_helper_protocol = { path = "../../helper_protocol" }

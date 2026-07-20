@@ -113,6 +113,9 @@ jobs:
       - name: Check AI-08 iOS Lite integration
         run: bash scripts/check_ai08_ios_integration_sources.sh
 
+      - name: Check AI-09 desktop Helper boundary
+        run: bash scripts/check_ai09_desktop_helper_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
@@ -151,6 +154,11 @@ jobs:
         env:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_ios_chinese_transform.sh
+
+      - name: Run macOS AI Helper lifecycle tests
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_macos_ai_helper.sh
 
   windows-tsf:
     runs-on: windows-2022
@@ -200,3 +208,7 @@ jobs:
         run: |
           .\scripts\build_windows_tsf.ps1 -Architecture x64 -RustTarget x86_64-pc-windows-msvc
           .\scripts\build_windows_tsf.ps1 -Architecture Win32 -RustTarget i686-pc-windows-msvc
+
+      - name: Run Windows AI Helper lifecycle probe
+        shell: pwsh
+        run: .\scripts\test_windows_ai_helper.ps1

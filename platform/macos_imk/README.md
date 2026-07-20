@@ -12,6 +12,8 @@ The macOS host remains thin:
 - Load a settings snapshot from `~/Library/Application Support/PrivatePinyin/settings.json`.
 - Expose a menu settings entry for strict privacy mode, clearing the user lexicon, exporting the user lexicon, and opening the JSON settings file.
 - Check a fixed first-party release manifest only after explicit opt-in or a manual request; the Rust engine remains network-free.
+- Bundle the dormant AI-09 Writer helper as a separately signed controlled child;
+  ordinary input and AI Lite ranking do not launch or depend on it.
 
 ## Layout
 
@@ -27,7 +29,9 @@ The macOS host remains thin:
 bash scripts/build_macos_imk.sh
 ```
 
-The script builds `ffi/ime_ffi`, compiles the Swift host, embeds `libprivate_pinyin_ime.dylib`, and writes:
+The script builds `ffi/ime_ffi` and the AI-09 helper, compiles the Swift host,
+embeds `libprivate_pinyin_ime.dylib`, signs the helper before the outer bundle,
+and writes:
 
 ```text
 dist/macos_imk/PrivatePinyin.app
@@ -107,6 +111,9 @@ Use the shared record template in `../../docs/platform_smoke_test_plan.md` when 
 13. With the signed/notarized release pkg and correct manifest, confirm the
     second consent prompt appears, macOS Installer opens visibly, and the app
     never requests or supplies administrator credentials itself.
+14. Run `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_ai_helper.sh`
+    and confirm authentication, health, cancellation, helper termination,
+    restart, and shutdown all pass without changing ordinary input behavior.
 
 ## Known Gaps
 

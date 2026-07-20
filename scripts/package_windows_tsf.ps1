@@ -340,8 +340,12 @@ Remove-Item -Recurse -Force $stageDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 
 $settingsTool = Join-Path $repoRoot "target\x86_64-pc-windows-msvc\release\private-pinyin-settings.exe"
+$aiHelper = Join-Path $repoRoot "target\x86_64-pc-windows-msvc\release\private_pinyin_ai_helper.exe"
 if (-not (Test-Path $settingsTool)) {
     throw "Could not find settings tool at $settingsTool."
+}
+if (-not (Test-Path $aiHelper)) {
+    throw "Could not find AI Helper at $aiHelper."
 }
 if (-not (Test-Path $installerIcon)) {
     throw "Could not find Windows installer icon at $installerIcon."
@@ -372,6 +376,7 @@ foreach ($variant in $buildVariants) {
 }
 
 Copy-Item $settingsTool -Destination $stageDir
+Copy-Item $aiHelper -Destination (Join-Path $stageDir "PrivatePinyinAIHelper.exe")
 Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
