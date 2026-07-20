@@ -15,9 +15,11 @@ The shared Rust helper uses a fixed, bounded binary protocol from
 - no network client, localhost service, content log, or persistent request cache.
 
 On macOS the signed app launches its bundled helper as a controlled child and uses
-anonymous pipes. On Windows the current-user host creates a random named pipe with a
-protected current-user-only DACL and `PIPE_REJECT_REMOTE_CLIENTS`, then launches the
-bundled helper with the authentication token in its private child environment.
+anonymous pipes. On Windows the current-user host creates a random request/response
+named-pipe pair with protected current-user-only DACLs and
+`PIPE_REJECT_REMOTE_CLIENTS`, then launches the bundled helper with the authentication
+token in its private child environment. Separate unidirectional pipes prevent a
+synchronous read from blocking the helper's response writer.
 
 Every failure means only that the optional enhancement is unavailable. Hosts must
 never wait for this process from an IMK key-event callback or a TSF edit session.

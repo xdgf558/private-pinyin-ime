@@ -78,7 +78,8 @@ The shared Rust helper speaks a fixed binary protocol with a 64-KiB payload ceil
 per-launch 256-bit authentication, bounded active work and response queues, health,
 cancellation, graceful shutdown, content-free diagnostics, and a ten-minute idle exit.
 macOS launches a separately signed bundled helper through anonymous child pipes. Windows
-uses a random named pipe protected by a current-user-only DACL and remote-client rejection.
+uses a random unidirectional request/response named-pipe pair protected by
+current-user-only DACLs and remote-client rejection.
 Lifecycle probes exercise authentication, cancellation, forced helper termination,
 restart, and clean shutdown. The helper is deliberately dormant: ordinary typing and AI
 Lite ranking never depend on it, and AI-10/AI-11 must keep every real request off IMK and

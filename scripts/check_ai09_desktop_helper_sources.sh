@@ -31,6 +31,10 @@ grep -q 'sync_channel::<HelperFrame>(MAX_HELPER_RESPONSE_QUEUE)' \
   ai/helper/private_pinyin_ai_helper/src/main.rs
 grep -q 'PRIVATE_PINYIN_AI_HELPER_TOKEN' \
   ai/helper/private_pinyin_ai_helper/src/main.rs
+grep -q '"--request-pipe"' \
+  ai/helper/private_pinyin_ai_helper/src/main.rs
+grep -q '"--response-pipe"' \
+  ai/helper/private_pinyin_ai_helper/src/main.rs
 grep -q 'SecRandomCopyBytes' \
   platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift
 grep -q 'Process()' \
@@ -38,6 +42,10 @@ grep -q 'Process()' \
 grep -q 'transportGeneration' \
   platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift
 grep -q 'PIPE_REJECT_REMOTE_CLIENTS' \
+  platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'PIPE_ACCESS_OUTBOUND' \
+  platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'PIPE_ACCESS_INBOUND' \
   platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'wait_for_pipe_connection' \
   platform/windows_tsf/src/ai_helper_client.cpp

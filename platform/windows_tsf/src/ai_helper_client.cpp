@@ -319,13 +319,16 @@ bool wait_for_pipe_connection(HANDLE pipe, HANDLE process) {
 }
 
 bool launch_helper(const std::filesystem::path& helper_executable,
-                   const std::wstring& pipe_name, const std::wstring& token,
+                   const std::wstring& request_pipe_name,
+                   const std::wstring& response_pipe_name,
+                   const std::wstring& token,
                    PROCESS_INFORMATION* process_information) {
   if (!std::filesystem::is_regular_file(helper_executable)) {
     return false;
   }
   std::wstring command_line = L"\"" + helper_executable.wstring() +
-                              L"\" --named-pipe \"" + pipe_name +
+                              L"\" --request-pipe \"" + request_pipe_name +
+                              L"\" --response-pipe \"" + response_pipe_name +
                               L"\" --idle-timeout-ms " +
                               std::to_wstring(kProbeHelperIdleTimeoutMilliseconds);
   std::vector<wchar_t> mutable_command(command_line.begin(), command_line.end());
@@ -367,10 +370,12 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
       !random_bytes(pipe_nonce.data(), pipe_nonce.size())) {
     return false;
   }
-  const std::wstring pipe_name =
+  const std::wstring pipe_base =
       L"\\\\.\\pipe\\PrivatePinyinAI-" +
       std::to_wstring(GetCurrentProcessId()) + L"-" +
       hexadecimal(pipe_nonce.data(), pipe_nonce.size());
+  const std::wstring request_pipe_name = pipe_base + L"-request";
+  const std::wstring response_pipe_name = pipe_base + L"-response";
 
   SECURITY_ATTRIBUTES security_attributes{};
   LocalPointer security_descriptor;
@@ -378,35 +383,47 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
                                              &security_descriptor)) {
     return false;
   }
-  ScopedHandle pipe(CreateNamedPipeW(
-      pipe_name.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
+  // Use separate unidirectional pipe objects so a blocking helper read cannot
+  // serialize and starve its response writer on the same synchronous pipe.
+  ScopedHandle request_pipe(CreateNamedPipeW(
+      request_pipe_name.c_str(),
+      PIPE_ACCESS_OUTBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE,
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT |
           PIPE_REJECT_REMOTE_CLIENTS,
       1, static_cast<DWORD>(kMaximumPayloadBytes),
       static_cast<DWORD>(kMaximumPayloadBytes), 0, &security_attributes));
-  if (!pipe.valid()) {
+  ScopedHandle response_pipe(CreateNamedPipeW(
+      response_pipe_name.c_str(),
+      PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE,
+      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT |
+          PIPE_REJECT_REMOTE_CLIENTS,
+      1, static_cast<DWORD>(kMaximumPayloadBytes),
+      static_cast<DWORD>(kMaximumPayloadBytes), 0, &security_attributes));
+  if (!request_pipe.valid() || !response_pipe.valid()) {
     return false;
   }
 
   PROCESS_INFORMATION process_information{};
-  if (!launch_helper(helper_executable, pipe_name,
+  if (!launch_helper(helper_executable, request_pipe_name, response_pipe_name,
                      hexadecimal(token.data(), token.size()),
                      &process_information)) {
     return false;
   }
   ScopedHandle process(process_information.hProcess);
   ScopedHandle thread(process_information.hThread);
-  if (!wait_for_pipe_connection(pipe.get(), process.get())) {
+  if (!wait_for_pipe_connection(request_pipe.get(), process.get()) ||
+      !wait_for_pipe_connection(response_pipe.get(), process.get())) {
     TerminateProcess(process.get(), 1);
     return false;
   }
   bool ok = write_frame(
-                pipe.get(),
+                request_pipe.get(),
                 Frame{Opcode::kAuthenticate, 0,
                       std::vector<std::uint8_t>(token.begin(), token.end())}) &&
-            expect(pipe.get(), process.get(), Opcode::kAuthenticated, 0) &&
-            write_frame(pipe.get(), Frame{Opcode::kHealth, 1, {}}) &&
-            expect(pipe.get(), process.get(), Opcode::kHealthy, 1);
+            expect(response_pipe.get(), process.get(), Opcode::kAuthenticated,
+                   0) &&
+            write_frame(request_pipe.get(), Frame{Opcode::kHealth, 1, {}}) &&
+            expect(response_pipe.get(), process.get(), Opcode::kHealthy, 1);
 
   if (terminate_after_health) {
     if (!TerminateProcess(process.get(), 77)) {
@@ -415,26 +432,28 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
     if (WaitForSingleObject(process.get(), 2000) != WAIT_OBJECT_0) {
       ok = false;
     }
-    DisconnectNamedPipe(pipe.get());
+    DisconnectNamedPipe(request_pipe.get());
+    DisconnectNamedPipe(response_pipe.get());
     return ok;
   }
 
   ok = ok &&
-       write_frame(pipe.get(), Frame{Opcode::kMockInference, 2,
-                                     little_endian_u32(500)}) &&
-       write_frame(pipe.get(),
+       write_frame(request_pipe.get(), Frame{Opcode::kMockInference, 2,
+                                             little_endian_u32(500)}) &&
+       write_frame(request_pipe.get(),
                    Frame{Opcode::kCancel, 3, little_endian_u64(2)}) &&
-       expect(pipe.get(), process.get(), Opcode::kCancelled, 2) &&
-       expect(pipe.get(), process.get(), Opcode::kAcknowledged, 3) &&
-       write_frame(pipe.get(), Frame{Opcode::kShutdown, 4, {}}) &&
-       expect(pipe.get(), process.get(), Opcode::kAcknowledged, 4);
+       expect(response_pipe.get(), process.get(), Opcode::kCancelled, 2) &&
+       expect(response_pipe.get(), process.get(), Opcode::kAcknowledged, 3) &&
+       write_frame(request_pipe.get(), Frame{Opcode::kShutdown, 4, {}}) &&
+       expect(response_pipe.get(), process.get(), Opcode::kAcknowledged, 4);
 
   if (WaitForSingleObject(process.get(), 2000) != WAIT_OBJECT_0) {
     TerminateProcess(process.get(), 1);
     WaitForSingleObject(process.get(), 2000);
     ok = false;
   }
-  DisconnectNamedPipe(pipe.get());
+  DisconnectNamedPipe(request_pipe.get());
+  DisconnectNamedPipe(response_pipe.get());
   return ok;
 }
 

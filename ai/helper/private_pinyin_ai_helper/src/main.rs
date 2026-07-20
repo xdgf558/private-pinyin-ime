@@ -41,7 +41,9 @@ fn run() -> Result<(), HelperProtocolError> {
 
     match configuration.transport {
         Transport::Stdio => serve(io::stdin(), io::stdout(), token, configuration.idle_timeout),
-        Transport::NamedPipe(path) => serve_named_pipe(&path, token, configuration.idle_timeout),
+        Transport::NamedPipes { request, response } => {
+            serve_named_pipes(&request, &response, token, configuration.idle_timeout)
+        }
     }
 }
 
@@ -52,25 +54,35 @@ struct Configuration {
 
 enum Transport {
     Stdio,
-    NamedPipe(String),
+    NamedPipes { request: String, response: String },
 }
 
 impl Configuration {
     fn parse(arguments: impl Iterator<Item = String>) -> Result<Self, HelperProtocolError> {
         let arguments: Vec<String> = arguments.collect();
         let mut transport = None;
+        let mut request_pipe = None;
+        let mut response_pipe = None;
         let mut idle_timeout = DEFAULT_HELPER_IDLE_TIMEOUT;
         let mut index = 0;
         while index < arguments.len() {
             match arguments[index].as_str() {
                 "--stdio" if transport.is_none() => transport = Some(Transport::Stdio),
-                "--named-pipe" if transport.is_none() => {
+                "--request-pipe" if transport.is_none() && request_pipe.is_none() => {
                     index += 1;
                     let path = arguments
                         .get(index)
                         .filter(|value| !value.is_empty())
                         .ok_or(HelperProtocolError::InvalidPayload)?;
-                    transport = Some(Transport::NamedPipe(path.clone()));
+                    request_pipe = Some(path.clone());
+                }
+                "--response-pipe" if transport.is_none() && response_pipe.is_none() => {
+                    index += 1;
+                    let path = arguments
+                        .get(index)
+                        .filter(|value| !value.is_empty())
+                        .ok_or(HelperProtocolError::InvalidPayload)?;
+                    response_pipe = Some(path.clone());
                 }
                 "--idle-timeout-ms" => {
                     index += 1;
@@ -85,6 +97,16 @@ impl Configuration {
             }
             index += 1;
         }
+        if transport.is_none() {
+            let request = request_pipe.ok_or(HelperProtocolError::InvalidPayload)?;
+            let response = response_pipe.ok_or(HelperProtocolError::InvalidPayload)?;
+            if request == response {
+                return Err(HelperProtocolError::InvalidPayload);
+            }
+            transport = Some(Transport::NamedPipes { request, response });
+        } else if request_pipe.is_some() || response_pipe.is_some() {
+            return Err(HelperProtocolError::InvalidPayload);
+        }
         HelperIdlePolicy::new(idle_timeout, Instant::now())?;
         Ok(Self {
             transport: transport.ok_or(HelperProtocolError::InvalidPayload)?,
@@ -94,22 +116,32 @@ impl Configuration {
 }
 
 #[cfg(windows)]
-fn serve_named_pipe(
-    path: &str,
+fn serve_named_pipes(
+    request_path: &str,
+    response_path: &str,
     token: [u8; 32],
     idle_timeout: Duration,
 ) -> Result<(), HelperProtocolError> {
-    if !path.starts_with(r"\\.\pipe\PrivatePinyinAI-") {
+    const PREFIX: &str = r"\\.\pipe\PrivatePinyinAI-";
+    if !request_path.starts_with(PREFIX)
+        || !request_path.ends_with("-request")
+        || !response_path.starts_with(PREFIX)
+        || !response_path.ends_with("-response")
+        || request_path == response_path
+    {
         return Err(HelperProtocolError::InvalidPayload);
     }
-    let pipe = OpenOptions::new().read(true).write(true).open(path)?;
-    let reader = pipe.try_clone()?;
-    serve(reader, pipe, token, idle_timeout)
+    // Two unidirectional pipe objects avoid the synchronous Windows pipe rule where
+    // a pending read can block a writer that shares the same underlying file object.
+    let reader = OpenOptions::new().read(true).open(request_path)?;
+    let writer = OpenOptions::new().write(true).open(response_path)?;
+    serve(reader, writer, token, idle_timeout)
 }
 
 #[cfg(not(windows))]
-fn serve_named_pipe(
-    _path: &str,
+fn serve_named_pipes(
+    _request_path: &str,
+    _response_path: &str,
     _token: [u8; 32],
     _idle_timeout: Duration,
 ) -> Result<(), HelperProtocolError> {
@@ -380,5 +412,51 @@ fn idle_watchdog(last_activity: Arc<Mutex<Instant>>, expired: Arc<AtomicBool>, t
             // The reader may be blocked forever. Idle exit is an intentional process boundary.
             std::process::exit(0);
         }
+    }
+}
+
+#[cfg(test)]
+mod configuration_tests {
+    use super::{Configuration, Transport};
+
+    fn parse(arguments: &[&str]) -> Result<Configuration, String> {
+        Configuration::parse(arguments.iter().map(|value| (*value).to_string()))
+            .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn accepts_split_named_pipe_transport() {
+        let configuration = parse(&[
+            "--request-pipe",
+            r"\\.\pipe\PrivatePinyinAI-test-request",
+            "--response-pipe",
+            r"\\.\pipe\PrivatePinyinAI-test-response",
+            "--idle-timeout-ms",
+            "15000",
+        ])
+        .expect("configuration");
+
+        assert!(matches!(
+            configuration.transport,
+            Transport::NamedPipes { .. }
+        ));
+    }
+
+    #[test]
+    fn rejects_incomplete_or_ambiguous_pipe_transport() {
+        assert!(parse(&["--request-pipe", r"\\.\pipe\PrivatePinyinAI-test-request"]).is_err());
+        assert!(parse(&[
+            "--request-pipe",
+            r"\\.\pipe\PrivatePinyinAI-test",
+            "--response-pipe",
+            r"\\.\pipe\PrivatePinyinAI-test"
+        ])
+        .is_err());
+        assert!(parse(&[
+            "--stdio",
+            "--response-pipe",
+            r"\\.\pipe\PrivatePinyinAI-test-response"
+        ])
+        .is_err());
     }
 }

@@ -134,9 +134,9 @@ response queues are bounded, diagnostics redact payloads, and only content-free 
 codes may be emitted.
 
 macOS may communicate only with the helper process it launched through anonymous child
-pipes. Windows may communicate only through a random named pipe protected by a
-current-user-only DACL with remote clients rejected. Neither transport is a network or
-localhost service. The helper must not access cloud APIs, telemetry, clipboard,
+pipes. Windows may communicate only through a random unidirectional request/response
+named-pipe pair protected by current-user-only DACLs with remote clients rejected.
+Neither transport is a network or localhost service. The helper must not access cloud APIs, telemetry, clipboard,
 surrounding documents, persistent request/output caches, or content logs, and exits
 after ten minutes without activity.
 

@@ -78,9 +78,10 @@ These artifacts are for internal testing only and are expected to show Windows S
 
 Packages also contain `PrivatePinyinAIHelper.exe`, the dormant AI-09 process
 boundary for future optional Writer features. It is not loaded by normal TSF
-typing or AI Lite ranking. The host-side skeleton creates a random named pipe
-with a protected current-user-only DACL, rejects remote clients, and requires a
-random per-launch authentication token before accepting health or work frames.
+typing or AI Lite ranking. The host-side skeleton creates a random unidirectional
+request/response named-pipe pair with protected current-user-only DACLs, rejects
+remote clients, and requires a random per-launch authentication token before
+accepting health or work frames.
 
 Release-candidate packaging must sign staged binaries and the MSI:
 
