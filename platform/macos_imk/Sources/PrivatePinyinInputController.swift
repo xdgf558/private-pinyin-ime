@@ -418,11 +418,9 @@ final class PrivatePinyinInputController: IMKInputController {
                     return
                 }
                 accepted += count
-                importedSources.append(PrivatePinyinImportedLexiconSource(
-                    displayName: url.lastPathComponent,
-                    sourceKind: "local_file",
-                    version: nil
-                ))
+                importedSources.append(
+                    PrivatePinyinSettingsStore.importedLexiconSourceDescriptor(for: url)
+                )
             }
 
             _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(importedSources)

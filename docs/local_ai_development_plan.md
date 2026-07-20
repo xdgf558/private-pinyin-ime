@@ -92,10 +92,15 @@ The repository contains only pinned candidate metadata, first-party synthetic ca
 offline bounded probe, and a content-free Mac result. Model weights and runtime binaries
 remain outside the repository and product. The measured candidate used about 579 MiB
 peak RSS and produced its first byte in 276-295 ms, while cancellation completed within
-the 500-ms budget. It passed two of three Chinese quality cases but failed the polite
+the 500-ms budget. Each case launches a fresh runtime, so this first-byte measurement
+includes process startup and cold model loading rather than warmed inference alone. It
+passed two of three Chinese quality cases but failed the polite
 rewrite requirement, so the recorded release decision is `NoGo`. AI-11 must not enable
 Writer payloads with this candidate. A stronger candidate needs a new exact manifest,
-provenance review, synthetic evaluation, and explicit Owner approval.
+provenance review, synthetic evaluation, explicit Owner approval, native Windows RSS
+evidence, and separate cold-start and warmed-request latency evidence. The AI-10 tool's
+synthetic prompt argv is evaluation-only; production Writer content must cross only the
+authenticated AI-09 Helper protocol and must never be placed in a process command line.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference

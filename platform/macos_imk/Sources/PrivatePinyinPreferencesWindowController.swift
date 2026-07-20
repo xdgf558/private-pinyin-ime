@@ -681,13 +681,27 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
 
         importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
         importedLexiconStatusLabel.textColor = StationTheme.lampYellow
-        importedLexiconStatusLabel.maximumNumberOfLines = 2
-        importedLexiconStatusLabel.lineBreakMode = .byTruncatingMiddle
+        importedLexiconStatusLabel.maximumNumberOfLines = 1
+        importedLexiconStatusLabel.lineBreakMode = .byTruncatingTail
+        importedLexiconStatusLabel.cell?.usesSingleLineMode = true
+        importedLexiconStatusLabel.cell?.wraps = false
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .required,
+            for: .vertical
+        )
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        importedLexiconStatusLabel.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: 18
+        ).isActive = true
 
         let textColumn = NSStackView(views: [title, detail, importedLexiconStatusLabel])
         textColumn.orientation = .vertical
         textColumn.alignment = .leading
         textColumn.spacing = 5
+        textColumn.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let importButton = StationButton(
             title: "导入 Rime...",
@@ -985,11 +999,9 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                     return
                 }
                 accepted += count
-                importedSources.append(PrivatePinyinImportedLexiconSource(
-                    displayName: url.lastPathComponent,
-                    sourceKind: "local_file",
-                    version: nil
-                ))
+                importedSources.append(
+                    PrivatePinyinSettingsStore.importedLexiconSourceDescriptor(for: url)
+                )
             }
 
             _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(importedSources)

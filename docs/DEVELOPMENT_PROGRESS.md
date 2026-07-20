@@ -10,9 +10,16 @@ Current status: AI-10 evaluation is complete with a reproducible No-Go decision;
 - Exact model, runtime archive/executable, and synthetic-dataset byte sizes and SHA-256 values are pinned. Weights and runtime binaries remain outside the repository, application bundle, installer, and AI-05 approval registry.
 - The offline probe exposes no arbitrary prompt input, runs only three checked-in first-party synthetic cases, uses no network client, bounds prompt/output/process time, measures first-byte/total latency and peak RSS, and kills/waits for the child on cancellation.
 - Result: short completion passed; short notice rewriting passed; polite scheduling rewrite failed its required-text rule. Technical quality therefore failed at 2/3 cases and the release decision is `NoGo`.
-- Local reference measurements: 276-295 ms first byte, 334-387 ms total, 579 MiB peak RSS, and cancellation within the 500-ms budget. These are development-Mac evidence, not portable CI performance thresholds.
+- Local reference measurements: 276-295 ms first byte, 334-387 ms total, 579 MiB peak RSS, and cancellation within the 500-ms budget. Every case launches a fresh runtime, so first-byte latency includes process startup and cold model loading. These are development-Mac evidence, not portable CI performance thresholds.
 - The checked-in report stores only identity, timing, memory, output length, result codes, and decision reasons. It contains no prompt, generated text, file path, or user data.
 - `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, the AI-05/AI-09/AI-10 source gates, and the real pinned-artifact validation/run: passed.
+
+## macOS Imported Source Status Validation (2026-07-20)
+
+- The imported-source label is a single-line, vertically resistant AppKit field with a full-text tooltip, preventing compact Station Board scaling from clipping glyphs.
+- macOS menu and preferences imports share one source resolver. Known upstream files under `rime-ice`, `雾凇`, or `霧凇` record `雾凇拼音`; custom files keep their cleaned filename, and only dates at or below the matched source directory are retained as metadata-only versions.
+- Existing `imported_lexicon.tsv` layers without `imported_lexicon_manifest.json` remain usable but are labelled as legacy. The app does not invent provenance from normalized phrase/pinyin rows or retain the user's original path.
+- `scripts/test_macos_imported_lexicon_source.sh`, local-import and macOS source checks, the complete macOS IMK build, `cargo fmt --all -- --check`, `cargo test --workspace`, and strict workspace Clippy: passed.
 
 ## macOS Shared Engine Memory Validation (2026-07-20)
 

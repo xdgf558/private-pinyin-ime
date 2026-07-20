@@ -82,6 +82,15 @@ if rg -n '"--prompt"|--prompt[ =]' tools/writer_feasibility/src/main.rs; then
   exit 1
 fi
 
+grep -Fq \
+  "Production AI-11 Writer request and output content must use the authenticated AI-09 Helper" \
+  docs/privacy_spec.md
+grep -Fq \
+  "must never appear in process arguments, environment variables, temporary" \
+  docs/privacy_spec.md
+grep -Fq "native Windows peak-RSS sampler" docs/OPEN_ITEMS.md
+grep -Fq "cold startup separately from warmed requests" docs/OPEN_ITEMS.md
+
 cargo test -p private_pinyin_writer_feasibility
 
 echo "AI-10 Writer feasibility source contract passed with a pinned No-Go report."

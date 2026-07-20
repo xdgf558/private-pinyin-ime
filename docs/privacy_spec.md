@@ -153,6 +153,11 @@ checked-in first-party synthetic dataset and an exact locally supplied model/run
 the CLI has no arbitrary-prompt option and no network client. It must never process user
 typing, clipboard data, surrounding documents, webpages, messages, or imported lexicon
 content. Model weights and llama.cpp binaries are not stored in this repository or app.
+The probe may pass only those checked-in synthetic prompts to the external evaluation
+runtime through process arguments. This exception is limited to the offline AI-10 tool.
+Production AI-11 Writer request and output content must use the authenticated AI-09 Helper
+protocol and must never appear in process arguments, environment variables, temporary
+files, diagnostics, or persistent caches.
 
 Quality checks operate in memory. The persisted report contains only candidate identity,
 platform, timings, peak RSS, output length, result codes, cancellation timing, and the
