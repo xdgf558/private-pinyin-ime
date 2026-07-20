@@ -18,7 +18,7 @@ codesign_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:--}"
 skip_codesign="${PRIVATE_PINYIN_SKIP_CODESIGN:-0}"
 
 cargo build -p private_pinyin_ime_ffi --features desktop-ai
-cargo build -p private_pinyin_ai_helper
+cargo build -p private_pinyin_ai_helper --release
 
 rm -rf "$build_dir" "$app_dir"
 mkdir -p "$module_dir" "$module_cache_dir" "$macos_dir" "$frameworks_dir" "$helpers_dir" "$resources_dir"
@@ -68,7 +68,7 @@ cp -R "$repo_root/platform/macos_imk/Resources/zh-Hans.lproj" "$resources_dir/zh
 cp "$repo_root/config/default_settings.json" "$resources_dir/default_settings.json"
 cp "$repo_root/target/debug/libprivate_pinyin_ime.dylib" \
   "$frameworks_dir/libprivate_pinyin_ime.dylib"
-cp "$repo_root/target/debug/private_pinyin_ai_helper" \
+cp "$repo_root/target/release/private_pinyin_ai_helper" \
   "$helpers_dir/PrivatePinyinAIHelper"
 chmod 755 "$helpers_dir/PrivatePinyinAIHelper"
 

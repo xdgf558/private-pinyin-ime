@@ -29,6 +29,8 @@ grep -q 'constant_time_equal' ai/helper_protocol/src/lib.rs
 grep -q '"<redacted>"' ai/helper_protocol/src/lib.rs
 grep -q 'sync_channel::<HelperFrame>(MAX_HELPER_RESPONSE_QUEUE)' \
   ai/helper/private_pinyin_ai_helper/src/main.rs
+grep -q 'reap_finished_workers(&mut worker_threads)' \
+  ai/helper/private_pinyin_ai_helper/src/main.rs
 grep -q 'PRIVATE_PINYIN_AI_HELPER_TOKEN' \
   ai/helper/private_pinyin_ai_helper/src/main.rs
 grep -q '"--request-pipe"' \
@@ -49,6 +51,8 @@ grep -q 'PIPE_ACCESS_INBOUND' \
   platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'wait_for_pipe_connection' \
   platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'GetNamedPipeClientProcessId' \
+  platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'kPipeReadTimeoutMilliseconds' \
   platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'WaitForExit(60000)' scripts/test_windows_ai_helper.ps1
@@ -57,6 +61,9 @@ grep -q 'BCryptGenRandom' platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'PrivatePinyinAIHelper.exe' \
   platform/windows_tsf/installer/PrivatePinyinTsf.nsi
 grep -q 'PrivatePinyinAIHelper' platform/windows_tsf/installer/PrivatePinyinTsf.wxs
+grep -q 'cargo build -p private_pinyin_ai_helper --release' \
+  scripts/build_macos_imk.sh
+grep -q 'target/release/private_pinyin_ai_helper' scripts/build_macos_imk.sh
 
 if rg -n 'URLSession|NWConnection|TcpStream|UdpSocket|reqwest|hyper|http://|https://' \
   ai/helper ai/helper_protocol \

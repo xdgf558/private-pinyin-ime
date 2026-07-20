@@ -185,6 +185,7 @@ fn serve(
     let mut terminal_error = None;
 
     loop {
+        reap_finished_workers(&mut worker_threads);
         if writer_failed.load(Ordering::Acquire) || idle_expired.load(Ordering::Acquire) {
             break;
         }
@@ -347,6 +348,18 @@ fn serve(
     }
 }
 
+fn reap_finished_workers(worker_threads: &mut Vec<JoinHandle<()>>) {
+    let mut index = 0;
+    while index < worker_threads.len() {
+        if worker_threads[index].is_finished() {
+            let worker = worker_threads.swap_remove(index);
+            let _ = worker.join();
+        } else {
+            index += 1;
+        }
+    }
+}
+
 fn spawn_mock(
     request_id: u64,
     delay: Duration,
@@ -417,7 +430,10 @@ fn idle_watchdog(last_activity: Arc<Mutex<Instant>>, expired: Arc<AtomicBool>, t
 
 #[cfg(test)]
 mod configuration_tests {
-    use super::{Configuration, Transport};
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    use super::{reap_finished_workers, Configuration, Transport};
 
     fn parse(arguments: &[&str]) -> Result<Configuration, String> {
         Configuration::parse(arguments.iter().map(|value| (*value).to_string()))
@@ -458,5 +474,18 @@ mod configuration_tests {
             r"\\.\pipe\PrivatePinyinAI-test-response"
         ])
         .is_err());
+    }
+
+    #[test]
+    fn reaps_finished_worker_handles_during_long_lived_sessions() {
+        let mut workers: Vec<_> = (0..8).map(|_| thread::spawn(|| {})).collect();
+        let deadline = Instant::now() + Duration::from_secs(1);
+
+        while !workers.is_empty() && Instant::now() < deadline {
+            reap_finished_workers(&mut workers);
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        assert!(workers.is_empty());
     }
 }

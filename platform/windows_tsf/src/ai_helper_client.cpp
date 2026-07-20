@@ -318,6 +318,12 @@ bool wait_for_pipe_connection(HANDLE pipe, HANDLE process) {
   return false;
 }
 
+bool pipe_client_matches_process(HANDLE pipe, DWORD expected_process_id) {
+  ULONG client_process_id = 0;
+  return GetNamedPipeClientProcessId(pipe, &client_process_id) != FALSE &&
+         client_process_id == expected_process_id;
+}
+
 bool launch_helper(const std::filesystem::path& helper_executable,
                    const std::wstring& request_pipe_name,
                    const std::wstring& response_pipe_name,
@@ -412,7 +418,11 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
   ScopedHandle process(process_information.hProcess);
   ScopedHandle thread(process_information.hThread);
   if (!wait_for_pipe_connection(request_pipe.get(), process.get()) ||
-      !wait_for_pipe_connection(response_pipe.get(), process.get())) {
+      !wait_for_pipe_connection(response_pipe.get(), process.get()) ||
+      !pipe_client_matches_process(request_pipe.get(),
+                                   process_information.dwProcessId) ||
+      !pipe_client_matches_process(response_pipe.get(),
+                                   process_information.dwProcessId)) {
     TerminateProcess(process.get(), 1);
     return false;
   }

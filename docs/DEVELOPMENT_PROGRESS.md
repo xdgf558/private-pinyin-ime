@@ -90,9 +90,9 @@ Current status: Shared bounded protocol and helper, controlled macOS child proce
 ## AI-09 Validation
 
 - Shared protocol tests cover deterministic framing, 64-KiB fail-before-allocation limits, redacted diagnostics, constant-time fail-closed authentication, bounded payload decoding, and the ten-minute maximum idle policy.
-- Helper process tests cover authentication, health, bounded mock work, cancellation, graceful shutdown, unauthenticated rejection, and idle process exit without logging request payloads.
-- macOS builds and separately signs `Contents/Helpers/PrivatePinyinAIHelper`; the Swift controlled-child test exercises authentication, health, cancellation, forced termination, automatic restart, and clean shutdown over anonymous pipes.
-- Windows builds and packages `PrivatePinyinAIHelper.exe`; its lifecycle probe uses a random current-user-only request/response named-pipe pair with `PIPE_REJECT_REMOTE_CLIENTS`, terminates one authenticated helper, relaunches another, then exercises cancellation and shutdown.
+- Helper process tests cover authentication, health, bounded mock work, completed-worker handle reclamation, cancellation, graceful shutdown, unauthenticated rejection, and idle process exit without logging request payloads.
+- macOS builds the helper in release mode and separately signs `Contents/Helpers/PrivatePinyinAIHelper`; the Swift controlled-child test exercises authentication, health, cancellation, forced termination, automatic restart, and clean shutdown over anonymous pipes.
+- Windows builds and packages `PrivatePinyinAIHelper.exe`; its lifecycle probe uses a random current-user-only request/response named-pipe pair with `PIPE_REJECT_REMOTE_CLIENTS`, verifies both connected clients match the spawned helper PID, terminates one authenticated helper, relaunches another, then exercises cancellation and shutdown.
 - CI now runs the shared source/privacy gate on Ubuntu, the compiled controlled-process test on macOS, and the compiled named-pipe lifecycle probe on `windows-2022`.
 - AI-09 is infrastructure only. Basic pinyin, user learning, AI Lite ranking, and iOS do not invoke the helper. `AI-OI-010` tracks real signed-package identity, hang/timeout fault injection, and ten-minute idle smoke before Writer features are enabled.
 
