@@ -22,6 +22,8 @@ constexpr std::uint16_t kProtocolVersion = 1;
 constexpr std::size_t kHeaderBytes = 20;
 constexpr std::size_t kMaximumPayloadBytes = 64 * 1024;
 constexpr ULONGLONG kPipeConnectTimeoutMilliseconds = 5000;
+constexpr ULONGLONG kPipeReadTimeoutMilliseconds = 5000;
+constexpr std::uint32_t kProbeHelperIdleTimeoutMilliseconds = 15000;
 constexpr wchar_t kTokenEnvironmentKey[] = L"PRIVATE_PINYIN_AI_HELPER_TOKEN";
 
 enum class Opcode : std::uint16_t {
@@ -143,16 +145,27 @@ bool write_exact(HANDLE pipe, const std::uint8_t* bytes, std::size_t size) {
   return true;
 }
 
-bool read_exact(HANDLE pipe, std::uint8_t* bytes, std::size_t size) {
+bool read_exact(HANDLE pipe, HANDLE process, std::uint8_t* bytes,
+                std::size_t size) {
+  const ULONGLONG deadline = GetTickCount64() + kPipeReadTimeoutMilliseconds;
   while (size > 0) {
     const DWORD chunk = static_cast<DWORD>(
         (std::min)(size, static_cast<std::size_t>(MAXDWORD)));
     DWORD received = 0;
-    if (!ReadFile(pipe, bytes, chunk, &received, nullptr) || received == 0) {
+    const BOOL read_succeeded =
+        ReadFile(pipe, bytes, chunk, &received, nullptr);
+    if (read_succeeded && received > 0) {
+      bytes += received;
+      size -= received;
+      continue;
+    }
+    const DWORD error = read_succeeded ? ERROR_NO_DATA : GetLastError();
+    if ((error != ERROR_NO_DATA && error != ERROR_PIPE_LISTENING) ||
+        WaitForSingleObject(process, 0) == WAIT_OBJECT_0 ||
+        GetTickCount64() >= deadline) {
       return false;
     }
-    bytes += received;
-    size -= received;
+    Sleep(5);
   }
   return true;
 }
@@ -172,9 +185,9 @@ bool write_frame(HANDLE pipe, const Frame& frame) {
   return write_exact(pipe, bytes.data(), bytes.size());
 }
 
-bool read_frame(HANDLE pipe, Frame* frame) {
+bool read_frame(HANDLE pipe, HANDLE process, Frame* frame) {
   std::array<std::uint8_t, kHeaderBytes> header{};
-  if (!read_exact(pipe, header.data(), header.size()) ||
+  if (!read_exact(pipe, process, header.data(), header.size()) ||
       read_u32(header, 0) != kProtocolMagic ||
       read_u16(header, 4) != kProtocolVersion) {
     return false;
@@ -187,7 +200,7 @@ bool read_frame(HANDLE pipe, Frame* frame) {
   frame->request_id = read_u64(header, 8);
   frame->payload.assign(payload_size, 0);
   return frame->payload.empty() ||
-         read_exact(pipe, frame->payload.data(), frame->payload.size());
+         read_exact(pipe, process, frame->payload.data(), frame->payload.size());
 }
 
 bool random_bytes(std::uint8_t* bytes, std::size_t size) {
@@ -312,7 +325,9 @@ bool launch_helper(const std::filesystem::path& helper_executable,
     return false;
   }
   std::wstring command_line = L"\"" + helper_executable.wstring() +
-                              L"\" --named-pipe \"" + pipe_name + L"\"";
+                              L"\" --named-pipe \"" + pipe_name +
+                              L"\" --idle-timeout-ms " +
+                              std::to_wstring(kProbeHelperIdleTimeoutMilliseconds);
   std::vector<wchar_t> mutable_command(command_line.begin(), command_line.end());
   mutable_command.push_back(L'\0');
   auto environment = child_environment(token);
@@ -325,9 +340,10 @@ bool launch_helper(const std::filesystem::path& helper_executable,
                         &startup, process_information) != FALSE;
 }
 
-bool expect(HANDLE pipe, Opcode opcode, std::uint64_t request_id) {
+bool expect(HANDLE pipe, HANDLE process, Opcode opcode,
+            std::uint64_t request_id) {
   Frame frame;
-  return read_frame(pipe, &frame) && frame.opcode == opcode &&
+  return read_frame(pipe, process, &frame) && frame.opcode == opcode &&
          frame.request_id == request_id;
 }
 
@@ -384,29 +400,22 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
     TerminateProcess(process.get(), 1);
     return false;
   }
-  DWORD pipe_mode = PIPE_READMODE_BYTE | PIPE_WAIT;
-  if (!SetNamedPipeHandleState(pipe.get(), &pipe_mode, nullptr, nullptr)) {
-    TerminateProcess(process.get(), 1);
-    return false;
-  }
-
   bool ok = write_frame(
                 pipe.get(),
                 Frame{Opcode::kAuthenticate, 0,
                       std::vector<std::uint8_t>(token.begin(), token.end())}) &&
-            expect(pipe.get(), Opcode::kAuthenticated, 0) &&
+            expect(pipe.get(), process.get(), Opcode::kAuthenticated, 0) &&
             write_frame(pipe.get(), Frame{Opcode::kHealth, 1, {}}) &&
-            expect(pipe.get(), Opcode::kHealthy, 1);
+            expect(pipe.get(), process.get(), Opcode::kHealthy, 1);
 
   if (terminate_after_health) {
     if (!TerminateProcess(process.get(), 77)) {
       ok = false;
     }
-    FlushFileBuffers(pipe.get());
-    DisconnectNamedPipe(pipe.get());
     if (WaitForSingleObject(process.get(), 2000) != WAIT_OBJECT_0) {
       ok = false;
     }
+    DisconnectNamedPipe(pipe.get());
     return ok;
   }
 
@@ -415,17 +424,17 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
                                      little_endian_u32(500)}) &&
        write_frame(pipe.get(),
                    Frame{Opcode::kCancel, 3, little_endian_u64(2)}) &&
-       expect(pipe.get(), Opcode::kCancelled, 2) &&
-       expect(pipe.get(), Opcode::kAcknowledged, 3) &&
+       expect(pipe.get(), process.get(), Opcode::kCancelled, 2) &&
+       expect(pipe.get(), process.get(), Opcode::kAcknowledged, 3) &&
        write_frame(pipe.get(), Frame{Opcode::kShutdown, 4, {}}) &&
-       expect(pipe.get(), Opcode::kAcknowledged, 4);
+       expect(pipe.get(), process.get(), Opcode::kAcknowledged, 4);
 
-  FlushFileBuffers(pipe.get());
-  DisconnectNamedPipe(pipe.get());
   if (WaitForSingleObject(process.get(), 2000) != WAIT_OBJECT_0) {
     TerminateProcess(process.get(), 1);
+    WaitForSingleObject(process.get(), 2000);
     ok = false;
   }
+  DisconnectNamedPipe(pipe.get());
   return ok;
 }
 

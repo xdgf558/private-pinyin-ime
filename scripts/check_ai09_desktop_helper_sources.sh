@@ -41,6 +41,9 @@ grep -q 'PIPE_REJECT_REMOTE_CLIENTS' \
   platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'wait_for_pipe_connection' \
   platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'kPipeReadTimeoutMilliseconds' \
+  platform/windows_tsf/src/ai_helper_client.cpp
+grep -q 'WaitForExit(60000)' scripts/test_windows_ai_helper.ps1
 grep -q 'D:P(A;;GA;;;' platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'BCryptGenRandom' platform/windows_tsf/src/ai_helper_client.cpp
 grep -q 'PrivatePinyinAIHelper.exe' \
