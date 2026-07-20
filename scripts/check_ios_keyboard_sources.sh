@@ -7,6 +7,7 @@ required_files=(
   "platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj"
   "platform/ios_keyboard/PrivatePinyin.xcodeproj/xcshareddata/xcschemes/PrivatePinyin.xcscheme"
   "platform/ios_keyboard/PrivatePinyinC/module.modulemap"
+  "platform/ios_keyboard/PrivatePinyinC/IosAiSupport.h"
   "platform/ios_keyboard/ContainerApp/PrivatePinyinApp.swift"
   "platform/ios_keyboard/ContainerApp/ContentView.swift"
   "platform/ios_keyboard/ContainerApp/IosSettingsStore.swift"
@@ -71,6 +72,8 @@ grep -q "ime_session_feed_key" platform/ios_keyboard/KeyboardExtension/IosPinyin
 grep -q "ime_session_commit_candidate" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_set_candidate_page_size" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "ime_engine_enable_local_ai" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "ime_session_set_secure_input" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "static let preferredCandidatePageSize = 9" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "private static let fallbackCandidatePageSize = 5" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "let candidatePageSize: Int" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift

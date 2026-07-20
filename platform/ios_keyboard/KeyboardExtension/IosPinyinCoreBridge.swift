@@ -40,14 +40,28 @@ struct IosPinyinOutput {
 final class IosPinyinCoreBridge {
     static let preferredCandidatePageSize = 9
     private static let fallbackCandidatePageSize = 5
+    private static let bytesPerMiB: UInt64 = 1024 * 1024
+    private static let minimumAvailableMemoryBytes: UInt64 = 16 * bytesPerMiB
+    private static let iosAiPlatform = Int32(IME_AI_PLATFORM_IOS.rawValue)
     private var engine: OpaquePointer?
     private var session: OpaquePointer?
     let candidatePageSize: Int
+    private(set) var isLocalAiEnabled = false
 
     init?() {
         let settingsPath = IosSettingsStore.ensureSettingsFile()
         guard let engine = Self.openEngine(settingsPath: settingsPath) else {
             return nil
+        }
+        let physicalMemoryMiB = ProcessInfo.processInfo.physicalMemory / Self.bytesPerMiB
+        let availableMemoryBytes = private_pinyin_ios_available_memory_bytes()
+        if availableMemoryBytes >= Self.minimumAvailableMemoryBytes {
+            isLocalAiEnabled = ime_engine_enable_local_ai(
+                engine,
+                Self.iosAiPlatform,
+                physicalMemoryMiB,
+                0
+            ) == 1
         }
         guard let session = ime_session_new(engine) else {
             ime_engine_free(engine)
@@ -112,6 +126,13 @@ final class IosPinyinCoreBridge {
             return nil
         }
         return takeOutput(ime_session_reset(session))
+    }
+
+    func setSecureInput(_ secureInput: Bool) {
+        guard let session else {
+            return
+        }
+        _ = ime_session_set_secure_input(session, secureInput ? 1 : 0)
     }
 
     private static func openEngine(settingsPath: String?) -> OpaquePointer? {

@@ -168,4 +168,9 @@ coefficient artifact passes the AI-05 fingerprint and integrity gate and improve
 eight targeted synthetic ranking cases without regressing four preservation cases.
 AI-07 enables that package for macOS and Windows through an optional desktop FFI feature,
 bounded non-blocking worker dispatch, platform secure-input signals, complete stale-result
-identity checks, and fail-open base input. iOS remains unchanged until AI-08.
+identity checks, and fail-open base input. AI-08 reuses the same bounded runtime in the iOS
+keyboard behind an isolated `ios-ai` feature. It requires neither Full Access nor a network,
+does not read surrounding document text, and silently preserves the ordinary candidate order
+when the approved hardware policy, available-memory precheck, secure-input policy, queue, or
+deadline rejects optional AI work. Real-device iOS latency and resident-memory calibration
+remain required before changing the currently approved 8-GiB model gate.

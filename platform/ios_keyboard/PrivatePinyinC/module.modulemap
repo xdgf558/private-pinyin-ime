@@ -1,4 +1,5 @@
 module PrivatePinyinC [system] {
   header "../../../ffi/c_api.h"
+  header "IosAiSupport.h"
   export *
 }

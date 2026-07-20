@@ -70,8 +70,19 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 | AI-04 | Rules-first correction, terms, and cleanup suggestions | completed | 2026-07-17 10:05 | Two-result validated pinyin correction, first-party canonical English terms, strict-privacy-blocked read-only cleanup analysis, redacted debug output, and 13/13 required plus 7/7 observed offline quality are ready for review; hosts remain untouched |
 | AI-05 | Model manifest, approval, integrity, and hardware gate | completed | 2026-07-17 15:09 | Merged to `main` through PR #29; strict schema, dual-control Owner approval, bounded integrity/use-time verification, safe paths, local-only privacy, platform/hardware gates, atomic packager, and CI checks form the model supply-chain boundary |
 | AI-06 | Shared compact Rust AI Lite ranker | completed | 2026-07-18 00:15 | Fixed-point stable ranking over six bounded engine signals, ranker/feature schema version gates, exact AI-05-approved 426-byte first-party coefficients, overflow boundaries, 8/8 targeted improvements, 4/4 preservation cases, bounded cancellation/scratch state, and no host integration are ready for review |
-| AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete; iOS remains unchanged |
-| AI-08 to AI-12 | iOS integration, optional Writer, and hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete |
+| AI-08 | iOS AI Lite integration | in review | 2026-07-20 | Isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
+| AI-09 to AI-12 | Optional Writer and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+
+## AI-08 Validation
+
+- `cargo test -p private_pinyin_ime_ffi --features ios-ai`: passed, including iOS platform enablement, secure-input base fallback, unsupported-memory rejection, invalid-platform rejection, and ordinary input after every rejected AI path.
+- `cargo test -p private_pinyin_ime_ffi --features desktop-ai`: passed, confirming the generic local-AI ABI preserves AI-07 desktop behavior.
+- `cargo clippy -p private_pinyin_ime_ffi --all-targets --features ios-ai -- -D warnings`, `cargo fmt --all`, `check_ai08_ios_integration_sources.sh`, `check_ai07_desktop_integration_sources.sh`, and `check_ios_keyboard_sources.sh`: passed.
+- Xcode Beta iOS 27 simulator build through `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` with Rust `aarch64-apple-ios-sim`, the C support module, container App, and Keyboard Extension.
+- The iOS build enables only `ios-ai`, keeps `RequestsOpenAccess=false`, embeds no heavy neural model, and contains no keyboard-extension network API or URL.
+- `didReceiveMemoryWarning` now cancels optional AI through the secure-input path and keeps it suspended for the controller lifetime while preserving the current composition and ordinary input path.
+- Real-device iOS measurements remain required for first-enable latency, extension resident memory, available-memory rejection/recovery, secure-field system fallback, numeric/phone fail-closed behavior, queue saturation, and unchanged base typing before release approval or hardware-policy changes. The matrix must include at least one 8-GiB device that exercises the enabled path and one sub-8-GiB device that verifies fallback.
 
 ## AI-07 Validation
 
@@ -85,7 +96,7 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 - Physical MacBook Air M5 validation passed bounded queue pressure, expired/mismatched/invalid-order rejection, secure-input cancellation and base fallback, and exact 4096/8191/8192/16384-MiB hardware-threshold checks.
 - Real secure-input probes observed the platform signal in a native `NSSecureTextField`, Chrome password field, and Safari password field; the signal returned to normal after the test fields closed.
 - Windows 11 TSF password-field behavior and queue-pressure smoke still require a real Windows host; they cannot be closed by the macOS build or CI compiler alone.
-- iOS build scripts do not enable `desktop-ai`; AI-08 remains the separate iOS memory/privacy integration stage.
+- iOS build scripts do not enable `desktop-ai`; AI-08 uses the isolated `ios-ai` feature and the same bounded local worker without desktop host code.
 
 ## AI-06 Validation
 
@@ -897,7 +908,6 @@ Current status: PR #34 keeps the reviewed permissive base separate from user-sup
 
 ## Next Step
 
-- Review the permissive base-lexicon expansion and isolated local Rime import design. Before release,
-  run the documented iOS real-device document-picker/App Group import and clear smoke, measure the
-  larger engine snapshot on all three hosts, and keep GPL dictionaries such as rime-ice outside every
-  distributed artifact. Resume AI-08 only after this lexicon PR is approved and merged.
+- Review AI-08, then run its real-device latency, resident-memory, memory-pressure, secure-field,
+  numeric/phone, stale-result, and queue-saturation smoke before release approval. Keep the current
+  8-GiB AI-05 policy unchanged until those measurements support a separately reviewed threshold.

@@ -32,11 +32,17 @@ jobs:
       - name: Run desktop AI clippy
         run: cargo clippy -p private_pinyin_ime_ffi --all-targets --features desktop-ai -- -D warnings
 
+      - name: Run iOS AI clippy
+        run: cargo clippy -p private_pinyin_ime_ffi --all-targets --features ios-ai -- -D warnings
+
       - name: Run tests
         run: cargo test --workspace
 
       - name: Run desktop AI FFI tests
         run: cargo test -p private_pinyin_ime_ffi --features desktop-ai
+
+      - name: Run iOS AI FFI tests
+        run: cargo test -p private_pinyin_ime_ffi --features ios-ai
 
       - name: Build and run C ABI demo
         run: bash scripts/run_c_demo.sh
@@ -103,6 +109,9 @@ jobs:
 
       - name: Check AI-07 desktop asynchronous integration
         run: bash scripts/check_ai07_desktop_integration_sources.sh
+
+      - name: Check AI-08 iOS Lite integration
+        run: bash scripts/check_ai08_ios_integration_sources.sh
 
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh

@@ -59,8 +59,19 @@ Windows contributes TSF password input-scope classification, and both contribute
 physical-memory policy. A late, cancelled, mismatched, secure-field, unsupported-hardware,
 or unavailable-model result is ignored while the ordinary core candidates continue.
 The approved package is embedded in desktop FFI builds and is rechecked through the full
-AI-05 approval, platform, hardware, size, and SHA-256 gates before use. iOS remains
-unchanged until AI-08.
+AI-05 approval, platform, hardware, size, and SHA-256 gates before use.
+
+AI-08 reuses that runtime in iOS rather than adding a second inference path. The keyboard
+links only the isolated `ios-ai` feature and approved 426-byte fixed-point coefficients;
+it does not link the desktop host feature, request Full Access, use network APIs, inspect
+surrounding document context, or add persistent AI state. Engine creation first checks
+current process-available memory, then the AI-05 physical-memory policy. Numeric and phone
+input traits fail closed for optional AI work, while iOS itself replaces third-party
+keyboards in secure text fields. Queue saturation, stale identity, deadline expiry,
+unsupported hardware, memory pressure, or any initialization failure leaves the ordinary
+keyboard and candidate order unchanged. Simulator builds and deterministic fallback tests
+are automated; real-device latency, resident memory, memory-pressure behavior, and secure
+field replacement remain the stage release gate before lowering the approved 8-GiB policy.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
