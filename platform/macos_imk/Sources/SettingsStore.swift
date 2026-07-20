@@ -103,7 +103,7 @@ enum PrivatePinyinSettingsStore {
             return "当前导入词库：尚未导入"
         }
         guard let manifest = readImportedLexiconManifest(), !manifest.sources.isEmpty else {
-            return "当前导入词库：本地词库（来源记录不可用）"
+            return "当前导入词库：本地词库（旧版未记录来源，重新导入可识别）"
         }
 
         let names = manifest.sources.map { source in
@@ -115,6 +115,34 @@ enum PrivatePinyinSettingsStore {
         let visible = names.prefix(3).joined(separator: "、")
         let remainder = names.count > 3 ? " 等 \(names.count) 项" : ""
         return "当前导入词库：\(visible)\(remainder)"
+    }
+
+    static func importedLexiconSourceDescriptor(
+        for sourceURL: URL
+    ) -> PrivatePinyinImportedLexiconSource {
+        let sourcePath = sourceURL.path
+        let normalizedPath = sourcePath
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        let isRimeIce = normalizedPath.contains("rime-ice")
+            || sourcePath.contains("雾凇")
+            || sourcePath.contains("霧凇")
+
+        if isRimeIce {
+            return PrivatePinyinImportedLexiconSource(
+                displayName: "雾凇拼音",
+                sourceKind: "rime_ice_local",
+                version: versionString(in: sourcePath)
+            )
+        }
+
+        return PrivatePinyinImportedLexiconSource(
+            displayName: friendlyDictionaryName(for: sourceURL),
+            sourceKind: "local_file",
+            version: nil
+        )
     }
 
     @discardableResult
@@ -286,6 +314,35 @@ enum PrivatePinyinSettingsStore {
             to: importedLexiconManifestURL,
             options: [.atomic]
         )
+    }
+
+    private static func friendlyDictionaryName(for sourceURL: URL) -> String {
+        var name = sourceURL.lastPathComponent
+        let suffixes = [".dict.yaml", ".dict.yml", ".yaml", ".yml", ".dict"]
+        for suffix in suffixes where name.lowercased().hasSuffix(suffix) {
+            name.removeLast(suffix.count)
+            break
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "本地 Rime 词库" : trimmed
+    }
+
+    private static func versionString(in sourcePath: String) -> String? {
+        let pattern = #"(?<!\d)(20\d{2})[._-](\d{1,2})[._-](\d{1,2})(?!\d)"#
+        guard
+            let expression = try? NSRegularExpression(pattern: pattern),
+            let match = expression.firstMatch(
+                in: sourcePath,
+                range: NSRange(sourcePath.startIndex..., in: sourcePath)
+            ),
+            match.numberOfRanges == 4,
+            let yearRange = Range(match.range(at: 1), in: sourcePath),
+            let monthRange = Range(match.range(at: 2), in: sourcePath),
+            let dayRange = Range(match.range(at: 3), in: sourcePath)
+        else {
+            return nil
+        }
+        return "\(sourcePath[yearRange]).\(sourcePath[monthRange]).\(sourcePath[dayRange])"
     }
 
     private static func bundledDefaultSettings() -> [String: Any]? {

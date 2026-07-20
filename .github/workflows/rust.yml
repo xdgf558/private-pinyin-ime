@@ -147,6 +147,11 @@ jobs:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_macos_shared_engine.sh
 
+      - name: Verify macOS imported lexicon source labels
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_macos_imported_lexicon_source.sh
+
       - name: Build iOS app and keyboard extension
         run: bash scripts/build_ios_keyboard.sh
 
