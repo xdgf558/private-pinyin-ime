@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
+#include <windows.h>
 #include <bcrypt.h>
 #include <sddl.h>
-#include <windows.h>
 
 namespace private_pinyin {
 namespace {

@@ -150,6 +150,7 @@ fn serve(
     let active = Arc::new(Mutex::new(HashMap::<u64, Arc<AtomicBool>>::new()));
     let mut worker_threads: Vec<JoinHandle<()>> = Vec::new();
     let mut authentication = HelperAuthenticationGate::new(token);
+    let mut terminal_error = None;
 
     loop {
         if writer_failed.load(Ordering::Acquire) || idle_expired.load(Ordering::Acquire) {
@@ -171,8 +172,11 @@ fn serve(
                 }
                 _ => HelperErrorCode::InvalidPayload,
             };
-            let _ = response_tx.send(HelperFrame::error(frame.request_id, code));
-            return Err(error);
+            response_tx
+                .send(HelperFrame::error(frame.request_id, code))
+                .map_err(|_| HelperProtocolError::Io(io::Error::other("response channel")))?;
+            terminal_error = Some(error);
+            break;
         }
         if frame.opcode == HelperOpcode::Authenticate {
             response_tx
@@ -305,7 +309,10 @@ fn serve(
     let _ = writer_thread.join();
     idle_expired.store(true, Ordering::Release);
     let _ = watchdog.join();
-    Ok(())
+    match terminal_error {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
 }
 
 fn spawn_mock(
