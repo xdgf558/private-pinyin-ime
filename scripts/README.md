@@ -11,6 +11,7 @@ Current scripts:
 - `.github/workflows/windows-package.yml`: manually builds unsigned Windows internal-test zip/EXE/MSI artifacts on a Windows runner.
 - `check_macos_imk_sources.sh`: verifies the macOS InputMethodKit source scaffold and bundle plist.
 - `build_macos_imk.sh`: builds the Rust FFI library and local macOS InputMethodKit app bundle.
+- `test_macos_shared_engine.sh`: compiles a native Swift regression that creates 24 isolated macOS client sessions, verifies they share one parsed engine snapshot, and can optionally report peak RSS with `PRIVATE_PINYIN_REPORT_PEAK_RSS=1`.
 - `package_macos_pkg.sh`: builds a macOS `.pkg` installer with a post-install onboarding window, and optionally signs/notarizes it when Developer ID and notarytool settings are provided.
 - `check_macos_public_release.sh`: verifies that a macOS `.pkg` is ready for website distribution by checking Developer ID identities, installer signature, Gatekeeper assessment, stapled notarization, notarytool profile access, and SHA256 output.
 - `check_installers_settings_sources.sh`: verifies Stage 6 installer and settings scaffold files.

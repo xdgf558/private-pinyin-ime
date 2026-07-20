@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed runaway macOS InputMethodKit memory growth by sharing one parsed engine and immutable lexicon snapshot across per-application controllers while retaining isolated composition sessions. Settings and imported-lexicon reload fan-out now rebuilds the shared snapshot at most once per changed configuration.
+
 ### Added
 
 - Added a local imported-lexicon manifest so macOS Station Board and the iOS container App show which Rime dictionaries are currently present without storing source paths or dictionary content in the metadata.

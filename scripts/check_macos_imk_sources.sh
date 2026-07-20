@@ -16,6 +16,7 @@ required_files=(
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
+  "platform/macos_imk/Tests/SharedEnginePoolTests.swift"
   "platform/macos_imk/Sources/main.swift"
   "platform/macos_imk/Resources/Info.plist"
   "platform/macos_imk/Resources/InfoPlist.loctable"
@@ -27,6 +28,7 @@ required_files=(
   "platform/macos_imk/installer/install-local.sh"
   "platform/macos_imk/installer/uninstall-local.sh"
   "scripts/build_macos_imk.sh"
+  "scripts/test_macos_shared_engine.sh"
   "scripts/package_macos_pkg.sh"
 )
 
@@ -78,6 +80,10 @@ grep -q "ime_engine_import_rime_lexicon" platform/macos_imk/Sources/CAbiBridge.s
 grep -q "ime_engine_clear_imported_lexicon" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_engine_new(nil)" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "SharedPinyinEnginePool" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "static let shared = SharedPinyinEnginePool" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "sharedEngineLoadCountForTesting" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "multiple macOS client controllers share one parsed engine" platform/macos_imk/Tests/SharedEnginePoolTests.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "StationToggle" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "StationButton" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift

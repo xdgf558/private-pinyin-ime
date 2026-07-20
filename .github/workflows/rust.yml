@@ -139,6 +139,11 @@ jobs:
           PRIVATE_PINYIN_SKIP_CODESIGN: "1"
         run: bash scripts/build_macos_imk.sh
 
+      - name: Verify macOS process-wide shared engine
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_macos_shared_engine.sh
+
       - name: Build iOS app and keyboard extension
         run: bash scripts/build_ios_keyboard.sh
 
