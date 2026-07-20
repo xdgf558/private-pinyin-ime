@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added a local imported-lexicon manifest so macOS Station Board and the iOS container App show which Rime dictionaries are currently present without storing source paths or dictionary content in the metadata.
+- Added an explicit, default-off iOS container action for downloading and importing the reviewed `rime-ice` 2026.03.26 Chinese essentials subset. The container verifies fixed HTTPS hosts, exact byte counts, and pinned SHA-256 values before invoking the existing bounded Rust importer; the GPL data is not bundled, and the keyboard extension remains network-free.
 - Added AI-08 optional iOS AI Lite candidate reranking behind an isolated `ios-ai` feature, reusing the bounded non-blocking local worker and complete stale-result checks from AI-07 without Full Access, network APIs, surrounding-document context, persistent AI state, or a heavy model. Unsupported hardware, low available memory, secure/numeric input traits, queue pressure, and every AI failure preserve the ordinary candidate order and typing path.
 - Renamed the shared FFI AI runtime module from the obsolete desktop-only filename to `local_ai.rs`, documented the local-AI platform enum contract, and made iOS memory warnings suspend optional AI work for the remainder of the keyboard controller lifetime without clearing active composition or disabling base input.
 - Expanded the bundled permissive base lexicon from 100,669 to 137,699 entries with MIT `mozillazg/phrase-pinyin-data` phrase readings at conservative supplemental frequency.

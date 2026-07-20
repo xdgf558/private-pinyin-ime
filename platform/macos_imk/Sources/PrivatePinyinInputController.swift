@@ -400,9 +400,13 @@ final class PrivatePinyinInputController: IMKInputController {
             }
 
             var accepted = 0
+            var importedSources: [PrivatePinyinImportedLexiconSource] = []
             for url in panel.urls {
                 guard let count = self.core?.importRimeLexicon(from: url.path) else {
                     if accepted > 0 {
+                        _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(
+                            importedSources
+                        )
                         resetComposition()
                         _ = core?.reload()
                         self.showSettingsAlert(
@@ -414,8 +418,14 @@ final class PrivatePinyinInputController: IMKInputController {
                     return
                 }
                 accepted += count
+                importedSources.append(PrivatePinyinImportedLexiconSource(
+                    displayName: url.lastPathComponent,
+                    sourceKind: "local_file",
+                    version: nil
+                ))
             }
 
+            _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(importedSources)
             resetComposition()
             _ = core?.reload()
             showSettingsAlert("已导入 \(accepted) 条词库记录。")
@@ -435,6 +445,7 @@ final class PrivatePinyinInputController: IMKInputController {
 
         resetComposition()
         if core?.clearImportedLexicon() == true, core?.reload() == true {
+            _ = PrivatePinyinSettingsStore.clearImportedLexiconManifest()
             showSettingsAlert("导入词库已清空。")
         } else {
             showSettingsAlert("无法清空导入词库。")

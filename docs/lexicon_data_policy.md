@@ -40,9 +40,11 @@ The active `base_lexicon.tsv` is generated from owner-approved AOSP PinyinIME ra
 
 ## User-Imported Rime Dictionaries
 
-Rime dictionaries are never bundled merely because a user can import them. The importer accepts only local files supplied by the user, keeps at most 200,000 validated rows in a separate `imported_lexicon.tsv`, and never downloads dictionary data. Each accepted row must contain a Han phrase and an explicit pinyin column; entries that rely on Rime schema-derived automatic pronunciation are skipped.
+Rime dictionaries are never bundled merely because a user can import them. The shared Rust importer accepts only local files, keeps at most 200,000 validated rows in a separate `imported_lexicon.tsv`, and never follows a URL. Each accepted row must contain a Han phrase and an explicit pinyin column; entries that rely on Rime schema-derived automatic pronunciation are skipped.
 
-The imported layer is stored beside settings and the SQLite learning database in the platform application-data directory. Installers and app upgrades do not overwrite it. Clearing this layer does not affect the bundled base lexicon or learned user selections. Imported data remains subject to its upstream license; the user is responsible for permission to use it. In particular, GPL-licensed Rime projects such as rime-ice are supported only as user-supplied local imports and are not redistributed in PrivatePinyin packages.
+The imported layer is stored beside settings and the SQLite learning database in the platform application-data directory. Installers and app upgrades do not overwrite it. Clearing this layer does not affect the bundled base lexicon or learned user selections. A separate `imported_lexicon_manifest.json` stores only source display names, source kinds, optional versions, and import times for preferences UI; it stores no dictionary rows, input content, or source paths.
+
+Imported data remains subject to its upstream license. GPL-licensed Rime projects such as `rime-ice` are not redistributed in PrivatePinyin packages. On iOS, the container App may, after explicit confirmation, fetch the pinned `rime-ice` 2026.03.26 Chinese essentials subset from the official upstream release. Exact byte counts and SHA-256 values are checked before the existing local importer runs. The keyboard extension remains network-free, the download is not automatic, and the optional GPL layer can be cleared independently.
 
 The active `bigram.tsv` remains first-party starter data. If future releases replace or expand bigram data from a third-party source, the same manifest, notice, and owner-approval rules apply.
 

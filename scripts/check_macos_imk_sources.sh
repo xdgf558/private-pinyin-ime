@@ -92,6 +92,9 @@ grep -q "严格隐私模式" platform/macos_imk/Sources/PrivatePinyinPreferences
 grep -q "记住你常选的词" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "打开设置文件" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "本地导入词库" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "importedLexiconStatusLabel" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "importedLexiconSummaryText" platform/macos_imk/Sources/SettingsStore.swift
+grep -q "imported_lexicon_manifest.json" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "a small station, still lit at night" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "STATION BOARD" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "CFBundleShortVersionString" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
