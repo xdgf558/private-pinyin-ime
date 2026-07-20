@@ -82,6 +82,7 @@ grep -q "PrivatePinyinSettingsStore" platform/macos_imk/Sources/SettingsStore.sw
 grep -q "ime_engine_new(nil)" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "SharedPinyinEnginePool" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "static let shared = SharedPinyinEnginePool" platform/macos_imk/Sources/CAbiBridge.swift
+grep -q "error code=shared_engine_rebuild_failed" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "sharedEngineLoadCountForTesting" platform/macos_imk/Sources/CAbiBridge.swift
 grep -q "multiple macOS client controllers share one parsed engine" platform/macos_imk/Tests/SharedEnginePoolTests.swift
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift

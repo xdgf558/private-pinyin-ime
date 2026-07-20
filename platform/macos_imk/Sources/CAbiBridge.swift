@@ -1,5 +1,6 @@
 import Carbon
 import Foundation
+import OSLog
 import PrivatePinyinC
 
 struct PinyinCandidate {
@@ -71,6 +72,10 @@ private struct PinyinEngineConfigurationFingerprint: Equatable {
 // process-wide while every controller retains its own composition session.
 private final class SharedPinyinEnginePool {
     static let shared = SharedPinyinEnginePool()
+    private static let logger = Logger(
+        subsystem: "com.privatepinyin.inputmethod.PrivatePinyin",
+        category: "shared-engine"
+    )
 
     private let lock = NSLock()
     private var engine: OpaquePointer?
@@ -119,8 +124,12 @@ private final class SharedPinyinEnginePool {
             return engine
         }
 
+        // Keep the previous snapshot alive until replacement succeeds. This intentionally
+        // permits a short two-snapshot memory peak so active clients retain working input
+        // when a changed configuration cannot be loaded.
         guard let replacement = Self.openEngine(settingsPath: settingsPath) else {
             failedFingerprint = requestedFingerprint
+            Self.logger.error("error code=shared_engine_rebuild_failed")
             return engine
         }
 
