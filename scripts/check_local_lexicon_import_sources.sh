@@ -26,8 +26,22 @@ grep -q '导入 Rime 词库' platform/macos_imk/Sources/PrivatePinyinInputContro
 grep -q '本地导入词库' platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q '本地导入词库' platform/windows_tsf/installer/open-settings.ps1
 grep -q 'importedLexiconURL' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'importedLexiconManifestURL' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'importedLexiconSummaryText' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q 'importRimeLexicons' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
 grep -q 'ime_engine_import_rime_lexicon' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'reviewedRimeIceDisplayName = "雾凇拼音精选"' \
+  platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'reviewedRimeIceVersion = "2026.03.26"' \
+  platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q '5968cddbf08f9aab7f56a37f265f7d7af85d5222079e5eebdf1bae94b0cdf67d' \
+  platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q '873df74783f565e01581938b14bdf41b4e03a8834791f8778ebcbd70054a26d0' \
+  platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q '6a6b1a77d94c7cdf9203cf426e67f350215d2d73259fe3769c97d2a18f521c28' \
+  platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q '一键导入雾凇精选' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q '当前导入词库' platform/macos_imk/Sources/SettingsStore.swift
 if grep -q 'import PrivatePinyinC' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift; then
   echo "The shared iOS settings store must stay independent from the C import bridge." >&2
   exit 1

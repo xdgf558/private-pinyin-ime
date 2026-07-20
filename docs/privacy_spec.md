@@ -11,6 +11,19 @@ PrivatePinyin IME is privacy-first by default.
 - No clipboard reads.
 - No full sentence persistence.
 
+## Optional iOS Lexicon Download
+
+The iOS container App may download a reviewed optional dictionary subset only after the
+user taps the dedicated import action and confirms the source and GPL license. This is
+not a keyboard request: the Keyboard Extension remains `RequestsOpenAccess=false` and
+contains no network API.
+
+The request uses fixed HTTPS URLs for `rime-ice` release `2026.03.26`, an ephemeral
+session, exact byte counts, and pinned SHA-256 values. It contains no raw keys, pinyin,
+candidates, committed text, document context, learning data, account identifier,
+telemetry, cookies, or user-derived query parameters. Temporary files are deleted after
+verification/import, and no download starts automatically or in the background.
+
 ## Forbidden Log Content
 
 Logs must not include:

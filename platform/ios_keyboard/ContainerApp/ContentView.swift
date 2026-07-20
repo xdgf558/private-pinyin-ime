@@ -19,7 +19,10 @@ struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
     @State private var lexiconStatusText = ""
+    @State private var lexiconOperationText = ""
     @State private var showingRimeImporter = false
+    @State private var showingRimeIceConfirmation = false
+    @State private var isImportingRimeIce = false
 
     var body: some View {
         ZStack {
@@ -46,7 +49,8 @@ struct ContentView: View {
         .onAppear {
             _ = IosSettingsStore.ensureSettingsFile()
             learningEnabled = IosSettingsStore.isLearningEnabled()
-            lexiconStatusText = IosSettingsStore.rimeImportStatusText() ?? ""
+            lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
+            lexiconOperationText = IosSettingsStore.rimeImportStatusText() ?? ""
         }
         .fileImporter(
             isPresented: $showingRimeImporter,
@@ -54,6 +58,16 @@ struct ContentView: View {
             allowsMultipleSelection: true,
             onCompletion: handleRimeImportSelection
         )
+        .alert("导入雾凇拼音精选？", isPresented: $showingRimeIceConfirmation) {
+            Button("取消", role: .cancel) {}
+            Button("下载并导入") {
+                importReviewedRimeIce()
+            }
+        } message: {
+            Text(
+                "将由容器 App 下载并校验雾凇拼音 2026.03.26 的已审核中文精选词典，不会开启键盘联网。词库依 GPL-3.0-only 许可使用。"
+            )
+        }
     }
 
     private var brandRow: some View {
@@ -152,7 +166,7 @@ struct ContentView: View {
                     Text("学习数据只留在本机")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(StationTheme.textPrimary)
-                    Text("默认不开启完全访问，也不连接网络。学习只记录你选过的词、拼音、次数和更新时间。")
+                    Text("键盘扩展默认不开启完全访问，也不连网。只有你在容器 App 中主动下载词库时才会访问固定来源。")
                         .font(.system(size: 13))
                         .foregroundStyle(StationTheme.textSecondary)
                         .lineSpacing(3)
@@ -243,11 +257,65 @@ struct ContentView: View {
                 }
                 .padding(16)
 
+                divider
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("雾凇拼音精选")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(StationTheme.textPrimary)
+                            Text("固定已审核版本 2026.03.26，默认不下载；只有点击后才会连接 GitHub 官方源。")
+                                .font(.system(size: 12))
+                                .foregroundStyle(StationTheme.textSecondary)
+                                .lineSpacing(3)
+                        }
+                        Spacer(minLength: 8)
+                        Link(
+                            destination: IosLexiconImportBridge.reviewedRimeIceSourceURL
+                        ) {
+                            Image(systemName: "arrow.up.right.square")
+                                .foregroundStyle(StationTheme.lamp)
+                                .frame(width: 32, height: 32)
+                        }
+                        .accessibilityLabel("查看雾凇拼音来源与许可")
+                    }
+
+                    Button(action: { showingRimeIceConfirmation = true }) {
+                        HStack(spacing: 8) {
+                            if isImportingRimeIce {
+                                ProgressView()
+                                    .tint(StationTheme.onLamp)
+                            } else {
+                                Image(systemName: "icloud.and.arrow.down")
+                            }
+                            Text(isImportingRimeIce ? "正在下载并导入…" : "一键导入雾凇精选")
+                                .fontWeight(.semibold)
+                        }
+                        .font(.system(size: 14))
+                        .foregroundStyle(StationTheme.onLamp)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(StationTheme.lamp)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isImportingRimeIce || !IosSettingsStore.usesAppGroupStorage)
+                }
+                .padding(16)
+
                 if !lexiconStatusText.isEmpty {
                     divider
                     Text(lexiconStatusText)
                         .font(.system(size: 12))
                         .foregroundStyle(StationTheme.textSecondary)
+                        .padding(16)
+                }
+
+                if !lexiconOperationText.isEmpty {
+                    divider
+                    Text(lexiconOperationText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(StationTheme.textFaint)
                         .padding(16)
                 }
             }
@@ -357,39 +425,67 @@ struct ContentView: View {
                 }
             }
             guard accessed.count == urls.count else {
-                lexiconStatusText = "无法获得所选词库文件的读取权限，请重新选择后再试。"
+                lexiconOperationText = "无法获得所选词库文件的读取权限，请重新选择后再试。"
                 return
             }
 
             do {
                 let count = try IosLexiconImportBridge.importRimeLexicons(from: accessed)
-                lexiconStatusText = count == 0
+                lexiconOperationText = count == 0
                     ? "没有选择可导入的词库文件。"
                     : "已在本机导入 \(count) 条词库记录。重新切换到猫栈拼音后生效。"
+                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
             } catch IosLexiconImportError.sharedStorageUnavailable {
-                lexiconStatusText = "App Group 暂不可用，无法保存导入词库。"
+                lexiconOperationText = "App Group 暂不可用，无法保存导入词库。"
             } catch IosLexiconImportError.tooManyFiles {
-                lexiconStatusText = "一次最多选择 8 个词库文件，请分批导入。"
+                lexiconOperationText = "一次最多选择 8 个词库文件，请分批导入。"
             } catch IosLexiconImportError.sourceTooLarge {
-                lexiconStatusText = "单个词库文件不能超过 16 MiB。"
+                lexiconOperationText = "单个词库文件不能超过 16 MiB。"
             } catch IosLexiconImportError.partialImport(let acceptedRows) {
-                lexiconStatusText = "已导入 \(acceptedRows) 条记录，但后续文件导入失败。请检查剩余文件。"
+                lexiconOperationText = "已导入 \(acceptedRows) 条记录，但后续文件导入失败。请检查剩余文件。"
+                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
             } catch {
-                lexiconStatusText = "导入失败，请确认词库包含明确的拼音列。"
+                lexiconOperationText = "导入失败，请确认词库包含明确的拼音列。"
             }
         case .failure:
-            lexiconStatusText = "未能打开所选词库文件。"
+            lexiconOperationText = "未能打开所选词库文件。"
+        }
+    }
+
+    private func importReviewedRimeIce() {
+        guard !isImportingRimeIce else {
+            return
+        }
+        isImportingRimeIce = true
+        lexiconOperationText = "正在下载并校验雾凇拼音精选…"
+        IosLexiconImportBridge.importReviewedRimeIce { result in
+            isImportingRimeIce = false
+            switch result {
+            case .success(let count):
+                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
+                lexiconOperationText = "已导入 \(count) 条雾凇精选记录。重新切换到猫栈拼音后生效。"
+            case .failure(IosLexiconImportError.integrityCheckFailed):
+                lexiconOperationText = "下载文件未通过完整性校验，已拒绝导入。"
+            case .failure(IosLexiconImportError.downloadFailed):
+                lexiconOperationText = "暂时无法连接雾凇拼音官方源，请检查网络后重试。"
+            case .failure(IosLexiconImportError.partialImport(let acceptedRows)):
+                lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
+                lexiconOperationText = "已导入 \(acceptedRows) 条记录，但完整导入未完成。"
+            case .failure:
+                lexiconOperationText = "雾凇拼音精选导入失败，本机原有词库不受影响。"
+            }
         }
     }
 
     private func clearImportedLexicon() {
         do {
             let removed = try IosSettingsStore.clearImportedLexiconArtifacts()
-            lexiconStatusText = removed == 0
+            lexiconOperationText = removed == 0
                 ? "没有发现手动导入的词库。"
                 : "导入词库已清空，重新切换键盘后生效。"
+            lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
         } catch {
-            lexiconStatusText = "无法清空导入词库。"
+            lexiconOperationText = "无法清空导入词库。"
         }
     }
 }

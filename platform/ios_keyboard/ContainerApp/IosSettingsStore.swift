@@ -11,6 +11,12 @@ enum IosChineseScript: String {
     case traditional
 }
 
+struct IosImportedLexiconSource {
+    let displayName: String
+    let sourceKind: String
+    let version: String?
+}
+
 enum IosChineseTextConverter {
     static func convert(_ text: String, to script: IosChineseScript) -> String {
         guard script == .traditional, !text.isEmpty else {
@@ -40,6 +46,32 @@ enum IosSettingsStore {
     private static let chineseScriptUpdatedAtDefaultsKey =
         "private_pinyin.ios_chinese_script_updated_at"
     private static let lastRimeImportStatusKey = "ios_last_rime_import_status"
+    private static let importedLexiconManifestSchemaVersion = 1
+    private static let maximumRecordedImportedSources = 32
+
+    private struct ImportedLexiconManifest: Codable {
+        let schemaVersion: Int
+        var sources: [ImportedLexiconSource]
+
+        enum CodingKeys: String, CodingKey {
+            case schemaVersion = "schema_version"
+            case sources
+        }
+    }
+
+    private struct ImportedLexiconSource: Codable {
+        let displayName: String
+        let sourceKind: String
+        let version: String?
+        let importedAt: String
+
+        enum CodingKeys: String, CodingKey {
+            case displayName = "display_name"
+            case sourceKind = "source_kind"
+            case version
+            case importedAt = "imported_at"
+        }
+    }
 
     static var appGroupIdentifier: String {
         guard
@@ -83,6 +115,13 @@ enum IosSettingsStore {
 
     static var importedLexiconURL: URL {
         supportDirectory.appendingPathComponent("imported_lexicon.tsv", isDirectory: false)
+    }
+
+    static var importedLexiconManifestURL: URL {
+        supportDirectory.appendingPathComponent(
+            "imported_lexicon_manifest.json",
+            isDirectory: false
+        )
     }
 
     static func ensureSettingsFile() -> String? {
@@ -240,10 +279,76 @@ enum IosSettingsStore {
         }
     }
 
+    static func importedLexiconSummaryText() -> String {
+        guard FileManager.default.fileExists(atPath: importedLexiconURL.path) else {
+            return "当前导入词库：尚未导入"
+        }
+        guard let manifest = readImportedLexiconManifest(), !manifest.sources.isEmpty else {
+            return "当前导入词库：本地词库（来源记录不可用）"
+        }
+
+        let names = manifest.sources.map { source in
+            if let version = source.version, !version.isEmpty {
+                return "\(source.displayName) \(version)"
+            }
+            return source.displayName
+        }
+        let visible = names.prefix(3).joined(separator: "、")
+        let remainder = names.count > 3 ? " 等 \(names.count) 项" : ""
+        return "当前导入词库：\(visible)\(remainder)"
+    }
+
+    @discardableResult
+    static func recordImportedLexiconSources(_ descriptors: [IosImportedLexiconSource]) -> Bool {
+        guard !descriptors.isEmpty else {
+            return true
+        }
+
+        var manifest = readImportedLexiconManifest() ?? ImportedLexiconManifest(
+            schemaVersion: importedLexiconManifestSchemaVersion,
+            sources: []
+        )
+        let importedAt = ISO8601DateFormatter().string(from: Date())
+        for descriptor in descriptors {
+            let displayName = descriptor.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !displayName.isEmpty else {
+                continue
+            }
+            manifest.sources.removeAll { source in
+                if descriptor.sourceKind == "reviewed_rime_ice" {
+                    return source.sourceKind == descriptor.sourceKind
+                }
+                return source.displayName == displayName
+                    && source.sourceKind == descriptor.sourceKind
+                    && source.version == descriptor.version
+            }
+            manifest.sources.append(ImportedLexiconSource(
+                displayName: displayName,
+                sourceKind: descriptor.sourceKind,
+                version: descriptor.version,
+                importedAt: importedAt
+            ))
+        }
+        if manifest.sources.count > maximumRecordedImportedSources {
+            manifest.sources.removeFirst(manifest.sources.count - maximumRecordedImportedSources)
+        }
+
+        do {
+            try writeImportedLexiconManifest(manifest)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     static func clearImportedLexiconArtifacts() throws -> Int {
         var removed = 0
         if FileManager.default.fileExists(atPath: importedLexiconURL.path) {
             try FileManager.default.removeItem(at: importedLexiconURL)
+            removed += 1
+        }
+        if FileManager.default.fileExists(atPath: importedLexiconManifestURL.path) {
+            try FileManager.default.removeItem(at: importedLexiconManifestURL)
             removed += 1
         }
         _ = updateSettings { settings in
@@ -338,6 +443,32 @@ enum IosSettingsStore {
         _ = updateSettings { settings in
             settings[lastRimeImportStatusKey] = status
         }
+    }
+
+    private static func readImportedLexiconManifest() -> ImportedLexiconManifest? {
+        guard
+            let data = try? Data(contentsOf: importedLexiconManifestURL),
+            let manifest = try? JSONDecoder().decode(ImportedLexiconManifest.self, from: data),
+            manifest.schemaVersion == importedLexiconManifestSchemaVersion
+        else {
+            return nil
+        }
+        return manifest
+    }
+
+    private static func writeImportedLexiconManifest(
+        _ manifest: ImportedLexiconManifest
+    ) throws {
+        try FileManager.default.createDirectory(
+            at: supportDirectory,
+            withIntermediateDirectories: true
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(manifest).write(
+            to: importedLexiconManifestURL,
+            options: [.atomic]
+        )
     }
 
     private static func write(settings: [String: Any]) throws {

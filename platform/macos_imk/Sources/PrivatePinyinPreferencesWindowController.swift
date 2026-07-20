@@ -251,6 +251,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     private let settingsPathLabel = NSTextField(labelWithString: "")
+    private let importedLexiconStatusLabel = NSTextField(labelWithString: "当前导入词库：尚未导入")
     private let automaticUpdateToggle = StationToggle()
     private let automaticUpdateDetailLabel = NSTextField(labelWithString: "每天最多读取一次固定的公开版本清单，不上传输入内容。")
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
@@ -678,7 +679,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         )
         detail.maximumNumberOfLines = 2
 
-        let textColumn = NSStackView(views: [title, detail])
+        importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        importedLexiconStatusLabel.textColor = StationTheme.lampYellow
+        importedLexiconStatusLabel.maximumNumberOfLines = 2
+        importedLexiconStatusLabel.lineBreakMode = .byTruncatingMiddle
+
+        let textColumn = NSStackView(views: [title, detail, importedLexiconStatusLabel])
         textColumn.orientation = .vertical
         textColumn.alignment = .leading
         textColumn.spacing = 5
@@ -904,6 +910,9 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         let path = PrivatePinyinSettingsStore.settingsURL.path
         settingsPathLabel.stringValue = path
         settingsPathLabel.toolTip = path
+        importedLexiconStatusLabel.stringValue = PrivatePinyinSettingsStore
+            .importedLexiconSummaryText()
+        importedLexiconStatusLabel.toolTip = importedLexiconStatusLabel.stringValue
     }
 
     private func setLearningEnabled(_ enabled: Bool) {
@@ -955,9 +964,14 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             }
 
             var accepted = 0
+            var importedSources: [PrivatePinyinImportedLexiconSource] = []
             for url in panel.urls {
                 guard let count = lexiconCore?.importRimeLexicon(from: url.path) else {
                     if accepted > 0 {
+                        _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(
+                            importedSources
+                        )
+                        reloadFromSettings()
                         NotificationCenter.default.post(
                             name: .privatePinyinSettingsChanged,
                             object: self
@@ -971,8 +985,15 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                     return
                 }
                 accepted += count
+                importedSources.append(PrivatePinyinImportedLexiconSource(
+                    displayName: url.lastPathComponent,
+                    sourceKind: "local_file",
+                    version: nil
+                ))
             }
 
+            _ = PrivatePinyinSettingsStore.recordImportedLexiconSources(importedSources)
+            reloadFromSettings()
             NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
             showAlert("已导入 \(accepted) 条词库记录。")
         }
@@ -989,6 +1010,8 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         }
 
         if lexiconCore?.clearImportedLexicon() == true {
+            _ = PrivatePinyinSettingsStore.clearImportedLexiconManifest()
+            reloadFromSettings()
             NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
             showAlert("导入词库已清空。")
         } else {

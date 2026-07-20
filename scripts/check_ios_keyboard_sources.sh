@@ -57,6 +57,12 @@ grep -q "importRimeLexicons" platform/ios_keyboard/ContainerApp/IosLexiconImport
 grep -q "maxRimeSourceBytes = 16 \* 1024 \* 1024" platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
 grep -q "ime_engine_import_rime_lexicon" platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
 grep -q "IosLexiconImportBridge.swift in Sources" platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj
+grep -q 'URLSessionConfiguration.ephemeral' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'reviewedRimeIceVersion = "2026.03.26"' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'integrityCheckFailed' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'response.url?.host == "raw.githubusercontent.com"' platform/ios_keyboard/ContainerApp/IosLexiconImportBridge.swift
+grep -q 'importedLexiconSummaryText' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
+grep -q 'imported_lexicon_manifest.json' platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 if grep -q "import PrivatePinyinC" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift; then
   echo "Pure iOS settings and text conversion must not depend on the C bridge." >&2
   exit 1
@@ -200,9 +206,15 @@ network_pattern="URLSession|NWConnection|Network.framework|http://|https://"
 if command -v rg >/dev/null 2>&1; then
   if rg -n "$network_pattern" \
     --glob "*.swift" \
-    platform/ios_keyboard/ContainerApp \
     platform/ios_keyboard/KeyboardExtension; then
-    echo "iOS keyboard sources must not include network APIs or URLs." >&2
+    echo "The iOS keyboard extension must not include network APIs or URLs." >&2
+    exit 1
+  fi
+  if rg -n "$network_pattern" \
+    --glob "*.swift" \
+    --glob "!IosLexiconImportBridge.swift" \
+    platform/ios_keyboard/ContainerApp; then
+    echo "Container networking must stay isolated in IosLexiconImportBridge.swift." >&2
     exit 1
   fi
 else
@@ -211,10 +223,23 @@ else
     if grep -nE "$network_pattern" "$swift_file"; then
       found_network_api=1
     fi
-  done < <(find platform/ios_keyboard/ContainerApp platform/ios_keyboard/KeyboardExtension -name "*.swift" -print0)
+  done < <(find platform/ios_keyboard/KeyboardExtension -name "*.swift" -print0)
 
   if [ "$found_network_api" -eq 1 ]; then
-    echo "iOS keyboard sources must not include network APIs or URLs." >&2
+    echo "The iOS keyboard extension must not include network APIs or URLs." >&2
+    exit 1
+  fi
+
+  found_network_api=0
+  while IFS= read -r -d '' swift_file; do
+    if grep -nE "$network_pattern" "$swift_file"; then
+      found_network_api=1
+    fi
+  done < <(find platform/ios_keyboard/ContainerApp -name "*.swift" \
+    ! -name "IosLexiconImportBridge.swift" -print0)
+
+  if [ "$found_network_api" -eq 1 ]; then
+    echo "Container networking must stay isolated in IosLexiconImportBridge.swift." >&2
     exit 1
   fi
 fi

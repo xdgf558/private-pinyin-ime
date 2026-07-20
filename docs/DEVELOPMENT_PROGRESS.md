@@ -1,8 +1,17 @@
 # Development Progress
 
-Last updated: 2026-07-19 19:52
-Current stage: Permissive base and local Rime import review
-Current status: PR #34 keeps the reviewed permissive base separate from user-supplied Rime data; review hardening now preserves custom macOS learning paths, reports partial batches and iOS document-access failures accurately, documents recovery/concurrency limits, and adds cumulative plus full-capacity preservation regressions
+Last updated: 2026-07-20 09:30
+Current stage: Imported lexicon visibility and optional iOS reviewed-source import
+Current status: macOS and iOS now track display-only source metadata separately from dictionary rows; the iOS container offers a consent-gated, release/size/SHA-pinned `rime-ice` essentials import while the keyboard extension remains network-free and the GPL data remains outside every package
+
+## Imported Lexicon Visibility Validation (2026-07-20)
+
+- macOS and iOS display imported-source metadata from a separate atomic JSON manifest; clearing the imported layer also clears its source record.
+- The optional iOS `rime-ice` import is container-App-only, requires an explicit confirmation, uses an ephemeral session, and pins release, final HTTPS host, exact byte count, and SHA-256 for every reviewed file.
+- Partial reviewed-source imports are labelled as partial and are replaced by the complete status after a successful retry.
+- `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, macOS source/build checks, iOS source/privacy checks, and local-import source checks: passed.
+- Xcode Beta simulator build: `BUILD SUCCEEDED`; the app installed and launched on an iOS 27.0 iPhone 17 Pro simulator, with the container onboarding rendering without clipping or overlap.
+- Real-device download/import remains a release smoke item because this branch deliberately does not automate a network action on the owner's phone.
 
 ## Stage Status
 
