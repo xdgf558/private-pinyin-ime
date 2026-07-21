@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-21 22:01
+Last updated: 2026-07-21 22:39
 Current stage: AI-10 Writer feasibility
 Current status: AI-10 evaluation is complete with a reproducible No-Go decision; the candidate is not shipped or connected to any input path, and AI-11 remains blocked until a stronger exact candidate passes the quality and Owner approval gates
 
@@ -71,8 +71,8 @@ Current status: AI-10 evaluation is complete with a reproducible No-Go decision;
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-19 20:44 | TestFlight candidate `0.1.23 (19)` was archived with Xcode 26.6, uploaded as delivery `586c1d52-6389-4564-a097-db40555f32ad`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-19 17:05 | The current review branch fixes the five-candidate fallback that hid `猫` for `626`, adds explicit nine-key candidate paging, implements the requested five-column layout, and improves candidate panning, haptics, and the `A`/`L` edge hit regions; final TestFlight host taps, password/phone fallback, and App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-21 22:39 | TestFlight candidate `0.1.24 (20)` was archived with Xcode 26.6, uploaded as delivery `e25c8f4b-64b2-46a6-b4d3-e83dbf8810d3`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-21 22:39 | Build `0.1.24 (20)` is ready for external assignment; final TestFlight host taps, password/phone fallback, candidate-browser paging, verified `rime-ice` import, and App Group persistence checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -251,6 +251,17 @@ Current status: AI-10 evaluation is complete with a reproducible No-Go decision;
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `586c1d52-6389-4564-a097-db40555f32ad`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review remains a separate Owner action: assign build `19` to the external group, provide test content, and submit it for Beta App Review.
+
+## iOS 0.1.24 (20) TestFlight Upload
+
+- PR #42 was merged to `main` as `b048501`; container app and Keyboard Extension versions were advanced together to `0.1.24 (20)`.
+- `plutil -lint` for both release plists, `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, the iOS source gate, AI-08 integration gate, and local Rime import gate passed.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0` and the `ios-ai` feature.
+- Signed archive `dist/ios/PrivatePinyin-0.1.24-build20-xcode26.xcarchive` reports version `0.1.24`, build `20`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `e25c8f4b-64b2-46a6-b4d3-e83dbf8810d3`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- This candidate includes the Keyboard Extension activation repair, expandable nine-candidate browser, packed lexicon indexes, local document import, and explicit verified `rime-ice` import action.
+- External TestFlight review remains a separate Owner action: assign build `20` to the external group, provide test content, and submit it for Beta App Review.
 
 ## Completed Work
 
