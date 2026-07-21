@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "stage": "AI-11",
+  "generated_unix_seconds": 1784598904,
+  "candidate_id": "qwen2.5-1.5b-instruct-q4-k-m",
+  "model_revision": "dd26da440ef0330c47919d1ecae0966d24022222",
+  "runtime_release": "b10069",
+  "platform": "macos",
+  "architecture": "aarch64",
+  "latency_scope": "cold_process_start",
+  "warm_request_evidence": false,
+  "native_windows_rss_evidence": false,
+  "technical_passed": true,
+  "release_decision": "no_go",
+  "decision_reasons": [
+    "candidate_not_owner_approved",
+    "redistribution_not_approved",
+    "warm_latency_evidence_missing",
+    "windows_memory_evidence_missing"
+  ],
+  "cancellation": {
+    "passed": true,
+    "result_code": "cancelled",
+    "cancellation_ms": 0
+  },
+  "cases": [
+    {
+      "id": "short_completion_weekend",
+      "feature": "short_completion",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 444,
+      "total_ms": 528,
+      "peak_rss_mb": 1192,
+      "output_chars": 11
+    },
+    {
+      "id": "rewrite_polite_schedule",
+      "feature": "rewrite",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 325,
+      "total_ms": 408,
+      "peak_rss_mb": 1192,
+      "output_chars": 10
+    },
+    {
+      "id": "rewrite_short_notice",
+      "feature": "rewrite",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 327,
+      "total_ms": 469,
+      "peak_rss_mb": 1192,
+      "output_chars": 22
+    },
+    {
+      "id": "translate_zh_en_report",
+      "feature": "translation",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 321,
+      "total_ms": 414,
+      "peak_rss_mb": 1192,
+      "output_chars": 34
+    },
+    {
+      "id": "translate_en_zh_meeting",
+      "feature": "translation",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 322,
+      "total_ms": 403,
+      "peak_rss_mb": 1192,
+      "output_chars": 12
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "evaluation_only",
+  "owner_approved": false,
+  "redistribution_allowed": false,
+  "model": {
+    "id": "qwen2.5-1.5b-instruct-q4-k-m",
+    "repository": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+    "revision": "dd26da440ef0330c47919d1ecae0966d24022222",
+    "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "download_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/dd26da440ef0330c47919d1ecae0966d24022222/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "size_bytes": 1117320736,
+    "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "license": "Apache-2.0",
+    "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "quantization": "Q4_K_M"
+  },
+  "runtime": {
+    "name": "llama.cpp",
+    "repository": "ggml-org/llama.cpp",
+    "release_tag": "b10069",
+    "revision": "178a6c44937154dc4c4eff0d166f4a044c4fceba",
+    "archive_file": "llama-b10069-bin-macos-arm64.tar.gz",
+    "archive_url": "https://github.com/ggml-org/llama.cpp/releases/download/b10069/llama-b10069-bin-macos-arm64.tar.gz",
+    "archive_size_bytes": 10600037,
+    "archive_sha256": "022469e0b22f4b84dcd0a323867d7f5a31dae21894931ee6a24a35abd2a60359",
+    "executable_file": "llama-completion",
+    "executable_sha256": "faa8b1c2a6c69f50b0fcec71af86eda757d34f78bbbddbb3f485f170bc586d2f",
+    "version_contains": ["version: 10069", "178a6c449"]
+  },
+  "evaluation": {
+    "dataset_file": "ai11_synthetic_cases.json",
+    "dataset_size_bytes": 2396,
+    "dataset_sha256": "98b772875d3f9a05aa3b31dedf40ae57c5ccbe499bcbcadedb732b4dc8118d6b",
+    "max_prompt_bytes": 2048,
+    "max_output_bytes": 4096,
+    "max_peak_rss_mb": 2048,
+    "short_completion_first_byte_ms": 800,
+    "rewrite_total_ms": 3000,
+    "cancellation_probe_timeout_ms": 10,
+    "cancellation_budget_ms": 500
+  }
+}

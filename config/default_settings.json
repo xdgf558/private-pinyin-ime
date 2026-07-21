@@ -16,6 +16,24 @@
     "en_eng": false,
     "in_ing": false
   },
+  "ai": {
+    "enable_ai_lite": true,
+    "enable_candidate_rerank": true,
+    "enable_pinyin_correction": true,
+    "enable_mixed_english_terms": true,
+    "enable_short_completion": false,
+    "enable_rewrite": false,
+    "enable_translation": false,
+    "ai_writer_provider": "auto",
+    "ai_writer_model_id": null,
+    "ai_writer_max_memory_mb": 2048,
+    "ai_writer_idle_unload_seconds": 600,
+    "ai_timeout_candidate_ms": 30,
+    "ai_timeout_completion_ms": 800,
+    "ai_timeout_rewrite_ms": 3000,
+    "disable_ai_on_battery_saver": true,
+    "disable_ai_in_strict_privacy_mode": false
+  },
   "theme": "system",
   "candidate_font_size": 14
 }

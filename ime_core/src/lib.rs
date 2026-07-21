@@ -27,4 +27,4 @@ pub use key_event::{KeyCode, KeyEvent, Modifiers};
 pub use nine_key::pinyin_to_nine_key;
 pub use pinyin_parser::{PinyinParse, PinyinParser};
 pub use session::InputSession;
-pub use settings::{ImeMode, ImeSettings};
+pub use settings::{AiSettings, ImeMode, ImeSettings};
