@@ -106,6 +106,32 @@ fn writer_settings_default_off_and_enforce_resource_caps() {
 }
 
 #[test]
+fn strict_privacy_disables_writer_content_features_but_preserves_lite_policy() {
+    let settings = ImeSettings::from_json_str(
+        r#"{
+  "strict_privacy_mode": true,
+  "ai": {
+    "enable_ai_lite": true,
+    "enable_candidate_rerank": true,
+    "enable_short_completion": true,
+    "enable_rewrite": true,
+    "enable_translation": true,
+    "disable_ai_in_strict_privacy_mode": false
+  }
+}"#,
+    )
+    .expect("settings normalize");
+
+    assert!(settings.strict_privacy_mode);
+    assert!(settings.ai.enable_ai_lite);
+    assert!(settings.ai.enable_candidate_rerank);
+    assert!(!settings.ai.disable_ai_in_strict_privacy_mode);
+    assert!(!settings.ai.enable_short_completion);
+    assert!(!settings.ai.enable_rewrite);
+    assert!(!settings.ai.enable_translation);
+}
+
+#[test]
 fn settings_write_uses_atomic_target_file() {
     let path = temp_path("settings_write", "json");
     std::fs::write(&path, "old settings").expect("write old settings");

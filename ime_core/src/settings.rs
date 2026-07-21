@@ -177,11 +177,16 @@ impl ImeSettings {
             self.theme = defaults.theme;
         }
 
+        self.ai.normalize();
+
         if self.strict_privacy_mode {
             self.enable_user_learning = false;
+            // Writer features process composition or selected text. Stateless AI Lite
+            // reranking may remain available unless the separate AI-wide switch disables it.
+            self.ai.enable_short_completion = false;
+            self.ai.enable_rewrite = false;
+            self.ai.enable_translation = false;
         }
-
-        self.ai.normalize();
 
         Ok(())
     }

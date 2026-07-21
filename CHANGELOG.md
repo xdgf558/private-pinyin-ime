@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.
 - Fixed the macOS imported-lexicon status line being vertically clipped, added friendly local dictionary names, and recognized known dictionaries under `rime-ice`/`雾凇` source folders as `雾凇拼音` for newly recorded imports without absorbing adjacent custom dictionaries or ancestor backup dates. Legacy imported layers without metadata now explain that re-importing is required because source paths are intentionally not retained.
 - Fixed runaway macOS InputMethodKit memory growth by sharing one parsed engine and immutable lexicon snapshot across per-application controllers while retaining isolated composition sessions. Settings and imported-lexicon reload fan-out now rebuilds the shared snapshot at most once per changed configuration, preserves the previous working snapshot when rebuilding fails, and emits only a content-free diagnostic error code for that failed fingerprint.

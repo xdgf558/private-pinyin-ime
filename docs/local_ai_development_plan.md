@@ -105,9 +105,12 @@ authenticated AI-09 Helper protocol and must never be placed in a process comman
 AI-11 adds that production protocol boundary without activating the feature. Writer
 requests and previews are versioned, size-bounded, deadline-bounded, identity-scoped,
 and content-redacted in diagnostics. Short completion is reserved for a future
-pause-triggered flow; rewrite and translation always require an explicit user action,
-and every replacement remains a preview until confirmation. The helper currently returns
-only `ModelUnavailable`, so no host can accidentally invoke an unapproved model.
+pause-triggered flow. Its future default-off UI must explicitly say “停顿时当前输入会交给本地 AI 进程”,
+and model installation alone never counts as consent. Rewrite and translation always
+require an explicit user action, and every replacement remains a preview until confirmation.
+Strict privacy force-disables all three Writer modes while leaving stateless AI Lite
+reranking under its separate policy. The helper currently returns only `ModelUnavailable`,
+so no host can accidentally invoke an unapproved model.
 
 The exact Apache-2.0 Qwen2.5 1.5B Instruct Q4_K_M evaluation candidate at revision
 `dd26da440ef0330c47919d1ecae0966d24022222` passed all five first-party Mac cases with

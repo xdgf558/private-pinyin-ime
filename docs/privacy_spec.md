@@ -182,10 +182,15 @@ request, revision, and source identities. Late, cancelled, mismatched, malformed
 oversized results are discarded without changing the user's text.
 
 Pause-triggered short completion may be considered only after the release gates pass.
-Rewrite and translation always require an explicit user action, and every replacement
-remains a preview until the user confirms it. The dormant helper currently validates the
-Writer request and then returns only the content-free `ModelUnavailable` error. It does
-not infer, persist, log, or echo the source text.
+Its separate opt-in UI must disclose that “停顿时当前输入会交给本地 AI 进程”; installing
+a model is not consent to this behavior. Rewrite and translation always require an explicit
+user action, and every replacement remains a preview until the user confirms it. Strict
+privacy always disables all three content-bearing Writer features during settings
+normalization and again at future host dispatch. Stateless local AI Lite candidate
+reranking may remain available unless the separate AI-wide strict-privacy switch is enabled.
+The dormant helper currently validates the Writer request and then returns only the
+content-free `ModelUnavailable` error. It does not infer, persist, log, or echo the source
+text.
 
 ## iOS AI Host Integration
 

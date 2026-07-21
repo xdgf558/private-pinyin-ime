@@ -7,6 +7,7 @@ Current status: The bounded Writer protocol and stronger-candidate Mac evidence 
 ## AI-11 Validation (2026-07-21)
 
 - Added a versioned Writer helper contract for bounded short completion, explicit rewrite, and explicit translation previews. Requests carry complete session/request/revision/source identity, expire within three seconds, and can return at most three bounded suggestions.
+- Strict privacy normalization now force-disables short completion, rewrite, and translation while preserving the separate stateless AI Lite policy. `AI-OI-011` also requires the future default-off short-completion UI to state “停顿时当前输入会交给本地 AI 进程” before the feature may ship.
 - The dormant helper validates Writer frames but returns only `ModelUnavailable`; no Writer model, UI, platform-host request path, automatic replacement, or persistent content cache is enabled.
 - Evaluated official `Qwen/Qwen2.5-1.5B-Instruct-GGUF` revision `dd26da440ef0330c47919d1ecae0966d24022222`, exact Q4_K_M SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`, with official llama.cpp release `b10069` on the development Mac. Model and runtime binaries remain temporary and outside the repository/product.
 - Result: 5/5 first-party synthetic completion, rewrite, and translation cases passed; cold-process first byte was 321-444 ms, total latency 403-528 ms, cancellation completed immediately, and peak RSS was about 1,192 MiB. The content-free report stores no prompt, generated text, path, or user data.
