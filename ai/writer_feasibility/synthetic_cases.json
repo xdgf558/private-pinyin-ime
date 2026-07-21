@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "provenance": "first_party_synthetic",
+  "contains_user_data": false,
+  "cases": [
+    {
+      "id": "short_completion_weekend",
+      "feature": "short_completion",
+      "prompt": "这是一条专用于输入法性能评估的合成文本。请把“周末我们一起”补全成一条自然、简短的中文消息，只输出补全后的整句。",
+      "max_tokens": 48,
+      "timeout_ms": 5000,
+      "required_any": ["周末", "我们"],
+      "forbidden_any": ["作为一个", "我无法", "解释："],
+      "max_output_chars": 64
+    },
+    {
+      "id": "rewrite_polite_schedule",
+      "feature": "rewrite",
+      "prompt": "这是一条第一方合成测试句，不是用户输入。请把“你明天把表格发给我”改写得礼貌、简洁，只输出改写结果。",
+      "max_tokens": 48,
+      "timeout_ms": 5000,
+      "required_any": ["请", "麻烦"],
+      "forbidden_any": ["作为一个", "我无法", "解释："],
+      "max_output_chars": 64
+    },
+    {
+      "id": "rewrite_short_notice",
+      "feature": "rewrite",
+      "prompt": "这是一条第一方合成测试句，不是用户输入。请将“由于今天下午可能会下雨，所以原定在户外进行的活动将会改到室内进行”缩短，保留原意，只输出结果。",
+      "max_tokens": 48,
+      "timeout_ms": 5000,
+      "required_any": ["下雨", "室内"],
+      "forbidden_any": ["作为一个", "我无法", "解释："],
+      "max_output_chars": 48
+    }
+  ]
+}

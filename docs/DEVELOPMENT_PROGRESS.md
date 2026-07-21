@@ -1,8 +1,18 @@
 # Development Progress
 
-Last updated: 2026-07-20 23:24
-Current stage: macOS imported-lexicon status hardening
-Current status: the imported-source status is no longer vertically clipped, new rime-ice/雾凇 local imports receive a stable 雾凇拼音 label, and legacy layers explicitly request re-import because normalized rows retain no source path
+Last updated: 2026-07-21 00:31
+Current stage: AI-10 Writer feasibility
+Current status: AI-10 evaluation is complete with a reproducible No-Go decision; the candidate is not shipped or connected to any input path, and AI-11 remains blocked until a stronger exact candidate passes the quality and Owner approval gates
+
+## AI-10 Validation (2026-07-21)
+
+- Evaluated official `Qwen/Qwen2.5-0.5B-Instruct-GGUF` revision `9217f5db79a29953eb74d5343926648285ec7e67`, file `qwen2.5-0.5b-instruct-q4_k_m.gguf`, with official llama.cpp release `b10069` revision `178a6c44937154dc4c4eff0d166f4a044c4fceba` on the development Mac.
+- Exact model, runtime archive/executable, and synthetic-dataset byte sizes and SHA-256 values are pinned. Weights and runtime binaries remain outside the repository, application bundle, installer, and AI-05 approval registry.
+- The offline probe exposes no arbitrary prompt input, runs only three checked-in first-party synthetic cases, uses no network client, bounds prompt/output/process time, measures first-byte/total latency and peak RSS, and kills/waits for the child on cancellation.
+- Result: short completion passed; short notice rewriting passed; polite scheduling rewrite failed its required-text rule. Technical quality therefore failed at 2/3 cases and the release decision is `NoGo`.
+- Local reference measurements: 276-295 ms first byte, 334-387 ms total, 579 MiB peak RSS, and cancellation within the 500-ms budget. Every case launches a fresh runtime, so first-byte latency includes process startup and cold model loading. These are development-Mac evidence, not portable CI performance thresholds.
+- The checked-in report stores only identity, timing, memory, output length, result codes, and decision reasons. It contains no prompt, generated text, file path, or user data.
+- `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, the AI-05/AI-09/AI-10 source gates, and the real pinned-artifact validation/run: passed.
 
 ## macOS Imported Source Status Validation (2026-07-20)
 
@@ -102,7 +112,8 @@ Current status: the imported-source status is no longer vertically clipped, new 
 | AI-07 | macOS and Windows asynchronous integration | completed | 2026-07-19 06:36 | Merged to `main` through PR #33; bounded asynchronous desktop ranking, stale-result rejection, secure-input cancellation, macOS IMK wiring, Windows TSF wiring, and the signed/notarized macOS 0.1.22 validation package are complete |
 | AI-08 | iOS AI Lite integration | completed | 2026-07-20 | Merged to `main` through PR #36; isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
 | AI-09 | Authenticated desktop Helper boundary | completed | 2026-07-20 15:46 | Shared bounded protocol and helper, controlled macOS pipes, current-user-only Windows request/response named-pipe pair, per-launch authentication, health/cancel/crash/restart/shutdown/idle lifecycle, packaging/signing hooks, and CI probes are ready for review; no Writer model or input-path dependency is added |
-| AI-10 to AI-12 | Optional Writer feasibility and cross-platform hardening | planned | | Follow `docs/local_ai_development_plan.md` one reviewed PR at a time; every artifact must pass AI-05 |
+| AI-10 | Optional Writer feasibility | completed (No-Go) | 2026-07-21 00:31 | Exact Qwen2.5 0.5B Q4_K_M and llama.cpp inputs are pinned; offline Mac probe passed cancellation and 2/3 quality cases, so the model remains unapproved, unbundled, and disconnected from every input path |
+| AI-11 to AI-12 | Optional Writer integration and cross-platform hardening | blocked | | AI-11 requires a stronger exact candidate that passes quality and receives Owner/license approval; then continue one reviewed PR at a time and keep every artifact behind AI-05 |
 
 ## AI-09 Validation
 

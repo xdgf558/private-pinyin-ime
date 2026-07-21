@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "stage": "AI-10",
+  "generated_unix_seconds": 1784565506,
+  "candidate_id": "qwen2.5-0.5b-instruct-q4-k-m",
+  "model_revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+  "runtime_release": "b10069",
+  "platform": "macos",
+  "architecture": "aarch64",
+  "technical_passed": false,
+  "release_decision": "no_go",
+  "decision_reasons": [
+    "candidate_not_owner_approved",
+    "redistribution_not_approved",
+    "technical_gate_failed"
+  ],
+  "cancellation": {
+    "passed": true,
+    "result_code": "cancelled",
+    "cancellation_ms": 0
+  },
+  "cases": [
+    {
+      "id": "short_completion_weekend",
+      "feature": "short_completion",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 295,
+      "total_ms": 346,
+      "peak_rss_mb": 579,
+      "output_chars": 12
+    },
+    {
+      "id": "rewrite_polite_schedule",
+      "feature": "rewrite",
+      "passed": false,
+      "result_code": "required_text_missing",
+      "first_byte_ms": 277,
+      "total_ms": 334,
+      "peak_rss_mb": 579,
+      "output_chars": 10
+    },
+    {
+      "id": "rewrite_short_notice",
+      "feature": "rewrite",
+      "passed": true,
+      "result_code": "passed",
+      "first_byte_ms": 276,
+      "total_ms": 387,
+      "peak_rss_mb": 579,
+      "output_chars": 33
+    }
+  ]
+}

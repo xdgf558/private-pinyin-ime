@@ -146,6 +146,27 @@ sessions must never wait for helper work. Future AI-10/AI-11 payloads still requ
 same `PrivacyGuard`, explicit action policy, bounded context, deadline, complete request
 identity, stale-result rejection, and user confirmation rules established above.
 
+## AI-10 Writer Feasibility
+
+AI-10 is an offline development probe, not a product input path. It accepts only the
+checked-in first-party synthetic dataset and an exact locally supplied model/runtime pair;
+the CLI has no arbitrary-prompt option and no network client. It must never process user
+typing, clipboard data, surrounding documents, webpages, messages, or imported lexicon
+content. Model weights and llama.cpp binaries are not stored in this repository or app.
+The probe may pass only those checked-in synthetic prompts to the external evaluation
+runtime through process arguments. This exception is limited to the offline AI-10 tool.
+Production AI-11 Writer request and output content must use the authenticated AI-09 Helper
+protocol and must never appear in process arguments, environment variables, temporary
+files, diagnostics, or persistent caches.
+
+Quality checks operate in memory. The persisted report contains only candidate identity,
+platform, timings, peak RSS, output length, result codes, cancellation timing, and the
+Go/No-Go decision. It contains no prompts, generated text, artifact paths, or user data.
+The evaluated candidate remains unapproved and may not be registered, packaged, loaded by
+the AI-09 Helper, or used by a platform host. Any future Writer integration must keep the
+same no-network/content-log rules and add `PrivacyGuard`, explicit user action, bounded
+background execution, cancellation, complete request identity, and stale-result rejection.
+
 ## iOS AI Host Integration
 
 AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite

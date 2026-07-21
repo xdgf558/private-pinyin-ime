@@ -64,5 +64,12 @@ ten-minute idle exit. macOS uses controlled-child anonymous pipes; Windows uses 
 random current-user-only named pipe that rejects remote clients. It is not connected
 to basic input or the AI Lite candidate path. See [`helper/README.md`](helper/README.md).
 
+AI-10 adds an offline feasibility probe for one exact Qwen2.5 0.5B Q4_K_M candidate
+and official llama.cpp runtime. Only metadata, first-party synthetic cases, and a
+content-free Mac report are checked in; weights and runtime binaries remain external.
+The candidate passed two of three quality cases, so Decision 040 records `NoGo` and the
+model is not approved, bundled, loaded by the Helper, or connected to typing. See
+[`writer_feasibility/QWEN_MODEL_NOTICE.md`](writer_feasibility/QWEN_MODEL_NOTICE.md).
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).

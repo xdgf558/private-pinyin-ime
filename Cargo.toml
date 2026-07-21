@@ -11,6 +11,7 @@ members = [
     "tools/model_packager",
     "tools/settings_cli",
     "tools/test_cli",
+    "tools/writer_feasibility",
 ]
 resolver = "2"
 

@@ -30,7 +30,7 @@ pipeline; it does not create a second learning database or replace the core.
 | AI-07 | macOS and Windows asynchronous integration with stale-result cancellation | Inference runs on bounded worker queues; visible numbered candidates never change identity after display; failures preserve input |
 | AI-08 | iOS AI Lite integration for QWERTY and nine-key, with no Full Access requirement | Real-device memory and fallback checks pass; no heavy LLM is present |
 | AI-09 | Signed desktop helper skeleton, authenticated local IPC, health, cancellation, and idle exit | Helper crashes and timeouts cannot affect basic input |
-| AI-10 | Optional `llama.cpp` Writer feasibility spike with an owner-approved local model | License, Chinese quality, package size, startup, memory, and cancellation meet a go/no-go gate |
+| AI-10 | Optional `llama.cpp` Writer feasibility spike with one exact evaluation-only model | Source, license, hashes, Chinese quality, package size, startup, memory, cancellation, and an explicit go/no-go decision are recorded; only a Go candidate may continue |
 | AI-11 | Pause-triggered short completion followed by explicit rewrite and translation previews | Base candidates appear first; stale output is discarded; user confirms replacement |
 | AI-12 | Cross-platform regression, privacy audit, fault injection, benchmarks, model notices, and release gates | AI-off behavior equals the pre-AI baseline and all failure modes degrade safely |
 
@@ -84,6 +84,23 @@ Lifecycle probes exercise authentication, cancellation, forced helper terminatio
 restart, and clean shutdown. The helper is deliberately dormant: ordinary typing and AI
 Lite ranking never depend on it, and AI-10/AI-11 must keep every real request off IMK and
 TSF input threads behind PrivacyGuard, deadlines, and stale-result rejection.
+
+AI-10 evaluates, but does not approve or ship, the exact Apache-2.0
+`Qwen2.5-0.5B-Instruct-GGUF` Q4_K_M artifact at revision
+`9217f5db79a29953eb74d5343926648285ec7e67` with official llama.cpp release `b10069`.
+The repository contains only pinned candidate metadata, first-party synthetic cases, an
+offline bounded probe, and a content-free Mac result. Model weights and runtime binaries
+remain outside the repository and product. The measured candidate used about 579 MiB
+peak RSS and produced its first byte in 276-295 ms, while cancellation completed within
+the 500-ms budget. Each case launches a fresh runtime, so this first-byte measurement
+includes process startup and cold model loading rather than warmed inference alone. It
+passed two of three Chinese quality cases but failed the polite
+rewrite requirement, so the recorded release decision is `NoGo`. AI-11 must not enable
+Writer payloads with this candidate. A stronger candidate needs a new exact manifest,
+provenance review, synthetic evaluation, explicit Owner approval, native Windows RSS
+evidence, and separate cold-start and warmed-request latency evidence. The AI-10 tool's
+synthetic prompt argv is evaluation-only; production Writer content must cross only the
+authenticated AI-09 Helper protocol and must never be placed in a process command line.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
