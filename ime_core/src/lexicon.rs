@@ -1235,6 +1235,29 @@ mod tests {
     }
 
     #[test]
+    fn packed_index_ranges_cover_umlaut_duplicates_and_lexical_boundaries() {
+        let lexicon = Lexicon::from_tsv(
+            "路\tlu\t90000\n率\tlü\t100000\n绿\tlü\t80000\n略\tlüe\t70000\n妈\tma\t60000\n",
+        )
+        .expect("test lexicon loads");
+        let index = &lexicon.compact_index;
+        let keys = |range| {
+            index
+                .range(range)
+                .iter()
+                .map(|item| index.key(item))
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(keys(index.exact_range("lü")), vec!["lü", "lü"]);
+        assert_eq!(keys(index.prefix_range("lü")), vec!["lü", "lü", "lüe"]);
+        assert!(index.exact_range("lv").is_empty());
+        assert!(index.prefix_range("a").is_empty());
+        assert!(index.prefix_range("lüt").is_empty());
+        assert!(index.prefix_range("z").is_empty());
+    }
+
+    #[test]
     fn mixed_input_parser_stops_at_its_dedicated_length_limit() {
         assert!(!mixed_input_parses("wojtxqcfjttqbcsj").is_empty());
         assert!(mixed_input_parses("wojtxqcfjttqbcsja").is_empty());
