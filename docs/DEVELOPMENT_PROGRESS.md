@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-21 10:03
+Last updated: 2026-07-21 22:39
 Current stage: AI-11 gated Writer integration
 Current status: The bounded Writer protocol and stronger-candidate Mac evidence are ready for review, while product Writer UI/inference remains unavailable pending warmed-request, native Windows memory, packaging, and Owner redistribution gates
 
@@ -12,6 +12,15 @@ Current status: The bounded Writer protocol and stronger-candidate Mac evidence 
 - Result: 5/5 first-party synthetic completion, rewrite, and translation cases passed; cold-process first byte was 321-444 ms, total latency 403-528 ms, cancellation completed immediately, and peak RSS was about 1,192 MiB. The content-free report stores no prompt, generated text, path, or user data.
 - Release decision remains `NoGo`: warmed-request evidence, native Windows RSS, final package/cold-start review, and separate Owner/license redistribution approval are still required. Quality or privacy gates were not weakened to convert the Mac technical result into product approval.
 - `cargo fmt --all -- --check`, `cargo test --workspace`, strict workspace Clippy, and the AI-05/AI-09/AI-10/AI-11 source gates: passed. The exact temporary artifact evaluation also passed on the development Mac; no artifact is tracked or retained by the product.
+
+## iOS 0.1.23 Keyboard Recovery and Candidate Browser Validation (2026-07-21)
+
+- Reproduced the failure to switch to the `0.1.23` Keyboard Extension as a UIKit Auto Layout exception: nine-key constraints were activated before their rows shared a view hierarchy. The hierarchy is now installed before constraint activation. No jetsam termination was observed, so the startup fix is not attributed to memory pressure.
+- Added an expandable 3-by-3 candidate browser with nine candidates per group, previous/next paging, and the existing compact strip preserved for ordinary typing in both full-keyboard and nine-key layouts.
+- Replaced duplicate per-entry pinyin `String` keys in the base and imported lexicon indexes with packed UTF-8 key storage. Direct index coverage now verifies duplicate `lü` exact matches, the `lü`/`lüe` prefix boundary, the distinct `lv` spelling, and missing lower/upper lexical boundaries.
+- Simulator RSS reference measurement used the same iOS 27.0 iPhone 17 Pro simulator, Xcode Beta Debug extension, nine-key idle state, and three stable `ps` samples. Baseline `6b06783` with only the startup-ordering backport and the previous string-key indexes measured `360,048 KiB` three times. The current packed-index branch measured `348,448`, `348,432`, and `348,432 KiB`; median RSS fell by `11,616 KiB` (about `11.34 MiB`, `3.23%`). The current sample also includes the new collapsed candidate-browser UI, making this a conservative net comparison.
+- These simulator measurements are local reference evidence, not an iOS release threshold or proof that jetsam is resolved. Real-device first-load RSS, memory-pressure behavior, imported-lexicon reloads, and repeated host switching remain required before closing the iOS portion of `OI-042` or changing AI hardware policy.
+- `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `scripts/check_ios_keyboard_sources.sh`, the focused packed-index test, and `scripts/run_ios_smoke_readiness.sh`: passed. Xcode Beta reported `BUILD SUCCEEDED` for the container App and Keyboard Extension.
 
 ## AI-10 Validation (2026-07-21)
 
@@ -71,8 +80,8 @@ Current status: The bounded Writer protocol and stronger-candidate Mac evidence 
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-19 20:44 | TestFlight candidate `0.1.23 (19)` was archived with Xcode 26.6, uploaded as delivery `586c1d52-6389-4564-a097-db40555f32ad`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-19 17:05 | The current review branch fixes the five-candidate fallback that hid `猫` for `626`, adds explicit nine-key candidate paging, implements the requested five-column layout, and improves candidate panning, haptics, and the `A`/`L` edge hit regions; final TestFlight host taps, password/phone fallback, and App Group checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-21 22:39 | TestFlight candidate `0.1.24 (20)` was archived with Xcode 26.6, uploaded as delivery `e25c8f4b-64b2-46a6-b4d3-e83dbf8810d3`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-21 22:39 | Build `0.1.24 (20)` is ready for external assignment; final TestFlight host taps, password/phone fallback, candidate-browser paging, verified `rime-ice` import, and App Group persistence checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -252,6 +261,17 @@ Current status: The bounded Writer protocol and stronger-candidate Mac evidence 
 - `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `586c1d52-6389-4564-a097-db40555f32ad`.
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
 - External TestFlight review remains a separate Owner action: assign build `19` to the external group, provide test content, and submit it for Beta App Review.
+
+## iOS 0.1.24 (20) TestFlight Upload
+
+- PR #42 was merged to `main` as `b048501`; container app and Keyboard Extension versions were advanced together to `0.1.24 (20)`.
+- `plutil -lint` for both release plists, `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, the iOS source gate, AI-08 integration gate, and local Rime import gate passed.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0` and the `ios-ai` feature.
+- Signed archive `dist/ios/PrivatePinyin-0.1.24-build20-xcode26.xcarchive` reports version `0.1.24`, build `20`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `e25c8f4b-64b2-46a6-b4d3-e83dbf8810d3`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- This candidate includes the Keyboard Extension activation repair, expandable nine-candidate browser, packed lexicon indexes, local document import, and explicit verified `rime-ice` import action.
+- External TestFlight review remains a separate Owner action: assign build `20` to the external group, provide test content, and submit it for Beta App Review.
 
 ## Completed Work
 

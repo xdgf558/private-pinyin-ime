@@ -7,18 +7,25 @@ final class KeyboardViewController: UIInputViewController {
     private let candidateScrollView = CandidateScrollView()
     private let candidateStack = UIStackView()
     private let keyRowsStack = UIStackView()
+    private let expandedCandidateView = UIView()
+    private let expandedCandidateGrid = UIStackView()
+    private let expandedCandidatePageLabel = UILabel()
     private let preferencesView = UIView()
     private let preeditLabel = UILabel()
     private let candidateDivider = UIView()
     private let settingsButton = UIButton(type: .system)
+    private let expandCandidateButton = UIButton(type: .system)
     private let previousCandidatePageButton = UIButton(type: .system)
     private let nextCandidatePageButton = UIButton(type: .system)
+    private let expandedPreviousPageButton = UIButton(type: .system)
+    private let expandedNextPageButton = UIButton(type: .system)
     private let layoutSegmentedControl = UISegmentedControl(items: ["全键", "九宫"])
     private let scriptSegmentedControl = UISegmentedControl(items: ["简体", "繁體"])
     private let predictionSwitch = UISwitch()
     private let learningSwitch = UISwitch()
     private let preferencesStatusLabel = UILabel()
     private var candidateButtons: [UIButton] = []
+    private var expandedCandidateButtons: [UIButton] = []
     private weak var shiftButton: UIButton?
     private weak var modeButton: UIButton?
     private weak var spaceButton: UIButton?
@@ -26,6 +33,7 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
+    private var candidatesExpanded = false
     private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
     private var renderedCandidateSignature: [String] = []
     private var shifted = false
@@ -54,6 +62,9 @@ final class KeyboardViewController: UIInputViewController {
         rebuildKeyboard()
         updateCandidateBar()
         refreshPreferenceControls()
+#if DEBUG
+        runKeyboardSmokeIfRequested()
+#endif
     }
 
     override func textWillChange(_ textInput: UITextInput?) {
@@ -66,6 +77,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         currentPreedit = ""
         currentCandidates = []
+        candidatesExpanded = false
         refreshKeyStates()
         updateCandidateBar()
     }
@@ -91,6 +103,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func setupView() {
+        view.accessibilityIdentifier = "private-pinyin-keyboard-root"
         view.backgroundColor = StationKeyboardTheme.trayBottom
         trayGradient.colors = [
             StationKeyboardTheme.trayTop.cgColor,
@@ -116,6 +129,10 @@ final class KeyboardViewController: UIInputViewController {
         keyRowsStack.distribution = .fillEqually
         keyRowsStack.spacing = 9
         rootStack.addArrangedSubview(keyRowsStack)
+
+        setupExpandedCandidateView()
+        expandedCandidateView.isHidden = true
+        rootStack.addArrangedSubview(expandedCandidateView)
 
         setupPreferencesView()
         preferencesView.isHidden = true
@@ -207,6 +224,17 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.addArrangedSubview(nextCandidatePageButton)
 
         configureCandidateToolButton(
+            expandCandidateButton,
+            systemImageName: "chevron.down",
+            accessibilityLabel: "展开全部候选"
+        ) { [weak self] in
+            self?.toggleExpandedCandidates()
+        }
+        expandCandidateButton.accessibilityIdentifier = "private-pinyin-expand-candidates"
+        expandCandidateButton.isHidden = true
+        candidateBar.addArrangedSubview(expandCandidateButton)
+
+        configureCandidateToolButton(
             settingsButton,
             systemImageName: "ellipsis",
             accessibilityLabel: "更多工具与键盘设置"
@@ -214,6 +242,116 @@ final class KeyboardViewController: UIInputViewController {
             self?.togglePreferences()
         }
         candidateBar.addArrangedSubview(settingsButton)
+    }
+
+    private func setupExpandedCandidateView() {
+        expandedCandidateView.accessibilityIdentifier = "private-pinyin-expanded-candidates"
+        expandedCandidateView.backgroundColor = .clear
+
+        expandedCandidatePageLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        expandedCandidatePageLabel.textColor = StationKeyboardTheme.secondaryText
+        expandedCandidatePageLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        configureExpandedPageButton(
+            expandedPreviousPageButton,
+            systemImageName: "chevron.left",
+            accessibilityLabel: "上一组候选"
+        ) { [weak self] in
+            self?.turnCandidatePage(-1)
+        }
+        configureExpandedPageButton(
+            expandedNextPageButton,
+            systemImageName: "chevron.right",
+            accessibilityLabel: "下一组候选"
+        ) { [weak self] in
+            self?.turnCandidatePage(1)
+        }
+
+        let header = UIStackView(arrangedSubviews: [
+            expandedCandidatePageLabel,
+            expandedPreviousPageButton,
+            expandedNextPageButton,
+        ])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 8
+        header.heightAnchor.constraint(equalToConstant: 32).isActive = true
+
+        expandedCandidateGrid.axis = .vertical
+        expandedCandidateGrid.alignment = .fill
+        expandedCandidateGrid.distribution = .fillEqually
+        expandedCandidateGrid.spacing = 8
+
+        for rowIndex in 0..<3 {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.alignment = .fill
+            row.distribution = .fillEqually
+            row.spacing = 8
+            for columnIndex in 0..<3 {
+                let index = rowIndex * 3 + columnIndex
+                let button = makeExpandedCandidateButton(index: index)
+                expandedCandidateButtons.append(button)
+                row.addArrangedSubview(button)
+            }
+            expandedCandidateGrid.addArrangedSubview(row)
+        }
+
+        let content = UIStackView(arrangedSubviews: [header, expandedCandidateGrid])
+        content.axis = .vertical
+        content.alignment = .fill
+        content.spacing = 8
+        content.translatesAutoresizingMaskIntoConstraints = false
+        expandedCandidateView.addSubview(content)
+
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: expandedCandidateView.leadingAnchor, constant: 8),
+            content.trailingAnchor.constraint(equalTo: expandedCandidateView.trailingAnchor, constant: -8),
+            content.topAnchor.constraint(equalTo: expandedCandidateView.topAnchor),
+            content.bottomAnchor.constraint(equalTo: expandedCandidateView.bottomAnchor),
+        ])
+    }
+
+    private func configureExpandedPageButton(
+        _ button: UIButton,
+        systemImageName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) {
+        button.setImage(UIImage(systemName: systemImageName), for: .normal)
+        button.tintColor = StationKeyboardTheme.secondaryText
+        button.backgroundColor = StationKeyboardTheme.functionKey
+        button.layer.cornerRadius = 6
+        button.layer.cornerCurve = .continuous
+        button.accessibilityLabel = accessibilityLabel
+        button.addAction(UIAction { [weak self] _ in
+            self?.provideSelectionFeedback()
+            action()
+        }, for: .touchUpInside)
+        button.widthAnchor.constraint(equalToConstant: 42).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 32).isActive = true
+    }
+
+    private func makeExpandedCandidateButton(index: Int) -> UIButton {
+        let button = UIButton(type: .system)
+        button.accessibilityIdentifier = "private-pinyin-expanded-candidate-\(index)"
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 23, weight: index == 0 ? .bold : .medium)
+        button.titleLabel?.adjustsFontSizeToFitWidth = true
+        button.titleLabel?.minimumScaleFactor = 0.68
+        button.titleLabel?.numberOfLines = 1
+        button.setTitleColor(
+            index == 0 ? StationKeyboardTheme.accent : StationKeyboardTheme.primaryText,
+            for: .normal
+        )
+        button.backgroundColor = StationKeyboardTheme.functionKey
+        button.layer.cornerRadius = 7
+        button.layer.cornerCurve = .continuous
+        button.layer.borderColor = StationKeyboardTheme.trayBorder.cgColor
+        button.layer.borderWidth = 1
+        button.addAction(UIAction { [weak self] _ in
+            self?.commitCandidate(index)
+        }, for: .touchUpInside)
+        return button
     }
 
     private func configureCandidateToolButton(
@@ -267,6 +405,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private func makeCandidateButton(index: Int) -> UIButton {
         let button = UIButton(type: .system)
+        button.accessibilityIdentifier = "private-pinyin-candidate-\(index)"
         button.titleLabel?.font = UIFont.systemFont(ofSize: 21, weight: index == 0 ? .bold : .medium)
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.72
@@ -571,9 +710,6 @@ final class KeyboardViewController: UIInputViewController {
         lowerCenterBottom.alignment = .fill
         lowerCenterBottom.distribution = .fill
         lowerCenterBottom.spacing = 7
-        candidateButton.widthAnchor.constraint(
-            equalTo: lowerCenterTop.buttons[0].widthAnchor
-        ).isActive = true
 
         let lowerCenter = UIStackView(arrangedSubviews: [lowerCenterTop.stack, lowerCenterBottom])
         lowerCenter.axis = .vertical
@@ -586,29 +722,37 @@ final class KeyboardViewController: UIInputViewController {
         lowerRow.alignment = .fill
         lowerRow.distribution = .fill
         lowerRow.spacing = 7
-        leadingButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
-        enterButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
-        middleRow.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
-        lowerCenterTop.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
-        lowerCenterBottom.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor).isActive = true
-        lowerRow.heightAnchor.constraint(
-            equalTo: topRow.stack.heightAnchor,
-            multiplier: 2,
-            constant: 9
-        ).isActive = true
-
-        for button in middleRow.buttons {
-            button.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
-        }
-        for button in lowerCenterTop.buttons {
-            button.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor).isActive = true
-        }
 
         let grid = UIStackView(arrangedSubviews: [topRow.stack, middleRow.stack, lowerRow])
         grid.axis = .vertical
         grid.alignment = .fill
         grid.distribution = .fill
         grid.spacing = 9
+
+        // Cross-row constraints are only legal after every row belongs to the
+        // same grid hierarchy. Activating them earlier crashes the extension.
+        var gridConstraints = [
+            candidateButton.widthAnchor.constraint(
+                equalTo: lowerCenterTop.buttons[0].widthAnchor
+            ),
+            leadingButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor),
+            enterButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor),
+            middleRow.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerCenterTop.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerCenterBottom.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerRow.heightAnchor.constraint(
+                equalTo: topRow.stack.heightAnchor,
+                multiplier: 2,
+                constant: 9
+            ),
+        ]
+        gridConstraints.append(contentsOf: middleRow.buttons.map {
+            $0.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor)
+        })
+        gridConstraints.append(contentsOf: lowerCenterTop.buttons.map {
+            $0.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor)
+        })
+        NSLayoutConstraint.activate(gridConstraints)
         return grid
     }
 
@@ -683,6 +827,20 @@ final class KeyboardViewController: UIInputViewController {
             button.setCenteredImage(image)
         }
         button.accessibilityLabel = key.accessibilityLabel
+        switch key.kind {
+        case .character(let value):
+            button.accessibilityIdentifier = "private-pinyin-key-\(value.lowercased())"
+        case .nineKeyDigit(let value):
+            button.accessibilityIdentifier = "private-pinyin-nine-key-\(value)"
+        case .globe:
+            button.accessibilityIdentifier = "private-pinyin-globe-key"
+        case .space:
+            button.accessibilityIdentifier = "private-pinyin-space-key"
+        case .enter:
+            button.accessibilityIdentifier = "private-pinyin-enter-key"
+        default:
+            break
+        }
         button.titleLabel?.font = key.titleFont
         button.titleLabel?.numberOfLines = 1
         button.titleLabel?.textAlignment = .center
@@ -728,6 +886,9 @@ final class KeyboardViewController: UIInputViewController {
 
     private func updateCandidateBar() {
         if preferencesVisible {
+            candidatesExpanded = false
+            keyRowsStack.isHidden = true
+            expandedCandidateView.isHidden = true
             preeditLabel.text = "键盘偏好设置"
             preeditLabel.isHidden = false
             candidateButtons.forEach { button in
@@ -740,22 +901,36 @@ final class KeyboardViewController: UIInputViewController {
             candidateDivider.isHidden = true
             previousCandidatePageButton.isHidden = true
             nextCandidatePageButton.isHidden = true
+            expandCandidateButton.isHidden = true
             return
         }
 
-        candidateScrollView.isHidden = false
         settingsButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         settingsButton.isEnabled = currentPreedit.isEmpty
         settingsButton.alpha = settingsButton.isEnabled ? 1.0 : 0.45
 
         let hasCandidates = !currentCandidates.isEmpty
+        if !hasCandidates {
+            candidatesExpanded = false
+        }
+        keyRowsStack.isHidden = candidatesExpanded
+        expandedCandidateView.isHidden = !candidatesExpanded
+        candidateScrollView.isHidden = candidatesExpanded
         let candidateSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         let candidatesChanged = candidateSignature != renderedCandidateSignature
         renderedCandidateSignature = candidateSignature
-        previousCandidatePageButton.isHidden = !hasCandidates || candidatePage == 0
-        nextCandidatePageButton.isHidden = !hasCandidates
+        previousCandidatePageButton.isHidden = candidatesExpanded || !hasCandidates || candidatePage == 0
+        nextCandidatePageButton.isHidden = candidatesExpanded || !hasCandidates
             || currentCandidates.count < sessionCandidatePageSize
             || candidatePageReachedEnd
+        expandCandidateButton.isHidden = !hasCandidates
+        expandCandidateButton.setImage(
+            UIImage(systemName: candidatesExpanded ? "chevron.up" : "chevron.down"),
+            for: .normal
+        )
+        expandCandidateButton.accessibilityLabel = candidatesExpanded
+            ? "收起全部候选"
+            : "展开全部候选"
 
         let visiblePreedit = displayedPreedit
         let showPreedit = !visiblePreedit.isEmpty || !hasCandidates
@@ -779,6 +954,42 @@ final class KeyboardViewController: UIInputViewController {
         if candidatesChanged {
             candidateScrollView.setContentOffset(.zero, animated: false)
         }
+        updateExpandedCandidates()
+    }
+
+    private func updateExpandedCandidates() {
+        expandedCandidatePageLabel.text = "全部候选 · 第 \(candidatePage + 1) 组"
+        expandedPreviousPageButton.isEnabled = candidatePage > 0
+        expandedPreviousPageButton.alpha = expandedPreviousPageButton.isEnabled ? 1.0 : 0.35
+        let hasNextPage = currentCandidates.count >= sessionCandidatePageSize
+            && !candidatePageReachedEnd
+        expandedNextPageButton.isEnabled = hasNextPage
+        expandedNextPageButton.alpha = hasNextPage ? 1.0 : 0.35
+
+        for (index, button) in expandedCandidateButtons.enumerated() {
+            guard index < currentCandidates.count else {
+                button.setTitle(nil, for: .normal)
+                button.accessibilityLabel = nil
+                button.isEnabled = false
+                button.alpha = 0
+                continue
+            }
+            let candidate = currentCandidates[index]
+            let candidateText = displayText(candidate.text)
+            button.setTitle(candidateText, for: .normal)
+            button.accessibilityLabel = "候选词 \(candidateText)，拼音 \(candidate.pinyin)"
+            button.isEnabled = true
+            button.alpha = 1
+        }
+    }
+
+    private func toggleExpandedCandidates() {
+        guard !currentCandidates.isEmpty else {
+            return
+        }
+        candidatesExpanded.toggle()
+        refreshMinimumHeight()
+        updateCandidateBar()
     }
 
     private func handle(_ key: KeySpec) {
@@ -960,6 +1171,10 @@ private extension KeyboardViewController {
         let modeChanged = englishMode != output.isEnglishMode
         englishMode = output.isEnglishMode
 
+        if output.shouldCommit {
+            candidatesExpanded = false
+        }
+
         if output.shouldCommit, !output.commitText.isEmpty {
             insertDocumentText(displayText(output.commitText))
         }
@@ -974,6 +1189,7 @@ private extension KeyboardViewController {
         if currentCandidates.isEmpty {
             candidatePage = 0
             candidatePageReachedEnd = false
+            candidatesExpanded = false
         }
         if modeChanged {
             symbolsVisible = false
@@ -1112,7 +1328,7 @@ private extension KeyboardViewController {
         } else if traitCollection.verticalSizeClass == .compact {
             minimumHeightConstraint?.constant = 216
         } else {
-            minimumHeightConstraint?.constant = usesNineKeyLayout ? 310 : 278
+            minimumHeightConstraint?.constant = candidatesExpanded || usesNineKeyLayout ? 310 : 278
         }
     }
 
@@ -1137,7 +1353,9 @@ private extension KeyboardViewController {
             return
         }
         preferencesVisible.toggle()
+        candidatesExpanded = false
         keyRowsStack.isHidden = preferencesVisible
+        expandedCandidateView.isHidden = true
         preferencesView.isHidden = !preferencesVisible
         refreshMinimumHeight()
         if preferencesVisible {
@@ -1224,8 +1442,57 @@ private extension KeyboardViewController {
         currentPreedit = ""
         currentCandidates = []
         candidatePage = 0
+        candidatesExpanded = false
         updateCandidateBar()
     }
+
+#if DEBUG
+    func runKeyboardSmokeIfRequested() {
+        let defaults = UserDefaults.standard
+        let expandedCandidatesKey = "private_pinyin.debug.expanded_candidates_smoke"
+        if defaults.bool(forKey: expandedCandidatesKey) {
+            defaults.set(false, forKey: expandedCandidatesKey)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.feedCharacter("w")
+                self.feedCharacter("a")
+                self.candidatesExpanded = !self.currentCandidates.isEmpty
+                self.updateCandidateBar()
+                NSLog(
+                    "PRIVATE_PINYIN_EXPANDED_CANDIDATES_SMOKE visible=%@ count=%ld",
+                    self.candidatesExpanded ? "true" : "false",
+                    self.currentCandidates.count
+                )
+            }
+        }
+
+        let key = "private_pinyin.debug.keyboard_smoke"
+        guard defaults.bool(forKey: key) else {
+            return
+        }
+        defaults.set(false, forKey: key)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else {
+                return
+            }
+            for digit in ["6", "4", "4", "2", "6"] {
+                self.feedNineKeyDigit(digit)
+            }
+
+            guard let candidateIndex = self.currentCandidates.firstIndex(where: { $0.text == "你好" }) else {
+                NSLog("PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=false")
+                return
+            }
+
+            self.commitCandidate(candidateIndex)
+            let committed = self.textDocumentProxy.documentContextBeforeInput?.hasSuffix("你好") == true
+            NSLog("PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=true committed=\(committed)")
+        }
+    }
+#endif
 }
 
 private struct KeySpec {
