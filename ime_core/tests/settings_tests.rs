@@ -75,6 +75,63 @@ fn invalid_numeric_settings_are_clamped_without_losing_other_fields() {
 }
 
 #[test]
+fn writer_settings_default_off_and_enforce_resource_caps() {
+    let settings = ImeSettings::from_json_str(
+        r#"{
+  "ai": {
+    "enable_short_completion": true,
+    "enable_rewrite": true,
+    "enable_translation": true,
+    "ai_writer_max_memory_mb": 9999,
+    "ai_writer_idle_unload_seconds": 9999,
+    "ai_timeout_completion_ms": 9999,
+    "ai_timeout_rewrite_ms": 9999
+  }
+}"#,
+    )
+    .expect("settings normalize");
+
+    assert!(settings.ai.enable_short_completion);
+    assert!(settings.ai.enable_rewrite);
+    assert!(settings.ai.enable_translation);
+    assert_eq!(settings.ai.ai_writer_max_memory_mb, 2_048);
+    assert_eq!(settings.ai.ai_writer_idle_unload_seconds, 600);
+    assert_eq!(settings.ai.ai_timeout_completion_ms, 800);
+    assert_eq!(settings.ai.ai_timeout_rewrite_ms, 3_000);
+
+    let defaults = ImeSettings::default();
+    assert!(!defaults.ai.enable_short_completion);
+    assert!(!defaults.ai.enable_rewrite);
+    assert!(!defaults.ai.enable_translation);
+}
+
+#[test]
+fn strict_privacy_disables_writer_content_features_but_preserves_lite_policy() {
+    let settings = ImeSettings::from_json_str(
+        r#"{
+  "strict_privacy_mode": true,
+  "ai": {
+    "enable_ai_lite": true,
+    "enable_candidate_rerank": true,
+    "enable_short_completion": true,
+    "enable_rewrite": true,
+    "enable_translation": true,
+    "disable_ai_in_strict_privacy_mode": false
+  }
+}"#,
+    )
+    .expect("settings normalize");
+
+    assert!(settings.strict_privacy_mode);
+    assert!(settings.ai.enable_ai_lite);
+    assert!(settings.ai.enable_candidate_rerank);
+    assert!(!settings.ai.disable_ai_in_strict_privacy_mode);
+    assert!(!settings.ai.enable_short_completion);
+    assert!(!settings.ai.enable_rewrite);
+    assert!(!settings.ai.enable_translation);
+}
+
+#[test]
 fn settings_write_uses_atomic_target_file() {
     let path = temp_path("settings_write", "json");
     std::fs::write(&path, "old settings").expect("write old settings");

@@ -71,7 +71,7 @@ if git ls-files '*.gguf' '*.safetensors' '*.onnx' '*.ort' '*.mlmodel' '*.mlpacka
   exit 1
 fi
 
-if rg -n 'reqwest|TcpStream|UdpSocket|URLSession|NWConnection|http://|https://' \
+if rg -n 'reqwest|ureq|hyper::|std::net|tokio::net|TcpStream|UdpSocket|URLSession|NWConnection|Command::new\("curl"' \
   tools/writer_feasibility; then
   echo "AI-10 feasibility tooling must not contain a network client." >&2
   exit 1
@@ -88,8 +88,7 @@ grep -Fq \
 grep -Fq \
   "must never appear in process arguments, environment variables, temporary" \
   docs/privacy_spec.md
-grep -Fq "native Windows peak-RSS sampler" docs/OPEN_ITEMS.md
-grep -Fq "cold startup separately from warmed requests" docs/OPEN_ITEMS.md
+grep -Fq "native Windows RSS and warmed-request evidence" docs/OPEN_ITEMS.md
 
 cargo test -p private_pinyin_writer_feasibility
 

@@ -1,8 +1,18 @@
 # Development Progress
 
 Last updated: 2026-07-21 22:39
-Current stage: AI-10 Writer feasibility
-Current status: AI-10 evaluation is complete with a reproducible No-Go decision; the candidate is not shipped or connected to any input path, and AI-11 remains blocked until a stronger exact candidate passes the quality and Owner approval gates
+Current stage: AI-11 gated Writer integration
+Current status: The bounded Writer protocol and stronger-candidate Mac evidence are ready for review, while product Writer UI/inference remains unavailable pending warmed-request, native Windows memory, packaging, and Owner redistribution gates
+
+## AI-11 Validation (2026-07-21)
+
+- Added a versioned Writer helper contract for bounded short completion, explicit rewrite, and explicit translation previews. Requests carry complete session/request/revision/source identity, expire within three seconds, and can return at most three bounded suggestions.
+- Strict privacy normalization now force-disables short completion, rewrite, and translation while preserving the separate stateless AI Lite policy. `AI-OI-011` also requires the future default-off short-completion UI to state “停顿时当前输入会交给本地 AI 进程” before the feature may ship.
+- The dormant helper validates Writer frames but returns only `ModelUnavailable`; no Writer model, UI, platform-host request path, automatic replacement, or persistent content cache is enabled.
+- Evaluated official `Qwen/Qwen2.5-1.5B-Instruct-GGUF` revision `dd26da440ef0330c47919d1ecae0966d24022222`, exact Q4_K_M SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`, with official llama.cpp release `b10069` on the development Mac. Model and runtime binaries remain temporary and outside the repository/product.
+- Result: 5/5 first-party synthetic completion, rewrite, and translation cases passed; cold-process first byte was 321-444 ms, total latency 403-528 ms, cancellation completed immediately, and peak RSS was about 1,192 MiB. The content-free report stores no prompt, generated text, path, or user data.
+- Release decision remains `NoGo`: warmed-request evidence, native Windows RSS, final package/cold-start review, and separate Owner/license redistribution approval are still required. Quality or privacy gates were not weakened to convert the Mac technical result into product approval.
+- `cargo fmt --all -- --check`, `cargo test --workspace`, strict workspace Clippy, and the AI-05/AI-09/AI-10/AI-11 source gates: passed. The exact temporary artifact evaluation also passed on the development Mac; no artifact is tracked or retained by the product.
 
 ## iOS 0.1.23 Keyboard Recovery and Candidate Browser Validation (2026-07-21)
 
@@ -122,7 +132,8 @@ Current status: AI-10 evaluation is complete with a reproducible No-Go decision;
 | AI-08 | iOS AI Lite integration | completed | 2026-07-20 | Merged to `main` through PR #36; isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
 | AI-09 | Authenticated desktop Helper boundary | completed | 2026-07-20 15:46 | Shared bounded protocol and helper, controlled macOS pipes, current-user-only Windows request/response named-pipe pair, per-launch authentication, health/cancel/crash/restart/shutdown/idle lifecycle, packaging/signing hooks, and CI probes are ready for review; no Writer model or input-path dependency is added |
 | AI-10 | Optional Writer feasibility | completed (No-Go) | 2026-07-21 00:31 | Exact Qwen2.5 0.5B Q4_K_M and llama.cpp inputs are pinned; offline Mac probe passed cancellation and 2/3 quality cases, so the model remains unapproved, unbundled, and disconnected from every input path |
-| AI-11 to AI-12 | Optional Writer integration and cross-platform hardening | blocked | | AI-11 requires a stronger exact candidate that passes quality and receives Owner/license approval; then continue one reviewed PR at a time and keep every artifact behind AI-05 |
+| AI-11 | Gated Writer contracts and stronger-candidate evidence | in review (No-Go) | 2026-07-21 10:03 | Versioned bounded helper frames, explicit-action policy, complete stale-result identity, and 5/5 development-Mac evidence are ready; no model or Writer UI ships until warmed-request, native Windows RSS, packaging, and Owner redistribution gates pass |
+| AI-12 | Cross-platform hardening and release gates | blocked | | Starts only after AI-11 has an approved redistributable model and complete Mac/Windows evidence; AI-off behavior must remain identical to the current release |
 
 ## AI-09 Validation
 

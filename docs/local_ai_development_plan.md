@@ -102,6 +102,24 @@ evidence, and separate cold-start and warmed-request latency evidence. The AI-10
 synthetic prompt argv is evaluation-only; production Writer content must cross only the
 authenticated AI-09 Helper protocol and must never be placed in a process command line.
 
+AI-11 adds that production protocol boundary without activating the feature. Writer
+requests and previews are versioned, size-bounded, deadline-bounded, identity-scoped,
+and content-redacted in diagnostics. Short completion is reserved for a future
+pause-triggered flow. Its future default-off UI must explicitly say “停顿时当前输入会交给本地 AI 进程”,
+and model installation alone never counts as consent. Rewrite and translation always
+require an explicit user action, and every replacement remains a preview until confirmation.
+Strict privacy force-disables all three Writer modes while leaving stateless AI Lite
+reranking under its separate policy. The helper currently returns only `ModelUnavailable`,
+so no host can accidentally invoke an unapproved model.
+
+The exact Apache-2.0 Qwen2.5 1.5B Instruct Q4_K_M evaluation candidate at revision
+`dd26da440ef0330c47919d1ecae0966d24022222` passed all five first-party Mac cases with
+321-444 ms cold-process first-byte latency, immediate cancellation, and about 1,192 MiB
+peak RSS. This is a technical Mac pass, not a release approval. The model remains outside
+the repository, approval registry, applications, installers, and helper until warmed
+latency, native Windows memory, final packaging, and explicit Owner redistribution gates
+also pass.
+
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects

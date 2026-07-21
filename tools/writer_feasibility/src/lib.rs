@@ -149,6 +149,7 @@ pub struct EvaluationCase {
 pub enum EvaluationFeature {
     ShortCompletion,
     Rewrite,
+    Translation,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -168,6 +169,9 @@ pub struct FeasibilityReport {
     pub runtime_release: String,
     pub platform: String,
     pub architecture: String,
+    pub latency_scope: String,
+    pub warm_request_evidence: bool,
+    pub native_windows_rss_evidence: bool,
     pub technical_passed: bool,
     pub release_decision: ReleaseDecision,
     pub decision_reasons: Vec<DecisionReason>,
@@ -189,6 +193,8 @@ pub enum DecisionReason {
     CandidateNotOwnerApproved,
     RedistributionNotApproved,
     TechnicalGateFailed,
+    WarmLatencyEvidenceMissing,
+    WindowsMemoryEvidenceMissing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -279,6 +285,8 @@ pub fn run_feasibility(paths: &RunPaths) -> Result<FeasibilityReport, ProbeError
     let mut decision_reasons = vec![
         DecisionReason::CandidateNotOwnerApproved,
         DecisionReason::RedistributionNotApproved,
+        DecisionReason::WarmLatencyEvidenceMissing,
+        DecisionReason::WindowsMemoryEvidenceMissing,
     ];
     if !technical_passed {
         decision_reasons.push(DecisionReason::TechnicalGateFailed);
@@ -286,7 +294,7 @@ pub fn run_feasibility(paths: &RunPaths) -> Result<FeasibilityReport, ProbeError
 
     Ok(FeasibilityReport {
         schema_version: SCHEMA_VERSION,
-        stage: "AI-10".to_owned(),
+        stage: candidate_stage(&validated.candidate).to_owned(),
         generated_unix_seconds: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -296,6 +304,9 @@ pub fn run_feasibility(paths: &RunPaths) -> Result<FeasibilityReport, ProbeError
         runtime_release: validated.candidate.runtime.release_tag,
         platform: std::env::consts::OS.to_owned(),
         architecture: std::env::consts::ARCH.to_owned(),
+        latency_scope: "cold_process_start".to_owned(),
+        warm_request_evidence: false,
+        native_windows_rss_evidence: false,
         technical_passed,
         release_decision: ReleaseDecision::NoGo,
         decision_reasons,
@@ -310,17 +321,8 @@ fn validate_candidate(candidate: &CandidateSpec) -> Result<(), ProbeError> {
         || candidate.status != CandidateStatus::EvaluationOnly
         || candidate.owner_approved
         || candidate.redistribution_allowed
-        || candidate.model.id.is_empty()
-        || candidate.model.repository != "Qwen/Qwen2.5-0.5B-Instruct-GGUF"
-        || candidate.model.revision.len() != 40
-        || candidate.model.file != "qwen2.5-0.5b-instruct-q4_k_m.gguf"
-        || candidate.model.license != "Apache-2.0"
-        || candidate.model.quantization != "Q4_K_M"
-        || candidate.runtime.name != "llama.cpp"
-        || candidate.runtime.repository != "ggml-org/llama.cpp"
-        || candidate.runtime.revision.len() != 40
-        || candidate.runtime.executable_file != "llama-completion"
-        || candidate.runtime.version_contains.is_empty()
+        || !is_exact_model_candidate(&candidate.model)
+        || !is_exact_runtime_candidate(&candidate.runtime)
         || !is_lower_sha256(&candidate.model.sha256)
         || !is_lower_sha256(&candidate.runtime.archive_sha256)
         || !is_lower_sha256(&candidate.runtime.executable_sha256)
@@ -344,10 +346,80 @@ fn validate_candidate(candidate: &CandidateSpec) -> Result<(), ProbeError> {
     Ok(())
 }
 
+fn candidate_stage(candidate: &CandidateSpec) -> &'static str {
+    if candidate.model.id == "qwen2.5-1.5b-instruct-q4-k-m" {
+        "AI-11"
+    } else {
+        "AI-10"
+    }
+}
+
+fn is_exact_model_candidate(model: &ModelSource) -> bool {
+    let common = model.license == "Apache-2.0"
+        && model.license_url == "https://www.apache.org/licenses/LICENSE-2.0"
+        && model.quantization == "Q4_K_M";
+    common
+        && (matches_exact_model(
+            model,
+            "qwen2.5-0.5b-instruct-q4-k-m",
+            "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+            "9217f5db79a29953eb74d5343926648285ec7e67",
+            "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+            491_400_032,
+            "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+        ) || matches_exact_model(
+            model,
+            "qwen2.5-1.5b-instruct-q4-k-m",
+            "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+            "dd26da440ef0330c47919d1ecae0966d24022222",
+            "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            1_117_320_736,
+            "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        ))
+}
+
+fn matches_exact_model(
+    model: &ModelSource,
+    id: &str,
+    repository: &str,
+    revision: &str,
+    file: &str,
+    size_bytes: u64,
+    sha256: &str,
+) -> bool {
+    model.id == id
+        && model.repository == repository
+        && model.revision == revision
+        && model.file == file
+        && model.size_bytes == size_bytes
+        && model.sha256 == sha256
+        && model.download_url
+            == format!("https://huggingface.co/{repository}/resolve/{revision}/{file}")
+}
+
+fn is_exact_runtime_candidate(runtime: &RuntimeSource) -> bool {
+    runtime.name == "llama.cpp"
+        && runtime.repository == "ggml-org/llama.cpp"
+        && runtime.release_tag == "b10069"
+        && runtime.revision == "178a6c44937154dc4c4eff0d166f4a044c4fceba"
+        && runtime.archive_file == "llama-b10069-bin-macos-arm64.tar.gz"
+        && runtime.archive_url
+            == "https://github.com/ggml-org/llama.cpp/releases/download/b10069/llama-b10069-bin-macos-arm64.tar.gz"
+        && runtime.archive_size_bytes == 10_600_037
+        && runtime.archive_sha256
+            == "022469e0b22f4b84dcd0a323867d7f5a31dae21894931ee6a24a35abd2a60359"
+        && runtime.executable_file == "llama-completion"
+        && runtime.executable_sha256
+            == "faa8b1c2a6c69f50b0fcec71af86eda757d34f78bbbddbb3f485f170bc586d2f"
+        && runtime.version_contains
+            == ["version: 10069".to_owned(), "178a6c449".to_owned()]
+}
+
 fn validate_dataset(
     dataset: &EvaluationDataset,
     policy: &EvaluationPolicy,
 ) -> Result<(), ProbeError> {
+    let requires_translation = policy.dataset_file == "ai11_synthetic_cases.json";
     if dataset.schema_version != SCHEMA_VERSION
         || dataset.provenance != DatasetProvenance::FirstPartySynthetic
         || dataset.contains_user_data
@@ -361,6 +433,11 @@ fn validate_dataset(
             .cases
             .iter()
             .any(|case| case.feature == EvaluationFeature::Rewrite)
+        || (requires_translation
+            && !dataset
+                .cases
+                .iter()
+                .any(|case| case.feature == EvaluationFeature::Translation))
     {
         return Err(error("dataset_policy_rejected"));
     }
@@ -451,8 +528,10 @@ fn run_case(
             && process.first_byte.is_none_or(|latency| {
                 latency.as_millis() as u64 > policy.short_completion_first_byte_ms
             }))
-            || (case.feature == EvaluationFeature::Rewrite
-                && process.total.as_millis() as u64 > policy.rewrite_total_ms))
+            || (matches!(
+                case.feature,
+                EvaluationFeature::Rewrite | EvaluationFeature::Translation
+            ) && process.total.as_millis() as u64 > policy.rewrite_total_ms))
     {
         result_code = ResultCode::LatencyBudgetExceeded;
     } else if result_code == ResultCode::Passed
@@ -868,8 +947,12 @@ mod tests {
 
     const PINNED_CANDIDATE: &str =
         include_str!("../../../ai/writer_feasibility/qwen2.5-0.5b-instruct-q4-k-m.candidate.json");
+    const AI11_CANDIDATE: &str =
+        include_str!("../../../ai/writer_feasibility/qwen2.5-1.5b-instruct-q4-k-m.candidate.json");
     const SYNTHETIC_CASES: &str =
         include_str!("../../../ai/writer_feasibility/synthetic_cases.json");
+    const AI11_SYNTHETIC_CASES: &str =
+        include_str!("../../../ai/writer_feasibility/ai11_synthetic_cases.json");
 
     #[test]
     fn pinned_candidate_remains_evaluation_only_and_synthetic() {
@@ -902,6 +985,48 @@ mod tests {
     }
 
     #[test]
+    fn ai11_candidate_is_exact_unapproved_and_covers_all_writer_features() {
+        let candidate: CandidateSpec = serde_json::from_str(AI11_CANDIDATE).unwrap();
+        let dataset: EvaluationDataset = serde_json::from_str(AI11_SYNTHETIC_CASES).unwrap();
+
+        validate_candidate(&candidate).unwrap();
+        validate_dataset(&dataset, &candidate.evaluation).unwrap();
+        assert_eq!(candidate_stage(&candidate), "AI-11");
+        assert_eq!(
+            candidate.model.revision,
+            "dd26da440ef0330c47919d1ecae0966d24022222"
+        );
+        assert_eq!(
+            candidate.model.sha256,
+            "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
+        );
+        assert!(!candidate.owner_approved);
+        assert!(!candidate.redistribution_allowed);
+        assert!(dataset
+            .cases
+            .iter()
+            .any(|case| case.feature == EvaluationFeature::ShortCompletion));
+        assert!(dataset
+            .cases
+            .iter()
+            .any(|case| case.feature == EvaluationFeature::Rewrite));
+        assert!(dataset
+            .cases
+            .iter()
+            .any(|case| case.feature == EvaluationFeature::Translation));
+    }
+
+    #[test]
+    fn ai11_candidate_identity_cannot_be_repointed() {
+        let mut candidate: CandidateSpec = serde_json::from_str(AI11_CANDIDATE).unwrap();
+        candidate.model.revision = "main".to_owned();
+        assert_eq!(
+            validate_candidate(&candidate).unwrap_err().code(),
+            "candidate_policy_rejected"
+        );
+    }
+
+    #[test]
     fn report_schema_contains_no_prompt_or_output_fields() {
         let report = FeasibilityReport {
             schema_version: 1,
@@ -912,6 +1037,9 @@ mod tests {
             runtime_release: "runtime".to_owned(),
             platform: "test".to_owned(),
             architecture: "test".to_owned(),
+            latency_scope: "cold_process_start".to_owned(),
+            warm_request_evidence: false,
+            native_windows_rss_evidence: false,
             technical_passed: false,
             release_decision: ReleaseDecision::NoGo,
             decision_reasons: vec![DecisionReason::CandidateNotOwnerApproved],
@@ -936,6 +1064,9 @@ mod tests {
         assert!(!json.contains("output_text"));
         assert!(!json.contains("model_path"));
         assert!(!json.contains("runtime_path"));
+        assert!(json.contains("cold_process_start"));
+        assert!(json.contains("warm_request_evidence"));
+        assert!(json.contains("native_windows_rss_evidence"));
     }
 
     #[test]

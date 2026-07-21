@@ -267,6 +267,27 @@ fn serve(
                     Arc::clone(&last_activity),
                 )?);
             }
+            HelperOpcode::WriterInference => {
+                if frame.writer_request().is_err() {
+                    response_tx
+                        .send(HelperFrame::error(
+                            frame.request_id,
+                            HelperErrorCode::InvalidPayload,
+                        ))
+                        .map_err(|_| {
+                            HelperProtocolError::Io(io::Error::other("response channel"))
+                        })?;
+                    continue;
+                }
+                // AI-11 establishes the real content-bearing protocol before enabling a
+                // model. An unapproved or absent Writer must fail without echoing content.
+                response_tx
+                    .send(HelperFrame::error(
+                        frame.request_id,
+                        HelperErrorCode::ModelUnavailable,
+                    ))
+                    .map_err(|_| HelperProtocolError::Io(io::Error::other("response channel")))?;
+            }
             HelperOpcode::Cancel => {
                 let target = match frame.cancel_target() {
                     Ok(target) => target,

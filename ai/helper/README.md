@@ -25,3 +25,10 @@ Every failure means only that the optional enhancement is unavailable. Hosts mus
 never wait for this process from an IMK key-event callback or a TSF edit session.
 AI-10 and AI-11 may add real work only through bounded background queues, complete
 request identity, deadlines, cancellation, and the existing PrivacyGuard.
+
+AI-11 adds a versioned Writer request/preview frame for short completion, explicit
+rewrite, and explicit translation. Source text and suggestions are bounded, diagnostics
+remain redacted, and request identity prevents stale output from being applied. This is
+only a contract boundary: until an exact model passes every quality, platform, license,
+and Owner gate, the helper validates Writer frames and returns `ModelUnavailable` without
+running inference or echoing content.

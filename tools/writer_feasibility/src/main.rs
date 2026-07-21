@@ -23,7 +23,7 @@ fn run() -> Result<(), private_pinyin_writer_feasibility::ProbeError> {
         Command::Validate => {
             let validated = validate_inputs(&paths)?;
             println!(
-                "AI-10 inputs valid: candidate={} runtime={} cases={}",
+                "Writer inputs valid: candidate={} runtime={} cases={}",
                 validated.candidate.model.id,
                 validated.candidate.runtime.release_tag,
                 validated.dataset.cases.len()
@@ -36,7 +36,8 @@ fn run() -> Result<(), private_pinyin_writer_feasibility::ProbeError> {
             let report = run_feasibility(&paths)?;
             report.write_json(&report_path)?;
             println!(
-                "AI-10 technical gates: {}; release decision: {:?}; report={}",
+                "{} technical gates: {}; release decision: {:?}; report={}",
+                report.stage,
                 if report.technical_passed {
                     "passed"
                 } else {

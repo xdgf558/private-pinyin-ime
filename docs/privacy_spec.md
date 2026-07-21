@@ -167,6 +167,31 @@ the AI-09 Helper, or used by a platform host. Any future Writer integration must
 same no-network/content-log rules and add `PrivacyGuard`, explicit user action, bounded
 background execution, cancellation, complete request identity, and stale-result rejection.
 
+## AI-11 Gated Writer Contracts
+
+AI-11 defines the bounded Writer wire contract and evaluates a stronger exact candidate,
+but it does not enable a product Writer path. Writer remains unavailable until every model and platform gate passes. In particular, no Writer UI, platform-host request path, model
+registration, model bundle, or installer payload is enabled by this stage.
+
+Production Writer source and result content may cross only the authenticated AI-09 Helper
+channel. It must never appear in process arguments, environment variables, temporary
+files, diagnostics, telemetry, persistent caches, or command history. A request is capped
+at 4,096 UTF-8 bytes and 600 characters, may return at most three equally bounded preview
+suggestions, and carries a deadline no longer than three seconds plus opaque session,
+request, revision, and source identities. Late, cancelled, mismatched, malformed, or
+oversized results are discarded without changing the user's text.
+
+Pause-triggered short completion may be considered only after the release gates pass.
+Its separate opt-in UI must disclose that “停顿时当前输入会交给本地 AI 进程”; installing
+a model is not consent to this behavior. Rewrite and translation always require an explicit
+user action, and every replacement remains a preview until the user confirms it. Strict
+privacy always disables all three content-bearing Writer features during settings
+normalization and again at future host dispatch. Stateless local AI Lite candidate
+reranking may remain available unless the separate AI-wide strict-privacy switch is enabled.
+The dormant helper currently validates the Writer request and then returns only the
+content-free `ModelUnavailable` error. It does not infer, persist, log, or echo the source
+text.
+
 ## iOS AI Host Integration
 
 AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite
