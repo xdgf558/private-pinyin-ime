@@ -1,8 +1,17 @@
 # Development Progress
 
-Last updated: 2026-07-21 00:31
+Last updated: 2026-07-21 22:01
 Current stage: AI-10 Writer feasibility
 Current status: AI-10 evaluation is complete with a reproducible No-Go decision; the candidate is not shipped or connected to any input path, and AI-11 remains blocked until a stronger exact candidate passes the quality and Owner approval gates
+
+## iOS 0.1.23 Keyboard Recovery and Candidate Browser Validation (2026-07-21)
+
+- Reproduced the failure to switch to the `0.1.23` Keyboard Extension as a UIKit Auto Layout exception: nine-key constraints were activated before their rows shared a view hierarchy. The hierarchy is now installed before constraint activation. No jetsam termination was observed, so the startup fix is not attributed to memory pressure.
+- Added an expandable 3-by-3 candidate browser with nine candidates per group, previous/next paging, and the existing compact strip preserved for ordinary typing in both full-keyboard and nine-key layouts.
+- Replaced duplicate per-entry pinyin `String` keys in the base and imported lexicon indexes with packed UTF-8 key storage. Direct index coverage now verifies duplicate `lü` exact matches, the `lü`/`lüe` prefix boundary, the distinct `lv` spelling, and missing lower/upper lexical boundaries.
+- Simulator RSS reference measurement used the same iOS 27.0 iPhone 17 Pro simulator, Xcode Beta Debug extension, nine-key idle state, and three stable `ps` samples. Baseline `6b06783` with only the startup-ordering backport and the previous string-key indexes measured `360,048 KiB` three times. The current packed-index branch measured `348,448`, `348,432`, and `348,432 KiB`; median RSS fell by `11,616 KiB` (about `11.34 MiB`, `3.23%`). The current sample also includes the new collapsed candidate-browser UI, making this a conservative net comparison.
+- These simulator measurements are local reference evidence, not an iOS release threshold or proof that jetsam is resolved. Real-device first-load RSS, memory-pressure behavior, imported-lexicon reloads, and repeated host switching remain required before closing the iOS portion of `OI-042` or changing AI hardware policy.
+- `cargo fmt --all -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `scripts/check_ios_keyboard_sources.sh`, the focused packed-index test, and `scripts/run_ios_smoke_readiness.sh`: passed. Xcode Beta reported `BUILD SUCCEEDED` for the container App and Keyboard Extension.
 
 ## AI-10 Validation (2026-07-21)
 

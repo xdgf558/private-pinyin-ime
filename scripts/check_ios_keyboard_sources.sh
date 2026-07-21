@@ -102,6 +102,10 @@ grep -q "makeNineKeyGrid" platform/ios_keyboard/KeyboardExtension/KeyboardViewCo
 grep -q "selectKeyboardLayout(.nineKey)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "上一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "下一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "展开全部候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "private-pinyin-expanded-candidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "private-pinyin-expanded-candidate-" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func toggleExpandedCandidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func ensureCore()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

@@ -23,6 +23,10 @@ struct ContentView: View {
     @State private var showingRimeImporter = false
     @State private var showingRimeIceConfirmation = false
     @State private var isImportingRimeIce = false
+#if DEBUG
+    @State private var keyboardSmokeText = ""
+    @FocusState private var keyboardSmokeFocused: Bool
+#endif
 
     var body: some View {
         ZStack {
@@ -34,6 +38,11 @@ struct ContentView: View {
                     brandRow
                     welcomeSection
                     setupSection
+#if DEBUG
+                    if isKeyboardSmokeHarnessEnabled {
+                        keyboardSmokeSection
+                    }
+#endif
                     privacySection
                     lexiconSection
                     footer
@@ -51,6 +60,13 @@ struct ContentView: View {
             learningEnabled = IosSettingsStore.isLearningEnabled()
             lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
             lexiconOperationText = IosSettingsStore.rimeImportStatusText() ?? ""
+#if DEBUG
+            if isKeyboardSmokeHarnessEnabled {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    keyboardSmokeFocused = true
+                }
+            }
+#endif
         }
         .fileImporter(
             isPresented: $showingRimeImporter,
@@ -212,6 +228,31 @@ struct ContentView: View {
             }
         }
     }
+
+#if DEBUG
+    private var isKeyboardSmokeHarnessEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("--keyboard-smoke")
+    }
+
+    private var keyboardSmokeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("键盘启动诊断", icon: "text.cursor")
+            TextField("在这里测试猫栈拼音", text: $keyboardSmokeText)
+                .textFieldStyle(.plain)
+                .accessibilityIdentifier("keyboard-smoke-field")
+                .focused($keyboardSmokeFocused)
+                .foregroundStyle(StationTheme.textPrimary)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .background(StationTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(StationTheme.border, lineWidth: 1)
+                }
+        }
+    }
+#endif
 
     private var lexiconSection: some View {
         VStack(alignment: .leading, spacing: 12) {
