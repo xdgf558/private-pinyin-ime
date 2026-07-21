@@ -31,30 +31,54 @@ pub struct LexiconEntry {
 #[derive(Debug, Clone, Default)]
 pub struct Lexicon {
     entries: Vec<LexiconEntry>,
-    compact_index: Vec<CompactLexiconIndexEntry>,
-    initial_index: Vec<InitialLexiconIndexEntry>,
-    nine_key_index: Vec<NineKeyLexiconIndexEntry>,
+    compact_index: PackedLexiconIndex,
+    initial_index: PackedLexiconIndex,
+    nine_key_index: PackedLexiconIndex,
     max_compact_pinyin_chars: usize,
     max_initial_chars: usize,
     max_nine_key_chars: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct CompactLexiconIndexEntry {
-    compact_pinyin: String,
-    entry_index: usize,
+#[derive(Debug, Clone, Default)]
+struct PackedLexiconIndex {
+    items: Vec<PackedLexiconIndexEntry>,
+    key_bytes: Vec<u8>,
+    max_key_chars: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct InitialLexiconIndexEntry {
-    initials: String,
-    entry_index: usize,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PackedLexiconIndexEntry {
+    key_offset: u32,
+    key_len: u32,
+    entry_index: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct NineKeyLexiconIndexEntry {
-    digits: String,
-    entry_index: usize,
+impl PackedLexiconIndex {
+    fn key(&self, item: &PackedLexiconIndexEntry) -> &str {
+        let start = item.key_offset as usize;
+        let end = start + item.key_len as usize;
+        std::str::from_utf8(&self.key_bytes[start..end])
+            .expect("lexicon index keys preserve valid UTF-8")
+    }
+
+    fn range(&self, range: std::ops::Range<usize>) -> &[PackedLexiconIndexEntry] {
+        &self.items[range]
+    }
+
+    fn prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
+        let upper_bound = compact_prefix_upper_bound(prefix);
+        let start = self.items.partition_point(|item| self.key(item) < prefix);
+        let end = self
+            .items
+            .partition_point(|item| self.key(item) < upper_bound.as_str());
+        start..end
+    }
+
+    fn exact_range(&self, key: &str) -> std::ops::Range<usize> {
+        let start = self.items.partition_point(|item| self.key(item) < key);
+        let end = self.items.partition_point(|item| self.key(item) <= key);
+        start..end
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -234,21 +258,9 @@ impl Lexicon {
         let compact_index = build_compact_index(&entries);
         let initial_index = build_initial_index(&entries);
         let nine_key_index = build_nine_key_index(&entries);
-        let max_compact_pinyin_chars = compact_index
-            .iter()
-            .map(|entry| entry.compact_pinyin.chars().count())
-            .max()
-            .unwrap_or_default();
-        let max_initial_chars = initial_index
-            .iter()
-            .map(|entry| entry.initials.chars().count())
-            .max()
-            .unwrap_or_default();
-        let max_nine_key_chars = nine_key_index
-            .iter()
-            .map(|entry| entry.digits.len())
-            .max()
-            .unwrap_or_default();
+        let max_compact_pinyin_chars = compact_index.max_key_chars;
+        let max_initial_chars = initial_index.max_key_chars;
+        let max_nine_key_chars = nine_key_index.max_key_chars;
 
         Self {
             entries,
@@ -315,10 +327,13 @@ impl Lexicon {
         let mut seen = HashSet::<String>::new();
 
         let range = self.compact_prefix_range(&normalized_input);
-        for indexed_entry in &self.compact_index[range] {
-            let entry = &self.entries[indexed_entry.entry_index];
+        for indexed_entry in self.compact_index.range(range) {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
             let exact_match = exact_pinyins.contains(&entry.pinyin);
-            let prefix_match = indexed_entry.compact_pinyin.starts_with(&normalized_input);
+            let prefix_match = self
+                .compact_index
+                .key(indexed_entry)
+                .starts_with(&normalized_input);
 
             if !(exact_match || prefix_match) || !seen.insert(entry.phrase.clone()) {
                 continue;
@@ -396,13 +411,16 @@ impl Lexicon {
         let mut prefix_candidates = Vec::new();
         let mut seen = HashSet::<String>::new();
 
-        for indexed_entry in &self.nine_key_index[self.nine_key_prefix_range(digits)] {
-            let entry = &self.entries[indexed_entry.entry_index];
+        for indexed_entry in self
+            .nine_key_index
+            .range(self.nine_key_prefix_range(digits))
+        {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
             if !seen.insert(entry.phrase.clone()) {
                 continue;
             }
 
-            let exact_match = indexed_entry.digits == digits;
+            let exact_match = self.nine_key_index.key(indexed_entry) == digits;
             let match_kind = if exact_match {
                 CandidateMatchKind::Exact
             } else {
@@ -439,36 +457,15 @@ impl Lexicon {
     }
 
     fn compact_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
-        let upper_bound = compact_prefix_upper_bound(prefix);
-        let start = self
-            .compact_index
-            .partition_point(|entry| entry.compact_pinyin.as_str() < prefix);
-        let end = self
-            .compact_index
-            .partition_point(|entry| entry.compact_pinyin.as_str() < upper_bound.as_str());
-        start..end
+        self.compact_index.prefix_range(prefix)
     }
 
     fn initial_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
-        let upper_bound = compact_prefix_upper_bound(prefix);
-        let start = self
-            .initial_index
-            .partition_point(|entry| entry.initials.as_str() < prefix);
-        let end = self
-            .initial_index
-            .partition_point(|entry| entry.initials.as_str() < upper_bound.as_str());
-        start..end
+        self.initial_index.prefix_range(prefix)
     }
 
     fn nine_key_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
-        let upper_bound = compact_prefix_upper_bound(prefix);
-        let start = self
-            .nine_key_index
-            .partition_point(|entry| entry.digits.as_str() < prefix);
-        let end = self
-            .nine_key_index
-            .partition_point(|entry| entry.digits.as_str() < upper_bound.as_str());
-        start..end
+        self.nine_key_index.prefix_range(prefix)
     }
 
     fn initial_candidates(
@@ -483,9 +480,9 @@ impl Lexicon {
 
         let mut candidates = Vec::new();
         let range = self.initial_prefix_range(normalized_input);
-        for indexed_entry in &self.initial_index[range] {
-            let entry = &self.entries[indexed_entry.entry_index];
-            let exact_match = indexed_entry.initials == normalized_input;
+        for indexed_entry in self.initial_index.range(range) {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
+            let exact_match = self.initial_index.key(indexed_entry) == normalized_input;
             if exact_only != exact_match || !seen.insert(entry.phrase.clone()) {
                 continue;
             }
@@ -527,15 +524,10 @@ impl Lexicon {
                 .iter()
                 .filter_map(|token| token.text.chars().next())
                 .collect::<String>();
-            let start = self
-                .initial_index
-                .partition_point(|entry| entry.initials.as_str() < initials.as_str());
-            let end = self
-                .initial_index
-                .partition_point(|entry| entry.initials.as_str() <= initials.as_str());
+            let range = self.initial_index.exact_range(&initials);
 
-            for indexed_entry in &self.initial_index[start..end] {
-                let entry = &self.entries[indexed_entry.entry_index];
+            for indexed_entry in self.initial_index.range(range) {
+                let entry = &self.entries[indexed_entry.entry_index as usize];
                 if !mixed_parse_matches_pinyin(&parse, &entry.pinyin)
                     || !seen.insert(entry.phrase.clone())
                 {
@@ -826,17 +818,12 @@ impl Lexicon {
     }
 
     fn exact_entries_for_initials(&self, initials: &str, limit: usize) -> Vec<&LexiconEntry> {
-        let start = self
-            .initial_index
-            .partition_point(|entry| entry.initials.as_str() < initials);
-        let end = self
-            .initial_index
-            .partition_point(|entry| entry.initials.as_str() <= initials);
+        let range = self.initial_index.exact_range(initials);
         let mut entries = Vec::new();
         let mut seen = HashSet::<&str>::new();
 
-        for indexed_entry in &self.initial_index[start..end] {
-            let entry = &self.entries[indexed_entry.entry_index];
+        for indexed_entry in self.initial_index.range(range) {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
             if seen.insert(entry.phrase.as_str()) {
                 entries.push(entry);
                 if entries.len() == limit {
@@ -850,11 +837,14 @@ impl Lexicon {
     fn exact_entries_for_nine_key(&self, digits: &str, limit: usize) -> Vec<&LexiconEntry> {
         let mut entries = Vec::new();
         let mut seen = HashSet::<&str>::new();
-        for indexed_entry in &self.nine_key_index[self.nine_key_prefix_range(digits)] {
-            if indexed_entry.digits != digits {
+        for indexed_entry in self
+            .nine_key_index
+            .range(self.nine_key_prefix_range(digits))
+        {
+            if self.nine_key_index.key(indexed_entry) != digits {
                 continue;
             }
-            let entry = &self.entries[indexed_entry.entry_index];
+            let entry = &self.entries[indexed_entry.entry_index as usize];
             if seen.insert(entry.phrase.as_str()) {
                 entries.push(entry);
             }
@@ -882,12 +872,12 @@ impl Lexicon {
         let mut entries = Vec::new();
         let mut seen = HashSet::<&str>::new();
 
-        for indexed_entry in &self.compact_index[range] {
-            if indexed_entry.compact_pinyin != compact {
+        for indexed_entry in self.compact_index.range(range) {
+            if self.compact_index.key(indexed_entry) != compact {
                 continue;
             }
 
-            let entry = &self.entries[indexed_entry.entry_index];
+            let entry = &self.entries[indexed_entry.entry_index as usize];
             if !edge_respects_forced_boundaries(&entry.pinyin, start, end, forced_boundaries)
                 || !seen.insert(entry.phrase.as_str())
             {
@@ -945,76 +935,80 @@ fn is_header_line(line: &str) -> bool {
     line == "phrase\tpinyin\tfrequency"
 }
 
-fn build_compact_index(entries: &[LexiconEntry]) -> Vec<CompactLexiconIndexEntry> {
-    let mut index = entries
-        .iter()
-        .enumerate()
-        .map(|(entry_index, entry)| CompactLexiconIndexEntry {
-            compact_pinyin: compact_pinyin(&entry.pinyin),
+fn build_compact_index(entries: &[LexiconEntry]) -> PackedLexiconIndex {
+    build_packed_index(
+        entries,
+        |entry| compact_pinyin(&entry.pinyin),
+        |left, right| left.cmp(&right),
+    )
+}
+
+fn build_initial_index(entries: &[LexiconEntry]) -> PackedLexiconIndex {
+    build_packed_index(
+        entries,
+        |entry| pinyin_initials(&entry.pinyin),
+        |left, right| {
+            entries[right]
+                .frequency
+                .cmp(&entries[left].frequency)
+                .then_with(|| entries[left].phrase.cmp(&entries[right].phrase))
+                .then_with(|| entries[left].pinyin.cmp(&entries[right].pinyin))
+                .then_with(|| left.cmp(&right))
+        },
+    )
+}
+
+fn build_nine_key_index(entries: &[LexiconEntry]) -> PackedLexiconIndex {
+    build_packed_index(
+        entries,
+        |entry| pinyin_to_nine_key(&entry.pinyin),
+        |left, right| left.cmp(&right),
+    )
+}
+
+fn build_packed_index(
+    entries: &[LexiconEntry],
+    key_for_entry: impl Fn(&LexiconEntry) -> String,
+    tie_break: impl Fn(usize, usize) -> Ordering,
+) -> PackedLexiconIndex {
+    let mut items = Vec::with_capacity(entries.len());
+    let mut key_bytes = Vec::new();
+    let mut max_key_chars = 0;
+
+    for (entry_index, entry) in entries.iter().enumerate() {
+        let key = key_for_entry(entry);
+        if key.is_empty() {
+            continue;
+        }
+        max_key_chars = max_key_chars.max(key.chars().count());
+        let key_offset = u32::try_from(key_bytes.len()).expect("lexicon index stays below 4 GiB");
+        let key_len = u32::try_from(key.len()).expect("lexicon key stays below 4 GiB");
+        let entry_index =
+            u32::try_from(entry_index).expect("lexicon stays below 4 billion entries");
+        key_bytes.extend_from_slice(key.as_bytes());
+        items.push(PackedLexiconIndexEntry {
+            key_offset,
+            key_len,
             entry_index,
-        })
-        .collect::<Vec<_>>();
-    index.sort_by(|left, right| {
-        left.compact_pinyin
-            .cmp(&right.compact_pinyin)
-            .then_with(|| left.entry_index.cmp(&right.entry_index))
+        });
+    }
+
+    items.sort_by(|left, right| {
+        packed_index_key(&key_bytes, left)
+            .cmp(packed_index_key(&key_bytes, right))
+            .then_with(|| tie_break(left.entry_index as usize, right.entry_index as usize))
     });
-    index
+
+    PackedLexiconIndex {
+        items,
+        key_bytes,
+        max_key_chars,
+    }
 }
 
-fn build_initial_index(entries: &[LexiconEntry]) -> Vec<InitialLexiconIndexEntry> {
-    let mut index = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(entry_index, entry)| {
-            let initials = pinyin_initials(&entry.pinyin);
-            (!initials.is_empty()).then_some(InitialLexiconIndexEntry {
-                initials,
-                entry_index,
-            })
-        })
-        .collect::<Vec<_>>();
-    index.sort_by(|left, right| {
-        left.initials
-            .cmp(&right.initials)
-            .then_with(|| {
-                entries[right.entry_index]
-                    .frequency
-                    .cmp(&entries[left.entry_index].frequency)
-            })
-            .then_with(|| {
-                entries[left.entry_index]
-                    .phrase
-                    .cmp(&entries[right.entry_index].phrase)
-            })
-            .then_with(|| {
-                entries[left.entry_index]
-                    .pinyin
-                    .cmp(&entries[right.entry_index].pinyin)
-            })
-            .then_with(|| left.entry_index.cmp(&right.entry_index))
-    });
-    index
-}
-
-fn build_nine_key_index(entries: &[LexiconEntry]) -> Vec<NineKeyLexiconIndexEntry> {
-    let mut index = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(entry_index, entry)| {
-            let digits = pinyin_to_nine_key(&entry.pinyin);
-            (!digits.is_empty()).then_some(NineKeyLexiconIndexEntry {
-                digits,
-                entry_index,
-            })
-        })
-        .collect::<Vec<_>>();
-    index.sort_by(|left, right| {
-        left.digits
-            .cmp(&right.digits)
-            .then_with(|| left.entry_index.cmp(&right.entry_index))
-    });
-    index
+fn packed_index_key<'a>(key_bytes: &'a [u8], item: &PackedLexiconIndexEntry) -> &'a [u8] {
+    let start = item.key_offset as usize;
+    &key_bytes[start..start + item.key_len as usize]
 }
 
 fn pinyin_initials(pinyin: &str) -> String {
@@ -1204,6 +1198,41 @@ fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn packed_indexes_keep_embedded_index_memory_bounded() {
+        let lexicon = Lexicon::load_embedded().expect("embedded lexicon loads");
+        let indexes = [
+            &lexicon.compact_index,
+            &lexicon.initial_index,
+            &lexicon.nine_key_index,
+        ];
+        let packed_heap_bytes = indexes
+            .iter()
+            .map(|index| {
+                index.items.capacity() * std::mem::size_of::<PackedLexiconIndexEntry>()
+                    + index.key_bytes.capacity()
+            })
+            .sum::<usize>();
+
+        assert_eq!(std::mem::size_of::<PackedLexiconIndexEntry>(), 12);
+        assert!(
+            packed_heap_bytes <= 9 * 1024 * 1024,
+            "packed lexicon indexes use {packed_heap_bytes} bytes"
+        );
+    }
+
+    #[test]
+    fn packed_indexes_preserve_utf8_pinyin_keys() {
+        let lexicon = Lexicon::from_tsv("率\tlü\t100000\n").expect("test lexicon loads");
+        let parser = PinyinParser;
+        let candidates = lexicon.lookup("lv", &parser.parse("lv"));
+
+        assert_eq!(
+            candidates.first().map(|candidate| candidate.text.as_str()),
+            Some("率")
+        );
+    }
 
     #[test]
     fn mixed_input_parser_stops_at_its_dedicated_length_limit() {
