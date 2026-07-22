@@ -3,6 +3,17 @@ import Foundation
 @main
 private enum AIHelperClientTests {
     static func main() throws {
+        var budget = PrivatePinyinAIHelperRestartBudget(
+            maximumLaunches: 2,
+            windowSeconds: 10
+        )
+        guard budget.consumeLaunch(at: 0),
+              budget.consumeLaunch(at: 1),
+              !budget.consumeLaunch(at: 2),
+              budget.consumeLaunch(at: 10) else {
+            fatalError("helper restart budget is not bounded")
+        }
+
         let client = PrivatePinyinAIHelperClient.shared
 
         try waitFor("health") { completion in

@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Hardened the dormant desktop AI Helper with absolute macOS request deadlines, a bounded launch budget, deadline-aware Windows pipe writes, exact 64-KiB frame coverage, queue-saturation fault injection, and fail-safe cancellation while preserving ordinary typing.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.
 - Fixed the macOS imported-lexicon status line being vertically clipped, added friendly local dictionary names, and recognized known dictionaries under `rime-ice`/`雾凇` source folders as `雾凇拼音` for newly recorded imports without absorbing adjacent custom dictionaries or ancestor backup dates. Legacy imported layers without metadata now explain that re-importing is required because source paths are intentionally not retained.
@@ -11,6 +12,7 @@
 
 ### Added
 
+- Added AI-12 release hardening with categorized privacy fixtures, exact AI-off/base-output equivalence tests for desktop and iOS feature builds, cross-platform Helper failure gates, model-notice checks, and a machine-readable release decision: AI Lite is Go while Writer remains No-Go pending approval and platform evidence.
 - Added AI-11's versioned, bounded Writer request/preview protocol and an exact stronger-candidate feasibility record. The 1.5B Q4_K_M candidate passed 5/5 synthetic Mac cases within the cold latency budget, but remains unapproved and unshipped pending warmed-request, native Windows memory, package, and Owner redistribution gates; the dormant helper returns `ModelUnavailable`, and no Writer UI or production inference path is enabled.
 - Added an expandable iOS candidate browser shared by full-key and nine-key layouts, showing nine candidates per group in a three-by-three grid with bounded previous/next navigation while retaining the compact horizontal candidate strip.
 - Added the AI-10 offline Writer feasibility probe with an exact evaluation-only Qwen2.5 0.5B Q4_K_M candidate, pinned official llama.cpp runtime metadata, first-party synthetic Chinese completion/rewrite cases, bounded cancellation and memory/latency measurement, content-free evidence, and CI gates that prohibit tracked model weights, arbitrary prompts, network clients, or approval-registry entry. The measured candidate passed 2/3 quality cases and is explicitly recorded as No-Go; no Writer model or behavior is shipped.

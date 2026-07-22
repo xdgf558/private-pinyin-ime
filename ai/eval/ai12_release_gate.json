@@ -1,0 +1,79 @@
+{
+  "stage": "AI-12",
+  "generated_date": "2026-07-22",
+  "release_profile": "ai_lite_with_dormant_writer",
+  "contains_user_data": false,
+  "ai_off_equivalence": {
+    "status": "passed",
+    "test": "ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly",
+    "platform_features": [
+      "desktop-ai",
+      "ios-ai"
+    ]
+  },
+  "privacy_regression": {
+    "status": "passed",
+    "fixture_root": "ai/eval/privacy_cases",
+    "categories": [
+      "password",
+      "token",
+      "id_card",
+      "phone",
+      "payment",
+      "false_positive"
+    ],
+    "case_count": 12,
+    "false_positive_case_count": 4
+  },
+  "helper_fault_injection": {
+    "portable": {
+      "status": "passed",
+      "checks": [
+        "exact_64_kib_frame",
+        "oversized_frame_rejection",
+        "active_queue_saturation",
+        "cancellation",
+        "idle_exit"
+      ]
+    },
+    "macos": {
+      "status": "passed",
+      "checks": [
+        "absolute_request_deadline",
+        "bounded_restart_budget",
+        "authentication",
+        "crash_restart",
+        "shutdown"
+      ],
+      "signed_package_identity_smoke": "pending_owner_hardware"
+    },
+    "windows": {
+      "status": "ci_required",
+      "checks": [
+        "deadline_aware_pipe_write",
+        "exact_64_kib_frame",
+        "active_queue_saturation",
+        "spawned_helper_pid_binding",
+        "crash_restart",
+        "shutdown"
+      ],
+      "signed_installer_identity_smoke": "pending_owner_hardware"
+    }
+  },
+  "model_notices": [
+    "ai/models/private-pinyin-ai-lite-ranker-v1/MODEL_NOTICE.md",
+    "ai/writer_feasibility/QWEN_MODEL_NOTICE.md",
+    "ai/writer_feasibility/QWEN_1_5B_MODEL_NOTICE.md"
+  ],
+  "release_decisions": {
+    "ai_lite": "go",
+    "writer": "no_go",
+    "writer_reasons": [
+      "candidate_not_owner_approved",
+      "redistribution_not_approved",
+      "warm_latency_evidence_missing",
+      "native_windows_rss_evidence_missing",
+      "signed_package_identity_smoke_missing"
+    ]
+  }
+}

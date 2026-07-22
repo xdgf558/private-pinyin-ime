@@ -71,5 +71,14 @@ The candidate passed two of three quality cases, so Decision 040 records `NoGo` 
 model is not approved, bundled, loaded by the Helper, or connected to typing. See
 [`writer_feasibility/QWEN_MODEL_NOTICE.md`](writer_feasibility/QWEN_MODEL_NOTICE.md).
 
+AI-11 adds the dormant, bounded Writer wire contract and records a stronger 1.5B Mac
+technical candidate, but still ships no Writer model, UI, or host request path. AI-12
+hardens the release profile with maintained categorized privacy fixtures, exact AI-off
+equivalence tests, maximum-frame and queue-saturation fault injection, platform Helper
+deadlines/restart bounds, and a machine-readable decision in
+[`eval/ai12_release_gate.json`](eval/ai12_release_gate.json). That decision approves
+only the existing AI Lite path; Writer remains `NoGo` until its outstanding platform,
+package, license, and Owner gates pass.
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).

@@ -120,6 +120,18 @@ the repository, approval registry, applications, installers, and helper until wa
 latency, native Windows memory, final packaging, and explicit Owner redistribution gates
 also pass.
 
+AI-12 closes the automatable release-hardening profile without treating an unavailable
+Writer model as complete. Categorized privacy fixtures cover passwords, tokens, identity
+cards, phone numbers, payment cards, and deliberately allowed false positives. Feature-on
+but privacy-blocked desktop and iOS FFI sessions must produce equivalent full output
+snapshots to the ordinary engine, including flags and candidate identity. Helper fault
+injection covers exact 64-KiB frames, oversized frames, active-work saturation,
+cancellation, deadlines, bounded macOS restart attempts, deadline-aware Windows writes,
+crash recovery, shutdown, and idle exit. The machine-readable release profile therefore
+permits the approved AI Lite ranker with the dormant Writer protocol, while Writer remains
+`NoGo` until warmed latency, native Windows RSS, signed-package identity smokes, and exact
+Owner redistribution approval are complete.
+
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference
 implementation. AI-03 makes guarded construction the only public request path, rejects

@@ -4,7 +4,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use private_pinyin_ai_helper_protocol::{
-    read_frame, write_frame, HelperFrame, HelperOpcode, HELPER_AUTH_TOKEN_BYTES,
+    read_frame, write_frame, HelperErrorCode, HelperFrame, HelperOpcode, HELPER_AUTH_TOKEN_BYTES,
+    MAX_HELPER_ACTIVE_REQUESTS, MAX_HELPER_PAYLOAD_BYTES,
 };
 
 const TOKEN: [u8; HELPER_AUTH_TOKEN_BYTES] = [0x2c; HELPER_AUTH_TOKEN_BYTES];
@@ -112,4 +113,71 @@ fn helper_exits_after_bounded_idle_timeout() {
         thread::sleep(Duration::from_millis(20));
     }
     let _ = stdin.flush();
+}
+
+#[test]
+fn maximum_frame_and_queue_saturation_fail_safely() {
+    let (mut child, mut stdin, mut stdout) = spawn_helper(15_000);
+    authenticate(&mut stdin, &mut stdout);
+
+    let maximum = HelperFrame::new(
+        HelperOpcode::Health,
+        50,
+        vec![0x5a; MAX_HELPER_PAYLOAD_BYTES],
+    )
+    .expect("maximum frame");
+    write_frame(&mut stdin, &maximum).expect("write maximum frame");
+    let health = read_frame(&mut stdout).expect("read maximum-frame response");
+    assert_eq!(
+        (health.opcode, health.request_id),
+        (HelperOpcode::Healthy, 50)
+    );
+
+    for offset in 0..MAX_HELPER_ACTIVE_REQUESTS as u64 {
+        write_frame(
+            &mut stdin,
+            &HelperFrame::mock(100 + offset, Duration::from_secs(5)).expect("long mock"),
+        )
+        .expect("fill helper queue");
+    }
+    write_frame(
+        &mut stdin,
+        &HelperFrame::mock(200, Duration::from_secs(5)).expect("overflow mock"),
+    )
+    .expect("write overflow mock");
+    let overflow = read_frame(&mut stdout).expect("read queue-full response");
+    assert_eq!(
+        (overflow.opcode, overflow.request_id),
+        (HelperOpcode::Error, 200)
+    );
+    assert_eq!(
+        overflow.payload(),
+        &(HelperErrorCode::QueueFull as u16).to_le_bytes()
+    );
+
+    for offset in 0..MAX_HELPER_ACTIVE_REQUESTS as u64 {
+        let request_id = 300 + offset;
+        write_frame(&mut stdin, &HelperFrame::cancel(request_id, 100 + offset))
+            .expect("cancel saturated request");
+        let cancelled = read_frame(&mut stdout).expect("read cancelled request");
+        let acknowledged = read_frame(&mut stdout).expect("read cancel acknowledgement");
+        assert_eq!(
+            (cancelled.opcode, cancelled.request_id),
+            (HelperOpcode::Cancelled, 100 + offset)
+        );
+        assert_eq!(
+            (acknowledged.opcode, acknowledged.request_id),
+            (HelperOpcode::Acknowledged, request_id)
+        );
+    }
+
+    write_frame(&mut stdin, &HelperFrame::empty(HelperOpcode::Shutdown, 400))
+        .expect("write shutdown");
+    let shutdown = read_frame(&mut stdout).expect("read shutdown acknowledgement");
+    assert_eq!(
+        (shutdown.opcode, shutdown.request_id),
+        (HelperOpcode::Acknowledged, 400)
+    );
+    drop(stdin);
+    assert!(child.wait().expect("wait for shutdown").success());
 }

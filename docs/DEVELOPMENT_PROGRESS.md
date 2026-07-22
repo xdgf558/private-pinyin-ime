@@ -1,8 +1,18 @@
 # Development Progress
 
-Last updated: 2026-07-21 22:39
-Current stage: AI-11 gated Writer integration
-Current status: The bounded Writer protocol and stronger-candidate Mac evidence are ready for review, while product Writer UI/inference remains unavailable pending warmed-request, native Windows memory, packaging, and Owner redistribution gates
+Last updated: 2026-07-22
+Current stage: AI-12 cross-platform release hardening
+Current status: AI-12's automatable release gates are implemented for the approved AI Lite plus dormant Writer profile; Writer inference remains explicitly No-Go pending warmed-request, native Windows RSS, signed-package identity, and Owner redistribution gates
+
+## AI-12 Validation (2026-07-22)
+
+- Added maintained first-party synthetic privacy fixtures grouped as password, token, identity card, phone, payment, and false-positive cases. The data-driven guard regression rejects all sensitive groups while preserving ordinary phrases, and the release manifest records that the corpus contains no user data.
+- Added exact FFI output-equivalence coverage for both `desktop-ai` and `ios-ai`: an AI-enabled engine blocked by secure-input privacy produces the same preedit, commit, mode, update flags, candidates, scores, and sources as the base engine after every key and candidate commit.
+- Added exact 64-KiB protocol and Helper process frames, oversized-frame rejection, active-work saturation and `QueueFull` behavior, cancellation, graceful shutdown, and retained idle-exit coverage.
+- Added absolute macOS Helper request deadlines and a bounded three-launch-per-30-second restart budget. The native Swift lifecycle suite covers authentication, health, cancellation, forced termination, restart, shutdown, timeout cleanup, and launch-budget recovery.
+- Replaced one-shot Windows pipe writes with deadline-aware retry semantics and expanded the native lifecycle probe to validate the maximum frame, eight active requests, the rejected ninth request, cancellation, spawned-helper PID binding, crash/restart, and shutdown.
+- Added `ai/eval/ai12_release_gate.json` and `scripts/check_ai12_release_gates.sh`. The machine-readable decision is `AI Lite = Go`, `Writer = No-Go`; the latter still requires warmed-request evidence, native Windows RSS, signed package/installer identity smokes, and exact Owner redistribution approval.
+- Local Rust core, protocol, Helper process, desktop FFI, iOS FFI, and macOS Swift Helper tests passed. Windows native execution is delegated to the `windows-2022` CI job and must be green before merge.
 
 ## AI-11 Validation (2026-07-21)
 
@@ -132,8 +142,8 @@ Current status: The bounded Writer protocol and stronger-candidate Mac evidence 
 | AI-08 | iOS AI Lite integration | completed | 2026-07-20 | Merged to `main` through PR #36; isolated `ios-ai` feature, approved 426-byte local ranker, bounded non-blocking worker, stale-result rejection, secure-input fallback, controller-lifetime memory-pressure suspension, and iOS 27 simulator build are complete; real-device latency/RSS and hardware calibration remain release gates |
 | AI-09 | Authenticated desktop Helper boundary | completed | 2026-07-20 15:46 | Shared bounded protocol and helper, controlled macOS pipes, current-user-only Windows request/response named-pipe pair, per-launch authentication, health/cancel/crash/restart/shutdown/idle lifecycle, packaging/signing hooks, and CI probes are ready for review; no Writer model or input-path dependency is added |
 | AI-10 | Optional Writer feasibility | completed (No-Go) | 2026-07-21 00:31 | Exact Qwen2.5 0.5B Q4_K_M and llama.cpp inputs are pinned; offline Mac probe passed cancellation and 2/3 quality cases, so the model remains unapproved, unbundled, and disconnected from every input path |
-| AI-11 | Gated Writer contracts and stronger-candidate evidence | in review (No-Go) | 2026-07-21 10:03 | Versioned bounded helper frames, explicit-action policy, complete stale-result identity, and 5/5 development-Mac evidence are ready; no model or Writer UI ships until warmed-request, native Windows RSS, packaging, and Owner redistribution gates pass |
-| AI-12 | Cross-platform hardening and release gates | blocked | | Starts only after AI-11 has an approved redistributable model and complete Mac/Windows evidence; AI-off behavior must remain identical to the current release |
+| AI-11 | Gated Writer contracts and stronger-candidate evidence | completed (No-Go) | 2026-07-22 | Versioned bounded helper frames, explicit-action policy, complete stale-result identity, and 5/5 development-Mac evidence are complete; no model or Writer UI ships until warmed-request, native Windows RSS, packaging, and Owner redistribution gates pass |
+| AI-12 | Cross-platform hardening and release gates | in review | 2026-07-22 | Categorized privacy regressions, exact AI-off equivalence, bounded cross-platform Helper fault injection, model notices, and a machine-readable AI Lite Go / Writer No-Go release profile are ready; signed-package identity and Writer model gates remain open rather than being waived |
 
 ## AI-09 Validation
 
