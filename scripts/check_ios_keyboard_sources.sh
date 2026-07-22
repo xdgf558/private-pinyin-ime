@@ -170,17 +170,18 @@ if grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/K
   echo "iOS candidate page size must have one source of truth in IosPinyinCoreBridge." >&2
   exit 1
 fi
-if sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q 'equalToConstant: \(52\|113\)'; then
-  echo "The iOS nine-key grid must adapt to compact-height layouts." >&2
-  exit 1
-fi
 python3 - <<'PY'
 from pathlib import Path
 
 source = Path(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
 ).read_text(encoding="utf-8")
+
+nine_key_grid = source.split("    private func makeNineKeyGrid()", 1)[1].split(
+    "    private func makeAdaptiveKeyRow", 1
+)[0]
+if "equalToConstant: 52" in nine_key_grid or "equalToConstant: 113" in nine_key_grid:
+    raise SystemExit("The iOS nine-key grid must adapt to compact-height layouts.")
 
 def case_body(case_name: str) -> str:
     marker = f"        case {case_name}:"
