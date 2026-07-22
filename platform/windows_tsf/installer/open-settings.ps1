@@ -1,7 +1,7 @@
 ﻿param(
     [string]$SettingsTool = (Join-Path $PSScriptRoot "private-pinyin-settings.exe"),
     [string]$PreviewPath = "",
-    [ValidateSet("general", "privacy", "about")][string]$PreviewTab = "general"
+    [ValidateSet("general", "privacy", "writer", "about")][string]$PreviewTab = "general"
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +17,9 @@ $userLexiconPath = Join-Path $dataDir "user_lexicon.sqlite"
 $importedLexiconPath = Join-Path $dataDir "imported_lexicon.tsv"
 $iconPath = Join-Path $PSScriptRoot "PrivatePinyinInstaller.ico"
 $logoPath = Join-Path $PSScriptRoot "PrivatePinyinLogo.png"
+$writerScriptPath = Join-Path $PSScriptRoot "open-writer.ps1"
+$writerModelPath = Join-Path $dataDir "WriterModels\qwen2.5-1.5b-instruct-q4-k-m\qwen2.5-1.5b-instruct-q4_k_m.gguf"
+$writerModelSize = [int64]1117320736
 
 function Get-DefaultSettingsTemplatePath {
     $candidates = @(
@@ -364,6 +367,54 @@ $clearImported.Font = New-UiFont -Size 9
 $clearImported.ForeColor = $colors.Danger
 $privacyPage.Controls.Add($clearImported)
 
+$writerPage = New-Object System.Windows.Forms.TabPage
+$writerPage.Text = "本地 Writer"
+$writerPage.BackColor = $colors.White
+$tabs.TabPages.Add($writerPage)
+
+[void](New-UiLabel -Parent $writerPage -Text "Writer 高级功能" -X 24 -Y 24 -Width 300 -Height 32 -Size 15 -Style ([System.Drawing.FontStyle]::Bold))
+[void](New-UiLabel -Parent $writerPage -Text "对你主动提交的文字进行本地改写和翻译。普通拼音与 AI Lite 不依赖 Writer。" -X 26 -Y 64 -Width 650 -Height 44 -Size 9 -Color $colors.Muted)
+
+$writerStatus = New-UiLabel -Parent $writerPage -Text "" -X 26 -Y 124 -Width 650 -Height 54 -Size 9 -Style ([System.Drawing.FontStyle]::Bold) -Color $colors.Header
+
+$openWriter = New-Object System.Windows.Forms.Button
+$openWriter.Text = "打开猫栈 Writer..."
+$openWriter.Location = New-Object System.Drawing.Point(26, 196)
+$openWriter.Size = New-Object System.Drawing.Size(190, 42)
+$openWriter.Font = New-UiFont -Size 9 -Style ([System.Drawing.FontStyle]::Bold)
+$openWriter.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$openWriter.FlatAppearance.BorderSize = 0
+$openWriter.BackColor = $colors.Accent
+$openWriter.ForeColor = $colors.Text
+$writerPage.Controls.Add($openWriter)
+
+[void](New-UiLabel -Parent $writerPage -Text "首次使用时由你主动下载约 1.04 GiB 的 Qwen2.5 1.5B 模型。下载完成后可完全离线推理；模型和原文不会上传到猫栈服务器。" -X 26 -Y 262 -Width 650 -Height 64 -Size 9 -Color $colors.Muted)
+[void](New-UiLabel -Parent $writerPage -Text "严格隐私模式会强制关闭 Writer；短句自动补全仍保持关闭。" -X 26 -Y 340 -Width 650 -Height 34 -Size 9 -Color $colors.Danger)
+
+function Refresh-WriterSummary {
+    $installed = (Test-Path $writerModelPath) -and ((Get-Item $writerModelPath).Length -eq $writerModelSize)
+    $writerStatus.Text = if ($installed) {
+        "模型状态：已安装。打开 Writer 后可明确启用并使用改写、翻译。"
+    } else {
+        "模型状态：尚未安装。Writer 默认关闭，不影响普通输入。"
+    }
+}
+
+$openWriter.Add_Click({
+    if (-not (Test-Path $writerScriptPath)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "没有找到 Writer 管理程序，请重新安装猫栈拼音。",
+            "猫栈拼音",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        ) | Out-Null
+        return
+    }
+    Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -STA -File `"$writerScriptPath`""
+})
+
+Refresh-WriterSummary
+
 $aboutPage = New-Object System.Windows.Forms.TabPage
 $aboutPage.Text = "关于"
 $aboutPage.BackColor = $colors.White
@@ -514,7 +565,8 @@ $openJson.Add_Click({ Start-Process notepad.exe $settingsPath })
 if ($PreviewPath) {
     $tabs.SelectedIndex = switch ($PreviewTab) {
         "privacy" { 1 }
-        "about" { 2 }
+        "writer" { 2 }
+        "about" { 3 }
         default { 0 }
     }
     $previewDirectory = Split-Path -Parent $PreviewPath

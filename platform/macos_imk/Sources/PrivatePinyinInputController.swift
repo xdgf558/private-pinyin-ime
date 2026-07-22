@@ -92,6 +92,16 @@ final class PrivatePinyinInputController: IMKInputController {
         preferencesItem.target = self
         menu.addItem(preferencesItem)
 
+        let writerItem = NSMenuItem(
+            title: "本地 Writer...",
+            action: #selector(openWriter(_:)),
+            keyEquivalent: ""
+        )
+        writerItem.target = self
+        writerItem.isEnabled = PrivatePinyinWriterModelManager.shared.isInstalled
+            && !PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled()
+        menu.addItem(writerItem)
+
         let updateItem = NSMenuItem(
             title: PrivatePinyinUpdateController.shared.menuTitle,
             action: #selector(checkForUpdates(_:)),
@@ -344,6 +354,10 @@ final class PrivatePinyinInputController: IMKInputController {
 
     @objc private func openPreferences(_ sender: Any?) {
         PrivatePinyinPreferencesWindowController.shared.showPreferences()
+    }
+
+    @objc private func openWriter(_ sender: Any?) {
+        PrivatePinyinWriterWindowController.shared.showWriter()
     }
 
     @objc private func checkForUpdates(_ sender: Any?) {

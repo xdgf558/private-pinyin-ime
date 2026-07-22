@@ -67,11 +67,25 @@ grep -q 'target/release/private_pinyin_ai_helper' scripts/build_macos_imk.sh
 
 if rg -n 'URLSession|NWConnection|TcpStream|UdpSocket|reqwest|hyper|http://|https://' \
   ai/helper ai/helper_protocol \
+  --glob '!**/writer_runtime.rs' \
   platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift \
   platform/windows_tsf/src/ai_helper_client.cpp; then
   echo "AI-09 helper transport must not use a network or external local service." >&2
   exit 1
 fi
+
+writer_runtime="ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs"
+if rg -n -i 'URLSession|NWConnection|UdpSocket|reqwest|ureq|hyper::|tonic::|grpc|tokio::net|WebSocket|WinHTTP|libcurl|https://|ollama|lm[ -]?studio|openai|anthropic|0\.0\.0\.0' \
+  "$writer_runtime"; then
+  echo "Writer runtime may only use its authenticated, project-owned loopback server." >&2
+  exit 1
+fi
+grep -q 'Ipv4Addr::LOCALHOST' "$writer_runtime"
+grep -q '"127.0.0.1"' "$writer_runtime"
+grep -q -- '"--api-key"' "$writer_runtime"
+grep -q -- '"--no-webui"' "$writer_runtime"
+grep -q -- '"--offline"' "$writer_runtime"
+grep -q -- '"--log-disable"' "$writer_runtime"
 
 cargo test -p private_pinyin_ai_helper_protocol -p private_pinyin_ai_helper
 

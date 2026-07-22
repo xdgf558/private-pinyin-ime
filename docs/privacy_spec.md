@@ -188,9 +188,9 @@ user action, and every replacement remains a preview until the user confirms it.
 privacy always disables all three content-bearing Writer features during settings
 normalization and again at future host dispatch. Stateless local AI Lite candidate
 reranking may remain available unless the separate AI-wide strict-privacy switch is enabled.
-The dormant helper currently validates the Writer request and then returns only the
-content-free `ModelUnavailable` error. It does not infer, persist, log, or echo the source
-text.
+In the historical AI-11 profile, the dormant helper validated Writer requests and returned
+only the content-free `ModelUnavailable` error. The separately reviewed post-AI-12 Writer V1
+below supersedes that product availability state without changing AI-11's recorded result.
 
 ## AI-12 Release Privacy Gate
 
@@ -215,6 +215,30 @@ not measurements or self-asserted pass results; the named test jobs remain autho
 The false-positive fixture intentionally distinguishes discussion such as `这个 API key
 别发上去` from an assignment such as `api key: secret-value` so later rule changes do not
 silently erase that privacy/usability boundary.
+
+## Post-AI-12 Desktop Writer V1
+
+Decision 043 enables explicit rewrite and Chinese/English translation previews on macOS
+arm64 and Windows x64 without changing the historical AI-11/AI-12 No-Go result for model
+redistribution. The installer includes only the pinned MIT llama.cpp runtime. Model weights
+remain outside the repository and product package; a user must separately approve the fixed
+official Hugging Face download, and both the host and Helper verify exact size and SHA-256.
+The download URL is never built from typed content.
+
+Source text may cross only authenticated AI-09 IPC and the random-key loopback connection
+from the Helper to the `llama-server` child it owns. The child binds only to
+`127.0.0.1`, runs offline with its web UI and logs disabled, and is unavailable to cloud
+services or other network interfaces. Prompts and results never enter process arguments,
+environment variables, temporary prompt files, diagnostics, telemetry, persistent caches,
+or learning storage. Generated previews are displayed for explicit copy/selection only and
+never replace user text automatically.
+
+Model installation and Writer use are separate consent decisions. Strict privacy force-
+disables Writer in settings and at dispatch; turning it on, revoking Writer consent, or
+removing the model while work is pending discards the result. Automatic short completion
+remains disabled. Missing or invalid model bytes, timeout, cancellation, stale identity,
+queue saturation, Helper/runtime crash, and malformed output affect only Writer and must
+leave ordinary input plus AI Lite behavior available.
 
 ## iOS AI Host Integration
 

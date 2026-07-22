@@ -66,6 +66,7 @@
         <Directory Id="INSTALLFOLDER" Name="PrivatePinyin">
           <Directory Id="X64FOLDER" Name="x64" />
           <Directory Id="X86FOLDER" Name="x86" />
+          <Directory Id="WRITERRUNTIMEFOLDER" Name="WriterRuntime" />
         </Directory>
       </Directory>
     </Directory>
@@ -101,12 +102,40 @@
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="AIHelper" Type="integer" Value="1" KeyPath="yes" />
         <File Id="PrivatePinyinAIHelper" Source="$(var.PackageSource)\PrivatePinyinAIHelper.exe" />
       </Component>
+      <Component Id="PrivatePinyinWriterRuntimeComponent" Directory="WRITERRUNTIMEFOLDER" Guid="AB3D2834-9B6A-4E68-8962-F34DE9D673B8" Win64="$(var.ComponentWin64)">
+        <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="WriterRuntime" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveWriterRuntimeFolder" Directory="WRITERRUNTIMEFOLDER" On="uninstall" />
+        <File Id="WriterLlamaServer" Source="$(var.PackageSource)\WriterRuntime\llama-server.exe" />
+        <File Id="WriterLlamaServerImpl" Source="$(var.PackageSource)\WriterRuntime\llama-server-impl.dll" />
+        <File Id="WriterLlamaCommon" Source="$(var.PackageSource)\WriterRuntime\llama-common.dll" />
+        <File Id="WriterLlama" Source="$(var.PackageSource)\WriterRuntime\llama.dll" />
+        <File Id="WriterGgml" Source="$(var.PackageSource)\WriterRuntime\ggml.dll" />
+        <File Id="WriterGgmlBase" Source="$(var.PackageSource)\WriterRuntime\ggml-base.dll" />
+        <File Id="WriterGgmlCpuX64" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-x64.dll" />
+        <File Id="WriterGgmlCpuAlderlake" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-alderlake.dll" />
+        <File Id="WriterGgmlCpuCannonlake" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-cannonlake.dll" />
+        <File Id="WriterGgmlCpuCascadelake" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-cascadelake.dll" />
+        <File Id="WriterGgmlCpuCooperlake" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-cooperlake.dll" />
+        <File Id="WriterGgmlCpuHaswell" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-haswell.dll" />
+        <File Id="WriterGgmlCpuIcelake" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-icelake.dll" />
+        <File Id="WriterGgmlCpuIvybridge" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-ivybridge.dll" />
+        <File Id="WriterGgmlCpuPiledriver" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-piledriver.dll" />
+        <File Id="WriterGgmlCpuSandybridge" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-sandybridge.dll" />
+        <File Id="WriterGgmlCpuSapphirerapids" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-sapphirerapids.dll" />
+        <File Id="WriterGgmlCpuSkylakex" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-skylakex.dll" />
+        <File Id="WriterGgmlCpuSse42" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-sse42.dll" />
+        <File Id="WriterGgmlCpuZen4" Source="$(var.PackageSource)\WriterRuntime\ggml-cpu-zen4.dll" />
+        <File Id="WriterLibomp" Source="$(var.PackageSource)\WriterRuntime\libomp140.x86_64.dll" />
+        <File Id="WriterMtmd" Source="$(var.PackageSource)\WriterRuntime\mtmd.dll" />
+        <File Id="WriterRuntimeLicense" Source="$(var.PackageSource)\WriterRuntime\llama.cpp-LICENSE.txt" />
+      </Component>
       <Component Id="PrivatePinyinInstallerScriptsComponent" Directory="INSTALLFOLDER" Guid="F6453682-606E-4937-88FF-B006577798FB" Win64="$(var.ComponentWin64)">
         <RegistryValue Root="HKCU" Key="Software\PrivatePinyin\Installer" Name="InstallerScripts" Type="integer" Value="1" KeyPath="yes" />
         <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
         <File Id="RegisterImeScript" Source="$(var.PackageSource)\register-ime.ps1" />
         <File Id="UnregisterImeScript" Source="$(var.PackageSource)\unregister-ime.ps1" />
         <File Id="OpenSettingsScript" Source="$(var.PackageSource)\open-settings.ps1" />
+        <File Id="OpenWriterScript" Source="$(var.PackageSource)\open-writer.ps1" />
         <File Id="OpenOnboardingScript" Source="$(var.PackageSource)\open-onboarding.ps1" />
         <File Id="PrivatePinyinLogo" Source="$(var.PackageSource)\PrivatePinyinLogo.png" />
         <File Id="ReleaseNotesZhHans" Source="$(var.PackageSource)\ReleaseNotes.zh-Hans.txt" />

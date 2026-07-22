@@ -214,6 +214,8 @@ name = "private_pinyin_ai_helper"
 version = "0.1.24"
 dependencies = [
  "private_pinyin_ai_helper_protocol",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

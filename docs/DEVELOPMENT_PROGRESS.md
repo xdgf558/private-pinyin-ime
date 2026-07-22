@@ -1,8 +1,21 @@
 # Development Progress
 
-Last updated: 2026-07-22 20:13
-Current stage: AI-12 cross-platform release hardening
-Current status: AI-12's automatable release gates are implemented for the approved AI Lite plus dormant Writer profile, while the latest iOS keyboard usability follow-up also passes automated and simulator validation; Writer inference remains explicitly No-Go pending warmed-request, native Windows RSS, signed-package identity, and Owner redistribution gates
+Last updated: 2026-07-22
+Current stage: Post-AI-12 desktop Writer V1
+Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
+
+## Desktop Writer V1 Validation (2026-07-22)
+
+- Added Decision 043 and a machine-readable desktop Writer runtime manifest. The Owner approval is limited to explicit on-demand download and local use of the exact Qwen2.5 1.5B Instruct Q4_K_M artifact; model redistribution remains prohibited.
+- Pinned llama.cpp `b10069` / revision `178a6c44937154dc4c4eff0d166f4a044c4fceba` for macOS arm64 and Windows x64. Packaging scripts verify the official release archive SHA-256 before staging the runtime.
+- The model is absent from the repository and installers. macOS and Windows require a visible user action, fixed official URL, exact `1,117,320,736`-byte size, and SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`; the Helper repeats full verification at use time.
+- The Helper owns a random-key `llama-server` child bound only to `127.0.0.1`, with web UI, network model access, and logs disabled. Source and result content use authenticated AI-09 IPC plus private loopback only and never enter argv, diagnostics, telemetry, or temporary prompt files.
+- macOS preferences/menu and Windows settings expose explicit rewrite and translation previews. Results are copy-only and never replace text automatically. Strict privacy, consent/model changes during inference, cancellation, timeout, stale state, and runtime/model failure discard the result without affecting ordinary input.
+- Automatic short completion remains disabled. The signed/notarized macOS and signed Windows package matrix, native Windows cold/warm RSS, and final runtime fault injection remain tracked by `AI-OI-010` and `AI-OI-012`.
+- `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, desktop/iOS feature FFI tests, and every AI-01 through AI-12/source privacy gate passed.
+- `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh` passed after staging the pinned llama.cpp runtime and validating its complete dylib dependency closure with `llama-server --version`.
+- A real on-demand model smoke exercised macOS host client -> authenticated AI-09 Helper -> random-key loopback `llama-server` -> bounded Writer preview. It returned two suggestions, with `2,224 ms` model preparation and `221 ms` inference; `/usr/bin/time -l` reported `1,283,571,712` bytes maximum RSS and zero swaps. This local reference contains no source or generated text and is not a cross-platform release threshold.
+- Native Windows PowerShell packaging, signed installer identity, cold/warm RSS, and runtime fault smokes require the GitHub `windows-2022` job plus a Windows 11 machine; they cannot be claimed from this development Mac.
 
 ## AI-12 Validation (2026-07-22)
 
@@ -42,7 +55,7 @@ Current status: AI-12's automatable release gates are implemented for the approv
 
 - Added a versioned Writer helper contract for bounded short completion, explicit rewrite, and explicit translation previews. Requests carry complete session/request/revision/source identity, expire within three seconds, and can return at most three bounded suggestions.
 - Strict privacy normalization now force-disables short completion, rewrite, and translation while preserving the separate stateless AI Lite policy. `AI-OI-011` also requires the future default-off short-completion UI to state “停顿时当前输入会交给本地 AI 进程” before the feature may ship.
-- The dormant helper validates Writer frames but returns only `ModelUnavailable`; no Writer model, UI, platform-host request path, automatic replacement, or persistent content cache is enabled.
+- In the historical AI-11 profile, the dormant helper validated Writer frames but returned only `ModelUnavailable`; that preserved the No-Go boundary before the separately reviewed Decision 043 Writer V1 activation.
 - Evaluated official `Qwen/Qwen2.5-1.5B-Instruct-GGUF` revision `dd26da440ef0330c47919d1ecae0966d24022222`, exact Q4_K_M SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`, with official llama.cpp release `b10069` on the development Mac. Model and runtime binaries remain temporary and outside the repository/product.
 - Result: 5/5 first-party synthetic completion, rewrite, and translation cases passed; cold-process first byte was 321-444 ms, total latency 403-528 ms, cancellation completed immediately, and peak RSS was about 1,192 MiB. The content-free report stores no prompt, generated text, path, or user data.
 - Release decision remains `NoGo`: warmed-request evidence, native Windows RSS, final package/cold-start review, and separate Owner/license redistribution approval are still required. Quality or privacy gates were not weakened to convert the Mac technical result into product approval.
@@ -167,7 +180,8 @@ Current status: AI-12's automatable release gates are implemented for the approv
 | AI-09 | Authenticated desktop Helper boundary | completed | 2026-07-20 15:46 | Shared bounded protocol and helper, controlled macOS pipes, current-user-only Windows request/response named-pipe pair, per-launch authentication, health/cancel/crash/restart/shutdown/idle lifecycle, packaging/signing hooks, and CI probes are ready for review; no Writer model or input-path dependency is added |
 | AI-10 | Optional Writer feasibility | completed (No-Go) | 2026-07-21 00:31 | Exact Qwen2.5 0.5B Q4_K_M and llama.cpp inputs are pinned; offline Mac probe passed cancellation and 2/3 quality cases, so the model remains unapproved, unbundled, and disconnected from every input path |
 | AI-11 | Gated Writer contracts and stronger-candidate evidence | completed (No-Go) | 2026-07-22 | Versioned bounded helper frames, explicit-action policy, complete stale-result identity, and 5/5 development-Mac evidence are complete; no model or Writer UI ships until warmed-request, native Windows RSS, packaging, and Owner redistribution gates pass |
-| AI-12 | Cross-platform hardening and release gates | in review | 2026-07-22 | Categorized privacy regressions, exact AI-off equivalence, bounded cross-platform Helper fault injection, model notices, and a machine-readable AI Lite Go / Writer No-Go release profile are ready; signed-package identity and Writer model gates remain open rather than being waived |
+| AI-12 | Cross-platform hardening and release gates | completed | 2026-07-22 | Merged through PR #44; categorized privacy regressions, exact AI-off equivalence, bounded cross-platform Helper fault injection, model notices, and the historical AI Lite Go / Writer No-Go release profile remain preserved |
+| Writer V1 | On-demand verified desktop Writer runtime | implemented, pending review | 2026-07-22 | macOS arm64 and Windows x64 package the pinned llama.cpp runtime; explicit verified model download, authenticated local rewrite/translation previews, strict-privacy cancellation, and fail-soft behavior are implemented under Decision 043. Automated gates and a real-model macOS smoke pass; signed final-package and native Windows memory smokes remain open |
 
 ## AI-09 Validation
 
@@ -176,7 +190,7 @@ Current status: AI-12's automatable release gates are implemented for the approv
 - macOS builds the helper in release mode and separately signs `Contents/Helpers/PrivatePinyinAIHelper`; the Swift controlled-child test exercises authentication, health, cancellation, forced termination, automatic restart, and clean shutdown over anonymous pipes.
 - Windows builds and packages `PrivatePinyinAIHelper.exe`; its lifecycle probe uses a random current-user-only request/response named-pipe pair with `PIPE_REJECT_REMOTE_CLIENTS`, verifies both connected clients match the spawned helper PID, terminates one authenticated helper, relaunches another, then exercises cancellation and shutdown.
 - CI now runs the shared source/privacy gate on Ubuntu, the compiled controlled-process test on macOS, and the compiled named-pipe lifecycle probe on `windows-2022`.
-- AI-09 is infrastructure only. Basic pinyin, user learning, AI Lite ranking, and iOS do not invoke the helper. `AI-OI-010` tracks real signed-package identity, hang/timeout fault injection, and ten-minute idle smoke before Writer features are enabled.
+- AI-09 was introduced as infrastructure only. Decision 043 now uses it for explicit desktop Writer actions; basic pinyin, user learning, AI Lite ranking, and iOS still do not invoke the helper. `AI-OI-010` and `AI-OI-012` track signed-package identity, hang/runtime fault injection, native Windows RSS, and ten-minute idle smoke before public Writer release.
 
 ## AI-08 Validation
 
@@ -1030,22 +1044,18 @@ Current status: AI-12's automatable release gates are implemented for the approv
 
 ## Files Changed In Latest Stage
 
-- `ime_core/assets/base_lexicon.tsv`
-- `ime_core/assets/lexicon_manifest.json`
-- `ime_core/src/imported_lexicon.rs`
-- `ime_core/src/lexicon.rs`
-- `ffi/c_api.h`
-- `ffi/ime_ffi/src/lib.rs`
-- `platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift`
-- `platform/windows_tsf/installer/open-settings.ps1`
-- `platform/ios_keyboard/ContainerApp/ContentView.swift`
-- `platform/ios_keyboard/ContainerApp/IosSettingsStore.swift`
-- `platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift`
-- `docs/local_rime_lexicon_import.md`
-- `scripts/check_local_lexicon_import_sources.sh`
+- `ai/helper_protocol/src/lib.rs`
+- `ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs`
+- `ai/writer_runtime/desktop_writer_runtime_manifest.json`
+- `platform/macos_imk/Sources/PrivatePinyinWriterModelManager.swift`
+- `platform/macos_imk/Sources/PrivatePinyinWriterWindowController.swift`
+- `platform/windows_tsf/installer/open-writer.ps1`
+- `scripts/prepare_macos_writer_runtime.sh`
+- `scripts/prepare_windows_writer_runtime.ps1`
+- `scripts/check_desktop_writer_runtime_sources.sh`
 
 ## Next Step
 
-- Review AI-08, then run its real-device latency, resident-memory, memory-pressure, secure-field,
-  numeric/phone, stale-result, and queue-saturation smoke before release approval. Keep the current
-  8-GiB AI-05 policy unchanged until those measurements support a separately reviewed threshold.
+- Review Desktop Writer V1, then run the signed/notarized macOS pkg and native Windows 11 package,
+  identity, cold/warm RSS, timeout, crash, queue-saturation, and offline-reuse matrix tracked by
+  `AI-OI-010` and `AI-OI-012` before enabling Writer in a public release.

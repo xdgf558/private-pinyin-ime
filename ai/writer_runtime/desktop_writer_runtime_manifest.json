@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "release_profile": "on_demand_desktop_writer_v1",
+  "owner_approved_for_on_demand_download": true,
+  "redistribution_allowed": false,
+  "platforms": ["macos-arm64", "windows-x64"],
+  "features": {
+    "explicit_rewrite": true,
+    "explicit_translation": true,
+    "automatic_short_completion": false,
+    "strict_privacy_disables_writer": true
+  },
+  "runtime": {
+    "name": "llama.cpp",
+    "tag": "b10069",
+    "revision": "178a6c44937154dc4c4eff0d166f4a044c4fceba",
+    "license": "MIT",
+    "source": "https://github.com/ggml-org/llama.cpp"
+  },
+  "macos_arm64": {
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10069/llama-b10069-bin-macos-arm64.tar.gz",
+    "sha256": "022469e0b22f4b84dcd0a323867d7f5a31dae21894931ee6a24a35abd2a60359"
+  },
+  "windows_x64_cpu": {
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10069/llama-b10069-bin-win-cpu-x64.zip",
+    "sha256": "6c6b235900f2264c9033ede3f0b0f2faac6ba363bd4c885ef672d55309e19662"
+  },
+  "model": {
+    "id": "qwen2.5-1.5b-instruct-q4-k-m",
+    "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/dd26da440ef0330c47919d1ecae0966d24022222/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "size_bytes": 1117320736,
+    "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "license": "Apache-2.0",
+    "bundled": false
+  }
+}

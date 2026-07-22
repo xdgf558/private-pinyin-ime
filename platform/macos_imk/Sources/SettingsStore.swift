@@ -102,7 +102,33 @@ enum PrivatePinyinSettingsStore {
             settings["strict_privacy_mode"] = enabled
             if enabled {
                 settings["enable_user_learning"] = false
+                var ai = settings["ai"] as? [String: Any] ?? [:]
+                ai["enable_short_completion"] = false
+                ai["enable_rewrite"] = false
+                ai["enable_translation"] = false
+                settings["ai"] = ai
             }
+        }
+    }
+
+    static func isWriterActionsEnabled(settings: [String: Any]? = nil) -> Bool {
+        let settings = settings ?? readSettings()
+        guard settings["strict_privacy_mode"] as? Bool != true,
+              let ai = settings["ai"] as? [String: Any] else {
+            return false
+        }
+        return ai["enable_rewrite"] as? Bool == true
+            && ai["enable_translation"] as? Bool == true
+    }
+
+    static func setWriterActionsEnabled(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            let strictPrivacy = settings["strict_privacy_mode"] as? Bool ?? false
+            var ai = settings["ai"] as? [String: Any] ?? [:]
+            ai["enable_short_completion"] = false
+            ai["enable_rewrite"] = enabled && !strictPrivacy
+            ai["enable_translation"] = enabled && !strictPrivacy
+            settings["ai"] = ai
         }
     }
 

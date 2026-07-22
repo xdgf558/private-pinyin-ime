@@ -328,6 +328,10 @@ cargo build -p private_pinyin_settings --release --target x86_64-pc-windows-msvc
 if ($LASTEXITCODE -ne 0) {
     throw "Windows settings tool build failed."
 }
+cargo build -p private_pinyin_ai_helper --release --target x86_64-pc-windows-msvc
+if ($LASTEXITCODE -ne 0) {
+    throw "Windows AI Helper build failed."
+}
 
 $stageDir = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version"
 $zipPath = Join-Path $repoRoot "dist\windows_tsf\PrivatePinyin-$Version.zip"
@@ -377,9 +381,12 @@ foreach ($variant in $buildVariants) {
 
 Copy-Item $settingsTool -Destination $stageDir
 Copy-Item $aiHelper -Destination (Join-Path $stageDir "PrivatePinyinAIHelper.exe")
+$writerRuntimeDir = Join-Path $stageDir "WriterRuntime"
+& (Join-Path $repoRoot "scripts\prepare_windows_writer_runtime.ps1") -Destination $writerRuntimeDir
 Copy-Item "platform\windows_tsf\installer\register-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\unregister-ime.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-settings.ps1" -Destination $stageDir
+Copy-Item "platform\windows_tsf\installer\open-writer.ps1" -Destination $stageDir
 Copy-Item "platform\windows_tsf\installer\open-onboarding.ps1" -Destination $stageDir
 $releaseNotesTemplate = Get-Content "platform\windows_tsf\installer\ReleaseNotes.zh-Hans.txt" -Raw -Encoding UTF8
 $releaseNotes = $releaseNotesTemplate.Replace("{{VERSION}}", $Version)

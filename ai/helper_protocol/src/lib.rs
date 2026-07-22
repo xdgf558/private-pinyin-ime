@@ -30,12 +30,14 @@ pub enum HelperOpcode {
     Cancel = 4,
     Shutdown = 5,
     WriterInference = 6,
+    PrepareWriter = 7,
     Authenticated = 0x8001,
     Healthy = 0x8002,
     MockCompleted = 0x8003,
     Cancelled = 0x8004,
     Acknowledged = 0x8005,
     WriterCompleted = 0x8006,
+    WriterReady = 0x8007,
     Error = 0x80ff,
 }
 
@@ -50,12 +52,14 @@ impl TryFrom<u16> for HelperOpcode {
             4 => Ok(Self::Cancel),
             5 => Ok(Self::Shutdown),
             6 => Ok(Self::WriterInference),
+            7 => Ok(Self::PrepareWriter),
             0x8001 => Ok(Self::Authenticated),
             0x8002 => Ok(Self::Healthy),
             0x8003 => Ok(Self::MockCompleted),
             0x8004 => Ok(Self::Cancelled),
             0x8005 => Ok(Self::Acknowledged),
             0x8006 => Ok(Self::WriterCompleted),
+            0x8007 => Ok(Self::WriterReady),
             0x80ff => Ok(Self::Error),
             _ => Err(HelperProtocolError::UnknownOpcode),
         }
@@ -73,6 +77,7 @@ pub enum HelperErrorCode {
     CancelTargetMissing = 6,
     Internal = 7,
     ModelUnavailable = 8,
+    DeadlineExceeded = 9,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

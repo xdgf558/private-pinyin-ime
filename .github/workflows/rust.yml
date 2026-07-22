@@ -125,6 +125,9 @@ jobs:
       - name: Check AI-12 release hardening gates
         run: bash scripts/check_ai12_release_gates.sh
 
+      - name: Check desktop Writer runtime and packaging contract
+        run: bash scripts/check_desktop_writer_runtime_sources.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
@@ -220,6 +223,26 @@ jobs:
           }
           if ($null -eq $state.PSObject.Properties["HasLegacyInputMethod"]) {
             throw "Windows onboarding state is missing legacy TIP migration status."
+          }
+
+      - name: Validate Windows Writer scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @(
+            ".\platform\windows_tsf\installer\open-settings.ps1",
+            ".\platform\windows_tsf\installer\open-writer.ps1",
+            ".\scripts\prepare_windows_writer_runtime.ps1"
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $path),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              throw "$path`n$($errors | ForEach-Object Message | Out-String)"
+            }
           }
 
       - name: Build Windows TSF host
