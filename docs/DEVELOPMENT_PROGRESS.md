@@ -1,8 +1,20 @@
 # Development Progress
 
-Last updated: 2026-07-21 22:39
-Current stage: AI-11 gated Writer integration
-Current status: The bounded Writer protocol and stronger-candidate Mac evidence are ready for review, while product Writer UI/inference remains unavailable pending warmed-request, native Windows memory, packaging, and Owner redistribution gates
+Last updated: 2026-07-22 12:05
+Current stage: iOS nine-key and settings usability follow-up
+Current status: Dedicated nine-key numeric input, quick punctuation selection, and two-level container settings navigation pass automated validation and iOS 27 simulator visual review; real-device gesture ergonomics remain for TestFlight smoke
+
+## iOS Nine-Key Numeric And Settings Navigation Validation (2026-07-22)
+
+- The nine-key `123` key now opens a dedicated numeric grid with `1-9`, `0`, Delete, Space, Return, `拼音`, `ABC`, `#@¥`, and `更多`; it no longer reuses the QWERTY symbol page.
+- The punctuation shortcut next to `123` inserts `，` on tap. A bounded long press opens `！/？/。/，`, and vertical sliding selects one item before insertion; the full symbol pages remain behind `#@¥` and `更多`.
+- The iOS container App home page now shows four compact entries: `开始使用`, `隐私与学习`, `词库管理`, and `关于猫栈拼音`. Existing setup, local-learning, imported-lexicon, reviewed-rime-ice, and version behavior lives on separate second-level pages.
+- `scripts/check_ios_keyboard_sources.sh`: passed with new source contracts preventing the punctuation shortcut from reopening the complete symbol keyboard and pinning the two-level settings hierarchy.
+- `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- Beta Xcode `scripts/run_ios_smoke_readiness.sh`: `BUILD SUCCEEDED`; Stage 14 source/signing checks and iOS smoke readiness passed for the Rust-backed container App and Keyboard Extension.
+- `scripts/test_ios_chinese_transform.sh`: passed with the Beta Xcode Swift toolchain.
+- iOS 27.0 iPhone 17 Pro simulator: installed and launched the rebuilt container App; the first-level page showed the four settings destinations without clipping or an overlong home page.
+- Real-device touch ergonomics for the long-press/slide punctuation selector remains a TestFlight smoke item; its UI behavior cannot be fully established by source checks alone.
 
 ## AI-11 Validation (2026-07-21)
 

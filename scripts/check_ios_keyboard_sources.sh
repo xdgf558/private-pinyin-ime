@@ -99,6 +99,11 @@ grep -q "togglePreferences" platform/ios_keyboard/KeyboardExtension/KeyboardView
 grep -q "setPredictionEnabled" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "clearLearningData" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "makeNineKeyGrid" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "makeNineKeyNumberGrid" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "nineKeyNumbersVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "NineKeyPunctuationPopupView" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "UILongPressGestureRecognizer" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "insertQuickPunctuation" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "selectKeyboardLayout(.nineKey)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "上一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "下一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -116,6 +121,9 @@ grep -q 'needsInputModeSwitchKey ? .globe : .qwertyLayout' platform/ios_keyboard
 grep -q 'makeAdaptiveKeyRow' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'traitCollection.verticalSizeClass == .compact' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let nineKeyMoreSymbols' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyNumbers' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyLetters' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyExtendedSymbols' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let candidateNextPage' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "候选"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -167,6 +175,11 @@ if sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' 
   echo "The iOS nine-key grid must adapt to compact-height layouts." >&2
   exit 1
 fi
+if sed -n '/case \.nineKeyPunctuation:/,/case \.space:/p' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q 'symbolsVisible = true'; then
+  echo "The iOS nine-key punctuation shortcut must not open the complete symbol keyboard." >&2
+  exit 1
+fi
 sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q '\.modeToggle'
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -193,6 +206,12 @@ grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keybo
 test "$(grep -c 'libprivate_pinyin_ime.a' platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj)" -eq 4
 grep -q "com.apple.keyboard-service" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -q "猫栈拼音" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "NavigationStack" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "SettingsDestination" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "开始使用"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "隐私与学习"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "词库管理"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "关于猫栈拼音"' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q "UIApplication.openSettingsURLString" platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q '\.fileImporter(' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q 'allowedContentTypes: rimeDocumentTypes' platform/ios_keyboard/ContainerApp/ContentView.swift
