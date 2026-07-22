@@ -1,8 +1,32 @@
 # Development Progress
 
-Last updated: 2026-07-21 22:39
-Current stage: AI-11 gated Writer integration
-Current status: The bounded Writer protocol and stronger-candidate Mac evidence are ready for review, while product Writer UI/inference remains unavailable pending warmed-request, native Windows memory, packaging, and Owner redistribution gates
+Last updated: 2026-07-22 18:56
+Current stage: iOS nine-key and settings usability follow-up
+Current status: Dedicated nine-key numeric input, quick punctuation selection, two-level container settings navigation, and non-blocking keyboard presentation pass automated validation and iOS 27 simulator review; real-device transition and gesture ergonomics remain for TestFlight smoke
+
+## iOS Keyboard Transition Responsiveness Validation (2026-07-22)
+
+- Root-cause review found that `KeyboardViewController.viewDidLoad()` synchronously created the Rust bridge and parsed the 137,699-entry lexicon before UIKit could present the keyboard. On extension recreation this exposed the previous keyboard frame long enough to look like ghosting or a stalled transition.
+- Direct iOS actions that bypass the queued character-input path now reacquire a configured core and refresh secure-input state before backspace, candidate commit, paging, composition finalization, or punctuation submission.
+- The keyboard now builds an opaque, clipped surface first and starts core initialization on a dedicated user-initiated worker queue. The completed bridge is published to the main thread and remains main-thread confined after publication.
+- Up to 64 key operations received during cold initialization are retained in FIFO order and replayed once. A real host text change clears the pending queue so early keys cannot leak into another field; engine initialization failure preserves the existing fallback insertion behavior.
+- Complete keyboard rebuilds run without UIKit animation, while ordinary character entry continues to update only the preedit/candidate state rather than reconstructing the key hierarchy.
+- Historical diagnostics contained one retired `PrivatePinyinKeyboard` Auto Layout crash from the former nine-key construction order. The current grid activates cross-row constraints only after every row belongs to the shared grid hierarchy; repeated simulator switching produced no new extension crash report.
+- iOS 27.0 iPhone 17 Pro simulator smoke: switched from 猫栈拼音 to Simplified Chinese, English, and back to 猫栈拼音. The complete keyboard appeared on return, and immediate `mao` input produced readable preedit plus `猫` and other candidates without a lost or duplicated key.
+- `scripts/check_ios_keyboard_sources.sh`, `git diff --check`, and Beta Xcode `scripts/build_ios_keyboard.sh`: passed. Frame-level transition smoothness on physical devices remains a required TestFlight check because simulator screenshots cannot establish display-refresh timing.
+
+## iOS Nine-Key Numeric And Settings Navigation Validation (2026-07-22)
+
+- The nine-key `123` key now opens a dedicated numeric grid with `1-9`, `0`, Delete, Space, Return, `拼音`, a quick punctuation key, `#@¥`, and `更多`; it no longer reuses the QWERTY symbol page. Devices that require an input-mode switch show the system globe key in place of the direct `ABC` shortcut.
+- The quick punctuation key inserts `，` on tap. A bounded long press opens `！/？/。/，`, vertical sliding selects one item before insertion, and the same alternatives are available as VoiceOver custom actions. `#@¥` opens the primary symbol page while `更多` opens the extended page.
+- The iOS container App home page now shows four compact entries: `开始使用`, `隐私与学习`, `词库管理`, and `关于猫栈拼音`. Existing setup, local-learning, imported-lexicon, reviewed-rime-ice, and version behavior lives on separate second-level pages.
+- `scripts/check_ios_keyboard_sources.sh`: passed with source contracts for quick punctuation, primary/extended symbol routing, the required globe key, VoiceOver actions, and the two-level settings hierarchy. The contract no longer relies on the former `sed | grep` pipeline that could fail under CI `pipefail` after an early match.
+- `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- Beta Xcode `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` after the PR review follow-up.
+- Beta Xcode `scripts/run_ios_smoke_readiness.sh`: `BUILD SUCCEEDED`; Stage 14 source/signing checks and iOS smoke readiness passed for the Rust-backed container App and Keyboard Extension.
+- `scripts/test_ios_chinese_transform.sh`: passed with the Beta Xcode Swift toolchain.
+- iOS 27.0 iPhone 17 Pro simulator: installed and launched the rebuilt container App; the first-level page showed the four settings destinations without clipping or an overlong home page.
+- Real-device touch ergonomics for the long-press/slide punctuation selector remains a TestFlight smoke item; its UI behavior cannot be fully established by source checks alone.
 
 ## AI-11 Validation (2026-07-21)
 

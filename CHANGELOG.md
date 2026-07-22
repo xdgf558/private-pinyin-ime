@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Fixed sluggish or ghosted iOS keyboard transitions by rendering the opaque keyboard surface before loading the Rust lexicon session, prewarming the core on a dedicated worker queue, replaying bounded early key events in order, and suppressing full-keyboard rebuild animations. Switching away and back no longer blocks UIKit presentation on the 137,699-entry lexicon.
+- Fixed the iOS nine-key `123` key so it opens a dedicated numeric grid instead of the full symbol keyboard. The grid includes a quick punctuation key, preserves the required system globe key, sends `#@¥` to the primary symbol page and `更多` to the extended page, and exposes the punctuation alternatives to VoiceOver.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.
 - Fixed the macOS imported-lexicon status line being vertically clipped, added friendly local dictionary names, and recognized known dictionaries under `rime-ice`/`雾凇` source folders as `雾凇拼音` for newly recorded imports without absorbing adjacent custom dictionaries or ancestor backup dates. Legacy imported layers without metadata now explain that re-importing is required because source paths are intentionally not retained.
@@ -11,6 +13,7 @@
 
 ### Added
 
+- Reorganized the iOS container App into a compact first-level settings overview with separate second-level pages for keyboard setup, privacy and learning, lexicon management, and app information, preserving all existing controls without an ever-growing home page.
 - Added AI-11's versioned, bounded Writer request/preview protocol and an exact stronger-candidate feasibility record. The 1.5B Q4_K_M candidate passed 5/5 synthetic Mac cases within the cold latency budget, but remains unapproved and unshipped pending warmed-request, native Windows memory, package, and Owner redistribution gates; the dormant helper returns `ModelUnavailable`, and no Writer UI or production inference path is enabled.
 - Added an expandable iOS candidate browser shared by full-key and nine-key layouts, showing nine candidates per group in a three-by-three grid with bounded previous/next navigation while retaining the compact horizontal candidate strip.
 - Added the AI-10 offline Writer feasibility probe with an exact evaluation-only Qwen2.5 0.5B Q4_K_M candidate, pinned official llama.cpp runtime metadata, first-party synthetic Chinese completion/rewrite cases, bounded cancellation and memory/latency measurement, content-free evidence, and CI gates that prohibit tracked model weights, arbitrary prompts, network clients, or approval-registry entry. The measured candidate passed 2/3 quality cases and is explicitly recorded as No-Go; no Writer model or behavior is shipped.
@@ -127,6 +130,7 @@
 ### Changed
 
 - Bumped the iOS container app and Keyboard Extension to `0.1.24 (20)` for the keyboard-activation fix, expandable nine-candidate browser, packed lexicon indexes, and the explicit verified `rime-ice` import action.
+- Refreshed the iOS secure-input state before direct backspace, candidate commit, paging, composition-finalization, and punctuation actions so optional local AI remains fail-closed when the host input context changes.
 - Bumped the macOS app/pkg and Windows internal-test package defaults to `0.1.24` for the shared-engine macOS memory fix and the dormant AI-09 authenticated desktop Helper boundary.
 - Bumped the macOS app/pkg and Windows internal-test installers to `0.1.23` for the reviewed upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.
 - Bumped the iOS container app and Keyboard Extension to `0.1.23 (19)` for the PR #35 nine-key candidate, paging, touch, and persistence fixes plus the PR #34 upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.
