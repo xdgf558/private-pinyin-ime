@@ -175,11 +175,47 @@ if sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' 
   echo "The iOS nine-key grid must adapt to compact-height layouts." >&2
   exit 1
 fi
-if sed -n '/case \.nineKeyPunctuation:/,/case \.space:/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q 'symbolsVisible = true'; then
-  echo "The iOS nine-key punctuation shortcut must not open the complete symbol keyboard." >&2
-  exit 1
-fi
+python3 - <<'PY'
+from pathlib import Path
+
+source = Path(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
+).read_text(encoding="utf-8")
+
+def case_body(case_name: str) -> str:
+    marker = f"        case {case_name}:"
+    if marker not in source:
+        raise SystemExit(f"Missing Swift case contract: {case_name}")
+    body = source.split(marker, 1)[1]
+    return body.split("\n        case ", 1)[0]
+
+punctuation_body = case_body(".nineKeyPunctuation")
+if 'insertQuickPunctuation("，")' not in punctuation_body:
+    raise SystemExit("The iOS nine-key punctuation shortcut must insert quick punctuation.")
+if "symbolsVisible = true" in punctuation_body:
+    raise SystemExit(
+        "The iOS nine-key punctuation shortcut must not open the complete symbol keyboard."
+    )
+
+more_symbols = source.split("    static let nineKeyMoreSymbols", 1)[1].split(
+    "    static let nineKeyExtendedSymbols", 1
+)[0]
+extended_symbols = source.split("    static let nineKeyExtendedSymbols", 1)[1].split(
+    "    static let letters", 1
+)[0]
+if "kind: .symbols" not in more_symbols:
+    raise SystemExit("The #@¥ key must open the primary symbol page.")
+if "kind: .extendedSymbols" not in extended_symbols:
+    raise SystemExit("The 更多 key must open the extended symbol page.")
+
+number_grid = source.split("    private func makeNineKeyNumberGrid()", 1)[1].split(
+    "    private func makeAdaptiveKeyRow", 1
+)[0]
+if "needsInputModeSwitchKey ? .globe : .qwertyLayout" not in number_grid:
+    raise SystemExit("The nine-key number page must retain the required globe key.")
+if "accessibilityCustomActions" not in source:
+    raise SystemExit("Quick punctuation alternatives must be exposed to VoiceOver.")
+PY
 sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q '\.modeToggle'
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

@@ -6,11 +6,12 @@ Current status: Dedicated nine-key numeric input, quick punctuation selection, a
 
 ## iOS Nine-Key Numeric And Settings Navigation Validation (2026-07-22)
 
-- The nine-key `123` key now opens a dedicated numeric grid with `1-9`, `0`, Delete, Space, Return, `拼音`, `ABC`, `#@¥`, and `更多`; it no longer reuses the QWERTY symbol page.
-- The punctuation shortcut next to `123` inserts `，` on tap. A bounded long press opens `！/？/。/，`, and vertical sliding selects one item before insertion; the full symbol pages remain behind `#@¥` and `更多`.
+- The nine-key `123` key now opens a dedicated numeric grid with `1-9`, `0`, Delete, Space, Return, `拼音`, a quick punctuation key, `#@¥`, and `更多`; it no longer reuses the QWERTY symbol page. Devices that require an input-mode switch show the system globe key in place of the direct `ABC` shortcut.
+- The quick punctuation key inserts `，` on tap. A bounded long press opens `！/？/。/，`, vertical sliding selects one item before insertion, and the same alternatives are available as VoiceOver custom actions. `#@¥` opens the primary symbol page while `更多` opens the extended page.
 - The iOS container App home page now shows four compact entries: `开始使用`, `隐私与学习`, `词库管理`, and `关于猫栈拼音`. Existing setup, local-learning, imported-lexicon, reviewed-rime-ice, and version behavior lives on separate second-level pages.
-- `scripts/check_ios_keyboard_sources.sh`: passed with new source contracts preventing the punctuation shortcut from reopening the complete symbol keyboard and pinning the two-level settings hierarchy.
+- `scripts/check_ios_keyboard_sources.sh`: passed with source contracts for quick punctuation, primary/extended symbol routing, the required globe key, VoiceOver actions, and the two-level settings hierarchy. The contract no longer relies on the former `sed | grep` pipeline that could fail under CI `pipefail` after an early match.
 - `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`: passed.
+- Beta Xcode `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` after the PR review follow-up.
 - Beta Xcode `scripts/run_ios_smoke_readiness.sh`: `BUILD SUCCEEDED`; Stage 14 source/signing checks and iOS smoke readiness passed for the Rust-backed container App and Keyboard Extension.
 - `scripts/test_ios_chinese_transform.sh`: passed with the Beta Xcode Swift toolchain.
 - iOS 27.0 iPhone 17 Pro simulator: installed and launched the rebuilt container App; the first-level page showed the four settings destinations without clipping or an overlong home page.

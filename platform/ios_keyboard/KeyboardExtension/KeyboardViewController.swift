@@ -778,7 +778,9 @@ final class KeyboardViewController: UIInputViewController {
             .nineKeyExtendedSymbols,
         ])
 
-        let leadingButton = makeKeyButton(.qwertyLayout)
+        // Keep the system-mandated input-mode switch reachable from this
+        // temporary number page. The 拼音 key above still returns to nine-key.
+        let leadingButton = makeKeyButton(needsInputModeSwitchKey ? .globe : .qwertyLayout)
         let enterButton = makeKeyButton(.enter)
         let lowerCenterTop = makeAdaptiveKeyRow([
             .text("7"),
@@ -952,6 +954,15 @@ final class KeyboardViewController: UIInputViewController {
             gesture.cancelsTouchesInView = true
             button.addGestureRecognizer(gesture)
             button.accessibilityHint = "轻点输入逗号，长按并滑动选择标点"
+            button.accessibilityCustomActions = ["！", "？", "。", "，"].map { punctuation in
+                UIAccessibilityCustomAction(name: punctuation) { [weak self] _ in
+                    guard let self else {
+                        return false
+                    }
+                    self.insertQuickPunctuation(punctuation)
+                    return true
+                }
+            }
         }
         if case .enter = key.kind {
             button.accessibilityHint = "提交当前输入，或执行当前输入框的回车操作"
@@ -1095,9 +1106,7 @@ final class KeyboardViewController: UIInputViewController {
             feedNineKeyDigit(value)
         case .nineKeyPunctuation:
             insertQuickPunctuation("，")
-        case .space:
-            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
-        case .nineKeySpace:
+        case .space, .nineKeySpace:
             applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
         case .enter:
             applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"), fallback: "\n")
@@ -1235,9 +1244,10 @@ private extension KeyboardViewController {
             handleTextKey(",")
         case "。":
             handleTextKey(".")
-        case "；":
-            handleTextKey(";")
         default:
+            // The shared core maps comma and period, so those can preserve an
+            // active composition. Exclamation and question marks have no core
+            // key code and therefore commit the composition before insertion.
             if hasActiveInput {
                 if currentCandidates.isEmpty {
                     apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter))
@@ -1870,10 +1880,10 @@ private struct KeySpec {
         widthWeight: 1.2
     )
     static let nineKeyMoreSymbols = Self(
-        kind: .extendedSymbols,
+        kind: .symbols,
         title: "#@\u{00a5}",
         systemImageName: nil,
-        accessibilityLabel: "更多符号",
+        accessibilityLabel: "数字与常用符号",
         isCommand: true,
         isWide: true,
         widthWeight: 1

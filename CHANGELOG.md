@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fixed the iOS nine-key `123` key so it opens a dedicated numeric grid instead of the full symbol keyboard. The adjacent punctuation key now inserts a comma on tap and offers common Chinese punctuation through a bounded long-press-and-slide selector, while `#@¥` remains the entry to complete symbols.
+- Fixed the iOS nine-key `123` key so it opens a dedicated numeric grid instead of the full symbol keyboard. The grid includes a quick punctuation key, preserves the required system globe key, sends `#@¥` to the primary symbol page and `更多` to the extended page, and exposes the punctuation alternatives to VoiceOver.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.
 - Fixed the macOS imported-lexicon status line being vertically clipped, added friendly local dictionary names, and recognized known dictionaries under `rime-ice`/`雾凇` source folders as `雾凇拼音` for newly recorded imports without absorbing adjacent custom dictionaries or ancestor backup dates. Legacy imported layers without metadata now explain that re-importing is required because source paths are intentionally not retained.
