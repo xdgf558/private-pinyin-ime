@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-07-22 19:30
+Last updated: 2026-07-22 20:13
 Current stage: AI-12 cross-platform release hardening
 Current status: AI-12's automatable release gates are implemented for the approved AI Lite plus dormant Writer profile, while the latest iOS keyboard usability follow-up also passes automated and simulator validation; Writer inference remains explicitly No-Go pending warmed-request, native Windows RSS, signed-package identity, and Owner redistribution gates
 
@@ -115,8 +115,8 @@ Current status: AI-12's automatable release gates are implemented for the approv
 | 13 | Lexicon import and production dictionary | completed | 2026-07-08 10:42 | Merged to `main` through PR #10 |
 | 14 | iOS signing and App Group configuration | completed | 2026-07-09 11:20 | Merged to local `main`; owner signing env inputs, bundle ID overrides, App Group build-setting injection, export-options checks, and Stage 14 CI source gates are ready |
 | 15 | iOS simulator/local development build | completed | 2026-07-10 13:32 | Beta Xcode source/readiness gates and iOS 27 Simulator install, enablement, continuous-pinyin, prediction, local learning, portrait, and landscape smoke checks passed |
-| 16 | TestFlight archive and upload | completed | 2026-07-21 22:39 | TestFlight candidate `0.1.24 (20)` was archived with Xcode 26.6, uploaded as delivery `e25c8f4b-64b2-46a6-b4d3-e83dbf8810d3`, and validated as App Store eligible |
-| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-21 22:39 | Build `0.1.24 (20)` is ready for external assignment; final TestFlight host taps, password/phone fallback, candidate-browser paging, verified `rime-ice` import, and App Group persistence checks remain |
+| 16 | TestFlight archive and upload | completed | 2026-07-22 20:13 | TestFlight candidate `0.1.25 (21)` was archived with Xcode 26.6, uploaded as delivery `7388b499-48c5-470e-89f4-95569a6b7309`, and validated as App Store eligible |
+| 17 | Device keyboard behavior and privacy closure | in_progress | 2026-07-22 20:13 | Build `0.1.25 (21)` is ready for external assignment; final TestFlight keyboard-transition, nine-key numeric/punctuation, password/phone fallback, candidate paging, verified `rime-ice` import, and App Group persistence checks remain |
 | 18 | App Store release preparation | planned | | Prepare screenshots, description, privacy labels, age rating, URLs, and release checklist |
 
 ## Core Follow-up Status
@@ -307,6 +307,17 @@ Current status: AI-12's automatable release gates are implemented for the approv
 - Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
 - This candidate includes the Keyboard Extension activation repair, expandable nine-candidate browser, packed lexicon indexes, local document import, and explicit verified `rime-ice` import action.
 - External TestFlight review remains a separate Owner action: assign build `20` to the external group, provide test content, and submit it for Beta App Review.
+
+## iOS 0.1.25 (21) TestFlight Upload
+
+- PR #44 was merged to `main` as `fe57d2f`; container app and Keyboard Extension versions were advanced together to `0.1.25 (21)`.
+- `plutil -lint` for both release plists, the iOS source gate, Stage 14 signing gate, Stage 16 TestFlight gate, AI-08 integration gate, and `git diff --check` passed before archive.
+- The device Rust FFI library was rebuilt for `aarch64-apple-ios` with `IPHONEOS_DEPLOYMENT_TARGET=18.0` and the `ios-ai` feature.
+- Signed archive `dist/ios/PrivatePinyin-0.1.25-build21-xcode26.xcarchive` reports version `0.1.25`, build `21`, and arm64.
+- `xcodebuild -exportArchive` with `destination=upload`: passed; App Store Connect accepted delivery `7388b499-48c5-470e-89f4-95569a6b7309`.
+- Apple processing: passed; `IMPORT-STATUS: VALID`, `BUILD-AUDIENCE-TYPE: APP_STORE_ELIGIBLE`, `BUILD-STATUS: BETA_INTERNAL_TESTING`, and `IS-ON-APP-STORE-CONNECT: true`.
+- This candidate includes smoother cold keyboard activation, the dedicated nine-key numeric and punctuation surfaces, the two-level container settings interface, and the merged AI-12 release hardening gates.
+- External TestFlight review remains a separate Owner action: assign build `21` to the external group, provide test content, and submit it for Beta App Review.
 
 ## Completed Work
 
