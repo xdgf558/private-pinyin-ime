@@ -1,8 +1,18 @@
 # Development Progress
 
-Last updated: 2026-07-22 12:05
+Last updated: 2026-07-22 18:56
 Current stage: iOS nine-key and settings usability follow-up
-Current status: Dedicated nine-key numeric input, quick punctuation selection, and two-level container settings navigation pass automated validation and iOS 27 simulator visual review; real-device gesture ergonomics remain for TestFlight smoke
+Current status: Dedicated nine-key numeric input, quick punctuation selection, two-level container settings navigation, and non-blocking keyboard presentation pass automated validation and iOS 27 simulator review; real-device transition and gesture ergonomics remain for TestFlight smoke
+
+## iOS Keyboard Transition Responsiveness Validation (2026-07-22)
+
+- Root-cause review found that `KeyboardViewController.viewDidLoad()` synchronously created the Rust bridge and parsed the 137,699-entry lexicon before UIKit could present the keyboard. On extension recreation this exposed the previous keyboard frame long enough to look like ghosting or a stalled transition.
+- The keyboard now builds an opaque, clipped surface first and starts core initialization on a dedicated user-initiated worker queue. The completed bridge is published to the main thread and remains main-thread confined after publication.
+- Up to 64 key operations received during cold initialization are retained in FIFO order and replayed once. A real host text change clears the pending queue so early keys cannot leak into another field; engine initialization failure preserves the existing fallback insertion behavior.
+- Complete keyboard rebuilds run without UIKit animation, while ordinary character entry continues to update only the preedit/candidate state rather than reconstructing the key hierarchy.
+- Historical diagnostics contained one retired `PrivatePinyinKeyboard` Auto Layout crash from the former nine-key construction order. The current grid activates cross-row constraints only after every row belongs to the shared grid hierarchy; repeated simulator switching produced no new extension crash report.
+- iOS 27.0 iPhone 17 Pro simulator smoke: switched from 猫栈拼音 to Simplified Chinese, English, and back to 猫栈拼音. The complete keyboard appeared on return, and immediate `mao` input produced readable preedit plus `猫` and other candidates without a lost or duplicated key.
+- `scripts/check_ios_keyboard_sources.sh`, `git diff --check`, and Beta Xcode `scripts/build_ios_keyboard.sh`: passed. Frame-level transition smoothness on physical devices remains a required TestFlight check because simulator screenshots cannot establish display-refresh timing.
 
 ## iOS Nine-Key Numeric And Settings Navigation Validation (2026-07-22)
 

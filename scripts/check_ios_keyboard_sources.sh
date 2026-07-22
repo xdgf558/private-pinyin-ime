@@ -111,7 +111,7 @@ grep -q "展开全部候选" platform/ios_keyboard/KeyboardExtension/KeyboardVie
 grep -q "private-pinyin-expanded-candidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "private-pinyin-expanded-candidate-" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func toggleExpandedCandidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "func ensureCore()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func startCoreLoadIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -182,6 +182,40 @@ nine_key_grid = source.split("    private func makeNineKeyGrid()", 1)[1].split(
 )[0]
 if "equalToConstant: 52" in nine_key_grid or "equalToConstant: 113" in nine_key_grid:
     raise SystemExit("The iOS nine-key grid must adapt to compact-height layouts.")
+if ".modeToggle" not in nine_key_grid:
+    raise SystemExit("The iOS nine-key grid must retain the Chinese/English toggle.")
+
+feed_character = source.split("    func feedCharacter", 1)[1].split(
+    "    func handleTextKey", 1
+)[0]
+if "rebuildKeyboard" in feed_character:
+    raise SystemExit("Character input must not rebuild the complete iOS keyboard.")
+
+view_did_load = source.split("    override func viewDidLoad()", 1)[1].split(
+    "    override func textWillChange", 1
+)[0]
+if "lastNeedsInputModeSwitchKey = needsInputModeSwitchKey" not in view_did_load:
+    raise SystemExit("The iOS keyboard must seed its input-mode-switch state before layout.")
+if "startCoreLoadIfNeeded()" not in view_did_load:
+    raise SystemExit("The iOS keyboard must start background core prewarming after building UI.")
+if "IosPinyinCoreBridge()" in view_did_load:
+    raise SystemExit("Lexicon initialization must not run synchronously during presentation.")
+
+core_loader = source.split("    func startCoreLoadIfNeeded()", 1)[1].split(
+    "    func invalidateCore()", 1
+)[0]
+if "coreLoaderQueue.async" not in core_loader or "DispatchQueue.main.async" not in core_loader:
+    raise SystemExit("The iOS lexicon must load off-main and publish its session on main.")
+if "pendingCoreOperations" not in core_loader:
+    raise SystemExit("Early iOS key events must be replayed after background core loading.")
+
+rebuild_wrapper = source.split("    private func rebuildKeyboard()", 1)[1].split(
+    "    private func rebuildKeyboardContents()", 1
+)[0]
+if "UIView.performWithoutAnimation" not in rebuild_wrapper:
+    raise SystemExit("Complete keyboard rebuilds must not animate during host transitions.")
+if "view.isOpaque = true" not in source or "trayGradient.isOpaque = true" not in source:
+    raise SystemExit("The iOS keyboard root must remain opaque for smooth transitions.")
 
 def case_body(case_name: str) -> str:
     marker = f"        case {case_name}:"
@@ -217,8 +251,6 @@ if "needsInputModeSwitchKey ? .globe : .qwertyLayout" not in number_grid:
 if "accessibilityCustomActions" not in source:
     raise SystemExit("Quick punctuation alternatives must be exposed to VoiceOver.")
 PY
-sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q '\.modeToggle'
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -228,11 +260,6 @@ grep -Fq '"_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 grep -q "ime_session_set_candidate_page_size" ffi/c_api.h
-if sed -n '/func feedCharacter/,/func handleTextKey/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then
-  echo "Character input must not rebuild the complete iOS keyboard." >&2
-  exit 1
-fi
 grep -q "isKeyboardExtension" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "canEnableLearning" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "repairRuntimePathsIfNeeded" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift

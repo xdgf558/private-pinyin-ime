@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed sluggish or ghosted iOS keyboard transitions by rendering the opaque keyboard surface before loading the Rust lexicon session, prewarming the core on a dedicated worker queue, replaying bounded early key events in order, and suppressing full-keyboard rebuild animations. Switching away and back no longer blocks UIKit presentation on the 137,699-entry lexicon.
 - Fixed the iOS nine-key `123` key so it opens a dedicated numeric grid instead of the full symbol keyboard. The grid includes a quick punctuation key, preserves the required system globe key, sends `#@¥` to the primary symbol page and `更多` to the extended page, and exposes the punctuation alternatives to VoiceOver.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.
