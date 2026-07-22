@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Removed duplicate AI-12 Cargo executions from the source gate, made the release JSON explicitly declarative instead of presenting hand-authored status strings as measurements, and expanded AI-off equivalence coverage across backspace, paging, and consecutive commits.
+- Hardened the dormant desktop AI Helper with absolute macOS request deadlines, a bounded launch budget, deadline-aware Windows pipe writes, exact 64-KiB frame coverage, queue-saturation fault injection, and fail-safe cancellation while preserving ordinary typing.
 - Fixed sluggish or ghosted iOS keyboard transitions by rendering the opaque keyboard surface before loading the Rust lexicon session, prewarming the core on a dedicated worker queue, replaying bounded early key events in order, and suppressing full-keyboard rebuild animations. Switching away and back no longer blocks UIKit presentation on the 137,699-entry lexicon.
 - Fixed the iOS nine-key `123` key so it opens a dedicated numeric grid instead of the full symbol keyboard. The grid includes a quick punctuation key, preserves the required system globe key, sends `#@¥` to the primary symbol page and `更多` to the extended page, and exposes the punctuation alternatives to VoiceOver.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
@@ -13,6 +15,7 @@
 
 ### Added
 
+- Added AI-12 release hardening with categorized privacy fixtures, exact AI-off/base-output equivalence tests for desktop and iOS feature builds, cross-platform Helper failure gates, model-notice checks, and a machine-readable release decision: AI Lite is Go while Writer remains No-Go pending approval and platform evidence.
 - Reorganized the iOS container App into a compact first-level settings overview with separate second-level pages for keyboard setup, privacy and learning, lexicon management, and app information, preserving all existing controls without an ever-growing home page.
 - Added AI-11's versioned, bounded Writer request/preview protocol and an exact stronger-candidate feasibility record. The 1.5B Q4_K_M candidate passed 5/5 synthetic Mac cases within the cold latency budget, but remains unapproved and unshipped pending warmed-request, native Windows memory, package, and Owner redistribution gates; the dormant helper returns `ModelUnavailable`, and no Writer UI or production inference path is enabled.
 - Added an expandable iOS candidate browser shared by full-key and nine-key layouts, showing nine candidates per group in a three-by-three grid with bounded previous/next navigation while retaining the compact horizontal candidate strip.

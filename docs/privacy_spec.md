@@ -192,6 +192,30 @@ The dormant helper currently validates the Writer request and then returns only 
 content-free `ModelUnavailable` error. It does not infer, persist, log, or echo the source
 text.
 
+## AI-12 Release Privacy Gate
+
+AI-12 maintains data-driven regression groups for passwords, tokens, identity cards,
+phone numbers, payment cards, and known false positives. The fixtures are first-party
+synthetic strings, contain no user data, and include ordinary phrases such as `token
+economy`, `secret garden`, and `password manager` that must remain usable. New sensitive
+categories or broader AI features must extend this corpus before release.
+
+Desktop and iOS feature builds must prove that an AI-enabled engine blocked by privacy
+produces the same preedit, commit, mode, update flags, candidate texts, pinyin, scores,
+and sources as an engine with AI disabled. Helper maximum-frame, saturation, cancellation,
+deadline, crash, restart, shutdown, and idle-exit failures may disable only the optional
+enhancement. The AI-12 release profile permits the approved stateless AI Lite ranker and
+the dormant Writer protocol. Writer inference remains unavailable and `NoGo` until the
+exact candidate has Owner redistribution approval, warmed-request and native Windows RSS
+evidence, and signed-package Helper identity smokes.
+
+`ai/eval/ai12_release_gate.json` records declarative expectations and the CI steps that
+provide executable evidence. Values such as `expected_outcome` are release requirements,
+not measurements or self-asserted pass results; the named test jobs remain authoritative.
+The false-positive fixture intentionally distinguishes discussion such as `这个 API key
+别发上去` from an assignment such as `api key: secret-value` so later rule changes do not
+silently erase that privacy/usability boundary.
+
 ## iOS AI Host Integration
 
 AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite

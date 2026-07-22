@@ -23,7 +23,9 @@ constexpr std::size_t kHeaderBytes = 20;
 constexpr std::size_t kMaximumPayloadBytes = 64 * 1024;
 constexpr ULONGLONG kPipeConnectTimeoutMilliseconds = 5000;
 constexpr ULONGLONG kPipeReadTimeoutMilliseconds = 5000;
+constexpr ULONGLONG kPipeWriteTimeoutMilliseconds = 5000;
 constexpr std::uint32_t kProbeHelperIdleTimeoutMilliseconds = 15000;
+constexpr std::size_t kMaximumActiveRequests = 8;
 constexpr wchar_t kTokenEnvironmentKey[] = L"PRIVATE_PINYIN_AI_HELPER_TOKEN";
 
 enum class Opcode : std::uint16_t {
@@ -38,6 +40,10 @@ enum class Opcode : std::uint16_t {
   kCancelled = 0x8004,
   kAcknowledged = 0x8005,
   kError = 0x80ff,
+};
+
+enum class HelperErrorCode : std::uint16_t {
+  kQueueFull = 5,
 };
 
 struct Frame {
@@ -131,16 +137,28 @@ std::uint64_t read_u64(const std::array<std::uint8_t, kHeaderBytes>& bytes,
   return value;
 }
 
-bool write_exact(HANDLE pipe, const std::uint8_t* bytes, std::size_t size) {
+bool write_exact(HANDLE pipe, HANDLE process, const std::uint8_t* bytes,
+                 std::size_t size) {
+  const ULONGLONG deadline = GetTickCount64() + kPipeWriteTimeoutMilliseconds;
   while (size > 0) {
     const DWORD chunk = static_cast<DWORD>(
         (std::min)(size, static_cast<std::size_t>(MAXDWORD)));
     DWORD written = 0;
-    if (!WriteFile(pipe, bytes, chunk, &written, nullptr) || written == 0) {
+    const BOOL write_succeeded =
+        WriteFile(pipe, bytes, chunk, &written, nullptr);
+    if (write_succeeded && written > 0) {
+      bytes += written;
+      size -= written;
+      continue;
+    }
+    const DWORD error = write_succeeded ? ERROR_NO_DATA : GetLastError();
+    if ((error != ERROR_NO_DATA && error != ERROR_PIPE_LISTENING &&
+         error != ERROR_PIPE_BUSY) ||
+        WaitForSingleObject(process, 0) == WAIT_OBJECT_0 ||
+        GetTickCount64() >= deadline) {
       return false;
     }
-    bytes += written;
-    size -= written;
+    Sleep(5);
   }
   return true;
 }
@@ -170,7 +188,7 @@ bool read_exact(HANDLE pipe, HANDLE process, std::uint8_t* bytes,
   return true;
 }
 
-bool write_frame(HANDLE pipe, const Frame& frame) {
+bool write_frame(HANDLE pipe, HANDLE process, const Frame& frame) {
   if (frame.payload.size() > kMaximumPayloadBytes) {
     return false;
   }
@@ -182,7 +200,7 @@ bool write_frame(HANDLE pipe, const Frame& frame) {
   append_u64(&bytes, frame.request_id);
   append_u32(&bytes, static_cast<std::uint32_t>(frame.payload.size()));
   bytes.insert(bytes.end(), frame.payload.begin(), frame.payload.end());
-  return write_exact(pipe, bytes.data(), bytes.size());
+  return write_exact(pipe, process, bytes.data(), bytes.size());
 }
 
 bool read_frame(HANDLE pipe, HANDLE process, Frame* frame) {
@@ -356,6 +374,16 @@ bool expect(HANDLE pipe, HANDLE process, Opcode opcode,
          frame.request_id == request_id;
 }
 
+bool expect_error(HANDLE pipe, HANDLE process, std::uint64_t request_id,
+                  HelperErrorCode expected) {
+  Frame frame;
+  const std::uint16_t code = static_cast<std::uint16_t>(expected);
+  return read_frame(pipe, process, &frame) && frame.opcode == Opcode::kError &&
+         frame.request_id == request_id && frame.payload.size() == 2 &&
+         frame.payload[0] == static_cast<std::uint8_t>(code & 0xff) &&
+         frame.payload[1] == static_cast<std::uint8_t>((code >> 8) & 0xff);
+}
+
 std::vector<std::uint8_t> little_endian_u32(std::uint32_t value) {
   std::vector<std::uint8_t> bytes;
   append_u32(&bytes, value);
@@ -427,12 +455,13 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
     return false;
   }
   bool ok = write_frame(
-                request_pipe.get(),
+                request_pipe.get(), process.get(),
                 Frame{Opcode::kAuthenticate, 0,
                       std::vector<std::uint8_t>(token.begin(), token.end())}) &&
             expect(response_pipe.get(), process.get(), Opcode::kAuthenticated,
                    0) &&
-            write_frame(request_pipe.get(), Frame{Opcode::kHealth, 1, {}}) &&
+            write_frame(request_pipe.get(), process.get(),
+                        Frame{Opcode::kHealth, 1, {}}) &&
             expect(response_pipe.get(), process.get(), Opcode::kHealthy, 1);
 
   if (terminate_after_health) {
@@ -448,14 +477,36 @@ bool run_probe_session(const std::filesystem::path& helper_executable,
   }
 
   ok = ok &&
-       write_frame(request_pipe.get(), Frame{Opcode::kMockInference, 2,
-                                             little_endian_u32(500)}) &&
-       write_frame(request_pipe.get(),
-                   Frame{Opcode::kCancel, 3, little_endian_u64(2)}) &&
-       expect(response_pipe.get(), process.get(), Opcode::kCancelled, 2) &&
-       expect(response_pipe.get(), process.get(), Opcode::kAcknowledged, 3) &&
-       write_frame(request_pipe.get(), Frame{Opcode::kShutdown, 4, {}}) &&
-       expect(response_pipe.get(), process.get(), Opcode::kAcknowledged, 4);
+       write_frame(request_pipe.get(), process.get(),
+                   Frame{Opcode::kHealth, 10,
+                         std::vector<std::uint8_t>(kMaximumPayloadBytes, 0x5a)}) &&
+       expect(response_pipe.get(), process.get(), Opcode::kHealthy, 10);
+
+  for (std::size_t index = 0; ok && index < kMaximumActiveRequests; ++index) {
+    ok = write_frame(
+        request_pipe.get(), process.get(),
+        Frame{Opcode::kMockInference, 100 + index, little_endian_u32(5000)});
+  }
+  ok = ok && write_frame(request_pipe.get(), process.get(),
+                         Frame{Opcode::kMockInference, 200,
+                               little_endian_u32(5000)}) &&
+       expect_error(response_pipe.get(), process.get(), 200,
+                    HelperErrorCode::kQueueFull);
+
+  for (std::size_t index = 0; ok && index < kMaximumActiveRequests; ++index) {
+    const std::uint64_t target = 100 + index;
+    const std::uint64_t cancellation = 300 + index;
+    ok = write_frame(request_pipe.get(), process.get(),
+                     Frame{Opcode::kCancel, cancellation,
+                           little_endian_u64(target)}) &&
+         expect(response_pipe.get(), process.get(), Opcode::kCancelled,
+                target) &&
+         expect(response_pipe.get(), process.get(), Opcode::kAcknowledged,
+                cancellation);
+  }
+  ok = ok && write_frame(request_pipe.get(), process.get(),
+                         Frame{Opcode::kShutdown, 400, {}}) &&
+       expect(response_pipe.get(), process.get(), Opcode::kAcknowledged, 400);
 
   if (WaitForSingleObject(process.get(), 2000) != WAIT_OBJECT_0) {
     TerminateProcess(process.get(), 1);

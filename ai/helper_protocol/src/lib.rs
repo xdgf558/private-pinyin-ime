@@ -774,6 +774,26 @@ mod tests {
     }
 
     #[test]
+    fn maximum_sized_frame_round_trips_at_the_exact_boundary() {
+        let frame = HelperFrame::new(
+            HelperOpcode::Health,
+            64,
+            vec![0x5a; MAX_HELPER_PAYLOAD_BYTES],
+        )
+        .expect("maximum bounded frame");
+        let mut encoded = Vec::new();
+        write_frame(&mut encoded, &frame).expect("write maximum frame");
+        assert_eq!(
+            encoded.len(),
+            HELPER_FRAME_HEADER_BYTES + MAX_HELPER_PAYLOAD_BYTES
+        );
+        assert_eq!(
+            read_frame(&mut encoded.as_slice()).expect("read maximum frame"),
+            frame
+        );
+    }
+
+    #[test]
     fn authentication_fails_closed_and_cannot_repeat() {
         let mut gate = HelperAuthenticationGate::new(token());
         assert!(matches!(

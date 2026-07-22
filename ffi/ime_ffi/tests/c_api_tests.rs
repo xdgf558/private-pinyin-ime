@@ -12,7 +12,7 @@ use private_pinyin_ime::{
     ime_session_free, ime_session_new, ime_session_set_candidate_page_size, ImeKeyEvent,
 };
 #[cfg(feature = "local-ai")]
-use private_pinyin_ime::{ime_engine_enable_local_ai, ime_session_set_secure_input};
+use private_pinyin_ime::{ime_engine_enable_local_ai, ime_session_set_secure_input, ImeMode};
 
 #[test]
 fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
@@ -247,6 +247,68 @@ fn ios_ai_uses_the_approved_model_and_falls_back_below_the_memory_gate() {
     }
 }
 
+#[cfg(feature = "local-ai")]
+#[test]
+fn ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly() {
+    unsafe {
+        let base_engine = ime_engine_new(ptr::null());
+        let ai_engine = ime_engine_new(ptr::null());
+        assert!(!base_engine.is_null());
+        assert!(!ai_engine.is_null());
+
+        #[cfg(feature = "desktop-ai")]
+        assert_eq!(ime_engine_enable_desktop_ai(ai_engine, 1, 8 * 1024, 0), 1);
+        #[cfg(all(feature = "ios-ai", not(feature = "desktop-ai")))]
+        assert_eq!(ime_engine_enable_local_ai(ai_engine, 3, 8 * 1024, 0), 1);
+
+        let base_session = ime_session_new(base_engine);
+        let ai_session = ime_session_new(ai_engine);
+        assert!(!base_session.is_null());
+        assert!(!ai_session.is_null());
+        assert_eq!(ime_session_set_secure_input(ai_session, 1), 1);
+
+        let assert_character = |ch: &str| {
+            let text = CString::new(ch).unwrap();
+            let base =
+                take_output_snapshot(ime_session_feed_key(base_session, key_event(text.as_ptr())));
+            let guarded =
+                take_output_snapshot(ime_session_feed_key(ai_session, key_event(text.as_ptr())));
+            assert_eq!(guarded, base, "AI-off equivalence failed after {ch}");
+        };
+        let assert_command = |key_code: i32, label: &str| {
+            let base =
+                take_output_snapshot(ime_session_feed_key(base_session, command_event(key_code)));
+            let guarded =
+                take_output_snapshot(ime_session_feed_key(ai_session, command_event(key_code)));
+            assert_eq!(guarded, base, "AI-off equivalence failed after {label}");
+        };
+        let assert_commit = |index: i32, label: &str| {
+            let base = take_output_snapshot(ime_session_commit_candidate(base_session, index));
+            let guarded = take_output_snapshot(ime_session_commit_candidate(ai_session, index));
+            assert_eq!(guarded, base, "AI-off equivalence failed after {label}");
+        };
+
+        for ch in ["n", "i", "h", "a", "x"] {
+            assert_character(ch);
+        }
+        assert_command(3, "backspace");
+        assert_character("o");
+        assert_command(15, "page down");
+        assert_command(14, "page up");
+        assert_commit(0, "first candidate commit");
+
+        for ch in ["j", "i", "n", "t", "i", "a", "n"] {
+            assert_character(ch);
+        }
+        assert_commit(0, "second candidate commit");
+
+        ime_session_free(base_session);
+        ime_session_free(ai_session);
+        ime_engine_free(base_engine);
+        ime_engine_free(ai_engine);
+    }
+}
+
 #[test]
 fn c_api_null_handles_are_safe_noops() {
     assert!(ime_session_new(ptr::null_mut()).is_null());
@@ -436,4 +498,57 @@ fn temp_path(name: &str, extension: &str) -> PathBuf {
     ));
     let _ = std::fs::remove_file(&path);
     path
+}
+
+#[cfg(feature = "local-ai")]
+#[derive(Debug, PartialEq, Eq)]
+struct OutputSnapshot {
+    preedit: String,
+    commit_text: String,
+    mode: ImeMode,
+    should_update_preedit: i32,
+    should_commit: i32,
+    should_show_candidates: i32,
+    candidates: Vec<(String, String, u64, String)>,
+}
+
+#[cfg(feature = "local-ai")]
+unsafe fn take_output_snapshot(output: *mut private_pinyin_ime::ImeOutput) -> OutputSnapshot {
+    assert!(!output.is_null());
+    let output_ref = &*output;
+    let candidates = std::slice::from_raw_parts(
+        output_ref.candidates,
+        output_ref.candidate_count.max(0) as usize,
+    )
+    .iter()
+    .map(|candidate| {
+        (
+            CStr::from_ptr(candidate.text)
+                .to_string_lossy()
+                .into_owned(),
+            CStr::from_ptr(candidate.pinyin)
+                .to_string_lossy()
+                .into_owned(),
+            candidate.score.to_bits(),
+            CStr::from_ptr(candidate.source)
+                .to_string_lossy()
+                .into_owned(),
+        )
+    })
+    .collect();
+    let snapshot = OutputSnapshot {
+        preedit: CStr::from_ptr(output_ref.preedit)
+            .to_string_lossy()
+            .into_owned(),
+        commit_text: CStr::from_ptr(output_ref.commit_text)
+            .to_string_lossy()
+            .into_owned(),
+        mode: output_ref.mode,
+        should_update_preedit: output_ref.should_update_preedit,
+        should_commit: output_ref.should_commit,
+        should_show_candidates: output_ref.should_show_candidates,
+        candidates,
+    };
+    ime_output_free(output);
+    snapshot
 }

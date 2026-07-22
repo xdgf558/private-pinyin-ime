@@ -1,0 +1,9 @@
+{
+  "category": "false_positive",
+  "cases": [
+    "这个 API key 别发上去",
+    "token economy",
+    "secret garden",
+    "password manager"
+  ]
+}

@@ -11,8 +11,9 @@ Record the GitHub Actions run URL for each Stage 08 pull request:
 | Ubuntu Rust workspace | pass | `cargo fmt`, clippy, tests, C demo, scaffold checks |
 | Windows Rust workspace | pass | `windows-2022` runs `cargo test --workspace` |
 | Windows TSF compile | pass | `windows-2022` builds `PrivatePinyinTsf.dll` with MSVC/CMake |
-| macOS AI Helper lifecycle | pass | macOS compiles the controlled-process client and tests authentication, cancellation, crash/restart, and shutdown |
-| Windows AI Helper lifecycle | pass | `windows-2022` executes the current-user named-pipe lifecycle probe against the built helper |
+| AI-12 Rust release profile | pass | Categorized privacy fixtures, exact desktop/iOS AI-off equivalence, maximum protocol/process frames, saturation, cancellation, notices, and the AI Lite Go / Writer No-Go decision pass |
+| macOS AI Helper lifecycle | pass | macOS compiles the controlled-process client and tests authentication, absolute deadlines, bounded restart attempts, cancellation, crash/restart, and shutdown |
+| Windows AI Helper lifecycle | pass | `windows-2022` executes the current-user named-pipe probe with deadline-aware writes, exact 64-KiB frames, eight-request saturation, PID binding, crash/restart, and shutdown |
 
 ## Windows 11 TSF Smoke
 
@@ -49,7 +50,7 @@ Checklist:
 | AI Lite fallback | On a supported-memory machine, ordinary candidate selection still works when AI initialization is unavailable or deliberately rejected; no key, preedit, candidate, or commit is lost | | Record memory, initialization state, and sanitized error code only |
 | AI candidate stability | Type rapidly, backspace, switch candidate pages, and continue composing while AI work is pending; an already visible numbered page never changes identity and stale results never commit | | Repeat in Notepad and one Chromium/Electron app |
 | Password-field privacy | In a password field exposing TSF `IS_PASSWORD`, base typing/fallback remains available while no AI result is applied; leaving the field starts a fresh composition with no stale result | | Do not record entered content in evidence |
-| AI Helper isolation | Run `scripts/test_windows_ai_helper.ps1`; authentication, health, cancellation, forced termination, restart, and shutdown pass, while Notepad typing remains available with the helper missing or terminated | | Inspect logs only for content-free status/error codes; never enter real private text during fault injection |
+| AI Helper isolation | Run `scripts/test_windows_ai_helper.ps1`; authentication, health, exact 64-KiB frames, eight-request saturation plus rejected ninth work, cancellation, forced termination, restart, and shutdown pass, while Notepad typing remains available with the helper missing, silent, saturated, or terminated | | Inspect logs only for content-free status/error codes; verify the final signed installer helper identity and never enter real private text during fault injection |
 | AI Helper idle exit | Leave the authenticated helper unused for ten minutes and confirm it exits; starting a new optional probe creates a fresh authenticated process | | Ordinary TSF typing must remain unaffected before, during, and after exit |
 | Settings UI | Privacy, learning, prediction, clear, and export actions run | | |
 | Uninstall | Unregister/uninstall removes the input method from the user account | | |
@@ -97,7 +98,7 @@ Checklist:
 | AI Lite fallback | On a supported-memory machine, ordinary candidate selection still works when AI initialization is unavailable or deliberately rejected; no key, preedit, candidate, or commit is lost | | Record memory, initialization state, and sanitized error code only |
 | AI candidate stability | Type rapidly, backspace, switch candidate pages, and continue composing while AI work is pending; an already visible numbered page never changes identity and stale results never commit | | Repeat in TextEdit, Safari, Chrome, and VS Code |
 | Secure-input privacy | In native secure fields and Safari/Chrome webpage password fields, base typing/fallback remains available while secure-input detection prevents AI requests; leaving secure input starts a fresh composition with no stale result | | `IsSecureEventInputEnabled` is a best-effort global macOS signal, so record only whether AI was suppressed; never record entered content in evidence |
-| AI Helper isolation | Run `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_ai_helper.sh`; authentication, health, cancellation, forced termination, restart, and shutdown pass, while TextEdit typing remains available with the helper missing or terminated | | Verify the helper inside the final signed/notarized app has a valid nested code signature |
+| AI Helper isolation | Run `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_ai_helper.sh`; authentication, health, absolute request timeout, bounded restart budget, cancellation, forced termination, restart, and shutdown pass, while TextEdit typing remains available with the helper missing, silent, repeatedly crashing, or terminated | | Verify the helper inside the final signed/notarized app has a valid nested code signature |
 | AI Helper idle exit | Leave an authenticated helper unused for ten minutes and confirm it exits; the next optional health request starts a fresh authenticated child | | Ordinary IMK typing must remain unaffected before, during, and after exit |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |

@@ -122,6 +122,9 @@ jobs:
       - name: Check AI-11 gated Writer contracts and evidence
         run: bash scripts/check_ai11_writer_integration_sources.sh
 
+      - name: Check AI-12 release hardening gates
+        run: bash scripts/check_ai12_release_gates.sh
+
       - name: Check UPDATE-01 version-check source contract
         run: bash scripts/check_update01_sources.sh
 
@@ -171,7 +174,7 @@ jobs:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_ios_chinese_transform.sh
 
-      - name: Run macOS AI Helper lifecycle tests
+      - name: Run macOS AI Helper deadlines and lifecycle tests
         env:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_macos_ai_helper.sh
@@ -225,6 +228,6 @@ jobs:
           .\scripts\build_windows_tsf.ps1 -Architecture x64 -RustTarget x86_64-pc-windows-msvc
           .\scripts\build_windows_tsf.ps1 -Architecture Win32 -RustTarget i686-pc-windows-msvc
 
-      - name: Run Windows AI Helper lifecycle probe
+      - name: Run Windows AI Helper deadline and saturation probe
         shell: pwsh
         run: .\scripts\test_windows_ai_helper.ps1

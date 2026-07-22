@@ -7,6 +7,26 @@ enum PrivatePinyinAIHelperClientError: Error {
     case protocolMismatch
     case invalidResponse
     case requestCancelled
+    case requestTimedOut
+}
+
+struct PrivatePinyinAIHelperRestartBudget {
+    let maximumLaunches: Int
+    let windowSeconds: TimeInterval
+    private var launchTimes: [TimeInterval] = []
+
+    init(maximumLaunches: Int = 3, windowSeconds: TimeInterval = 30) {
+        precondition(maximumLaunches > 0 && windowSeconds > 0)
+        self.maximumLaunches = maximumLaunches
+        self.windowSeconds = windowSeconds
+    }
+
+    mutating func consumeLaunch(at uptime: TimeInterval) -> Bool {
+        launchTimes.removeAll { uptime - $0 >= windowSeconds }
+        guard launchTimes.count < maximumLaunches else { return false }
+        launchTimes.append(uptime)
+        return true
+    }
 }
 
 private enum PrivatePinyinAIHelperOpcode: UInt16 {
@@ -88,6 +108,11 @@ final class PrivatePinyinAIHelperClient {
 
     typealias Completion = (Result<Void, PrivatePinyinAIHelperClientError>) -> Void
 
+    private struct PendingRequest {
+        let completion: Completion
+        let deadline: DispatchWorkItem
+    }
+
     private let stateQueue = DispatchQueue(label: "com.privatepinyin.ai-helper-client")
     private let requestCounterLock = NSLock()
     private var process: Process?
@@ -97,11 +122,12 @@ final class PrivatePinyinAIHelperClient {
     private var authenticated = false
     private var transportGeneration: UInt64 = 0
     private var requestCounter: UInt64 = 0
+    private var restartBudget = PrivatePinyinAIHelperRestartBudget()
     private var afterAuthentication: [(
         operation: () -> Void,
         completion: Completion
     )] = []
-    private var pending: [UInt64: Completion] = [:]
+    private var pending: [UInt64: PendingRequest] = [:]
 
     private init() {}
 
@@ -121,6 +147,7 @@ final class PrivatePinyinAIHelperClient {
                 opcode: .mockInference,
                 requestID: requestID,
                 payload: payload,
+                timeoutSeconds: min(6, max(1, TimeInterval(delayMilliseconds) / 1_000 + 1)),
                 completion: completion
             )
         }
@@ -184,6 +211,9 @@ final class PrivatePinyinAIHelperClient {
             return
         }
         stopTransport(error: .helperUnavailable)
+        guard restartBudget.consumeLaunch(at: ProcessInfo.processInfo.systemUptime) else {
+            throw PrivatePinyinAIHelperClientError.helperUnavailable
+        }
         transportGeneration &+= 1
         if transportGeneration == 0 {
             transportGeneration = 1
@@ -241,7 +271,7 @@ final class PrivatePinyinAIHelperClient {
         try process.run()
         self.process = process
 
-        pending[0] = { [weak self] result in
+        registerPending(requestID: 0, timeoutSeconds: 5) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success:
@@ -276,11 +306,16 @@ final class PrivatePinyinAIHelperClient {
         opcode: PrivatePinyinAIHelperOpcode,
         requestID: UInt64? = nil,
         payload: Data,
+        timeoutSeconds: TimeInterval = 5,
         completion: Completion? = nil
     ) {
         let requestID = requestID ?? nextRequestID()
         if let completion {
-            pending[requestID] = completion
+            registerPending(
+                requestID: requestID,
+                timeoutSeconds: timeoutSeconds,
+                completion: completion
+            )
         }
         do {
             try write(
@@ -291,9 +326,34 @@ final class PrivatePinyinAIHelperClient {
                 )
             )
         } catch {
-            pending.removeValue(forKey: requestID)?(.failure(.helperUnavailable))
+            removePending(requestID: requestID)?(.failure(.helperUnavailable))
             stopTransport(error: .helperUnavailable)
         }
+    }
+
+    private func registerPending(
+        requestID: UInt64,
+        timeoutSeconds: TimeInterval,
+        completion: @escaping Completion
+    ) {
+        let generation = transportGeneration
+        let deadline = DispatchWorkItem { [weak self] in
+            guard let self, transportGeneration == generation,
+                  let completion = removePending(requestID: requestID) else { return }
+            completion(.failure(.requestTimedOut))
+            stopTransport(error: .requestTimedOut)
+        }
+        pending[requestID] = PendingRequest(completion: completion, deadline: deadline)
+        stateQueue.asyncAfter(
+            deadline: .now() + max(0.05, timeoutSeconds),
+            execute: deadline
+        )
+    }
+
+    private func removePending(requestID: UInt64) -> Completion? {
+        guard let request = pending.removeValue(forKey: requestID) else { return nil }
+        request.deadline.cancel()
+        return request.completion
     }
 
     private func write(_ frame: PrivatePinyinAIHelperFrame) throws {
@@ -327,7 +387,7 @@ final class PrivatePinyinAIHelperClient {
             stopTransport(error: .protocolMismatch)
             return
         }
-        pending.removeValue(forKey: frame.requestID)?(result)
+        removePending(requestID: frame.requestID)?(result)
     }
 
     private func stopTransport(error: PrivatePinyinAIHelperClientError) {
@@ -347,7 +407,10 @@ final class PrivatePinyinAIHelperClient {
         outputHandle = nil
         outputBuffer.removeAll(keepingCapacity: false)
         authenticated = false
-        let completions = pending.values
+        let completions = pending.values.map { request -> Completion in
+            request.deadline.cancel()
+            return request.completion
+        }
         let deferredCompletions = afterAuthentication.map { $0.completion }
         pending.removeAll(keepingCapacity: false)
         afterAuthentication.removeAll(keepingCapacity: false)

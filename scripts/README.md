@@ -46,6 +46,7 @@ Current scripts:
 - `check_ai09_desktop_helper_sources.sh`: validates the AI-09 bounded local protocol, authenticated desktop Helper boundary, no-network contract, and platform packaging hooks.
 - `check_ai10_writer_feasibility_sources.sh`: validates the AI-10 evaluation-only candidate, synthetic dataset, content-free No-Go evidence, no tracked weights/runtime artifacts, no arbitrary prompt CLI, and offline probe tests.
 - `check_ai11_writer_integration_sources.sh`: validates the stronger AI-11 evaluation-only candidate, bounded/redacted Writer protocol, default-off resource policy, content-free Mac evidence, absent model approval, and fail-closed Helper response.
+- `check_ai12_release_gates.sh`: validates the declarative AI-12 contract, categorized privacy corpus inventory, executable-evidence references, Helper source contracts, model notices, and the AI Lite Go / Writer No-Go profile. It does not rerun Cargo tests already owned by CI test steps.
 - `test_macos_ai_helper.sh`: compiles and runs the macOS controlled-child Helper lifecycle tests, including health, cancellation, crash recovery, and shutdown.
 - `test_windows_ai_helper.ps1`: builds and runs the Windows current-user named-pipe Helper lifecycle probe on an x64 runner.
 

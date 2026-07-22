@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use serde::Deserialize;
+
 use crate::{
     AiBudget, AiCandidateInput, AiCandidateSetHash, AiCompositionRevision, AiErrorCode, AiFeature,
     AiFeaturePolicy, AiModelLicenseState, AiPrivacyMode, AiRawInputKind, AiRequestBuilder,
@@ -36,6 +38,16 @@ fn builder(feature: AiFeature, hardware_tier: HardwareTier) -> AiRequestBuilder 
 
 fn enabled_policy() -> AiFeaturePolicy {
     AiFeaturePolicy::local_rules_enabled(true)
+}
+
+#[derive(Deserialize)]
+struct PrivacyCaseSet {
+    category: String,
+    cases: Vec<String>,
+}
+
+fn privacy_cases(contents: &str) -> PrivacyCaseSet {
+    serde_json::from_str(contents).expect("valid privacy regression fixture")
 }
 
 #[test]
@@ -77,7 +89,13 @@ fn secure_input_is_rejected_with_a_code_only_error() {
 
 #[test]
 fn password_and_one_time_code_samples_are_rejected() {
-    for sensitive_text in ["password = hunter2", "验证码 123456", "123456"] {
+    let fixture = privacy_cases(include_str!("../../eval/privacy_cases/password.json"));
+    assert_eq!(fixture.category, "password");
+    for sensitive_text in fixture
+        .cases
+        .into_iter()
+        .chain(["验证码 123456".to_owned(), "123456".to_owned()])
+    {
         let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
             .with_composition_text(sensitive_text)
             .build(&PrivacyGuard, enabled_policy())
@@ -132,28 +150,35 @@ fn numeric_full_pinyin_is_rejected_without_blocking_declared_nine_key_input() {
 
 #[test]
 fn payment_identity_and_phone_numbers_are_rejected() {
-    for sensitive_text in [
-        "4111 1111 1111 1111",
-        "身份证 11010519491231002X",
-        "手机号 13800138000",
-        "手机号 138-0013-8000",
+    for (category, contents) in [
+        (
+            "payment",
+            include_str!("../../eval/privacy_cases/payment.json"),
+        ),
+        (
+            "id_card",
+            include_str!("../../eval/privacy_cases/id_card.json"),
+        ),
+        ("phone", include_str!("../../eval/privacy_cases/phone.json")),
     ] {
-        let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
-            .with_composition_text(sensitive_text)
-            .build(&PrivacyGuard, enabled_policy())
-            .expect_err("sensitive number must be rejected");
-        assert_eq!(error.code(), AiErrorCode::InputRejectedByPrivacyGuard);
+        let fixture = privacy_cases(contents);
+        assert_eq!(fixture.category, category);
+        for sensitive_text in fixture.cases {
+            let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
+                .with_composition_text(sensitive_text)
+                .build(&PrivacyGuard, enabled_policy())
+                .expect_err("sensitive number must be rejected");
+            assert_eq!(error.code(), AiErrorCode::InputRejectedByPrivacyGuard);
+        }
     }
 }
 
 #[test]
 fn ordinary_security_terms_are_not_treated_as_secret_assignments() {
-    for ordinary_text in [
-        "这个 API key 别发上去",
-        "token economy",
-        "secret garden",
-        "password manager",
-    ] {
+    let false_positives =
+        privacy_cases(include_str!("../../eval/privacy_cases/false_positive.json"));
+    assert_eq!(false_positives.category, "false_positive");
+    for ordinary_text in false_positives.cases {
         builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
             .with_composition_text(ordinary_text)
             .build(&PrivacyGuard, enabled_policy())
@@ -165,6 +190,20 @@ fn ordinary_security_terms_are_not_treated_as_secret_assignments() {
         .build(&PrivacyGuard, enabled_policy())
         .expect_err("assigned secret must be rejected");
     assert_eq!(error.code(), AiErrorCode::InputRejectedByPrivacyGuard);
+}
+
+#[test]
+fn token_assignment_fixture_is_rejected_without_logging_content() {
+    let fixture = privacy_cases(include_str!("../../eval/privacy_cases/token.json"));
+    assert_eq!(fixture.category, "token");
+    for sensitive_text in fixture.cases {
+        let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
+            .with_composition_text(sensitive_text)
+            .build(&PrivacyGuard, enabled_policy())
+            .expect_err("assigned token must be rejected");
+        assert_eq!(error.code(), AiErrorCode::InputRejectedByPrivacyGuard);
+        assert_eq!(error.to_string(), "AI_INPUT_REJECTED_BY_PRIVACY_GUARD");
+    }
 }
 
 #[test]
