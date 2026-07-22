@@ -57,7 +57,7 @@ Checklist:
 | Writer model install | From Windows settings, explicitly confirm the fixed official download; exact size/SHA succeeds, a deliberately corrupted copy fails closed, and removing the model disables only Writer | | Record artifact identity and status codes only, never source or generated text |
 | Writer rewrite/translation | With strict privacy off and Writer consent on, explicit rewrite, Chinese-to-English, and English-to-Chinese actions return copyable previews; no action automatically replaces the current document | | Repeat one cold and one warm request and record latency/RSS without content |
 | Writer privacy race | While a request is running, enable strict privacy, revoke Writer consent, and remove the model in separate runs; every result is discarded and ordinary input remains available | | The UI may show a sanitized discarded-result message |
-| Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, offline reuse, and ten-minute idle shutdown | | No prompt/result logs, and Notepad composition remains responsive throughout |
+| Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, cancellation during cold model verification, offline reuse, and ten-minute idle shutdown; confirm neither the Helper token nor server API key appears in process arguments | | No prompt/result logs, and Notepad composition remains responsive throughout |
 | Settings UI | Privacy, learning, prediction, clear, and export actions run | | |
 | Uninstall | Unregister/uninstall removes the input method from the user account | | |
 
@@ -110,7 +110,7 @@ Checklist:
 | Writer model install | From Station Board, explicitly confirm the fixed official download; exact size/SHA succeeds, a deliberately corrupted copy fails closed, and deleting the model disables only Writer | | Record artifact identity and status codes only, never source or generated text |
 | Writer rewrite/translation | With strict privacy off and Writer consent on, explicit rewrite, Chinese-to-English, and English-to-Chinese actions return copyable previews; no action automatically replaces the current document | | Repeat one cold and one warm request and record latency/RSS without content |
 | Writer privacy race | While a request is running, enable strict privacy, revoke Writer consent, and remove the model in separate runs; every result is discarded and ordinary input remains available | | The UI may show a sanitized discarded-result message |
-| Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, offline reuse, and ten-minute idle shutdown | | No prompt/result logs, and TextEdit composition remains responsive throughout |
+| Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, cancellation during cold model verification, offline reuse, and ten-minute idle shutdown; confirm neither the Helper token nor server API key appears in process arguments | | No prompt/result logs, and TextEdit composition remains responsive throughout |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After the guided refresh or logout/login fallback, no pre-install PrivatePinyin PID remains before smoke testing | | |

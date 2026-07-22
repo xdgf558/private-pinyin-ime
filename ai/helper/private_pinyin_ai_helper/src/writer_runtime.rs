@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::env;
-use std::fs::File;
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -14,6 +14,9 @@ use private_pinyin_ai_helper_protocol::{
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 pub const WRITER_MODEL_ID: &str = "qwen2.5-1.5b-instruct-q4-k-m";
 pub const WRITER_MODEL_FILENAME: &str = "qwen2.5-1.5b-instruct-q4_k_m.gguf";
@@ -37,19 +40,18 @@ struct ServerProcess {
     child: Child,
     address: SocketAddr,
     api_key: String,
+    // Retained only when immediate removal failed (for example, a transient
+    // Windows file-share race); Drop retries without exposing the key in argv.
+    _api_key_file: ApiKeyFile,
 }
 
 pub struct WriterRuntime {
     server: Option<ServerProcess>,
-    api_key: String,
 }
 
 impl WriterRuntime {
-    pub fn new(authentication_token: [u8; 32]) -> Self {
-        Self {
-            server: None,
-            api_key: hexadecimal(&authentication_token),
-        }
+    pub fn new() -> Self {
+        Self { server: None }
     }
 
     pub fn infer(
@@ -117,20 +119,22 @@ impl WriterRuntime {
             self.server = None;
         }
 
+        let deadline = Instant::now() + timeout;
         let model_path = installed_model_path().ok_or(WriterRuntimeError::ModelUnavailable)?;
-        verify_model(&model_path)?;
+        verify_model(&model_path, deadline, cancellation)?;
         let executable = runtime_executable_path().ok_or(WriterRuntimeError::ModelUnavailable)?;
         if !executable.is_file() {
             return Err(WriterRuntimeError::ModelUnavailable);
         }
 
-        let deadline = Instant::now() + timeout;
         for _ in 0..SERVER_START_ATTEMPTS {
             if cancellation.load(Ordering::Acquire) {
                 return Err(WriterRuntimeError::Cancelled);
             }
             let address = reserve_loopback_address()?;
-            let mut child = spawn_server(&executable, &model_path, address, &self.api_key)?;
+            let api_key = generate_server_api_key()?;
+            let mut api_key_file = ApiKeyFile::create(&model_path, &api_key)?;
+            let mut child = spawn_server(&executable, &model_path, address, api_key_file.path())?;
             while Instant::now() < deadline {
                 if cancellation.load(Ordering::Acquire) {
                     let _ = child.kill();
@@ -148,15 +152,13 @@ impl WriterRuntime {
                 if remaining.is_zero() {
                     break;
                 }
-                if server_is_ready(
-                    address,
-                    &self.api_key,
-                    remaining.min(Duration::from_millis(200)),
-                ) {
+                if server_is_ready(address, &api_key, remaining.min(Duration::from_millis(200))) {
+                    api_key_file.remove_now();
                     self.server = Some(ServerProcess {
                         child,
                         address,
-                        api_key: self.api_key.clone(),
+                        api_key,
+                        _api_key_file: api_key_file,
                     });
                     return Ok(());
                 }
@@ -227,7 +229,12 @@ fn runtime_executable_path() -> Option<PathBuf> {
     Some(executable.parent()?.join("WriterRuntime").join(name))
 }
 
-fn verify_model(path: &Path) -> Result<(), WriterRuntimeError> {
+fn verify_model(
+    path: &Path,
+    deadline: Instant,
+    cancellation: &AtomicBool,
+) -> Result<(), WriterRuntimeError> {
+    check_cancelled_or_expired(deadline, cancellation)?;
     let metadata = path
         .metadata()
         .map_err(|_| WriterRuntimeError::ModelUnavailable)?;
@@ -235,10 +242,23 @@ fn verify_model(path: &Path) -> Result<(), WriterRuntimeError> {
         return Err(WriterRuntimeError::ModelUnavailable);
     }
     let mut file = File::open(path).map_err(|_| WriterRuntimeError::ModelUnavailable)?;
+    let digest = hash_reader(&mut file, deadline, cancellation)?;
+    if digest != WRITER_MODEL_SHA256 {
+        return Err(WriterRuntimeError::ModelUnavailable);
+    }
+    Ok(())
+}
+
+fn hash_reader<R: Read>(
+    mut reader: R,
+    deadline: Instant,
+    cancellation: &AtomicBool,
+) -> Result<String, WriterRuntimeError> {
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 1024 * 1024];
     loop {
-        let count = file
+        check_cancelled_or_expired(deadline, cancellation)?;
+        let count = reader
             .read(&mut buffer)
             .map_err(|_| WriterRuntimeError::ModelUnavailable)?;
         if count == 0 {
@@ -246,10 +266,80 @@ fn verify_model(path: &Path) -> Result<(), WriterRuntimeError> {
         }
         hasher.update(&buffer[..count]);
     }
-    if hexadecimal(&hasher.finalize()) != WRITER_MODEL_SHA256 {
-        return Err(WriterRuntimeError::ModelUnavailable);
+    check_cancelled_or_expired(deadline, cancellation)?;
+    Ok(hexadecimal(&hasher.finalize()))
+}
+
+fn check_cancelled_or_expired(
+    deadline: Instant,
+    cancellation: &AtomicBool,
+) -> Result<(), WriterRuntimeError> {
+    if cancellation.load(Ordering::Acquire) {
+        Err(WriterRuntimeError::Cancelled)
+    } else if Instant::now() >= deadline {
+        Err(WriterRuntimeError::DeadlineExceeded)
+    } else {
+        Ok(())
     }
-    Ok(())
+}
+
+struct ApiKeyFile {
+    path: Option<PathBuf>,
+}
+
+impl ApiKeyFile {
+    fn create(model_path: &Path, api_key: &str) -> Result<Self, WriterRuntimeError> {
+        let directory = model_path
+            .parent()
+            .ok_or(WriterRuntimeError::ModelUnavailable)?;
+        for _ in 0..4 {
+            let mut suffix = [0_u8; 16];
+            getrandom::fill(&mut suffix).map_err(|_| WriterRuntimeError::ModelUnavailable)?;
+            let path = directory.join(format!(".llama-api-key-{}.tmp", hexadecimal(&suffix)));
+            let mut options = OpenOptions::new();
+            options.write(true).create_new(true);
+            #[cfg(unix)]
+            options.mode(0o600);
+            let mut file = match options.open(&path) {
+                Ok(file) => file,
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+                Err(_) => return Err(WriterRuntimeError::ModelUnavailable),
+            };
+            if writeln!(file, "{api_key}").is_err() || file.sync_all().is_err() {
+                let _ = fs::remove_file(&path);
+                return Err(WriterRuntimeError::ModelUnavailable);
+            }
+            return Ok(Self { path: Some(path) });
+        }
+        Err(WriterRuntimeError::ModelUnavailable)
+    }
+
+    fn path(&self) -> &Path {
+        self.path.as_deref().expect("API key file is present")
+    }
+
+    fn remove_now(&mut self) {
+        let Some(path) = self.path.as_ref() else {
+            return;
+        };
+        if fs::remove_file(path).is_ok() {
+            self.path = None;
+        }
+    }
+}
+
+impl Drop for ApiKeyFile {
+    fn drop(&mut self) {
+        if let Some(path) = self.path.take() {
+            let _ = fs::remove_file(path);
+        }
+    }
+}
+
+fn generate_server_api_key() -> Result<String, WriterRuntimeError> {
+    let mut key = [0_u8; 32];
+    getrandom::fill(&mut key).map_err(|_| WriterRuntimeError::ModelUnavailable)?;
+    Ok(hexadecimal(&key))
 }
 
 fn reserve_loopback_address() -> Result<SocketAddr, WriterRuntimeError> {
@@ -264,7 +354,7 @@ fn spawn_server(
     executable: &Path,
     model_path: &Path,
     address: SocketAddr,
-    api_key: &str,
+    api_key_file: &Path,
 ) -> Result<Child, WriterRuntimeError> {
     Command::new(executable)
         .args([
@@ -274,8 +364,8 @@ fn spawn_server(
             "127.0.0.1",
             "--port",
             &address.port().to_string(),
-            "--api-key",
-            api_key,
+            "--api-key-file",
+            &api_key_file.to_string_lossy(),
             "--no-webui",
             "--offline",
             "--log-disable",
@@ -481,8 +571,115 @@ fn hexadecimal(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_http_response, parse_suggestions, system_prompt, WriterRuntimeError};
+    use super::{
+        check_cancelled_or_expired, generate_server_api_key, hash_reader, parse_http_response,
+        parse_suggestions, system_prompt, ApiKeyFile, WriterRuntime, WriterRuntimeError,
+    };
     use private_pinyin_ai_helper_protocol::WriterFeature;
+    use std::fs;
+    use std::io::{self, Cursor, Read};
+    use std::path::PathBuf;
+    use std::sync::atomic::AtomicBool;
+    use std::time::{Duration, Instant};
+
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    struct CancellingReader<'a> {
+        inner: Cursor<Vec<u8>>,
+        cancellation: &'a AtomicBool,
+        completed_reads: usize,
+    }
+
+    impl Read for CancellingReader<'_> {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            let count = self.inner.read(buffer)?;
+            if count > 0 {
+                self.completed_reads += 1;
+                if self.completed_reads == 1 {
+                    self.cancellation
+                        .store(true, std::sync::atomic::Ordering::Release);
+                }
+            }
+            Ok(count)
+        }
+    }
+
+    #[test]
+    fn server_api_key_is_generated_independently_from_helper_authentication() {
+        let first = generate_server_api_key().expect("first key");
+        let second = generate_server_api_key().expect("second key");
+        assert_eq!(first.len(), 64);
+        assert_eq!(second.len(), 64);
+        assert_ne!(first, second);
+        let _runtime = WriterRuntime::new();
+    }
+
+    #[test]
+    fn server_api_key_file_is_private_and_removed_after_startup() {
+        let directory = temporary_test_directory("api-key-file");
+        fs::create_dir(&directory).expect("temporary directory");
+        let model_path = directory.join("model.gguf");
+        let key = generate_server_api_key().expect("server key");
+        let mut key_file = ApiKeyFile::create(&model_path, &key).expect("API key file");
+        let key_path = key_file.path().to_path_buf();
+        assert_eq!(
+            fs::read_to_string(&key_path).expect("key contents"),
+            format!("{key}\n")
+        );
+        assert!(!key_path.to_string_lossy().contains(&key));
+        #[cfg(unix)]
+        assert_eq!(
+            fs::metadata(&key_path)
+                .expect("key metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        key_file.remove_now();
+        assert!(!key_path.exists());
+        fs::remove_dir(directory).expect("remove temporary directory");
+    }
+
+    #[test]
+    fn model_hashing_observes_cancellation_between_chunks() {
+        let cancellation = AtomicBool::new(false);
+        let reader = CancellingReader {
+            inner: Cursor::new(vec![7_u8; 2 * 1024 * 1024]),
+            cancellation: &cancellation,
+            completed_reads: 0,
+        };
+        assert_eq!(
+            hash_reader(
+                reader,
+                Instant::now() + Duration::from_secs(1),
+                &cancellation
+            ),
+            Err(WriterRuntimeError::Cancelled)
+        );
+    }
+
+    #[test]
+    fn cancellation_and_deadline_interrupt_long_running_preparation() {
+        let cancelled = AtomicBool::new(true);
+        assert_eq!(
+            check_cancelled_or_expired(Instant::now() + Duration::from_secs(1), &cancelled),
+            Err(WriterRuntimeError::Cancelled)
+        );
+        let active = AtomicBool::new(false);
+        assert_eq!(
+            check_cancelled_or_expired(Instant::now(), &active),
+            Err(WriterRuntimeError::DeadlineExceeded)
+        );
+    }
+
+    fn temporary_test_directory(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "private-pinyin-{label}-{}",
+            generate_server_api_key().expect("temporary suffix")
+        ))
+    }
 
     #[test]
     fn parses_bounded_deduplicated_suggestions() {

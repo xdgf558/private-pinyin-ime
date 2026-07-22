@@ -47,6 +47,15 @@ grep -q 'WRITER_MODEL_SIZE_BYTES: u64 = 1_117_320_736' "$runtime"
 grep -q '6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e' "$runtime"
 grep -q -- '"--host"' "$runtime"
 grep -q '"127.0.0.1"' "$runtime"
+grep -q 'generate_server_api_key' "$runtime"
+grep -q 'check_cancelled_or_expired' "$runtime"
+grep -q 'model_hashing_observes_cancellation_between_chunks' "$runtime"
+grep -q 'server_api_key_file_is_private_and_removed_after_startup' "$runtime"
+grep -q -- '"--api-key-file"' "$runtime"
+if grep -q -- '"--api-key"' "$runtime"; then
+  echo "Writer server secrets must not enter process arguments." >&2
+  exit 1
+fi
 grep -q -- '"--no-webui"' "$runtime"
 grep -q -- '"--offline"' "$runtime"
 grep -q -- '"--log-disable"' "$runtime"
@@ -75,6 +84,8 @@ grep -q 'prepare_macos_writer_runtime.sh' scripts/build_macos_imk.sh
 grep -q 'helpers_dir/WriterRuntime' scripts/build_macos_imk.sh
 grep -q '\\( -type f -o -type l \\)' scripts/prepare_macos_writer_runtime.sh
 grep -q 'llama-server.*--version' scripts/prepare_macos_writer_runtime.sh
+grep -q -- '--api-key-file' scripts/prepare_macos_writer_runtime.sh
+grep -q -- '--api-key-file' scripts/prepare_windows_writer_runtime.ps1
 grep -q 'prepare_windows_writer_runtime.ps1' scripts/package_windows_tsf.ps1
 grep -q 'writerRuntimeDir = Join-Path \$stageDir "WriterRuntime"' scripts/package_windows_tsf.ps1
 grep -q 'WriterRuntime\\llama-server.exe' platform/windows_tsf/installer/PrivatePinyinTsf.wxs

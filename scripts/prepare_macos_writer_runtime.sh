@@ -36,5 +36,12 @@ chmod 755 "$destination/llama-server"
 # The official archive uses versioned dylibs plus sibling compatibility symlinks.
 # Running the binary here turns an incomplete dependency copy into a build failure.
 "$destination/llama-server" --version >/dev/null
+help_output="$("$destination/llama-server" --help 2>&1)"
+for option in --api-key-file --offline --no-webui --log-disable --parallel --ctx-size --batch-size --ubatch-size; do
+  if ! grep -q -- "$option" <<<"$help_output"; then
+    echo "Writer runtime is missing required option: $option" >&2
+    exit 1
+  fi
+done
 
 echo "Prepared macOS Writer runtime at $destination"

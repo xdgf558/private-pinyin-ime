@@ -225,13 +225,17 @@ remain outside the repository and product package; a user must separately approv
 official Hugging Face download, and both the host and Helper verify exact size and SHA-256.
 The download URL is never built from typed content.
 
-Source text may cross only authenticated AI-09 IPC and the random-key loopback connection
-from the Helper to the `llama-server` child it owns. The child binds only to
-`127.0.0.1`, runs offline with its web UI and logs disabled, and is unavailable to cloud
-services or other network interfaces. Prompts and results never enter process arguments,
-environment variables, temporary prompt files, diagnostics, telemetry, persistent caches,
-or learning storage. Generated previews are displayed for explicit copy/selection only and
-never replace user text automatically.
+Source text may cross only authenticated AI-09 IPC and a separately authenticated loopback
+connection from the Helper to the `llama-server` child it owns. The per-launch AI-09 token
+authenticates only Helper IPC and is never reused as a server credential. Each server launch
+generates a fresh independent 256-bit API key, supplies it through a private key file instead
+of process arguments, and removes the file after authenticated readiness. The file uses mode
+`0600` on Unix and the current-user application-data ACL on Windows. The child
+binds only to `127.0.0.1`, runs offline with its web UI and logs disabled, and is unavailable
+to cloud services or other network interfaces. Prompts and results never enter process
+arguments, environment variables, temporary prompt files, diagnostics, telemetry,
+persistent caches, or learning storage. Generated previews are displayed for explicit
+copy/selection only and never replace user text automatically.
 
 Model installation and Writer use are separate consent decisions. Strict privacy force-
 disables Writer in settings and at dispatch; turning it on, revoking Writer consent, or

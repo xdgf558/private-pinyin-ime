@@ -56,4 +56,21 @@ Source: https://github.com/ggml-org/llama.cpp
 Pinned release: b10069 (178a6c44937154dc4c4eff0d166f4a044c4fceba)
 "@
 
+$destinationServer = Join-Path $Destination "llama-server.exe"
+$helpOutput = (& $destinationServer --help 2>&1 | Out-String)
+foreach ($option in @(
+    "--api-key-file",
+    "--offline",
+    "--no-webui",
+    "--log-disable",
+    "--parallel",
+    "--ctx-size",
+    "--batch-size",
+    "--ubatch-size"
+)) {
+    if (-not $helpOutput.Contains($option)) {
+        throw "Writer runtime is missing required option: $option"
+    }
+}
+
 Write-Host "Prepared Windows Writer runtime at $Destination"

@@ -1,11 +1,15 @@
 # Development Progress
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 Current stage: Post-AI-12 desktop Writer V1
 Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
 
 ## Desktop Writer V1 Validation (2026-07-22)
 
+- PR review remediation separated the per-launch AI-09 Helper token from the `llama-server` API key. The server now receives an independently generated 256-bit key through a private file rather than argv (Unix mode `0600`, Windows current-user app-data ACL); the file is removed immediately after authenticated readiness, with drop-time cleanup as a retry path.
+- Full model SHA-256 verification now shares the request's absolute deadline and observes cancellation before metadata access, between every 1-MiB read, and after the final block. Direct tests exercise cancellation after the first hash read plus key-file contents, Unix permissions, name independence, and removal.
+- macOS and Windows runtime preparation now parse `llama-server --help` and fail packaging unless pinned release `b10069` exposes `--api-key-file`, `--offline`, `--no-webui`, `--log-disable`, `--parallel`, `--ctx-size`, `--batch-size`, and `--ubatch-size`.
+- The current hand-written HTTP parser intentionally targets the pinned non-streaming llama.cpp response and fails closed on incompatible transfer framing. Port reserve/rebind is protected by authenticated readiness plus bounded retries, and one-request-at-a-time generation remains bounded by cancellation and the absolute deadline.
 - Added Decision 043 and a machine-readable desktop Writer runtime manifest. The Owner approval is limited to explicit on-demand download and local use of the exact Qwen2.5 1.5B Instruct Q4_K_M artifact; model redistribution remains prohibited.
 - Pinned llama.cpp `b10069` / revision `178a6c44937154dc4c4eff0d166f4a044c4fceba` for macOS arm64 and Windows x64. Packaging scripts verify the official release archive SHA-256 before staging the runtime.
 - The model is absent from the repository and installers. macOS and Windows require a visible user action, fixed official URL, exact `1,117,320,736`-byte size, and SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`; the Helper repeats full verification at use time.
@@ -14,7 +18,7 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 - Automatic short completion remains disabled. The signed/notarized macOS and signed Windows package matrix, native Windows cold/warm RSS, and final runtime fault injection remain tracked by `AI-OI-010` and `AI-OI-012`.
 - `cargo test --workspace`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, desktop/iOS feature FFI tests, and every AI-01 through AI-12/source privacy gate passed.
 - `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh` passed after staging the pinned llama.cpp runtime and validating its complete dylib dependency closure with `llama-server --version`.
-- A real on-demand model smoke exercised macOS host client -> authenticated AI-09 Helper -> random-key loopback `llama-server` -> bounded Writer preview. It returned two suggestions, with `2,224 ms` model preparation and `221 ms` inference; `/usr/bin/time -l` reported `1,283,571,712` bytes maximum RSS and zero swaps. This local reference contains no source or generated text and is not a cross-platform release threshold.
+- A real on-demand model smoke exercised macOS host client -> authenticated AI-09 Helper -> independently keyed loopback `llama-server` -> bounded Writer preview. After the credential-separation remediation it returned two suggestions, with `2,303 ms` model preparation and `228 ms` inference. The preceding equivalent run reported `1,283,571,712` bytes maximum RSS and zero swaps via `/usr/bin/time -l`. These local references contain no source or generated text and are not cross-platform release thresholds.
 - Native Windows PowerShell packaging, signed installer identity, cold/warm RSS, and runtime fault smokes require the GitHub `windows-2022` job plus a Windows 11 machine; they cannot be claimed from this development Mac.
 
 ## AI-12 Validation (2026-07-22)

@@ -158,7 +158,7 @@ fn serve(
     token: [u8; 32],
     idle_timeout: Duration,
 ) -> Result<(), HelperProtocolError> {
-    let writer_runtime = Arc::new(Mutex::new(WriterRuntime::new(token)));
+    let writer_runtime = Arc::new(Mutex::new(WriterRuntime::new()));
     let (response_tx, response_rx) = mpsc::sync_channel::<HelperFrame>(MAX_HELPER_RESPONSE_QUEUE);
     let writer_failed = Arc::new(AtomicBool::new(false));
     let writer_failed_for_thread = Arc::clone(&writer_failed);

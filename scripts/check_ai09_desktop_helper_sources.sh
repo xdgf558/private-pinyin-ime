@@ -82,7 +82,13 @@ if rg -n -i 'URLSession|NWConnection|UdpSocket|reqwest|ureq|hyper::|tonic::|grpc
 fi
 grep -q 'Ipv4Addr::LOCALHOST' "$writer_runtime"
 grep -q '"127.0.0.1"' "$writer_runtime"
-grep -q -- '"--api-key"' "$writer_runtime"
+grep -q 'WriterRuntime::new()' ai/helper/private_pinyin_ai_helper/src/main.rs
+grep -q 'getrandom::fill' "$writer_runtime"
+grep -q -- '"--api-key-file"' "$writer_runtime"
+if grep -q -- '"--api-key"' "$writer_runtime"; then
+  echo "Writer server secrets must not enter process arguments." >&2
+  exit 1
+fi
 grep -q -- '"--no-webui"' "$writer_runtime"
 grep -q -- '"--offline"' "$writer_runtime"
 grep -q -- '"--log-disable"' "$writer_runtime"

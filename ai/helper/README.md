@@ -35,8 +35,13 @@ historical AI-11 profile the helper returned only `ModelUnavailable`.
 The post-AI-12 Writer V1 verifies the exact on-demand model and starts the bundled pinned
 `llama-server` as its own child. The server binds only to `127.0.0.1` on an ephemeral port,
 requires a random API key, and starts with `--offline`, `--no-webui`, and `--log-disable`.
-This loopback connection is an implementation detail inside the authenticated Helper
-boundary, not an externally reachable service. Hosts own the fixed official model download;
-the Helper contains no external URL or downloader. Source and generated text never enter
-argv, logs, telemetry, temporary prompt files, or persistent caches. Strict privacy,
-cancelled or stale work, runtime/model failure, and timeout return only sanitized errors.
+The server key is generated independently from the AI-09 authentication token for every
+launch. It is passed through a private key file, never through argv, and the Helper deletes
+the file after an authenticated readiness check. The file uses mode `0600` on Unix and the
+current-user application-data ACL on Windows. Model hashing observes the same
+absolute deadline and cancellation flag between chunks. This loopback connection is an
+implementation detail inside the authenticated Helper boundary, not an externally reachable
+service. Hosts own the fixed official model download; the Helper contains no external URL or
+downloader. Source and generated text never enter argv, logs, telemetry, temporary prompt
+files, or persistent caches. Strict privacy, cancelled or stale work, runtime/model failure,
+and timeout return only sanitized errors.
