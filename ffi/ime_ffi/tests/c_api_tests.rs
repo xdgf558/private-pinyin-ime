@@ -12,9 +12,7 @@ use private_pinyin_ime::{
     ime_session_free, ime_session_new, ime_session_set_candidate_page_size, ImeKeyEvent,
 };
 #[cfg(feature = "local-ai")]
-use private_pinyin_ime::{
-    ime_engine_enable_local_ai, ime_session_set_secure_input, ImeMode,
-};
+use private_pinyin_ime::{ime_engine_enable_local_ai, ime_session_set_secure_input, ImeMode};
 
 #[test]
 fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
