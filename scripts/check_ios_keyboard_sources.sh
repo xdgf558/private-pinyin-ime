@@ -112,6 +112,9 @@ grep -q "private-pinyin-expanded-candidates" platform/ios_keyboard/KeyboardExten
 grep -q "private-pinyin-expanded-candidate-" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func toggleExpandedCandidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func startCoreLoadIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func configuredCore() -> IosPinyinCoreBridge?" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "apply(configuredCore()?.commitCandidate(index: index))" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "guard let output = configuredCore()?.feed(keyCode: keyCode)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

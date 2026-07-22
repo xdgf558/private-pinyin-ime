@@ -7,6 +7,7 @@ Current status: Dedicated nine-key numeric input, quick punctuation selection, t
 ## iOS Keyboard Transition Responsiveness Validation (2026-07-22)
 
 - Root-cause review found that `KeyboardViewController.viewDidLoad()` synchronously created the Rust bridge and parsed the 137,699-entry lexicon before UIKit could present the keyboard. On extension recreation this exposed the previous keyboard frame long enough to look like ghosting or a stalled transition.
+- Direct iOS actions that bypass the queued character-input path now reacquire a configured core and refresh secure-input state before backspace, candidate commit, paging, composition finalization, or punctuation submission.
 - The keyboard now builds an opaque, clipped surface first and starts core initialization on a dedicated user-initiated worker queue. The completed bridge is published to the main thread and remains main-thread confined after publication.
 - Up to 64 key operations received during cold initialization are retained in FIFO order and replayed once. A real host text change clears the pending queue so early keys cannot leak into another field; engine initialization failure preserves the existing fallback insertion behavior.
 - Complete keyboard rebuilds run without UIKit animation, while ordinary character entry continues to update only the preedit/candidate state rather than reconstructing the key hierarchy.

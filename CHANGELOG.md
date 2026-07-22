@@ -130,6 +130,7 @@
 ### Changed
 
 - Bumped the iOS container app and Keyboard Extension to `0.1.24 (20)` for the keyboard-activation fix, expandable nine-candidate browser, packed lexicon indexes, and the explicit verified `rime-ice` import action.
+- Refreshed the iOS secure-input state before direct backspace, candidate commit, paging, composition-finalization, and punctuation actions so optional local AI remains fail-closed when the host input context changes.
 - Bumped the macOS app/pkg and Windows internal-test package defaults to `0.1.24` for the shared-engine macOS memory fix and the dormant AI-09 authenticated desktop Helper boundary.
 - Bumped the macOS app/pkg and Windows internal-test installers to `0.1.23` for the reviewed upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.
 - Bumped the iOS container app and Keyboard Extension to `0.1.23 (19)` for the PR #35 nine-key candidate, paging, touch, and persistence fixes plus the PR #34 upgrade-safe local Rime lexicon import and expanded permissive bundled lexicon.

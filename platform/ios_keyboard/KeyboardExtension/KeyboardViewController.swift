@@ -1278,7 +1278,7 @@ private extension KeyboardViewController {
             // The shared core maps comma and period, so those can preserve an
             // active composition. Exclamation and question marks have no core
             // key code and therefore commit the composition before insertion.
-            if hasActiveInput, let core {
+            if hasActiveInput, let core = configuredCore() {
                 if currentCandidates.isEmpty {
                     apply(core.feed(keyCode: IosKeyCodeValue.enter))
                 } else {
@@ -1293,7 +1293,7 @@ private extension KeyboardViewController {
     }
 
     func handleBackspace() {
-        if hasActiveInput, let core {
+        if hasActiveInput, let core = configuredCore() {
             apply(core.feed(keyCode: IosKeyCodeValue.backspace))
         } else {
             deleteDocumentBackward()
@@ -1302,7 +1302,7 @@ private extension KeyboardViewController {
 
     func commitCandidate(_ index: Int) {
         provideSelectionFeedback()
-        apply(core?.commitCandidate(index: index))
+        apply(configuredCore()?.commitCandidate(index: index))
     }
 
     func provideSelectionFeedback() {
@@ -1319,7 +1319,7 @@ private extension KeyboardViewController {
     }
 
     func endActiveInputIfNeeded() {
-        if hasActiveInput, let core {
+        if hasActiveInput, let core = configuredCore() {
             apply(core.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
         }
     }
@@ -1339,7 +1339,7 @@ private extension KeyboardViewController {
         }
         let previousSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         let keyCode = delta < 0 ? IosKeyCodeValue.pageUp : IosKeyCodeValue.pageDown
-        guard let output = core?.feed(keyCode: keyCode) else {
+        guard let output = configuredCore()?.feed(keyCode: keyCode) else {
             updateCandidateBar()
             return
         }
@@ -1370,9 +1370,16 @@ private extension KeyboardViewController {
         }
     }
 
+    func configuredCore() -> IosPinyinCoreBridge? {
+        guard let core else {
+            return nil
+        }
+        configureSecureInput(on: core)
+        return core
+    }
+
     func withCore(_ operation: @escaping (IosPinyinCoreBridge?) -> Void) {
-        if let core {
-            configureSecureInput(on: core)
+        if let core = configuredCore() {
             operation(core)
             return
         }
