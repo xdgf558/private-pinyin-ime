@@ -15,6 +15,13 @@ private enum StationTheme {
     static let textFaint = Color(red: 0x5C / 255, green: 0x68 / 255, blue: 0x78 / 255)
 }
 
+private enum SettingsDestination: Hashable {
+    case setup
+    case privacy
+    case lexicon
+    case about
+}
+
 struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
@@ -29,31 +36,36 @@ struct ContentView: View {
 #endif
 
     var body: some View {
-        ZStack {
-            StationTheme.background
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                StationTheme.background
+                    .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    brandRow
-                    welcomeSection
-                    setupSection
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        brandRow
+                        welcomeSection
+                        settingsOverviewSection
 #if DEBUG
-                    if isKeyboardSmokeHarnessEnabled {
-                        keyboardSmokeSection
-                    }
+                        if isKeyboardSmokeHarnessEnabled {
+                            keyboardSmokeSection
+                        }
 #endif
-                    privacySection
-                    lexiconSection
-                    footer
+                        footer
+                    }
+                    .frame(maxWidth: 620)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 30)
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: 620)
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 30)
-                .frame(maxWidth: .infinity)
             }
+            .navigationDestination(for: SettingsDestination.self, destination: destinationView)
+            .toolbarBackground(StationTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .tint(StationTheme.lamp)
         .preferredColorScheme(.dark)
         .onAppear {
             _ = IosSettingsStore.ensureSettingsFile()
@@ -84,6 +96,123 @@ struct ContentView: View {
                 "将由容器 App 下载并校验雾凇拼音 2026.03.26 的已审核中文精选词典，不会开启键盘联网。词库依 GPL-3.0-only 许可使用。"
             )
         }
+    }
+
+    private var settingsOverviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("设置", icon: "slider.horizontal.3")
+
+            VStack(spacing: 0) {
+                settingsNavigationRow(
+                    destination: .setup,
+                    title: "开始使用",
+                    summary: "添加键盘并查看切换方法",
+                    icon: "keyboard"
+                )
+                divider
+                settingsNavigationRow(
+                    destination: .privacy,
+                    title: "隐私与学习",
+                    summary: learningEnabled ? "用户学习已开启" : "用户学习已关闭",
+                    icon: "lock.fill"
+                )
+                divider
+                settingsNavigationRow(
+                    destination: .lexicon,
+                    title: "词库管理",
+                    summary: lexiconStatusText.isEmpty ? "本地导入与雾凇精选" : lexiconStatusText,
+                    icon: "books.vertical.fill"
+                )
+                divider
+                settingsNavigationRow(
+                    destination: .about,
+                    title: "关于猫栈拼音",
+                    summary: versionText,
+                    icon: "info.circle.fill"
+                )
+            }
+            .background(StationTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(StationTheme.border, lineWidth: 1)
+            }
+        }
+    }
+
+    private func settingsNavigationRow(
+        destination: SettingsDestination,
+        title: String,
+        summary: String,
+        icon: String
+    ) -> some View {
+        NavigationLink(value: destination) {
+            HStack(spacing: 13) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(StationTheme.lamp)
+                    .frame(width: 30, height: 30)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(StationTheme.textPrimary)
+                    Text(summary)
+                        .font(.system(size: 12))
+                        .foregroundStyle(StationTheme.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 10)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(StationTheme.textFaint)
+            }
+            .padding(.horizontal, 15)
+            .frame(minHeight: 64)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func destinationView(_ destination: SettingsDestination) -> some View {
+        switch destination {
+        case .setup:
+            detailPage { setupSection }
+                .navigationTitle("开始使用")
+        case .privacy:
+            detailPage { privacySection }
+                .navigationTitle("隐私与学习")
+        case .lexicon:
+            detailPage { lexiconSection }
+                .navigationTitle("词库管理")
+        case .about:
+            detailPage { aboutSection }
+                .navigationTitle("关于猫栈拼音")
+        }
+    }
+
+    private func detailPage<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack {
+            StationTheme.background
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    content()
+                    footer
+                }
+                .frame(maxWidth: 620)
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 30)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var brandRow: some View {
@@ -359,6 +488,50 @@ struct ContentView: View {
                         .foregroundStyle(StationTheme.textFaint)
                         .padding(16)
                 }
+            }
+            .background(StationTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(StationTheme.border, lineWidth: 1)
+            }
+        }
+    }
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("关于", icon: "info.circle.fill")
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 14) {
+                    Image("BrandMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 54, height: 54)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("猫栈拼音")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(StationTheme.textPrimary)
+                        Text(versionText)
+                            .font(.system(size: 13))
+                            .foregroundStyle(StationTheme.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+
+                divider
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("键盘扩展默认不申请完全访问", systemImage: "lock.shield.fill")
+                    Label("拼音转换与用户学习均在本机完成", systemImage: "iphone")
+                    Label("网络下载只发生在容器 App 的主动词库导入", systemImage: "arrow.down.doc")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(StationTheme.textSecondary)
+                .padding(16)
             }
             .background(StationTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

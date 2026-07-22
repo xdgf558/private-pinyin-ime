@@ -132,6 +132,7 @@ Checklist:
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
 | Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
+| Keyboard transition | Switch repeatedly among the system Simplified Chinese keyboard, English, and 猫栈拼音, then type `mao` immediately after each return; the 猫栈 surface appears without a stale-frame flash, blank tray, or system-keyboard fallback, and every early key is applied exactly once | | Test both warm reuse and extension-process recreation in at least two host apps |
 | Immediate response | Rapid full-key and nine-key taps update preedit/candidates once per tap without waiting for an exaggerated release delay | | |
 | Candidate groups | Each group exposes up to nine candidates; swipe the candidate strip to reach long-text candidates, while fixed next/previous controls remain visible and change groups once without being pushed offscreen | | |
 | Expanded candidates | Tap the candidate-bar expand control; all nine candidates in the current group appear in a stable 3-by-3 grid, each cell commits the matching candidate exactly once, and previous/next controls expose further groups before collapsing back to the keyboard | | Check QWERTY and nine-key layouts in portrait and landscape |

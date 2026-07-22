@@ -37,7 +37,8 @@ struct IosPinyinOutput {
     let candidates: [IosPinyinCandidate]
 }
 
-final class IosPinyinCoreBridge {
+// Constructed on the loader queue, then published to and used only on main.
+final class IosPinyinCoreBridge: @unchecked Sendable {
     static let preferredCandidatePageSize = 9
     private static let fallbackCandidatePageSize = 5
     private static let bytesPerMiB: UInt64 = 1024 * 1024

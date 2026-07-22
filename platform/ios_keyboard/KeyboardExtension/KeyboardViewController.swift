@@ -1,7 +1,15 @@
 import UIKit
 
 final class KeyboardViewController: UIInputViewController {
+    private static let coreLoaderQueue = DispatchQueue(
+        label: "com.privatepinyin.ios.core-loader",
+        qos: .userInitiated
+    )
     private var core: IosPinyinCoreBridge?
+    private var coreLoadGeneration = 0
+    private var coreLoadInProgress = false
+    private var pendingCoreOperations: [(IosPinyinCoreBridge?) -> Void] = []
+    private let maximumPendingCoreOperations = 64
     private let rootStack = UIStackView()
     private let candidateBar = UIStackView()
     private let candidateScrollView = CandidateScrollView()
@@ -39,6 +47,7 @@ final class KeyboardViewController: UIInputViewController {
     private var shifted = false
     private var symbolsVisible = false
     private var extendedSymbolsVisible = false
+    private var nineKeyNumbersVisible = false
     private var englishMode = false
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
@@ -53,15 +62,18 @@ final class KeyboardViewController: UIInputViewController {
     private var localAiSuspendedForMemoryPressure = false
     private let trayGradient = CAGradientLayer()
     private var minimumHeightConstraint: NSLayoutConstraint?
+    private var quickPunctuationPopup: NineKeyPunctuationPopupView?
+    private var quickPunctuationGestureStart = CGPoint.zero
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        _ = ensureCore()
+        lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
         keyFeedbackGenerator.prepare()
         setupView()
         rebuildKeyboard()
         updateCandidateBar()
         refreshPreferenceControls()
+        startCoreLoadIfNeeded()
 #if DEBUG
         runKeyboardSmokeIfRequested()
 #endif
@@ -72,7 +84,8 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
 
-        if let output = ensureCore()?.reset() {
+        pendingCoreOperations.removeAll()
+        if let output = core?.reset() {
             englishMode = output.isEnglishMode
         }
         currentPreedit = ""
@@ -105,10 +118,14 @@ final class KeyboardViewController: UIInputViewController {
     private func setupView() {
         view.accessibilityIdentifier = "private-pinyin-keyboard-root"
         view.backgroundColor = StationKeyboardTheme.trayBottom
+        view.isOpaque = true
+        view.layer.isOpaque = true
+        view.clipsToBounds = true
         trayGradient.colors = [
             StationKeyboardTheme.trayTop.cgColor,
             StationKeyboardTheme.trayBottom.cgColor,
         ]
+        trayGradient.isOpaque = true
         trayGradient.startPoint = CGPoint(x: 0.5, y: 0)
         trayGradient.endPoint = CGPoint(x: 0.5, y: 1)
         view.layer.insertSublayer(trayGradient, at: 0)
@@ -604,6 +621,14 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func rebuildKeyboard() {
+        UIView.performWithoutAnimation {
+            rebuildKeyboardContents()
+            rootStack.layoutIfNeeded()
+        }
+    }
+
+    private func rebuildKeyboardContents() {
+        dismissQuickPunctuationPopup()
         keyRowsStack.arrangedSubviews.forEach { view in
             keyRowsStack.removeArrangedSubview(view)
             view.removeFromSuperview()
@@ -613,7 +638,9 @@ final class KeyboardViewController: UIInputViewController {
         spaceButton = nil
 
         if !symbolsVisible, usesNineKeyLayout {
-            keyRowsStack.addArrangedSubview(makeNineKeyGrid())
+            keyRowsStack.addArrangedSubview(
+                nineKeyNumbersVisible ? makeNineKeyNumberGrid() : makeNineKeyGrid()
+            )
             refreshMinimumHeight()
             refreshKeyStates()
             return
@@ -682,7 +709,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private func makeNineKeyGrid() -> UIView {
         let topRow = makeAdaptiveKeyRow([
-            .symbols,
+            .nineKeyNumbers,
             .nineKeyPunctuation,
             .nineKeyDigit(2, letters: "ABC"),
             .nineKeyDigit(3, letters: "DEF"),
@@ -756,6 +783,82 @@ final class KeyboardViewController: UIInputViewController {
         return grid
     }
 
+    private func makeNineKeyNumberGrid() -> UIView {
+        let topRow = makeAdaptiveKeyRow([
+            .nineKeyLetters,
+            .text("1"),
+            .text("2"),
+            .text("3"),
+            .backspace,
+        ])
+        let middleRow = makeAdaptiveKeyRow([
+            .nineKeyMoreSymbols,
+            .text("4"),
+            .text("5"),
+            .text("6"),
+            .nineKeyExtendedSymbols,
+        ])
+
+        // Keep the system-mandated input-mode switch reachable from this
+        // temporary number page. The 拼音 key above still returns to nine-key.
+        let leadingButton = makeKeyButton(needsInputModeSwitchKey ? .globe : .qwertyLayout)
+        let enterButton = makeKeyButton(.enter)
+        let lowerCenterTop = makeAdaptiveKeyRow([
+            .text("7"),
+            .text("8"),
+            .text("9"),
+        ])
+        let lowerCenterBottom = makeAdaptiveKeyRow([
+            .nineKeyPunctuation,
+            .text("0"),
+            .nineKeySpace,
+        ])
+        let lowerCenter = UIStackView(arrangedSubviews: [
+            lowerCenterTop.stack,
+            lowerCenterBottom.stack,
+        ])
+        lowerCenter.axis = .vertical
+        lowerCenter.alignment = .fill
+        lowerCenter.distribution = .fill
+        lowerCenter.spacing = 9
+
+        let lowerRow = UIStackView(arrangedSubviews: [leadingButton, lowerCenter, enterButton])
+        lowerRow.axis = .horizontal
+        lowerRow.alignment = .fill
+        lowerRow.distribution = .fill
+        lowerRow.spacing = 7
+
+        let grid = UIStackView(arrangedSubviews: [topRow.stack, middleRow.stack, lowerRow])
+        grid.axis = .vertical
+        grid.alignment = .fill
+        grid.distribution = .fill
+        grid.spacing = 9
+
+        var gridConstraints = [
+            leadingButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor),
+            enterButton.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor),
+            middleRow.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerCenterTop.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerCenterBottom.stack.heightAnchor.constraint(equalTo: topRow.stack.heightAnchor),
+            lowerRow.heightAnchor.constraint(
+                equalTo: topRow.stack.heightAnchor,
+                multiplier: 2,
+                constant: 9
+            ),
+        ]
+        gridConstraints.append(contentsOf: middleRow.buttons.map {
+            $0.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor)
+        })
+        gridConstraints.append(contentsOf: lowerCenterTop.buttons.map {
+            $0.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor)
+        })
+        gridConstraints.append(contentsOf: lowerCenterBottom.buttons.map {
+            $0.widthAnchor.constraint(equalTo: topRow.buttons[0].widthAnchor)
+        })
+        NSLayoutConstraint.activate(gridConstraints)
+        return grid
+    }
+
     private func makeAdaptiveKeyRow(_ keys: [KeySpec]) -> (stack: UIStackView, buttons: [UIButton]) {
         let buttons = keys.map(makeKeyButton)
         let row = UIStackView(arrangedSubviews: buttons)
@@ -814,6 +917,8 @@ final class KeyboardViewController: UIInputViewController {
         switch key.kind {
         case .space:
             title = englishMode ? "space" : "猫栈拼音"
+        case .nineKeySpace:
+            title = key.title
         case .modeToggle:
             title = englishMode ? "英" : "中"
         case .enter:
@@ -834,7 +939,7 @@ final class KeyboardViewController: UIInputViewController {
             button.accessibilityIdentifier = "private-pinyin-nine-key-\(value)"
         case .globe:
             button.accessibilityIdentifier = "private-pinyin-globe-key"
-        case .space:
+        case .space, .nineKeySpace:
             button.accessibilityIdentifier = "private-pinyin-space-key"
         case .enter:
             button.accessibilityIdentifier = "private-pinyin-enter-key"
@@ -861,6 +966,25 @@ final class KeyboardViewController: UIInputViewController {
         button.addAction(UIAction { [weak self] _ in
             self?.handle(key)
         }, for: key.activationEvent)
+        if case .nineKeyPunctuation = key.kind {
+            let gesture = UILongPressGestureRecognizer(
+                target: self,
+                action: #selector(handleQuickPunctuationGesture(_:))
+            )
+            gesture.minimumPressDuration = 0.18
+            gesture.cancelsTouchesInView = true
+            button.addGestureRecognizer(gesture)
+            button.accessibilityHint = "轻点输入逗号，长按并滑动选择标点"
+            button.accessibilityCustomActions = ["！", "？", "。", "，"].map { punctuation in
+                UIAccessibilityCustomAction(name: punctuation) { [weak self] _ in
+                    guard let self else {
+                        return false
+                    }
+                    self.insertQuickPunctuation(punctuation)
+                    return true
+                }
+            }
+        }
         if case .enter = key.kind {
             button.accessibilityHint = "提交当前输入，或执行当前输入框的回车操作"
         }
@@ -1002,13 +1126,15 @@ final class KeyboardViewController: UIInputViewController {
         case .nineKeyDigit(let value):
             feedNineKeyDigit(value)
         case .nineKeyPunctuation:
-            symbolsVisible = true
-            extendedSymbolsVisible = false
-            rebuildKeyboard()
-        case .space:
-            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.space, text: " "), fallback: " ")
+            insertQuickPunctuation("，")
+        case .space, .nineKeySpace:
+            performCoreOutput(fallback: " ") { core in
+                core.feed(keyCode: IosKeyCodeValue.space, text: " ")
+            }
         case .enter:
-            applyOrInsert(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"), fallback: "\n")
+            performCoreOutput(fallback: "\n") { core in
+                core.feed(keyCode: IosKeyCodeValue.enter, text: "\n")
+            }
         case .backspace:
             handleBackspace()
         case .shift:
@@ -1019,30 +1145,88 @@ final class KeyboardViewController: UIInputViewController {
         case .symbols:
             symbolsVisible = true
             extendedSymbolsVisible = false
+            nineKeyNumbersVisible = false
             rebuildKeyboard()
         case .extendedSymbols:
             symbolsVisible = true
             extendedSymbolsVisible = true
+            nineKeyNumbersVisible = false
             rebuildKeyboard()
         case .letters:
             symbolsVisible = false
             extendedSymbolsVisible = false
+            nineKeyNumbersVisible = false
+            rebuildKeyboard()
+        case .nineKeyNumbers:
+            nineKeyNumbersVisible = true
+            rebuildKeyboard()
+        case .nineKeyLetters:
+            nineKeyNumbersVisible = false
             rebuildKeyboard()
         case .nineKeyLayout:
             symbolsVisible = false
             extendedSymbolsVisible = false
+            nineKeyNumbersVisible = false
             selectKeyboardLayout(.nineKey)
         case .qwertyLayout:
             symbolsVisible = false
             extendedSymbolsVisible = false
+            nineKeyNumbersVisible = false
             selectKeyboardLayout(.qwerty)
         case .candidateNextPage:
             turnCandidatePage(1)
         case .modeToggle:
-            apply(ensureCore()?.toggleMode())
+            performCoreOutput { core in
+                core.toggleMode()
+            }
         case .spacer:
             break
         }
+    }
+
+    @objc private func handleQuickPunctuationGesture(_ gesture: UILongPressGestureRecognizer) {
+        guard let button = gesture.view as? UIButton else {
+            return
+        }
+
+        switch gesture.state {
+        case .began:
+            provideSelectionFeedback()
+            quickPunctuationGestureStart = gesture.location(in: view)
+            showQuickPunctuationPopup(anchoredTo: button)
+        case .changed:
+            let location = gesture.location(in: view)
+            let upwardDistance = max(0, quickPunctuationGestureStart.y - location.y)
+            quickPunctuationPopup?.select(upwardDistance: upwardDistance)
+        case .ended:
+            let punctuation = quickPunctuationPopup?.selectedPunctuation ?? "，"
+            dismissQuickPunctuationPopup()
+            insertQuickPunctuation(punctuation)
+        case .cancelled, .failed:
+            dismissQuickPunctuationPopup()
+        default:
+            break
+        }
+    }
+
+    private func showQuickPunctuationPopup(anchoredTo button: UIButton) {
+        dismissQuickPunctuationPopup()
+        let popup = NineKeyPunctuationPopupView()
+        let size = popup.intrinsicContentSize
+        let sourceFrame = button.convert(button.bounds, to: view)
+        let x = min(
+            max(4, sourceFrame.midX - size.width / 2),
+            max(4, view.bounds.width - size.width - 4)
+        )
+        let y = max(4, sourceFrame.maxY - size.height)
+        popup.frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
+        view.addSubview(popup)
+        quickPunctuationPopup = popup
+    }
+
+    private func dismissQuickPunctuationPopup() {
+        quickPunctuationPopup?.removeFromSuperview()
+        quickPunctuationPopup = nil
     }
 }
 
@@ -1063,17 +1247,20 @@ private extension KeyboardViewController {
         }
 
         let text = wasShifted ? value.uppercased() : value
-        let output = ensureCore()?.feed(
-            keyCode: IosKeyCodeValue.character,
-            text: text,
-            shift: wasShifted
-        )
-        apply(output)
+        performCoreOutput { core in
+            core.feed(
+                keyCode: IosKeyCodeValue.character,
+                text: text,
+                shift: wasShifted
+            )
+        }
     }
 
     func handleTextKey(_ value: String) {
         if let keyCode = coreKeyCode(for: value) {
-            applyOrInsert(ensureCore()?.feed(keyCode: keyCode, text: value), fallback: value)
+            performCoreOutput(fallback: value) { core in
+                core.feed(keyCode: keyCode, text: value)
+            }
             return
         }
 
@@ -1081,9 +1268,33 @@ private extension KeyboardViewController {
         insertDocumentText(value)
     }
 
+    func insertQuickPunctuation(_ punctuation: String) {
+        switch punctuation {
+        case "，":
+            handleTextKey(",")
+        case "。":
+            handleTextKey(".")
+        default:
+            // The shared core maps comma and period, so those can preserve an
+            // active composition. Exclamation and question marks have no core
+            // key code and therefore commit the composition before insertion.
+            if hasActiveInput, let core = configuredCore() {
+                if currentCandidates.isEmpty {
+                    apply(core.feed(keyCode: IosKeyCodeValue.enter))
+                } else {
+                    apply(core.commitCandidate(index: 0))
+                }
+            }
+            insertDocumentText(punctuation)
+            currentCandidates = []
+            candidatesExpanded = false
+            updateCandidateBar()
+        }
+    }
+
     func handleBackspace() {
-        if hasActiveInput {
-            apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.backspace))
+        if hasActiveInput, let core = configuredCore() {
+            apply(core.feed(keyCode: IosKeyCodeValue.backspace))
         } else {
             deleteDocumentBackward()
         }
@@ -1091,7 +1302,7 @@ private extension KeyboardViewController {
 
     func commitCandidate(_ index: Int) {
         provideSelectionFeedback()
-        apply(ensureCore()?.commitCandidate(index: index))
+        apply(configuredCore()?.commitCandidate(index: index))
     }
 
     func provideSelectionFeedback() {
@@ -1108,8 +1319,8 @@ private extension KeyboardViewController {
     }
 
     func endActiveInputIfNeeded() {
-        if hasActiveInput {
-            apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
+        if hasActiveInput, let core = configuredCore() {
+            apply(core.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
         }
     }
 
@@ -1117,7 +1328,9 @@ private extension KeyboardViewController {
         guard value.count == 1, let digit = value.first, ("2"..."9").contains(String(digit)) else {
             return
         }
-        apply(ensureCore()?.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value))
+        performCoreOutput { core in
+            core.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value)
+        }
     }
 
     func turnCandidatePage(_ delta: Int) {
@@ -1126,7 +1339,7 @@ private extension KeyboardViewController {
         }
         let previousSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         let keyCode = delta < 0 ? IosKeyCodeValue.pageUp : IosKeyCodeValue.pageDown
-        guard let output = ensureCore()?.feed(keyCode: keyCode) else {
+        guard let output = configuredCore()?.feed(keyCode: keyCode) else {
             updateCandidateBar()
             return
         }
@@ -1140,15 +1353,86 @@ private extension KeyboardViewController {
         apply(output)
     }
 
-    func ensureCore() -> IosPinyinCoreBridge? {
-        if core == nil {
-            core = IosPinyinCoreBridge()
+    func performCoreOutput(
+        fallback: String? = nil,
+        operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?
+    ) {
+        withCore { [weak self] core in
+            guard let self else {
+                return
+            }
+            let output = core.flatMap(operation)
+            if let fallback {
+                self.applyOrInsert(output, fallback: fallback)
+            } else {
+                self.apply(output)
+            }
         }
-        coreUnavailable = core == nil
-        core?.setSecureInput(
+    }
+
+    func configuredCore() -> IosPinyinCoreBridge? {
+        guard let core else {
+            return nil
+        }
+        configureSecureInput(on: core)
+        return core
+    }
+
+    func withCore(_ operation: @escaping (IosPinyinCoreBridge?) -> Void) {
+        if let core = configuredCore() {
+            operation(core)
+            return
+        }
+
+        guard pendingCoreOperations.count < maximumPendingCoreOperations else {
+            operation(nil)
+            return
+        }
+        pendingCoreOperations.append(operation)
+        startCoreLoadIfNeeded()
+    }
+
+    func startCoreLoadIfNeeded() {
+        guard core == nil, !coreLoadInProgress else {
+            return
+        }
+
+        coreLoadInProgress = true
+        coreUnavailable = false
+        coreLoadGeneration &+= 1
+        let generation = coreLoadGeneration
+        Self.coreLoaderQueue.async {
+            let loadedCore = IosPinyinCoreBridge()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, generation == self.coreLoadGeneration else {
+                    return
+                }
+                self.coreLoadInProgress = false
+                self.core = loadedCore
+                self.coreUnavailable = loadedCore == nil
+                if let loadedCore {
+                    self.configureSecureInput(on: loadedCore)
+                }
+                let operations = self.pendingCoreOperations
+                self.pendingCoreOperations.removeAll(keepingCapacity: true)
+                operations.forEach { $0(loadedCore) }
+                self.updateCandidateBar()
+            }
+        }
+    }
+
+    func invalidateCore() {
+        coreLoadGeneration &+= 1
+        coreLoadInProgress = false
+        pendingCoreOperations.removeAll(keepingCapacity: true)
+        core = nil
+        coreUnavailable = false
+    }
+
+    func configureSecureInput(on core: IosPinyinCoreBridge) {
+        core.setSecureInput(
             localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext
         )
-        return core
     }
 
     var shouldDisableAiForCurrentInputContext: Bool {
@@ -1194,6 +1478,7 @@ private extension KeyboardViewController {
         if modeChanged {
             symbolsVisible = false
             extendedSymbolsVisible = false
+            nineKeyNumbersVisible = false
             rebuildKeyboard()
         }
         updateCandidateBar()
@@ -1339,7 +1624,7 @@ private extension KeyboardViewController {
         }
 
         if hasActiveInput {
-            apply(ensureCore()?.reset())
+            apply(core?.reset())
         }
         preferredLayout = layout
         _ = IosSettingsStore.setKeyboardLayout(layout)
@@ -1419,23 +1704,32 @@ private extension KeyboardViewController {
     }
 
     func clearLearningData() {
-        core = nil
+        invalidateCore()
         do {
             let removed = try IosSettingsStore.clearLocalLexiconArtifacts()
-            _ = ensureCore()
             clearCompositionState()
-            preferencesStatusLabel.text = removed == 0 ? "没有本机学习记录" : "本机学习记录已清除"
+            preferencesStatusLabel.text = "正在重新载入输入引擎…"
+            withCore { [weak self] core in
+                guard let self else {
+                    return
+                }
+                self.preferencesStatusLabel.text = core == nil
+                    ? "输入引擎重新载入失败"
+                    : (removed == 0 ? "没有本机学习记录" : "本机学习记录已清除")
+            }
         } catch {
-            _ = ensureCore()
             preferencesStatusLabel.text = "无法清除本机学习记录"
+            startCoreLoadIfNeeded()
         }
     }
 
     func reloadCoreAfterSettingsChange(status: String) {
-        core = nil
-        _ = ensureCore()
+        invalidateCore()
         clearCompositionState()
-        preferencesStatusLabel.text = core == nil ? "输入引擎重新载入失败" : status
+        preferencesStatusLabel.text = "正在重新载入输入引擎…"
+        withCore { [weak self] core in
+            self?.preferencesStatusLabel.text = core == nil ? "输入引擎重新载入失败" : status
+        }
     }
 
     func clearCompositionState() {
@@ -1502,6 +1796,7 @@ private struct KeySpec {
         case nineKeyDigit(String)
         case nineKeyPunctuation
         case space
+        case nineKeySpace
         case enter
         case backspace
         case shift
@@ -1509,6 +1804,8 @@ private struct KeySpec {
         case symbols
         case extendedSymbols
         case letters
+        case nineKeyNumbers
+        case nineKeyLetters
         case nineKeyLayout
         case qwertyLayout
         case candidateNextPage
@@ -1526,10 +1823,11 @@ private struct KeySpec {
 
     var activationEvent: UIControl.Event {
         switch kind {
-        case .character, .text, .nineKeyDigit, .space, .enter, .backspace:
+        case .character, .text, .nineKeyDigit, .space, .nineKeySpace, .enter, .backspace:
             return .touchDown
-        case .nineKeyPunctuation, .shift, .globe, .symbols, .letters, .nineKeyLayout,
-             .extendedSymbols, .qwertyLayout, .candidateNextPage, .modeToggle, .spacer:
+        case .nineKeyPunctuation, .shift, .globe, .symbols, .letters, .nineKeyNumbers,
+             .nineKeyLetters, .nineKeyLayout, .extendedSymbols, .qwertyLayout,
+             .candidateNextPage, .modeToggle, .spacer:
             return .touchUpInside
         }
     }
@@ -1538,7 +1836,7 @@ private struct KeySpec {
         switch kind {
         case .character, .text, .nineKeyDigit:
             return .letter
-        case .space:
+        case .space, .nineKeySpace:
             return .space
         case .modeToggle:
             return .mode
@@ -1546,7 +1844,7 @@ private struct KeySpec {
             return .returnKey
         case .nineKeyPunctuation, .backspace, .shift, .globe,
              .symbols, .extendedSymbols, .letters, .nineKeyLayout,
-             .qwertyLayout, .candidateNextPage, .spacer:
+             .nineKeyNumbers, .nineKeyLetters, .qwertyLayout, .candidateNextPage, .spacer:
             return .function
         }
     }
@@ -1559,8 +1857,9 @@ private struct KeySpec {
             return UIFont.systemFont(ofSize: 22, weight: .semibold)
         case .text, .nineKeyPunctuation:
             return UIFont.systemFont(ofSize: 18, weight: .medium)
-        case .space, .modeToggle, .enter, .symbols, .extendedSymbols, .letters,
-             .nineKeyLayout, .qwertyLayout, .candidateNextPage:
+        case .space, .nineKeySpace, .modeToggle, .enter, .symbols, .extendedSymbols,
+             .letters, .nineKeyNumbers, .nineKeyLetters, .nineKeyLayout,
+             .qwertyLayout, .candidateNextPage:
             return UIFont.systemFont(ofSize: 15, weight: .semibold)
         case .backspace, .shift, .globe, .spacer:
             return UIFont.systemFont(ofSize: 16, weight: .medium)
@@ -1621,9 +1920,9 @@ private struct KeySpec {
 
     static let nineKeyPunctuation = Self(
         kind: .nineKeyPunctuation,
-        title: "，。？",
+        title: "，。？！",
         systemImageName: nil,
-        accessibilityLabel: "中文标点与符号",
+        accessibilityLabel: "快捷中文标点",
         isCommand: true,
         isWide: false,
         widthWeight: 1
@@ -1665,6 +1964,24 @@ private struct KeySpec {
         isWide: true,
         widthWeight: 1.2
     )
+    static let nineKeyNumbers = Self(
+        kind: .nineKeyNumbers,
+        title: "123",
+        systemImageName: nil,
+        accessibilityLabel: "九宫格数字键盘",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
+    )
+    static let nineKeyLetters = Self(
+        kind: .nineKeyLetters,
+        title: "拼音",
+        systemImageName: nil,
+        accessibilityLabel: "返回九宫格拼音",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
+    )
     static let extendedSymbols = Self(
         kind: .extendedSymbols,
         title: "#+=",
@@ -1675,8 +1992,17 @@ private struct KeySpec {
         widthWeight: 1.2
     )
     static let nineKeyMoreSymbols = Self(
-        kind: .extendedSymbols,
+        kind: .symbols,
         title: "#@\u{00a5}",
+        systemImageName: nil,
+        accessibilityLabel: "数字与常用符号",
+        isCommand: true,
+        isWide: true,
+        widthWeight: 1
+    )
+    static let nineKeyExtendedSymbols = Self(
+        kind: .extendedSymbols,
+        title: "更多",
         systemImageName: nil,
         accessibilityLabel: "更多符号",
         isCommand: true,
@@ -1729,7 +2055,7 @@ private struct KeySpec {
         widthWeight: 3.15
     )
     static let nineKeySpace = Self(
-        kind: .space,
+        kind: .nineKeySpace,
         title: "空格",
         systemImageName: nil,
         accessibilityLabel: "空格",
@@ -1802,6 +2128,80 @@ private enum StationKeyboardTheme {
     static let toolText = UIColor(hex: 0xB3A99B)
     static let divider = UIColor(hex: 0x3A3025)
     static let returnText = UIColor(hex: 0x231703)
+}
+
+private final class NineKeyPunctuationPopupView: UIView {
+    private static let options = ["！", "？", "。", "，"]
+    private let labels: [UILabel]
+    private var selectedIndex = options.count - 1
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: 58, height: CGFloat(Self.options.count * 40))
+    }
+
+    var selectedPunctuation: String {
+        Self.options[selectedIndex]
+    }
+
+    init() {
+        labels = Self.options.map { punctuation in
+            let label = UILabel()
+            label.text = punctuation
+            label.font = UIFont.systemFont(ofSize: 21, weight: .medium)
+            label.textAlignment = .center
+            label.textColor = StationKeyboardTheme.primaryText
+            return label
+        }
+        super.init(frame: .zero)
+
+        isUserInteractionEnabled = false
+        backgroundColor = UIColor(hex: 0x4A433B, alpha: 0.98)
+        layer.cornerRadius = 9
+        layer.cornerCurve = .continuous
+        layer.borderWidth = 1
+        layer.borderColor = StationKeyboardTheme.divider.cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.35
+        layer.shadowRadius = 8
+        layer.shadowOffset = CGSize(width: 0, height: 3)
+
+        let stack = UIStackView(arrangedSubviews: labels)
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.distribution = .fillEqually
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
+        ])
+        applySelection()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func select(upwardDistance: CGFloat) {
+        let step = min(Self.options.count - 1, max(0, Int((upwardDistance + 14) / 38)))
+        selectedIndex = Self.options.count - 1 - step
+        applySelection()
+    }
+
+    private func applySelection() {
+        for (index, label) in labels.enumerated() {
+            let selected = index == selectedIndex
+            label.backgroundColor = selected ? StationKeyboardTheme.accent : .clear
+            label.textColor = selected
+                ? StationKeyboardTheme.returnText
+                : StationKeyboardTheme.primaryText
+            label.layer.cornerRadius = 6
+            label.layer.masksToBounds = true
+        }
+    }
 }
 
 private final class CandidateScrollView: UIScrollView {

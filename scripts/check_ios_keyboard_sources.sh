@@ -99,6 +99,11 @@ grep -q "togglePreferences" platform/ios_keyboard/KeyboardExtension/KeyboardView
 grep -q "setPredictionEnabled" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "clearLearningData" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "makeNineKeyGrid" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "makeNineKeyNumberGrid" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "nineKeyNumbersVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "NineKeyPunctuationPopupView" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "UILongPressGestureRecognizer" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "insertQuickPunctuation" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "selectKeyboardLayout(.nineKey)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "上一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "下一组候选" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -106,7 +111,10 @@ grep -q "展开全部候选" platform/ios_keyboard/KeyboardExtension/KeyboardVie
 grep -q "private-pinyin-expanded-candidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "private-pinyin-expanded-candidate-" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func toggleExpandedCandidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "func ensureCore()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func startCoreLoadIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func configuredCore() -> IosPinyinCoreBridge?" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "apply(configuredCore()?.commitCandidate(index: index))" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "guard let output = configuredCore()?.feed(keyCode: keyCode)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -116,6 +124,9 @@ grep -q 'needsInputModeSwitchKey ? .globe : .qwertyLayout' platform/ios_keyboard
 grep -q 'makeAdaptiveKeyRow' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'traitCollection.verticalSizeClass == .compact' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let nineKeyMoreSymbols' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyNumbers' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyLetters' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'static let nineKeyExtendedSymbols' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'static let candidateNextPage' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "候选"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -162,13 +173,87 @@ if grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/K
   echo "iOS candidate page size must have one source of truth in IosPinyinCoreBridge." >&2
   exit 1
 fi
-if sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q 'equalToConstant: \(52\|113\)'; then
-  echo "The iOS nine-key grid must adapt to compact-height layouts." >&2
-  exit 1
-fi
-sed -n '/private func makeNineKeyGrid()/,/private func makeAdaptiveKeyRow/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q '\.modeToggle'
+python3 - <<'PY'
+from pathlib import Path
+
+source = Path(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
+).read_text(encoding="utf-8")
+
+nine_key_grid = source.split("    private func makeNineKeyGrid()", 1)[1].split(
+    "    private func makeAdaptiveKeyRow", 1
+)[0]
+if "equalToConstant: 52" in nine_key_grid or "equalToConstant: 113" in nine_key_grid:
+    raise SystemExit("The iOS nine-key grid must adapt to compact-height layouts.")
+if ".modeToggle" not in nine_key_grid:
+    raise SystemExit("The iOS nine-key grid must retain the Chinese/English toggle.")
+
+feed_character = source.split("    func feedCharacter", 1)[1].split(
+    "    func handleTextKey", 1
+)[0]
+if "rebuildKeyboard" in feed_character:
+    raise SystemExit("Character input must not rebuild the complete iOS keyboard.")
+
+view_did_load = source.split("    override func viewDidLoad()", 1)[1].split(
+    "    override func textWillChange", 1
+)[0]
+if "lastNeedsInputModeSwitchKey = needsInputModeSwitchKey" not in view_did_load:
+    raise SystemExit("The iOS keyboard must seed its input-mode-switch state before layout.")
+if "startCoreLoadIfNeeded()" not in view_did_load:
+    raise SystemExit("The iOS keyboard must start background core prewarming after building UI.")
+if "IosPinyinCoreBridge()" in view_did_load:
+    raise SystemExit("Lexicon initialization must not run synchronously during presentation.")
+
+core_loader = source.split("    func startCoreLoadIfNeeded()", 1)[1].split(
+    "    func invalidateCore()", 1
+)[0]
+if "coreLoaderQueue.async" not in core_loader or "DispatchQueue.main.async" not in core_loader:
+    raise SystemExit("The iOS lexicon must load off-main and publish its session on main.")
+if "pendingCoreOperations" not in core_loader:
+    raise SystemExit("Early iOS key events must be replayed after background core loading.")
+
+rebuild_wrapper = source.split("    private func rebuildKeyboard()", 1)[1].split(
+    "    private func rebuildKeyboardContents()", 1
+)[0]
+if "UIView.performWithoutAnimation" not in rebuild_wrapper:
+    raise SystemExit("Complete keyboard rebuilds must not animate during host transitions.")
+if "view.isOpaque = true" not in source or "trayGradient.isOpaque = true" not in source:
+    raise SystemExit("The iOS keyboard root must remain opaque for smooth transitions.")
+
+def case_body(case_name: str) -> str:
+    marker = f"        case {case_name}:"
+    if marker not in source:
+        raise SystemExit(f"Missing Swift case contract: {case_name}")
+    body = source.split(marker, 1)[1]
+    return body.split("\n        case ", 1)[0]
+
+punctuation_body = case_body(".nineKeyPunctuation")
+if 'insertQuickPunctuation("，")' not in punctuation_body:
+    raise SystemExit("The iOS nine-key punctuation shortcut must insert quick punctuation.")
+if "symbolsVisible = true" in punctuation_body:
+    raise SystemExit(
+        "The iOS nine-key punctuation shortcut must not open the complete symbol keyboard."
+    )
+
+more_symbols = source.split("    static let nineKeyMoreSymbols", 1)[1].split(
+    "    static let nineKeyExtendedSymbols", 1
+)[0]
+extended_symbols = source.split("    static let nineKeyExtendedSymbols", 1)[1].split(
+    "    static let letters", 1
+)[0]
+if "kind: .symbols" not in more_symbols:
+    raise SystemExit("The #@¥ key must open the primary symbol page.")
+if "kind: .extendedSymbols" not in extended_symbols:
+    raise SystemExit("The 更多 key must open the extended symbol page.")
+
+number_grid = source.split("    private func makeNineKeyNumberGrid()", 1)[1].split(
+    "    private func makeAdaptiveKeyRow", 1
+)[0]
+if "needsInputModeSwitchKey ? .globe : .qwertyLayout" not in number_grid:
+    raise SystemExit("The nine-key number page must retain the required globe key.")
+if "accessibilityCustomActions" not in source:
+    raise SystemExit("Quick punctuation alternatives must be exposed to VoiceOver.")
+PY
 grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -178,11 +263,6 @@ grep -Fq '"_", "—", "\\", "|", "~", "《", "》", "$", "&", "·"' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "IME_KEY_NINE_KEY_DIGIT = 102" ffi/c_api.h
 grep -q "ime_session_set_candidate_page_size" ffi/c_api.h
-if sed -n '/func feedCharacter/,/func handleTextKey/p' \
-  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift | grep -q "rebuildKeyboard"; then
-  echo "Character input must not rebuild the complete iOS keyboard." >&2
-  exit 1
-fi
 grep -q "isKeyboardExtension" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "canEnableLearning" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q "repairRuntimePathsIfNeeded" platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
@@ -193,6 +273,12 @@ grep -q "PrivatePinyinKeyboard.appex in Embed App Extensions" platform/ios_keybo
 test "$(grep -c 'libprivate_pinyin_ime.a' platform/ios_keyboard/PrivatePinyin.xcodeproj/project.pbxproj)" -eq 4
 grep -q "com.apple.keyboard-service" platform/ios_keyboard/KeyboardExtension/Info.plist
 grep -q "猫栈拼音" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "NavigationStack" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q "SettingsDestination" platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "开始使用"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "隐私与学习"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "词库管理"' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'title: "关于猫栈拼音"' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q "UIApplication.openSettingsURLString" platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q '\.fileImporter(' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q 'allowedContentTypes: rimeDocumentTypes' platform/ios_keyboard/ContainerApp/ContentView.swift
