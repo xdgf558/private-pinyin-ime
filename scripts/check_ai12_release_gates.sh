@@ -28,9 +28,18 @@ report = json.loads(Path("ai/eval/ai12_release_gate.json").read_text())
 assert report["stage"] == "AI-12"
 assert report["release_profile"] == "ai_lite_with_dormant_writer"
 assert report["contains_user_data"] is False
-assert report["ai_off_equivalence"]["status"] == "passed"
-assert set(report["ai_off_equivalence"]["platform_features"]) == {
+assert report["evidence_semantics"] == "declarative_expectations_only"
+
+equivalence = report["ai_off_equivalence"]
+assert equivalence["expected_outcome"] == "base_engine_exact_match"
+assert equivalence["executable_test"] == (
+    "ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly"
+)
+assert set(equivalence["platform_features"]) == {
     "desktop-ai", "ios-ai"
+}
+assert set(equivalence["ci_steps"]) == {
+    "Run desktop AI FFI tests", "Run iOS AI FFI tests"
 }
 
 expected_categories = {
@@ -46,16 +55,21 @@ for path in sorted(Path("ai/eval/privacy_cases").glob("*.json")):
     fixtures[category] = data["cases"]
     total_cases += len(data["cases"])
 assert set(fixtures) == expected_categories
-assert set(report["privacy_regression"]["categories"]) == expected_categories
-assert report["privacy_regression"]["case_count"] == total_cases
-assert report["privacy_regression"]["false_positive_case_count"] == len(
+privacy = report["privacy_regression"]
+assert privacy["expected_outcome"] == (
+    "sensitive_cases_rejected_and_false_positives_allowed"
+)
+assert privacy["executable_test_module"] == "private_pinyin_local_ai_core::privacy_tests"
+assert set(privacy["categories"]) == expected_categories
+assert privacy["case_count"] == total_cases
+assert privacy["false_positive_case_count"] == len(
     fixtures["false_positive"]
 )
 
 faults = report["helper_fault_injection"]
-assert faults["portable"]["status"] == "passed"
-assert faults["macos"]["status"] == "passed"
-assert faults["windows"]["status"] == "ci_required"
+assert faults["portable"]["expected_outcome"] == "tests_pass"
+assert faults["macos"]["expected_outcome"] == "tests_pass"
+assert faults["windows"]["expected_outcome"] == "ci_tests_pass"
 assert faults["macos"]["signed_package_identity_smoke"] == "pending_owner_hardware"
 assert faults["windows"]["signed_installer_identity_smoke"] == "pending_owner_hardware"
 
@@ -86,12 +100,4 @@ grep -Fq "kPipeWriteTimeoutMilliseconds" \
 grep -Fq "expect_error" platform/windows_tsf/src/ai_helper_client.cpp
 grep -Fq "kMaximumActiveRequests" platform/windows_tsf/src/ai_helper_client.cpp
 
-cargo test -p private_pinyin_local_ai_core
-cargo test -p private_pinyin_ai_helper_protocol
-cargo test -p private_pinyin_ai_helper
-cargo test -p private_pinyin_ime_ffi --features desktop-ai \
-  ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly
-cargo test -p private_pinyin_ime_ffi --features ios-ai \
-  ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly
-
-echo "AI-12 release gates passed for AI Lite with dormant Writer; Writer remains No-Go."
+echo "AI-12 declarative release contract is valid; executable pass/fail remains owned by CI test steps."

@@ -3,16 +3,22 @@
   "generated_date": "2026-07-22",
   "release_profile": "ai_lite_with_dormant_writer",
   "contains_user_data": false,
+  "evidence_semantics": "declarative_expectations_only",
   "ai_off_equivalence": {
-    "status": "passed",
-    "test": "ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly",
+    "expected_outcome": "base_engine_exact_match",
+    "executable_test": "ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly",
     "platform_features": [
       "desktop-ai",
       "ios-ai"
+    ],
+    "ci_steps": [
+      "Run desktop AI FFI tests",
+      "Run iOS AI FFI tests"
     ]
   },
   "privacy_regression": {
-    "status": "passed",
+    "expected_outcome": "sensitive_cases_rejected_and_false_positives_allowed",
+    "executable_test_module": "private_pinyin_local_ai_core::privacy_tests",
     "fixture_root": "ai/eval/privacy_cases",
     "categories": [
       "password",
@@ -27,7 +33,7 @@
   },
   "helper_fault_injection": {
     "portable": {
-      "status": "passed",
+      "expected_outcome": "tests_pass",
       "checks": [
         "exact_64_kib_frame",
         "oversized_frame_rejection",
@@ -37,7 +43,7 @@
       ]
     },
     "macos": {
-      "status": "passed",
+      "expected_outcome": "tests_pass",
       "checks": [
         "absolute_request_deadline",
         "bounded_restart_budget",
@@ -48,7 +54,7 @@
       "signed_package_identity_smoke": "pending_owner_hardware"
     },
     "windows": {
-      "status": "ci_required",
+      "expected_outcome": "ci_tests_pass",
       "checks": [
         "deadline_aware_pipe_write",
         "exact_64_kib_frame",

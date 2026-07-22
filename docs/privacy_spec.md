@@ -209,6 +209,13 @@ the dormant Writer protocol. Writer inference remains unavailable and `NoGo` unt
 exact candidate has Owner redistribution approval, warmed-request and native Windows RSS
 evidence, and signed-package Helper identity smokes.
 
+`ai/eval/ai12_release_gate.json` records declarative expectations and the CI steps that
+provide executable evidence. Values such as `expected_outcome` are release requirements,
+not measurements or self-asserted pass results; the named test jobs remain authoritative.
+The false-positive fixture intentionally distinguishes discussion such as `这个 API key
+别发上去` from an assignment such as `api key: secret-value` so later rule changes do not
+silently erase that privacy/usability boundary.
+
 ## iOS AI Host Integration
 
 AI-08 links only the isolated `ios-ai` feature and the same approved fixed-point Lite

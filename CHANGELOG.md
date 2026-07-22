@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Removed duplicate AI-12 Cargo executions from the source gate, made the release JSON explicitly declarative instead of presenting hand-authored status strings as measurements, and expanded AI-off equivalence coverage across backspace, paging, and consecutive commits.
 - Hardened the dormant desktop AI Helper with absolute macOS request deadlines, a bounded launch budget, deadline-aware Windows pipe writes, exact 64-KiB frame coverage, queue-saturation fault injection, and fail-safe cancellation while preserving ordinary typing.
 - Hardened AI-11 privacy semantics so strict privacy always disables short completion, rewrite, and translation while retaining the separate policy for stateless AI Lite reranking; future pause-triggered completion UI must disclose that the current composition is sent to the local AI process.
 - Fixed the iOS keyboard extension failing to activate after the nine-key layout was selected by installing its view hierarchy before activating shared constraints. Replaced duplicated lexicon-index strings with packed UTF-8 keys to reduce each extension engine's resident memory while preserving exact, prefix, initial, and nine-key lookup behavior.

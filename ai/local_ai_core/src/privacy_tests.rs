@@ -97,7 +97,7 @@ fn password_and_one_time_code_samples_are_rejected() {
         .chain(["验证码 123456".to_owned(), "123456".to_owned()])
     {
         let error = builder(AiFeature::CandidateRerank, HardwareTier::Tier1)
-            .with_composition_text(&sensitive_text)
+            .with_composition_text(sensitive_text)
             .build(&PrivacyGuard, enabled_policy())
             .expect_err("sensitive input must be rejected");
         assert_eq!(error.code(), AiErrorCode::InputRejectedByPrivacyGuard);

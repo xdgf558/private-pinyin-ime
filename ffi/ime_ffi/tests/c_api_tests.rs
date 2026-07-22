@@ -267,18 +267,40 @@ fn ai_disabled_or_privacy_blocked_output_matches_the_base_engine_exactly() {
         assert!(!ai_session.is_null());
         assert_eq!(ime_session_set_secure_input(ai_session, 1), 1);
 
-        for ch in ["n", "i", "h", "a", "o"] {
+        let assert_character = |ch: &str| {
             let text = CString::new(ch).unwrap();
             let base =
                 take_output_snapshot(ime_session_feed_key(base_session, key_event(text.as_ptr())));
             let guarded =
                 take_output_snapshot(ime_session_feed_key(ai_session, key_event(text.as_ptr())));
             assert_eq!(guarded, base, "AI-off equivalence failed after {ch}");
-        }
+        };
+        let assert_command = |key_code: i32, label: &str| {
+            let base =
+                take_output_snapshot(ime_session_feed_key(base_session, command_event(key_code)));
+            let guarded =
+                take_output_snapshot(ime_session_feed_key(ai_session, command_event(key_code)));
+            assert_eq!(guarded, base, "AI-off equivalence failed after {label}");
+        };
+        let assert_commit = |index: i32, label: &str| {
+            let base = take_output_snapshot(ime_session_commit_candidate(base_session, index));
+            let guarded = take_output_snapshot(ime_session_commit_candidate(ai_session, index));
+            assert_eq!(guarded, base, "AI-off equivalence failed after {label}");
+        };
 
-        let base_commit = take_output_snapshot(ime_session_commit_candidate(base_session, 0));
-        let guarded_commit = take_output_snapshot(ime_session_commit_candidate(ai_session, 0));
-        assert_eq!(guarded_commit, base_commit);
+        for ch in ["n", "i", "h", "a", "x"] {
+            assert_character(ch);
+        }
+        assert_command(3, "backspace");
+        assert_character("o");
+        assert_command(15, "page down");
+        assert_command(14, "page up");
+        assert_commit(0, "first candidate commit");
+
+        for ch in ["j", "i", "n", "t", "i", "a", "n"] {
+            assert_character(ch);
+        }
+        assert_commit(0, "second candidate commit");
 
         ime_session_free(base_session);
         ime_session_free(ai_session);

@@ -80,5 +80,10 @@ deadlines/restart bounds, and a machine-readable decision in
 only the existing AI Lite path; Writer remains `NoGo` until its outstanding platform,
 package, license, and Owner gates pass.
 
+The AI-12 JSON is a declarative release contract, not a generated test report. Its
+`expected_outcome` fields state what the named CI tests must prove; only the corresponding
+Cargo, macOS, and Windows job results establish pass or failure. The source gate validates
+the contract and fixture inventory without rerunning tests already owned by those jobs.
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).
