@@ -88,7 +88,7 @@ grep -Fq \
 grep -Fq \
   "must never appear in process arguments, environment variables, temporary" \
   docs/privacy_spec.md
-grep -Fq "native Windows RSS and warmed-request evidence" docs/OPEN_ITEMS.md
+grep -Fq "measure native Windows cold/warm RSS" docs/OPEN_ITEMS.md
 
 cargo test -p private_pinyin_writer_feasibility
 

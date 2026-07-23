@@ -10,4 +10,7 @@ name = "private_pinyin_ai_helper"
 path = "src/main.rs"
 
 [dependencies]
+getrandom = "0.3"
 private_pinyin_ai_helper_protocol = { path = "../../helper_protocol" }
+serde_json = "1"
+sha2 = "0.10"

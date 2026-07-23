@@ -16,6 +16,10 @@ use private_pinyin_ai_helper_protocol::{
     MAX_HELPER_ACTIVE_REQUESTS, MAX_HELPER_RESPONSE_QUEUE,
 };
 
+mod writer_runtime;
+
+use writer_runtime::{WriterRuntime, WriterRuntimeError};
+
 #[cfg(windows)]
 use std::fs::OpenOptions;
 
@@ -154,6 +158,7 @@ fn serve(
     token: [u8; 32],
     idle_timeout: Duration,
 ) -> Result<(), HelperProtocolError> {
+    let writer_runtime = Arc::new(Mutex::new(WriterRuntime::new()));
     let (response_tx, response_rx) = mpsc::sync_channel::<HelperFrame>(MAX_HELPER_RESPONSE_QUEUE);
     let writer_failed = Arc::new(AtomicBool::new(false));
     let writer_failed_for_thread = Arc::clone(&writer_failed);
@@ -268,7 +273,50 @@ fn serve(
                 )?);
             }
             HelperOpcode::WriterInference => {
-                if frame.writer_request().is_err() {
+                let request = match frame.writer_request() {
+                    Ok(request) => request,
+                    Err(_) => {
+                        response_tx
+                            .send(HelperFrame::error(
+                                frame.request_id,
+                                HelperErrorCode::InvalidPayload,
+                            ))
+                            .map_err(|_| {
+                                HelperProtocolError::Io(io::Error::other("response channel"))
+                            })?;
+                        continue;
+                    }
+                };
+                let cancellation = Arc::new(AtomicBool::new(false));
+                {
+                    let mut requests = active.lock().map_err(|_| {
+                        HelperProtocolError::Io(io::Error::other("active request lock"))
+                    })?;
+                    if requests.len() >= MAX_HELPER_ACTIVE_REQUESTS {
+                        response_tx
+                            .send(HelperFrame::error(
+                                frame.request_id,
+                                HelperErrorCode::QueueFull,
+                            ))
+                            .map_err(|_| {
+                                HelperProtocolError::Io(io::Error::other("response channel"))
+                            })?;
+                        continue;
+                    }
+                    requests.insert(frame.request_id, Arc::clone(&cancellation));
+                }
+                worker_threads.push(spawn_writer(
+                    frame.request_id,
+                    request,
+                    cancellation,
+                    Arc::clone(&active),
+                    response_tx.clone(),
+                    Arc::clone(&last_activity),
+                    Arc::clone(&writer_runtime),
+                )?);
+            }
+            HelperOpcode::PrepareWriter => {
+                if !frame.payload().is_empty() {
                     response_tx
                         .send(HelperFrame::error(
                             frame.request_id,
@@ -279,14 +327,32 @@ fn serve(
                         })?;
                     continue;
                 }
-                // AI-11 establishes the real content-bearing protocol before enabling a
-                // model. An unapproved or absent Writer must fail without echoing content.
-                response_tx
-                    .send(HelperFrame::error(
-                        frame.request_id,
-                        HelperErrorCode::ModelUnavailable,
-                    ))
-                    .map_err(|_| HelperProtocolError::Io(io::Error::other("response channel")))?;
+                let cancellation = Arc::new(AtomicBool::new(false));
+                {
+                    let mut requests = active.lock().map_err(|_| {
+                        HelperProtocolError::Io(io::Error::other("active request lock"))
+                    })?;
+                    if requests.len() >= MAX_HELPER_ACTIVE_REQUESTS {
+                        response_tx
+                            .send(HelperFrame::error(
+                                frame.request_id,
+                                HelperErrorCode::QueueFull,
+                            ))
+                            .map_err(|_| {
+                                HelperProtocolError::Io(io::Error::other("response channel"))
+                            })?;
+                        continue;
+                    }
+                    requests.insert(frame.request_id, Arc::clone(&cancellation));
+                }
+                worker_threads.push(spawn_writer_prepare(
+                    frame.request_id,
+                    cancellation,
+                    Arc::clone(&active),
+                    response_tx.clone(),
+                    Arc::clone(&last_activity),
+                    Arc::clone(&writer_runtime),
+                )?);
             }
             HelperOpcode::Cancel => {
                 let target = match frame.cancel_target() {
@@ -408,6 +474,98 @@ fn spawn_mock(
             remove_active(&active, request_id);
         })
         .map_err(|_| HelperProtocolError::Io(io::Error::other("mock thread")))
+}
+
+fn spawn_writer(
+    request_id: u64,
+    request: private_pinyin_ai_helper_protocol::WriterRequest,
+    cancellation: Arc<AtomicBool>,
+    active: Arc<Mutex<HashMap<u64, Arc<AtomicBool>>>>,
+    response_tx: SyncSender<HelperFrame>,
+    last_activity: Arc<Mutex<Instant>>,
+    runtime: Arc<Mutex<WriterRuntime>>,
+) -> Result<JoinHandle<()>, HelperProtocolError> {
+    thread::Builder::new()
+        .name("private-pinyin-ai-helper-writer-inference".to_string())
+        .spawn(move || {
+            let started = Instant::now();
+            let outcome = runtime
+                .lock()
+                .map_err(|_| WriterRuntimeError::InferenceFailed)
+                .and_then(|mut runtime| {
+                    let remaining = request
+                        .deadline
+                        .checked_sub(started.elapsed())
+                        .ok_or(WriterRuntimeError::DeadlineExceeded)?;
+                    runtime.infer(&request, remaining, &cancellation)
+                });
+            if !cancellation.load(Ordering::Acquire) {
+                let response = match outcome {
+                    Ok(suggestions) => private_pinyin_ai_helper_protocol::WriterPreview::new(
+                        request.identity,
+                        request.feature,
+                        suggestions,
+                    )
+                    .and_then(|preview| HelperFrame::writer_completed(request_id, &preview))
+                    .unwrap_or_else(|_| HelperFrame::error(request_id, HelperErrorCode::Internal)),
+                    Err(WriterRuntimeError::ModelUnavailable) => {
+                        HelperFrame::error(request_id, HelperErrorCode::ModelUnavailable)
+                    }
+                    Err(WriterRuntimeError::DeadlineExceeded) => {
+                        HelperFrame::error(request_id, HelperErrorCode::DeadlineExceeded)
+                    }
+                    Err(WriterRuntimeError::Cancelled) => {
+                        HelperFrame::empty(HelperOpcode::Cancelled, request_id)
+                    }
+                    Err(WriterRuntimeError::InferenceFailed) => {
+                        HelperFrame::error(request_id, HelperErrorCode::Internal)
+                    }
+                };
+                let _ = response_tx.send(response);
+                touch(&last_activity);
+            }
+            remove_active(&active, request_id);
+        })
+        .map_err(|_| HelperProtocolError::Io(io::Error::other("writer inference thread")))
+}
+
+fn spawn_writer_prepare(
+    request_id: u64,
+    cancellation: Arc<AtomicBool>,
+    active: Arc<Mutex<HashMap<u64, Arc<AtomicBool>>>>,
+    response_tx: SyncSender<HelperFrame>,
+    last_activity: Arc<Mutex<Instant>>,
+    runtime: Arc<Mutex<WriterRuntime>>,
+) -> Result<JoinHandle<()>, HelperProtocolError> {
+    thread::Builder::new()
+        .name("private-pinyin-ai-helper-writer-prepare".to_string())
+        .spawn(move || {
+            let outcome = runtime
+                .lock()
+                .map_err(|_| WriterRuntimeError::InferenceFailed)
+                .and_then(|mut runtime| runtime.prepare(Duration::from_secs(30), &cancellation));
+            if !cancellation.load(Ordering::Acquire) {
+                let response = match outcome {
+                    Ok(()) => HelperFrame::empty(HelperOpcode::WriterReady, request_id),
+                    Err(WriterRuntimeError::ModelUnavailable) => {
+                        HelperFrame::error(request_id, HelperErrorCode::ModelUnavailable)
+                    }
+                    Err(WriterRuntimeError::DeadlineExceeded) => {
+                        HelperFrame::error(request_id, HelperErrorCode::DeadlineExceeded)
+                    }
+                    Err(WriterRuntimeError::Cancelled) => {
+                        HelperFrame::empty(HelperOpcode::Cancelled, request_id)
+                    }
+                    Err(WriterRuntimeError::InferenceFailed) => {
+                        HelperFrame::error(request_id, HelperErrorCode::Internal)
+                    }
+                };
+                let _ = response_tx.send(response);
+                touch(&last_activity);
+            }
+            remove_active(&active, request_id);
+        })
+        .map_err(|_| HelperProtocolError::Io(io::Error::other("writer prepare thread")))
 }
 
 fn remove_active(active: &Arc<Mutex<HashMap<u64, Arc<AtomicBool>>>>, request_id: u64) {

@@ -252,6 +252,9 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     private let settingsPathLabel = NSTextField(labelWithString: "")
     private let importedLexiconStatusLabel = NSTextField(labelWithString: "当前导入词库：尚未导入")
+    private let writerModelStatusLabel = NSTextField(labelWithString: "Writer 模型未安装")
+    private var writerDownloadButton: StationButton?
+    private var writerOpenButton: StationButton?
     private let automaticUpdateToggle = StationToggle()
     private let automaticUpdateDetailLabel = NSTextField(labelWithString: "每天最多读取一次固定的公开版本清单，不上传输入内容。")
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
@@ -289,6 +292,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             self,
             selector: #selector(updateStateChanged(_:)),
             name: .privatePinyinUpdateStateChanged,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(writerModelStateChanged(_:)),
+            name: .privatePinyinWriterModelStateChanged,
             object: nil
         )
         reloadFromSettings()
@@ -349,6 +358,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         let settingsGrid = makeSettingsGrid()
         let pathSection = makePathSection()
         let importedLexiconSection = makeImportedLexiconSection()
+        let writerSection = makeWriterSection()
         let versionSection = makeVersionSection()
         let footer = makeFooterRow()
 
@@ -364,6 +374,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             settingsGrid,
             pathSection,
             importedLexiconSection,
+            writerSection,
             versionSection,
             footer,
         ])
@@ -384,6 +395,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             settingsGrid.widthAnchor.constraint(equalTo: root.widthAnchor),
             pathSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             importedLexiconSection.widthAnchor.constraint(equalTo: root.widthAnchor),
+            writerSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             versionSection.widthAnchor.constraint(equalTo: root.widthAnchor),
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
@@ -752,6 +764,79 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         return card
     }
 
+    private func makeWriterSection() -> NSView {
+        let title = label(
+            "本地 Writer",
+            font: .systemFont(ofSize: 15, weight: .semibold),
+            color: StationTheme.textPrimary
+        )
+        let detail = wrappingLabel(
+            "按需下载约 1.04 GiB 的 Qwen2.5 1.5B 模型，用于改写和中英翻译。推理只在本机完成。",
+            font: .systemFont(ofSize: 12, weight: .regular),
+            color: StationTheme.textSecondary
+        )
+        detail.maximumNumberOfLines = 2
+
+        writerModelStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        writerModelStatusLabel.textColor = StationTheme.lampYellow
+        writerModelStatusLabel.maximumNumberOfLines = 1
+        writerModelStatusLabel.lineBreakMode = .byTruncatingTail
+        let textColumn = NSStackView(views: [title, detail, writerModelStatusLabel])
+        textColumn.orientation = .vertical
+        textColumn.alignment = .leading
+        textColumn.spacing = 5
+        textColumn.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let downloadButton = StationButton(
+            title: "下载模型",
+            target: self,
+            action: #selector(writerDownloadPressed(_:)),
+            normalBackground: StationTheme.lampYellow,
+            hoverBackground: StationTheme.lampYellowHover,
+            pressedBackground: StationTheme.lampYellowPressed,
+            titleColor: StationTheme.onLamp
+        )
+        downloadButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 116).isActive = true
+        writerDownloadButton = downloadButton
+
+        let openButton = StationButton(
+            title: "打开 Writer",
+            target: self,
+            action: #selector(openWriterPressed(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        openButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 110).isActive = true
+        writerOpenButton = openButton
+
+        let buttons = NSStackView(views: [downloadButton, openButton])
+        buttons.orientation = .horizontal
+        buttons.alignment = .centerY
+        buttons.spacing = 10
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [textColumn, spacer, buttons])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 16
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
+        card.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
+            detail.widthAnchor.constraint(lessThanOrEqualToConstant: 380),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 92),
+        ])
+        return card
+    }
+
     private func makeVersionSection() -> NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -927,6 +1012,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         importedLexiconStatusLabel.stringValue = PrivatePinyinSettingsStore
             .importedLexiconSummaryText()
         importedLexiconStatusLabel.toolTip = importedLexiconStatusLabel.stringValue
+        refreshWriterPresentation()
     }
 
     private func setLearningEnabled(_ enabled: Bool) {
@@ -941,6 +1027,13 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             settings["strict_privacy_mode"] = strictPrivacy
             settings["enable_prediction"] = predictionToggle.isOn
             settings["enable_user_learning"] = strictPrivacy ? false : learningToggle.isOn
+            if strictPrivacy {
+                var ai = settings["ai"] as? [String: Any] ?? [:]
+                ai["enable_short_completion"] = false
+                ai["enable_rewrite"] = false
+                ai["enable_translation"] = false
+                settings["ai"] = ai
+            }
         }
 
         if ok {
@@ -1029,6 +1122,77 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         } else {
             showAlert("无法清空导入词库。")
         }
+    }
+
+    @objc private func writerModelStateChanged(_ notification: Notification) {
+        refreshWriterPresentation()
+    }
+
+    private func refreshWriterPresentation() {
+        let manager = PrivatePinyinWriterModelManager.shared
+        let strictPrivacy = PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled()
+        switch manager.state {
+        case .notInstalled:
+            writerModelStatusLabel.stringValue = "尚未安装模型；普通拼音输入不受影响。"
+            writerDownloadButton?.setStationTitle("下载模型")
+            writerDownloadButton?.isEnabled = !strictPrivacy
+            writerOpenButton?.isEnabled = false
+        case let .downloading(percent):
+            writerModelStatusLabel.stringValue = "正在下载：\(percent)%"
+            writerDownloadButton?.setStationTitle("取消下载")
+            writerDownloadButton?.isEnabled = true
+            writerOpenButton?.isEnabled = false
+        case .verifying:
+            writerModelStatusLabel.stringValue = "正在校验模型完整性..."
+            writerDownloadButton?.setStationTitle("正在校验")
+            writerDownloadButton?.isEnabled = false
+            writerOpenButton?.isEnabled = false
+        case .installed:
+            writerModelStatusLabel.stringValue = strictPrivacy
+                ? "模型已安装；严格隐私模式已关闭 Writer。"
+                : "模型已安装；Writer 默认关闭，需在打开后明确启用。"
+            writerDownloadButton?.setStationTitle("删除模型")
+            writerDownloadButton?.isEnabled = true
+            writerOpenButton?.isEnabled = !strictPrivacy
+        case let .failed(message):
+            writerModelStatusLabel.stringValue = message
+            writerDownloadButton?.setStationTitle("重新下载")
+            writerDownloadButton?.isEnabled = !strictPrivacy
+            writerOpenButton?.isEnabled = false
+        }
+    }
+
+    @objc private func writerDownloadPressed(_ sender: Any?) {
+        let manager = PrivatePinyinWriterModelManager.shared
+        switch manager.state {
+        case .downloading:
+            manager.cancelDownload()
+        case .installed:
+            let alert = NSAlert()
+            alert.messageText = "删除 Writer 模型？"
+            alert.informativeText = "将释放约 1.04 GiB 磁盘空间，不影响普通拼音输入。"
+            alert.addButton(withTitle: "删除")
+            alert.addButton(withTitle: "取消")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            do {
+                try manager.removeModel()
+                _ = PrivatePinyinSettingsStore.setWriterActionsEnabled(false)
+            } catch {
+                showAlert("无法删除 Writer 模型。")
+            }
+        case .verifying:
+            break
+        case .notInstalled, .failed:
+            guard !PrivatePinyinSettingsStore.isStrictPrivacyModeEnabled() else {
+                showAlert("请先关闭严格隐私模式。")
+                return
+            }
+            manager.startDownload()
+        }
+    }
+
+    @objc private func openWriterPressed(_ sender: Any?) {
+        PrivatePinyinWriterWindowController.shared.showWriter()
     }
 
     @objc private func reloadButtonPressed(_ sender: Any?) {

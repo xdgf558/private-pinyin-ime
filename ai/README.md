@@ -85,5 +85,14 @@ The AI-12 JSON is a declarative release contract, not a generated test report. I
 Cargo, macOS, and Windows job results establish pass or failure. The source gate validates
 the contract and fixture inventory without rerunning tests already owned by those jobs.
 
+Decision 043 adds the post-AI-12 desktop Writer V1. macOS arm64 and Windows x64 package
+the exact pinned llama.cpp runtime, while the one-gigabyte Qwen model remains an explicit
+on-demand download from its fixed official revision and is never redistributed by the
+project. Both the host and Helper verify the model before use. Writer V1 provides only
+button-triggered rewrite and Chinese/English translation previews through authenticated
+AI-09 IPC and a Helper-owned offline loopback child; strict privacy disables it and every
+failure preserves normal typing. Automatic short completion remains disabled. See
+[`writer_runtime/desktop_writer_runtime_manifest.json`](writer_runtime/desktop_writer_runtime_manifest.json).
+
 The approved implementation sequence is tracked in
 [`docs/local_ai_development_plan.md`](../docs/local_ai_development_plan.md).

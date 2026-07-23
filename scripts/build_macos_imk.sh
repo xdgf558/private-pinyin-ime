@@ -50,6 +50,8 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinUpdateController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinProcessRefreshPolicy.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPostInstallController.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterModelManager.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinOnboardingWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift" \
@@ -71,6 +73,8 @@ cp "$repo_root/target/debug/libprivate_pinyin_ime.dylib" \
 cp "$repo_root/target/release/private_pinyin_ai_helper" \
   "$helpers_dir/PrivatePinyinAIHelper"
 chmod 755 "$helpers_dir/PrivatePinyinAIHelper"
+bash "$repo_root/scripts/prepare_macos_writer_runtime.sh" \
+  "$helpers_dir/WriterRuntime"
 
 if command -v xattr >/dev/null 2>&1; then
   xattr -cr "$app_dir" || true
@@ -89,6 +93,9 @@ if [ "$skip_codesign" != "1" ] && command -v codesign >/dev/null 2>&1; then
   if [ "$codesign_identity" != "-" ]; then
     codesign_args+=(--options runtime --timestamp)
   fi
+  while IFS= read -r runtime_binary; do
+    codesign "${codesign_args[@]}" "$runtime_binary" >/dev/null
+  done < <(find "$helpers_dir/WriterRuntime" -type f \( -name 'llama-server' -o -name '*.dylib' \) -print)
   codesign "${codesign_args[@]}" "$helpers_dir/PrivatePinyinAIHelper" >/dev/null
   codesign "${codesign_args[@]}" "$app_dir" >/dev/null
 fi

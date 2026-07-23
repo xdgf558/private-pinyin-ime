@@ -109,8 +109,9 @@ pause-triggered flow. Its future default-off UI must explicitly say “停顿时
 and model installation alone never counts as consent. Rewrite and translation always
 require an explicit user action, and every replacement remains a preview until confirmation.
 Strict privacy force-disables all three Writer modes while leaving stateless AI Lite
-reranking under its separate policy. The helper currently returns only `ModelUnavailable`,
-so no host can accidentally invoke an unapproved model.
+reranking under its separate policy. In the historical AI-11 profile, the helper returned
+only `ModelUnavailable`, so no host could accidentally invoke an unapproved model before
+the separately reviewed Decision 043 activation.
 
 The exact Apache-2.0 Qwen2.5 1.5B Instruct Q4_K_M evaluation candidate at revision
 `dd26da440ef0330c47919d1ecae0966d24022222` passed all five first-party Mac cases with
@@ -131,6 +132,21 @@ crash recovery, shutdown, and idle exit. The machine-readable release profile th
 permits the approved AI Lite ranker with the dormant Writer protocol, while Writer remains
 `NoGo` until warmed latency, native Windows RSS, signed-package identity smokes, and exact
 Owner redistribution approval are complete.
+
+## Post-AI-12 Desktop Writer V1
+
+Decision 043 is a separately reviewed release profile rather than a retroactive change to
+AI-11 or AI-12. It resolves the redistribution gate by not redistributing the model: the
+exact Qwen2.5 1.5B Q4_K_M artifact is downloaded only after a desktop user confirms the
+fixed official source, then verified by size and SHA-256. Installers include only the exact
+pinned MIT llama.cpp runtime.
+
+The first product slice supports macOS arm64 and Windows x64, explicit rewrite, and
+Chinese/English translation previews. It uses the authenticated AI-09 Helper and a private
+offline loopback child, never the input callback thread. Strict privacy disables Writer;
+results are copy-only previews; automatic short completion stays disabled. Public release
+requires the signed-package and native Windows memory/fault matrix in `AI-OI-010` and
+`AI-OI-012`.
 
 AI-02 keeps the runtime contract deliberately independent from `ime_core`, FFI, and
 platform hosts. Its mock provider is a deterministic contract test, not an inference

@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Separated the AI-09 Helper authentication token from the Helper-owned `llama-server` credential. Every server launch now uses an independent random key delivered through a private key file rather than process arguments, model verification observes cancellation and the absolute request deadline between hash chunks, and packaging verifies the pinned runtime's required command-line contract.
+- Discard Writer results if strict privacy, Writer consent, or model state changes while inference is running, and apply one absolute Windows read deadline across the entire Helper response frame.
 - Removed duplicate AI-12 Cargo executions from the source gate, made the release JSON explicitly declarative instead of presenting hand-authored status strings as measurements, and expanded AI-off equivalence coverage across backspace, paging, and consecutive commits.
 - Hardened the dormant desktop AI Helper with absolute macOS request deadlines, a bounded launch budget, deadline-aware Windows pipe writes, exact 64-KiB frame coverage, queue-saturation fault injection, and fail-safe cancellation while preserving ordinary typing.
 - Fixed sluggish or ghosted iOS keyboard transitions by rendering the opaque keyboard surface before loading the Rust lexicon session, prewarming the core on a dedicated worker queue, replaying bounded early key events in order, and suppressing full-keyboard rebuild animations. Switching away and back no longer blocks UIKit presentation on the 137,699-entry lexicon.
@@ -15,6 +17,9 @@
 
 ### Added
 
+- Added the post-AI-12 desktop Writer V1 for macOS arm64 and Windows x64: explicit rewrite plus Chinese/English translation previews run locally through the authenticated AI-09 Helper, never replace text automatically, and fail without affecting ordinary input.
+- Added a user-initiated, fixed-source Writer model installer with exact size and SHA-256 verification. The approximately 1.1-GB Qwen model is not committed or bundled; installers contain only the pinned MIT llama.cpp runtime.
+- Added strict-privacy request cancellation before Writer source dispatch and mid-flight result invalidation, a private random-key loopback runtime boundary, bounded deadlines, runtime/model use-time verification, and source gates that keep automatic short completion disabled.
 - Added AI-12 release hardening with categorized privacy fixtures, exact AI-off/base-output equivalence tests for desktop and iOS feature builds, cross-platform Helper failure gates, model-notice checks, and a machine-readable release decision: AI Lite is Go while Writer remains No-Go pending approval and platform evidence.
 - Reorganized the iOS container App into a compact first-level settings overview with separate second-level pages for keyboard setup, privacy and learning, lexicon management, and app information, preserving all existing controls without an ever-growing home page.
 - Added AI-11's versioned, bounded Writer request/preview protocol and an exact stronger-candidate feasibility record. The 1.5B Q4_K_M candidate passed 5/5 synthetic Mac cases within the cold latency budget, but remains unapproved and unshipped pending warmed-request, native Windows memory, package, and Owner redistribution gates; the dormant helper returns `ModelUnavailable`, and no Writer UI or production inference path is enabled.

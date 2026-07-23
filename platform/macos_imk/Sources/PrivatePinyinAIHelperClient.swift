@@ -10,6 +10,26 @@ enum PrivatePinyinAIHelperClientError: Error {
     case requestTimedOut
 }
 
+enum PrivatePinyinWriterFeature: UInt8, CaseIterable {
+    case rewriteFormal = 2
+    case rewritePolite = 3
+    case rewriteShort = 4
+    case rewriteCasual = 5
+    case translateZhEn = 6
+    case translateEnZh = 7
+
+    var title: String {
+        switch self {
+        case .rewriteFormal: return "正式改写"
+        case .rewritePolite: return "礼貌改写"
+        case .rewriteShort: return "精简表达"
+        case .rewriteCasual: return "口语改写"
+        case .translateZhEn: return "中译英"
+        case .translateEnZh: return "英译中"
+        }
+    }
+}
+
 struct PrivatePinyinAIHelperRestartBudget {
     let maximumLaunches: Int
     let windowSeconds: TimeInterval
@@ -35,11 +55,15 @@ private enum PrivatePinyinAIHelperOpcode: UInt16 {
     case mockInference = 3
     case cancel = 4
     case shutdown = 5
+    case writerInference = 6
+    case prepareWriter = 7
     case authenticated = 0x8001
     case healthy = 0x8002
     case mockCompleted = 0x8003
     case cancelled = 0x8004
     case acknowledged = 0x8005
+    case writerCompleted = 0x8006
+    case writerReady = 0x8007
     case error = 0x80ff
 }
 
@@ -107,9 +131,17 @@ final class PrivatePinyinAIHelperClient {
     static let shared = PrivatePinyinAIHelperClient()
 
     typealias Completion = (Result<Void, PrivatePinyinAIHelperClientError>) -> Void
+    typealias WriterCompletion = (Result<[String], PrivatePinyinAIHelperClientError>) -> Void
 
     private struct PendingRequest {
         let completion: Completion
+        let deadline: DispatchWorkItem
+    }
+
+    private struct PendingWriterRequest {
+        let feature: PrivatePinyinWriterFeature
+        let sessionID: UInt64
+        let completion: WriterCompletion
         let deadline: DispatchWorkItem
     }
 
@@ -128,6 +160,7 @@ final class PrivatePinyinAIHelperClient {
         completion: Completion
     )] = []
     private var pending: [UInt64: PendingRequest] = [:]
+    private var pendingWriter: [UInt64: PendingWriterRequest] = [:]
 
     private init() {}
 
@@ -135,6 +168,51 @@ final class PrivatePinyinAIHelperClient {
         enqueueAfterAuthentication(completion: completion) { [weak self] in
             self?.sendRequest(opcode: .health, payload: Data(), completion: completion)
         }
+    }
+
+    func prepareWriter(completion: @escaping Completion) {
+        enqueueAfterAuthentication(completion: completion) { [weak self] in
+            self?.sendRequest(
+                opcode: .prepareWriter,
+                payload: Data(),
+                timeoutSeconds: 35,
+                completion: completion
+            )
+        }
+    }
+
+    @discardableResult
+    func submitWriter(
+        feature: PrivatePinyinWriterFeature,
+        source: String,
+        locale: String = "zh-CN",
+        completion: @escaping WriterCompletion
+    ) -> UInt64 {
+        let requestID = nextRequestID()
+        let sessionID = requestID ^ UInt64(Date().timeIntervalSince1970.bitPattern)
+        guard let payload = Self.writerPayload(
+            feature: feature,
+            sessionID: sessionID,
+            locale: locale,
+            source: source
+        ) else {
+            completion(.failure(.protocolMismatch))
+            return requestID
+        }
+        enqueueAfterAuthentication(completion: { result in
+            if case let .failure(error) = result {
+                completion(.failure(error))
+            }
+        }) { [weak self] in
+            self?.sendWriterRequest(
+                requestID: requestID,
+                sessionID: sessionID,
+                feature: feature,
+                payload: payload,
+                completion: completion
+            )
+        }
+        return requestID
     }
 
     @discardableResult
@@ -331,6 +409,40 @@ final class PrivatePinyinAIHelperClient {
         }
     }
 
+    private func sendWriterRequest(
+        requestID: UInt64,
+        sessionID: UInt64,
+        feature: PrivatePinyinWriterFeature,
+        payload: Data,
+        completion: @escaping WriterCompletion
+    ) {
+        let generation = transportGeneration
+        let deadline = DispatchWorkItem { [weak self] in
+            guard let self, transportGeneration == generation,
+                  let request = removePendingWriter(requestID: requestID) else { return }
+            request.completion(.failure(.requestTimedOut))
+        }
+        pendingWriter[requestID] = PendingWriterRequest(
+            feature: feature,
+            sessionID: sessionID,
+            completion: completion,
+            deadline: deadline
+        )
+        stateQueue.asyncAfter(deadline: .now() + 4, execute: deadline)
+        do {
+            try write(
+                PrivatePinyinAIHelperFrame(
+                    opcode: .writerInference,
+                    requestID: requestID,
+                    payload: payload
+                )
+            )
+        } catch {
+            removePendingWriter(requestID: requestID)?.completion(.failure(.helperUnavailable))
+            stopTransport(error: .helperUnavailable)
+        }
+    }
+
     private func registerPending(
         requestID: UInt64,
         timeoutSeconds: TimeInterval,
@@ -356,6 +468,12 @@ final class PrivatePinyinAIHelperClient {
         return request.completion
     }
 
+    private func removePendingWriter(requestID: UInt64) -> PendingWriterRequest? {
+        guard let request = pendingWriter.removeValue(forKey: requestID) else { return nil }
+        request.deadline.cancel()
+        return request
+    }
+
     private func write(_ frame: PrivatePinyinAIHelperFrame) throws {
         guard let inputHandle else {
             throw PrivatePinyinAIHelperClientError.helperUnavailable
@@ -375,9 +493,26 @@ final class PrivatePinyinAIHelperClient {
     }
 
     private func handle(_ frame: PrivatePinyinAIHelperFrame) {
+        if let writer = pendingWriter[frame.requestID] {
+            let result: Result<[String], PrivatePinyinAIHelperClientError>
+            if frame.opcode == .writerCompleted,
+               let suggestions = Self.decodeWriterPreview(
+                   frame.payload,
+                   feature: writer.feature,
+                   sessionID: writer.sessionID
+               ) {
+                result = .success(suggestions)
+            } else if frame.opcode == .cancelled {
+                result = .failure(.requestCancelled)
+            } else {
+                result = .failure(.invalidResponse)
+            }
+            removePendingWriter(requestID: frame.requestID)?.completion(result)
+            return
+        }
         let result: Result<Void, PrivatePinyinAIHelperClientError>
         switch frame.opcode {
-        case .authenticated, .healthy, .mockCompleted, .acknowledged:
+        case .authenticated, .healthy, .mockCompleted, .acknowledged, .writerReady:
             result = .success(())
         case .cancelled:
             result = .failure(.requestCancelled)
@@ -411,11 +546,77 @@ final class PrivatePinyinAIHelperClient {
             request.deadline.cancel()
             return request.completion
         }
+        let writerCompletions = pendingWriter.values.map { request -> WriterCompletion in
+            request.deadline.cancel()
+            return request.completion
+        }
         let deferredCompletions = afterAuthentication.map { $0.completion }
         pending.removeAll(keepingCapacity: false)
+        pendingWriter.removeAll(keepingCapacity: false)
         afterAuthentication.removeAll(keepingCapacity: false)
         completions.forEach { $0(.failure(error)) }
+        writerCompletions.forEach { $0(.failure(error)) }
         deferredCompletions.forEach { $0(.failure(error)) }
+    }
+
+    private static func writerPayload(
+        feature: PrivatePinyinWriterFeature,
+        sessionID: UInt64,
+        locale: String,
+        source: String
+    ) -> Data? {
+        guard let localeData = locale.data(using: .utf8),
+              let sourceData = source.data(using: .utf8),
+              !sourceData.isEmpty,
+              sourceData.count <= 4 * 1024,
+              source.count <= 600,
+              localeData.count <= Int(UInt16.max) else {
+            return nil
+        }
+        var payload = Data()
+        payload.appendLittleEndian(UInt16(1))
+        payload.append(feature.rawValue)
+        payload.append(1)
+        payload.appendLittleEndian(sessionID)
+        payload.appendLittleEndian(UInt64(1))
+        payload.appendLittleEndian(UInt64(0))
+        payload.appendLittleEndian(UInt32(3_000))
+        payload.appendLittleEndian(UInt16(localeData.count))
+        payload.appendLittleEndian(UInt32(sourceData.count))
+        payload.append(localeData)
+        payload.append(sourceData)
+        return payload
+    }
+
+    private static func decodeWriterPreview(
+        _ payload: Data,
+        feature: PrivatePinyinWriterFeature,
+        sessionID: UInt64
+    ) -> [String]? {
+        guard payload.count >= 28,
+              payload.readUInt16LittleEndian(at: 0) == 1,
+              payload[2] == feature.rawValue,
+              (1...3).contains(Int(payload[3])),
+              payload.readUInt64LittleEndian(at: 4) == sessionID,
+              payload.readUInt64LittleEndian(at: 12) == 1,
+              payload.readUInt64LittleEndian(at: 20) == 0 else {
+            return nil
+        }
+        var offset = 28
+        var suggestions: [String] = []
+        for _ in 0..<Int(payload[3]) {
+            guard offset + 2 <= payload.count else { return nil }
+            let length = Int(payload.readUInt16LittleEndian(at: offset))
+            offset += 2
+            guard length > 0, length <= 4 * 1024, offset + length <= payload.count,
+                  let value = String(data: payload.subdata(in: offset..<(offset + length)), encoding: .utf8),
+                  !value.isEmpty, value.count <= 600 else {
+                return nil
+            }
+            suggestions.append(value)
+            offset += length
+        }
+        return offset == payload.count ? suggestions : nil
     }
 }
 

@@ -1,8 +1,9 @@
 # Desktop AI Helper
 
-AI-09 introduces a dormant desktop process boundary for future optional Writer
-features. It is not used by ordinary pinyin parsing, candidate generation, candidate
-selection, learning, or AI Lite ranking.
+AI-09 introduced a dormant desktop process boundary for optional Writer features.
+Decision 043 activates that boundary for explicit desktop rewrite and translation, while
+ordinary pinyin parsing, candidate generation, candidate selection, learning, and AI Lite
+ranking remain independent from it.
 
 The shared Rust helper uses a fixed, bounded binary protocol from
 `ai/helper_protocol`:
@@ -12,7 +13,7 @@ The shared Rust helper uses a fixed, bounded binary protocol from
 - at most eight active requests and 32 queued responses;
 - health, cancellation, graceful shutdown, and a ten-minute idle exit;
 - content-free error codes and redacted frame diagnostics;
-- no network client, localhost service, content log, or persistent request cache.
+- no external network client, content log, or persistent request cache.
 
 On macOS the signed app launches its bundled helper as a controlled child and uses
 anonymous pipes. On Windows the current-user host creates a random request/response
@@ -28,7 +29,19 @@ request identity, deadlines, cancellation, and the existing PrivacyGuard.
 
 AI-11 adds a versioned Writer request/preview frame for short completion, explicit
 rewrite, and explicit translation. Source text and suggestions are bounded, diagnostics
-remain redacted, and request identity prevents stale output from being applied. This is
-only a contract boundary: until an exact model passes every quality, platform, license,
-and Owner gate, the helper validates Writer frames and returns `ModelUnavailable` without
-running inference or echoing content.
+remain redacted, and request identity prevents stale output from being applied. In the
+historical AI-11 profile the helper returned only `ModelUnavailable`.
+
+The post-AI-12 Writer V1 verifies the exact on-demand model and starts the bundled pinned
+`llama-server` as its own child. The server binds only to `127.0.0.1` on an ephemeral port,
+requires a random API key, and starts with `--offline`, `--no-webui`, and `--log-disable`.
+The server key is generated independently from the AI-09 authentication token for every
+launch. It is passed through a private key file, never through argv, and the Helper deletes
+the file after an authenticated readiness check. The file uses mode `0600` on Unix and the
+current-user application-data ACL on Windows. Model hashing observes the same
+absolute deadline and cancellation flag between chunks. This loopback connection is an
+implementation detail inside the authenticated Helper boundary, not an externally reachable
+service. Hosts own the fixed official model download; the Helper contains no external URL or
+downloader. Source and generated text never enter argv, logs, telemetry, temporary prompt
+files, or persistent caches. Strict privacy, cancelled or stale work, runtime/model failure,
+and timeout return only sanitized errors.

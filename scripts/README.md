@@ -47,6 +47,9 @@ Current scripts:
 - `check_ai10_writer_feasibility_sources.sh`: validates the AI-10 evaluation-only candidate, synthetic dataset, content-free No-Go evidence, no tracked weights/runtime artifacts, no arbitrary prompt CLI, and offline probe tests.
 - `check_ai11_writer_integration_sources.sh`: validates the stronger AI-11 evaluation-only candidate, bounded/redacted Writer protocol, default-off resource policy, content-free Mac evidence, absent model approval, and fail-closed Helper response.
 - `check_ai12_release_gates.sh`: validates the declarative AI-12 contract, categorized privacy corpus inventory, executable-evidence references, Helper source contracts, model notices, and the AI Lite Go / Writer No-Go profile. It does not rerun Cargo tests already owned by CI test steps.
+- `check_desktop_writer_runtime_sources.sh`: validates Decision 043's post-AI-12 desktop Writer profile, exact on-demand model identity, pinned llama.cpp archives, strict-privacy/result-discard wiring, local-only Helper runtime, and macOS/Windows packaging entry points.
+- `prepare_macos_writer_runtime.sh`: downloads and verifies the pinned official llama.cpp macOS arm64 archive, then stages only the required runtime files for bundle signing.
+- `prepare_windows_writer_runtime.ps1`: downloads and verifies the pinned official llama.cpp Windows x64 CPU archive, then stages its runtime files for EXE/MSI packaging.
 - `test_macos_ai_helper.sh`: compiles and runs the macOS controlled-child Helper lifecycle tests, including health, cancellation, crash recovery, and shutdown.
 - `test_windows_ai_helper.ps1`: builds and runs the Windows current-user named-pipe Helper lifecycle probe on an x64 runner.
 

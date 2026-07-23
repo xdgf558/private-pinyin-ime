@@ -96,15 +96,37 @@ grep -Fq 'source", &"<redacted>"' ai/helper_protocol/src/lib.rs
 grep -Fq 'suggestions", &"<redacted>"' ai/helper_protocol/src/lib.rs
 
 if rg -n 'reqwest|TcpStream|UdpSocket|URLSession|NWConnection|http://|https://' \
-  ai/helper_protocol ai/helper/private_pinyin_ai_helper; then
-  echo "AI-11 Helper path must not contain a network client." >&2
+  ai/helper_protocol; then
+  echo "AI-11 protocol must not contain a network client." >&2
   exit 1
 fi
 
+if rg -n 'reqwest|UdpSocket|URLSession|NWConnection|https?://' \
+  ai/helper/private_pinyin_ai_helper; then
+  echo "Desktop Helper must not contain an external network client or URL." >&2
+  exit 1
+fi
+
+# Decision 043 permits only the loopback connection to the Helper-owned,
+# offline llama.cpp child. Model downloads remain explicit host UI actions.
+grep -Fq "Ipv4Addr::LOCALHOST" \
+  ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs
+grep -Fq '"127.0.0.1"' \
+  ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs
+grep -Fq '"--offline"' \
+  ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs
+grep -Fq '"--no-webui"' \
+  ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs
+grep -Fq '"--log-disable"' \
+  ai/helper/private_pinyin_ai_helper/src/writer_runtime.rs
+
 grep -Fq "Writer remains unavailable until every model and platform gate passes" \
   docs/privacy_spec.md
-grep -Fq "native Windows RSS and warmed-request evidence" docs/OPEN_ITEMS.md
-grep -Fq "停顿时当前输入会交给本地 AI 进程" docs/OPEN_ITEMS.md
+# The Python block above owns the historical AI-11 evidence assertions through
+# native_windows_rss_evidence=false and warm_request_evidence=false. Do not pin
+# this gate to prose that later product stages may legitimately supersede.
+grep -Fq "停顿时当前输入会交给本地 AI 进程" \
+  docs/privacy_spec.md
 grep -Fq "privacy always disables all three content-bearing Writer features" \
   docs/privacy_spec.md
 grep -Fq "strict_privacy_disables_writer_content_features_but_preserves_lite_policy" \

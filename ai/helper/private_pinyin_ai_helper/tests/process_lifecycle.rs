@@ -4,8 +4,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use private_pinyin_ai_helper_protocol::{
-    read_frame, write_frame, HelperErrorCode, HelperFrame, HelperOpcode, HELPER_AUTH_TOKEN_BYTES,
-    MAX_HELPER_ACTIVE_REQUESTS, MAX_HELPER_PAYLOAD_BYTES,
+    read_frame, write_frame, HelperErrorCode, HelperFrame, HelperOpcode, WriterFeature,
+    WriterRequest, WriterRequestIdentity, HELPER_AUTH_TOKEN_BYTES, MAX_HELPER_ACTIVE_REQUESTS,
+    MAX_HELPER_PAYLOAD_BYTES,
 };
 
 const TOKEN: [u8; HELPER_AUTH_TOKEN_BYTES] = [0x2c; HELPER_AUTH_TOKEN_BYTES];
@@ -97,6 +98,45 @@ fn unauthenticated_requests_fail_closed() {
     assert_eq!(response.opcode, HelperOpcode::Error);
     drop(stdin);
     assert!(!child.wait().expect("wait for auth failure").success());
+}
+
+#[test]
+fn writer_request_fails_closed_when_the_approved_model_is_absent() {
+    let (mut child, mut stdin, mut stdout) = spawn_helper(5_000);
+    authenticate(&mut stdin, &mut stdout);
+    let request = WriterRequest::new(
+        WriterRequestIdentity {
+            session_id: 1,
+            revision: 1,
+            candidate_set_hash: 1,
+        },
+        WriterFeature::RewritePolite,
+        true,
+        Duration::from_secs(2),
+        "zh-CN",
+        "请帮我确认明天的会议时间",
+    )
+    .expect("writer request");
+    write_frame(
+        &mut stdin,
+        &HelperFrame::writer(9, &request).expect("writer frame"),
+    )
+    .expect("write writer request");
+    let response = read_frame(&mut stdout).expect("read unavailable response");
+    assert_eq!(
+        (response.opcode, response.request_id),
+        (HelperOpcode::Error, 9)
+    );
+    assert_eq!(
+        response.payload(),
+        &(HelperErrorCode::ModelUnavailable as u16).to_le_bytes()
+    );
+
+    write_frame(&mut stdin, &HelperFrame::empty(HelperOpcode::Shutdown, 10))
+        .expect("write shutdown");
+    let _ = read_frame(&mut stdout).expect("read shutdown");
+    drop(stdin);
+    assert!(child.wait().expect("wait for shutdown").success());
 }
 
 #[test]
