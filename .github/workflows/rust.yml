@@ -162,6 +162,16 @@ jobs:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_macos_shared_engine.sh
 
+      - name: Verify macOS installed-bundle launch policy
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_macos_launch_policy.sh
+
+      - name: Verify macOS input source registration repair
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_macos_input_source_registration.sh
+
       - name: Verify macOS imported lexicon source labels
         env:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
