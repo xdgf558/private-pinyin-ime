@@ -406,6 +406,8 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let learningToggle = StationToggle()
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
+    // These views survive page rebuilds and move between page stacks. Page
+    // factories must not attach persistent self-constraints to them.
     private let settingsPathLabel = NSTextField(labelWithString: "")
     private let importedLexiconStatusLabel = NSTextField(labelWithString: "当前导入词库：尚未导入")
     private let writerModelStatusLabel = NSTextField(labelWithString: "Writer 模型未安装")
@@ -516,7 +518,28 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         learningToggle.setAccessibilityLabel("用户学习")
         automaticUpdateToggle.setAccessibilityLabel("自动检查更新")
 
+        configurePersistentPageViews()
         renderPage(.overview, preferredScale: Self.defaultBoardScale)
+    }
+
+    private func configurePersistentPageViews() {
+        importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        importedLexiconStatusLabel.textColor = StationTheme.lampYellow
+        importedLexiconStatusLabel.maximumNumberOfLines = 1
+        importedLexiconStatusLabel.lineBreakMode = .byTruncatingTail
+        importedLexiconStatusLabel.cell?.usesSingleLineMode = true
+        importedLexiconStatusLabel.cell?.wraps = false
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .required,
+            for: .vertical
+        )
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        importedLexiconStatusLabel.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: 18
+        ).isActive = true
     }
 
     private func renderPage(_ page: PreferencesPage, preferredScale: CGFloat? = nil) {
@@ -1034,24 +1057,6 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             color: StationTheme.textSecondary
         )
         detail.maximumNumberOfLines = 2
-
-        importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        importedLexiconStatusLabel.textColor = StationTheme.lampYellow
-        importedLexiconStatusLabel.maximumNumberOfLines = 1
-        importedLexiconStatusLabel.lineBreakMode = .byTruncatingTail
-        importedLexiconStatusLabel.cell?.usesSingleLineMode = true
-        importedLexiconStatusLabel.cell?.wraps = false
-        importedLexiconStatusLabel.setContentCompressionResistancePriority(
-            .required,
-            for: .vertical
-        )
-        importedLexiconStatusLabel.setContentCompressionResistancePriority(
-            .defaultLow,
-            for: .horizontal
-        )
-        importedLexiconStatusLabel.heightAnchor.constraint(
-            greaterThanOrEqualToConstant: 18
-        ).isActive = true
 
         let textColumn = NSStackView(views: [title, detail, importedLexiconStatusLabel])
         textColumn.orientation = .vertical
