@@ -137,6 +137,7 @@
 
 ### Changed
 
+- Reorganized the macOS Station Board preferences into a compact overview plus focused second-level pages for lexicon management, local Writer, and version/update controls. Existing settings behavior, dark brand styling, and proportional window resizing are preserved while future features no longer lengthen the main page.
 - Bumped the iOS container app and Keyboard Extension to `0.1.25 (21)` for smoother keyboard activation, the dedicated nine-key numeric and punctuation surfaces, the two-level settings interface, and the merged AI-12 release hardening gates.
 - Bumped the iOS container app and Keyboard Extension to `0.1.24 (20)` for the keyboard-activation fix, expandable nine-candidate browser, packed lexicon indexes, and the explicit verified `rime-ice` import action.
 - Refreshed the iOS secure-input state before direct backspace, candidate commit, paging, composition-finalization, and punctuation actions so optional local AI remains fail-closed when the host input context changes.
