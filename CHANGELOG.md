@@ -142,6 +142,7 @@
 
 ### Changed
 
+- Bumped the macOS app and installer package to `0.1.27` for the compact tiered Station Board preferences navigation while retaining the Writer V1 and installed-source reliability fixes from `0.1.26`.
 - Reorganized the macOS Station Board preferences into a compact overview plus focused second-level pages for lexicon management, local Writer, and version/update controls. Existing settings behavior, dark brand styling, and proportional window resizing are preserved while future features no longer lengthen the main page.
 - Bumped the macOS app and installer package to `0.1.26` for Writer V1, exact installed-source repair, and the fix for competing input method servers.
 - Bumped the iOS container app and Keyboard Extension to `0.1.25 (21)` for smoother keyboard activation, the dedicated nine-key numeric and punctuation surfaces, the two-level settings interface, and the merged AI-12 release hardening gates.
