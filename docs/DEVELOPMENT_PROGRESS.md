@@ -1037,6 +1037,22 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 
 - Release scope: macOS clients now share one immutable engine snapshot while retaining independent session state. Installed multi-client resident-memory and upgrade smokes remain manual release gates; the AI-09 Helper remains dormant and does not alter normal input behavior.
 
+### Desktop 0.1.26 macOS Public Package Validation
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.26 bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: The app, AI-09 Helper, FFI framework, llama-server, and Writer Runtime libraries were signed with `Developer ID Application`; the pkg was signed with `Developer ID Installer`, submitted to Apple, accepted under submission `d12188ae-f39c-4044-babb-05578efd2b7d`, and stapled successfully.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.26 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: The trusted installer signature, expanded-payload nested-code signatures, Gatekeeper `Notarized Developer ID` assessment, stapled ticket, notary profile, and checksum all passed. Artifact: `dist/macos_imk/PrivatePinyin-0.1.26.pkg` (`14,066,233` bytes); SHA256 `5c83e1770f7eb8d18096c08bf4e4e2e2fa05fdcb82e402060b73f3e8160e4200`.
+
+- Command: `bash scripts/test_macos_launch_policy.sh`, `bash scripts/test_macos_input_source_registration.sh`, `bash scripts/check_stage12_release_sources.sh`, `bash scripts/check_desktop_writer_runtime_sources.sh`, and `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: The release preserves exact installed-bundle server ownership, includes registered-but-disabled TIS sources in registration health checks without enabling them, and keeps the Writer runtime license outside the nested-code signature boundary.
+
+- Release scope: `0.1.26` includes Writer V1 plus the fix for intermittent input loss caused by stale development or staging copies competing with the installed InputMethodKit server. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
