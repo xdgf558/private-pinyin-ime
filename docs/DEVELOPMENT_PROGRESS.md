@@ -46,6 +46,17 @@ Current status: macOS and Windows can explicitly download and import the pinned 
   Rust `aarch64-apple-ios-sim` target. This is a non-regression build only:
   FROST-01 remains desktop-only and the iOS import limits and network policy are
   unchanged.
+- PR remediation moved the 11.4-second reviewed-archive import completely off
+  the macOS IMK main queue, refreshed Windows settings before saving the White
+  Frost enable state, made missing `rg` fail the source gate, and feature-gated
+  `zip`/`sha2` so the iOS FFI dependency graph contains no reviewed-import ZIP
+  stack. Native macOS and iOS builds passed after the split.
+- Two consecutive `windows-2022` debug runs measured the unchanged continuous
+  decoder at 62.79 ms and 61.71 ms against the previous cross-platform 60-ms
+  threshold, while the same commits passed the Ubuntu suite. The hosted Windows
+  debug budget is therefore calibrated to 75 ms with headroom for runner jitter;
+  Apple and other targets retain 60 ms, and the separate mixed-decoder budget
+  remains 60 ms everywhere.
 
 ## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
 
