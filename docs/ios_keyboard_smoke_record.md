@@ -108,3 +108,28 @@ checks remain part of Stage 17 and are not replaced by this Simulator record.
 The headless persistence pass verifies the regression that previously returned
 to QWERTY after switching apps. It does not replace the final host-app tap and
 layout pass on a real device.
+
+## iOS Keyboard Responsiveness Regression (2026-07-24)
+
+| Field | Value |
+|---|---|
+| Tester | Codex interactive iOS 27 Simulator smoke |
+| Simulator | iPhone 17 Pro, iOS 27.0 |
+| Xcode | 26.6 (`17F109`) |
+| Branch | `codex/ios-keyboard-responsiveness` |
+| Build artifact | `build/ios_keyboard/Build/Products/Debug-iphonesimulator/PrivatePinyin.app` |
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Automated readiness | passed | `scripts/run_ios_smoke_readiness.sh` completed source checks and reported `BUILD SUCCEEDED` with the Beta Xcode toolchain |
+| Install and enable | passed | Installed `com.privatepinyin.ios`; the simulator's enabled keyboard list included `com.privatepinyin.ios.keyboard` |
+| Nine-key rapid input | passed | Five `64426` key taps completed in about 346 ms including UI automation overhead; the strip displayed readable `ni hao`, ranked `你好` first, and one candidate tap inserted exactly one `你好` |
+| QWERTY rapid input | passed | Five `nihao` key taps completed in about 203 ms including UI automation overhead; the strip displayed `nihao`, ranked `你好` first, and one candidate tap inserted exactly one additional `你好` |
+| Raw nine-key digits | passed | The visible preedit used candidate pinyin instead of exposing the internal `64426` lookup signature |
+| Keyboard transitions | passed | Six consecutive Globe-key transitions returned to a complete custom QWERTY surface; the host field retained `你好你好` and no blank or partially built keyboard was observed |
+| Crash scan | passed | No new PrivatePinyin crash report appeared in the simulator data after typing, candidate commits, and repeated keyboard transitions |
+| Haptic feedback | pending physical device | Typing and selection feedback generators are wired and source-gated, but Simulator cannot validate whether iOS emits or suppresses the physical feedback |
+| Host-App compatibility boundary | pending physical device | Notes/Safari, password/phone fallback, and an App that rejects third-party keyboards must be recorded separately; the extension cannot override a host rejection |
+
+This pass validates the off-main serialized core path and visible regression
+behavior. It is not a substitute for the Stage 17 TestFlight device matrix.

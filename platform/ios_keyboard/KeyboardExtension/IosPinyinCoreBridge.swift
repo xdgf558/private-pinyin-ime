@@ -37,7 +37,8 @@ struct IosPinyinOutput {
     let candidates: [IosPinyinCandidate]
 }
 
-// Constructed on the loader queue, then published to and used only on main.
+// Constructed and used only on KeyboardViewController's serial core queue.
+// Immutable metadata may be read on main after publication.
 final class IosPinyinCoreBridge: @unchecked Sendable {
     static let preferredCandidatePageSize = 9
     private static let fallbackCandidatePageSize = 5

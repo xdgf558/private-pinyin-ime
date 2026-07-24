@@ -4,6 +4,21 @@ Last updated: 2026-07-24
 Current stage: Post-AI-12 desktop Writer V1
 Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
 
+## iOS Keyboard Input-Latency Remediation (2026-07-24)
+
+- Audited the complete Keyboard Extension event path after reports of wooden QWERTY response, delayed candidates, one-second transition ghosting, and raw nine-key lookup digits. Although lexicon construction was already off-main, feed, reset, candidate commit, paging, and secure-input FFI calls still ran synchronously on UIKit's main thread.
+- Replaced the split loading/direct-call model with one user-interactive serial core queue. Every Rust session operation now executes off-main in input order; only the resulting immutable output is delivered to UIKit on main.
+- Added a controller interaction revision alongside the engine generation. Results produced for a previous text field, keyboard layout, or engine generation are discarded before touching preedit, candidates, or the host document.
+- Cold-start keys remain bounded to 64 operations and are replayed on the same worker rather than in one main-thread burst. Inline preferences are now constructed only when first opened, reducing first-frame work during keyboard presentation.
+- Empty-composition Backspace stays on the immediate document-proxy path, and punctuation does not enqueue an unnecessary Enter. These common operations therefore avoid worker round trips when no core state exists.
+- Nine-key display converts an unresolved internal digit signature into readable key groups such as `WXYZ MNO MNO GHI` until candidate pinyin becomes available. Internal `2-9` lookup digits are never shown as user-facing preedit.
+- Added light impact feedback for typing keys and retained selection feedback for candidate and mode commands. Feedback remains best-effort under iOS and must not affect input when system haptics are unavailable.
+- Apple documents that secure fields and phone-pad fields use the system keyboard, and that a host App may reject every custom keyboard through its extension-point policy. A single App such as Marriott refusing 猫栈拼音 is therefore a host policy boundary rather than something the extension can override.
+- `scripts/check_ios_keyboard_sources.sh` now rejects synchronous `feed`, `reset`, or candidate-commit calls outside the serial worker, requires stale-result revision checks, and pins the lazy preferences, haptic, and readable nine-key fallback contracts.
+- Beta Xcode `scripts/run_ios_smoke_readiness.sh`: passed with Xcode 26.6 and the iOS 26.5 Simulator SDK. The built app installed and ran on an iOS 27.0 iPhone 17 Pro simulator.
+- Simulator interaction passed: rapid nine-key `64426` displayed `ni hao` with `你好` first and committed exactly one `你好`; rapid QWERTY `nihao` displayed the same first candidate and committed it. Six consecutive system/custom keyboard transitions returned to a complete keyboard surface, retained host text, and produced no new simulator crash report.
+- Physical-device verification remains required for perceived frame timing, best-effort haptic strength, extension recreation under memory pressure, password/phone fallback, and host Apps that intentionally reject third-party keyboards.
+
 ## macOS Installed-Server Identity Validation (2026-07-24)
 
 - Diagnosed intermittent no-input periods as two same-bundle InputMethodKit servers running at once: the signed app under `/Library/Input Methods` and a development copy under `dist/macos_imk`. LaunchServices also retained registrations for package roots, helper-test bundles, and old build outputs.
@@ -48,8 +63,8 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 
 - Root-cause review found that `KeyboardViewController.viewDidLoad()` synchronously created the Rust bridge and parsed the 137,699-entry lexicon before UIKit could present the keyboard. On extension recreation this exposed the previous keyboard frame long enough to look like ghosting or a stalled transition.
 - Direct iOS actions that bypass the queued character-input path now reacquire a configured core and refresh secure-input state before backspace, candidate commit, paging, composition finalization, or punctuation submission.
-- The keyboard now builds an opaque, clipped surface first and starts core initialization on a dedicated user-initiated worker queue. The completed bridge is published to the main thread and remains main-thread confined after publication.
-- Up to 64 key operations received during cold initialization are retained in FIFO order and replayed once. A real host text change clears the pending queue so early keys cannot leak into another field; engine initialization failure preserves the existing fallback insertion behavior.
+- The keyboard now builds an opaque, clipped surface first and starts core initialization on a dedicated worker queue. The completed bridge and every subsequent Rust core operation remain confined to that serial queue; only outputs are published to main.
+- Up to 64 key operations received during cold initialization are retained in FIFO order and replayed once on the worker. A real host text change invalidates pending results so early keys cannot leak into another field; engine initialization failure preserves the existing fallback insertion behavior.
 - Complete keyboard rebuilds run without UIKit animation, while ordinary character entry continues to update only the preedit/candidate state rather than reconstructing the key hierarchy.
 - Historical diagnostics contained one retired `PrivatePinyinKeyboard` Auto Layout crash from the former nine-key construction order. The current grid activates cross-row constraints only after every row belongs to the shared grid hierarchy; repeated simulator switching produced no new extension crash report.
 - iOS 27.0 iPhone 17 Pro simulator smoke: switched from 猫栈拼音 to Simplified Chinese, English, and back to 猫栈拼音. The complete keyboard appeared on return, and immediate `mao` input produced readable preedit plus `猫` and other candidates without a lost or duplicated key.
