@@ -1069,6 +1069,22 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 
 - Release scope: `0.1.26` includes Writer V1 plus the fix for intermittent input loss caused by stale development or staging copies competing with the installed InputMethodKit server. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
 
+### Desktop 0.1.27 macOS Public Package Validation
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.27 bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: The app, AI-09 Helper, FFI framework, llama-server, and Writer Runtime libraries were signed with `Developer ID Application`; the pkg was signed with `Developer ID Installer`, submitted to Apple, accepted under submission `1539ece0-a619-49c7-a77c-82d51543a1ac`, and stapled successfully.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.27 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: The trusted installer signature, expanded-payload nested-code signatures, Gatekeeper `Notarized Developer ID` assessment, stapled ticket, notary profile, and checksum all passed. Artifact: `dist/macos_imk/PrivatePinyin-0.1.27.pkg` (`14,072,621` bytes); SHA256 `00eca727600f37476e1676207c0307bf685d4883b3b8f6be63cb6e56216d16bf`.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`, `bash scripts/test_macos_launch_policy.sh`, `bash scripts/test_macos_input_source_registration.sh`, and `bash scripts/check_desktop_writer_runtime_sources.sh`
+- Result: passed
+- Notes: The release preserves the exact installed-bundle server and registered-but-disabled source repairs while adding the compact overview plus dedicated lexicon, Writer, and version/update preference pages.
+
+- Release scope: `0.1.27` adds the reviewed tiered Station Board preferences navigation and retains the signed Writer V1 and input-server reliability fixes from `0.1.26`. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
