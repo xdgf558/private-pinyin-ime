@@ -36,6 +36,8 @@ grep -q "notarytool" scripts/package_macos_pkg.sh
 grep -q "stapler" scripts/package_macos_pkg.sh
 grep -q "postinstall" scripts/package_macos_pkg.sh
 grep -q "pkgutil --check-signature" scripts/check_macos_public_release.sh
+grep -q "pkgutil --expand-full" scripts/check_macos_public_release.sh
+grep -q "codesign --verify --deep --strict" scripts/check_macos_public_release.sh
 grep -q "spctl --assess --type install" scripts/check_macos_public_release.sh
 grep -q "stapler validate" scripts/check_macos_public_release.sh
 grep -q "shasum -a 256" scripts/check_macos_public_release.sh

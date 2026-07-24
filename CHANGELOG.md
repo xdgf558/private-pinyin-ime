@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Moved the bundled llama.cpp license notice out of the macOS `Helpers` code-signing boundary and added expanded-payload signature validation, preventing pkg serialization from invalidating Apple notarization.
 - Fixed macOS input-source repair treating a registered but disabled source as
   missing. Registration health now includes every installed TIS source while
   leaving enablement entirely under the user's control.
@@ -141,6 +142,7 @@
 
 ### Changed
 
+- Bumped the macOS app and installer package to `0.1.26` for Writer V1, exact installed-source repair, and the fix for competing input method servers.
 - Bumped the iOS container app and Keyboard Extension to `0.1.25 (21)` for smoother keyboard activation, the dedicated nine-key numeric and punctuation surfaces, the two-level settings interface, and the merged AI-12 release hardening gates.
 - Bumped the iOS container app and Keyboard Extension to `0.1.24 (20)` for the keyboard-activation fix, expandable nine-candidate browser, packed lexicon indexes, and the explicit verified `rime-ice` import action.
 - Refreshed the iOS secure-input state before direct backspace, candidate commit, paging, composition-finalization, and punctuation actions so optional local AI remains fail-closed when the host input context changes.
