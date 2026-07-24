@@ -1721,7 +1721,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                         guard let self else { return }
                         isRimeFrostImporting = false
                         guard let accepted,
-                              PrivatePinyinSettingsStore.recordReviewedRimeFrostImport()
+                              PrivatePinyinSettingsStore.recordReviewedRimeFrostImport(
+                                  displayName: PrivatePinyinRimeFrostCatalog.displayName,
+                                  version: PrivatePinyinRimeFrostCatalog.approvedVersion,
+                                  releaseURL: PrivatePinyinRimeFrostCatalog.releaseURL,
+                                  archiveSHA256: PrivatePinyinRimeFrostCatalog.archiveSHA256
+                              )
                         else {
                             showAlert("白霜拼音导入失败，旧词库已保留。")
                             refreshRimeFrostPresentation()

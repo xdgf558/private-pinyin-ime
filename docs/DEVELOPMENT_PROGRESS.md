@@ -1157,6 +1157,8 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 
 - Summary: Reviewed White Frost ZIP parsing and hashing are now compiled only through the desktop `reviewed-rime-frost` feature. The iOS `ios-ai` graph does not enable that feature and no longer links `zip`, `flate2`, or `zopfli` through `ime_core`.
 
+- Follow-up: The macOS settings layer now records caller-supplied reviewed source metadata instead of depending on the download manager's catalog type. This keeps the standalone shared-engine and source-label Swift tests independent from networking code while preserving the exact approved White Frost manifest values at the import call site.
+
 - Command: `cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests`
 - Result: passed (6 tests)
 - Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio limit, entry-count limit, and atomic old-layer preservation all remain green.
@@ -1172,6 +1174,10 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 - Command: `bash scripts/build_macos_imk.sh`
 - Result: passed
 - Notes: Reviewed archive verification and parsing now run on a dedicated serial background queue with a short-lived import engine. Only final status and shared-engine reload return to the main queue, so a large import no longer blocks the InputMethodKit UI or typing event loop.
+
+- Command: `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_shared_engine.sh` and `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_imported_lexicon_source.sh`
+- Result: passed
+- Notes: The standalone Swift targets compile without the White Frost network manager, continue to prove process-wide engine sharing for ordinary clients, and retain imported-source status behavior.
 
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed (`BUILD SUCCEEDED`)

@@ -211,13 +211,18 @@ enum PrivatePinyinSettingsStore {
     }
 
     @discardableResult
-    static func recordReviewedRimeFrostImport() -> Bool {
+    static func recordReviewedRimeFrostImport(
+        displayName: String,
+        version: String,
+        releaseURL: URL,
+        archiveSHA256: String
+    ) -> Bool {
         let manifest = ReviewedRimeFrostManifest(
             schemaVersion: 1,
-            displayName: PrivatePinyinRimeFrostCatalog.displayName,
-            version: PrivatePinyinRimeFrostCatalog.approvedVersion,
-            releaseURL: PrivatePinyinRimeFrostCatalog.releaseURL.absoluteString,
-            archiveSHA256: PrivatePinyinRimeFrostCatalog.archiveSHA256,
+            displayName: displayName,
+            version: version,
+            releaseURL: releaseURL.absoluteString,
+            archiveSHA256: archiveSHA256,
             importedAt: ISO8601DateFormatter().string(from: Date())
         )
         do {
