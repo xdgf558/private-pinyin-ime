@@ -12,6 +12,15 @@ notary_profile="${PRIVATE_PINYIN_NOTARY_PROFILE:-private-pinyin-notary}"
 app_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:-Developer ID Application}"
 installer_identity="${PRIVATE_PINYIN_MAC_INSTALLER_SIGN_IDENTITY:-Developer ID Installer}"
 failures=0
+payload_check_dir=""
+
+cleanup() {
+  if [ -n "$payload_check_dir" ] && [ -d "$payload_check_dir" ]; then
+    rm -rf "$payload_check_dir"
+  fi
+}
+
+trap cleanup EXIT
 
 pass() {
   printf "PASS: %s\n" "$1"
@@ -79,6 +88,7 @@ info "Checking macOS public release artifact: $pkg_path"
 info "Expected version: $version"
 
 require_command security
+require_command codesign
 require_command pkgutil
 require_command spctl
 require_command xcrun
@@ -102,6 +112,19 @@ if [ -f "$pkg_path" ]; then
     fail "package is not signed with a trusted Developer ID Installer certificate"
   fi
   printf "%s\n" "$pkg_signature"
+
+  payload_check_dir="$(mktemp -d "${TMPDIR:-/tmp}/private-pinyin-release.XXXXXX")"
+  if pkgutil --expand-full "$pkg_path" "$payload_check_dir/expanded"; then
+    payload_app="$payload_check_dir/expanded/Payload/Library/Input Methods/PrivatePinyin.app"
+    if [ -d "$payload_app" ]; then
+      capture_check "packaged app and nested code signatures are valid" \
+        codesign --verify --deep --strict --verbose=2 "$payload_app"
+    else
+      fail "expanded package does not contain the expected input method app"
+    fi
+  else
+    fail "package payload could not be expanded for nested signature validation"
+  fi
 
   capture_check "Gatekeeper accepts the installer package" \
     spctl --assess --type install --verbose=4 "$pkg_path"

@@ -13,10 +13,14 @@ required_files=(
   "platform/macos_imk/Sources/PrivatePinyinPackageDownloader.swift"
   "platform/macos_imk/Sources/PrivatePinyinProcessRefreshPolicy.swift"
   "platform/macos_imk/Sources/PrivatePinyinPostInstallController.swift"
+  "platform/macos_imk/Sources/PrivatePinyinLaunchPolicy.swift"
+  "platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift"
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
   "platform/macos_imk/Tests/SharedEnginePoolTests.swift"
+  "platform/macos_imk/Tests/LaunchPolicyTests.swift"
+  "platform/macos_imk/Tests/InputSourceRegistrationTests.swift"
   "platform/macos_imk/Sources/main.swift"
   "platform/macos_imk/Resources/Info.plist"
   "platform/macos_imk/Resources/InfoPlist.loctable"
@@ -29,6 +33,8 @@ required_files=(
   "platform/macos_imk/installer/uninstall-local.sh"
   "scripts/build_macos_imk.sh"
   "scripts/test_macos_shared_engine.sh"
+  "scripts/test_macos_launch_policy.sh"
+  "scripts/test_macos_input_source_registration.sh"
   "scripts/package_macos_pkg.sh"
 )
 
@@ -63,6 +69,23 @@ if command -v tiffutil >/dev/null 2>&1; then
 fi
 
 grep -q "IMKServer" platform/macos_imk/Sources/main.swift
+grep -q "shouldStartInputMethodServer" platform/macos_imk/Sources/main.swift
+grep -q "restoreInstalledInputMethodServerIfNeeded" platform/macos_imk/Sources/main.swift
+grep -q "uninstalled_bundle_refused_imk_server" platform/macos_imk/Sources/main.swift
+grep -q "/Library/Input Methods/PrivatePinyin.app" \
+  platform/macos_imk/Sources/PrivatePinyinLaunchPolicy.swift
+grep -q "TISRegisterInputSource" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
+grep -q "includeAllInstalledSources = true" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
+grep -q "TISCreateInputSourceList" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
+if grep -q "TISEnableInputSource" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift; then
+  echo "automatic input-source enabling is forbidden" >&2
+  exit 1
+fi
+grep -q "input_source_registration_repaired" platform/macos_imk/Sources/main.swift
 grep -q "IMKInputController" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "kIMKSingleRowSteppingCandidatePanel" platform/macos_imk/Sources/PrivatePinyinInputController.swift

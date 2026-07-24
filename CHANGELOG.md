@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Moved the bundled llama.cpp license notice out of the macOS `Helpers` code-signing boundary and added expanded-payload signature validation, preventing pkg serialization from invalidating Apple notarization.
+- Fixed macOS input-source repair treating a registered but disabled source as
+  missing. Registration health now includes every installed TIS source while
+  leaving enablement entirely under the user's control.
+- Fixed intermittent macOS input loss caused by development and package-staging app copies registering the production bundle identifier and starting competing InputMethodKit servers. Only bundles installed at the exact system or per-user Input Methods path may now start the IMK server; launching any other copy refreshes TIS registration from the exact installed bundle path, restores the installed server, and exits without enabling or duplicating input-source entries.
 - Separated the AI-09 Helper authentication token from the Helper-owned `llama-server` credential. Every server launch now uses an independent random key delivered through a private key file rather than process arguments, model verification observes cancellation and the absolute request deadline between hash chunks, and packaging verifies the pinned runtime's required command-line contract.
 - Discard Writer results if strict privacy, Writer consent, or model state changes while inference is running, and apply one absolute Windows read deadline across the entire Helper response frame.
 - Removed duplicate AI-12 Cargo executions from the source gate, made the release JSON explicitly declarative instead of presenting hand-authored status strings as measurements, and expanded AI-off equivalence coverage across backspace, paging, and consecutive commits.
@@ -138,6 +143,7 @@
 ### Changed
 
 - Reorganized the macOS Station Board preferences into a compact overview plus focused second-level pages for lexicon management, local Writer, and version/update controls. Existing settings behavior, dark brand styling, and proportional window resizing are preserved while future features no longer lengthen the main page.
+- Bumped the macOS app and installer package to `0.1.26` for Writer V1, exact installed-source repair, and the fix for competing input method servers.
 - Bumped the iOS container app and Keyboard Extension to `0.1.25 (21)` for smoother keyboard activation, the dedicated nine-key numeric and punctuation surfaces, the two-level settings interface, and the merged AI-12 release hardening gates.
 - Bumped the iOS container app and Keyboard Extension to `0.1.24 (20)` for the keyboard-activation fix, expandable nine-candidate browser, packed lexicon indexes, and the explicit verified `rime-ice` import action.
 - Refreshed the iOS secure-input state before direct backspace, candidate commit, paging, composition-finalization, and punctuation actions so optional local AI remains fail-closed when the host input context changes.

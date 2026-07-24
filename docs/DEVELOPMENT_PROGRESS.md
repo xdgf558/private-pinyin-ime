@@ -1,8 +1,21 @@
 # Development Progress
 
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 Current stage: Post-AI-12 desktop Writer V1
 Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
+
+## macOS Installed-Server Identity Validation (2026-07-24)
+
+- Diagnosed intermittent no-input periods as two same-bundle InputMethodKit servers running at once: the signed app under `/Library/Input Methods` and a development copy under `dist/macos_imk`. LaunchServices also retained registrations for package roots, helper-test bundles, and old build outputs.
+- Added an exact launch policy: only `/Library/Input Methods/PrivatePinyin.app` or the current user's `~/Library/Input Methods/PrivatePinyin.app` may create the production IMK server. UI-only launch arguments remain server-free, and similarly named sibling directories are rejected.
+- Installed launches verify that both the input method bundle and `.Mode` identifiers exist in the TIS registry and repair missing registration with `TISRegisterInputSource`. Recovery from an uninstalled development or staging copy always re-registers the exact installed bundle path so stale LaunchServices/TIS cache mappings cannot survive; it deliberately never calls `TISEnableInputSource`, so it cannot append duplicate enabled-source records.
+- Registration verification uses the complete installed TIS source list, including disabled sources. A successful repair is therefore not misreported as failed, repeated launches do not re-register a healthy disabled source, and enablement remains an explicit user action.
+- An uninstalled build now emits only a content-free launch code, restores the exact installed executable when it is not already running, and exits instead of competing for the production InputMethodKit connection.
+- Native policy tests cover system and per-user installs, development output, misleading sibling paths, and UI-only launches. The macOS CI job runs the Swift test, while source gates require the policy in every host build.
+- Local runtime smoke stopped the installed server, launched the development bundle deliberately, observed `installed_server_restored` followed by `uninstalled_bundle_refused_imk_server`, and confirmed that the sole surviving process was `/Library/Input Methods/PrivatePinyin.app/Contents/MacOS/PrivatePinyin`.
+- A second runtime smoke launched the freshly built uninstalled app while the signed installed server was active. The development app emitted `uninstalled_bundle_refused_imk_server`, exited, and left the single installed process alive. TIS registration repair restored and selected `com.privatepinyin.inputmethod.PrivatePinyin.Mode` without starting another server.
+- Computer-generated TextEdit key events bypassed both the custom and system IMK paths, so they are not recorded as a typing pass. The remaining manual smoke is to unlock the Mac, select 猫栈拼音, and type `nihao` -> `你好` with a physical keyboard.
+- `scripts/test_macos_launch_policy.sh`, `scripts/test_macos_input_source_registration.sh`, `scripts/check_macos_imk_sources.sh`, `PRIVATE_PINYIN_SKIP_CODESIGN=1 scripts/build_macos_imk.sh`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo fmt --all -- --check`: passed.
 
 ## Desktop Writer V1 Validation (2026-07-22)
 
@@ -1039,6 +1052,22 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 - Command: local `--show-preferences` overview and second-level visual smoke
 - Result: passed
 - Notes: The compact overview, lexicon, Writer, and about/update pages all render without clipping or overlap. Every navigation card opens its intended page, the shared `总览` action returns correctly, and the window preserves proportional sizing while adapting its height to the active page.
+
+### Desktop 0.1.26 macOS Public Package Validation
+
+- Command: signed `PRIVATE_PINYIN_VERSION=0.1.26 bash scripts/package_macos_pkg.sh`
+- Result: passed
+- Notes: The app, AI-09 Helper, FFI framework, llama-server, and Writer Runtime libraries were signed with `Developer ID Application`; the pkg was signed with `Developer ID Installer`, submitted to Apple, accepted under submission `d12188ae-f39c-4044-babb-05578efd2b7d`, and stapled successfully.
+
+- Command: `PRIVATE_PINYIN_VERSION=0.1.26 bash scripts/check_macos_public_release.sh`
+- Result: passed
+- Notes: The trusted installer signature, expanded-payload nested-code signatures, Gatekeeper `Notarized Developer ID` assessment, stapled ticket, notary profile, and checksum all passed. Artifact: `dist/macos_imk/PrivatePinyin-0.1.26.pkg` (`14,066,233` bytes); SHA256 `5c83e1770f7eb8d18096c08bf4e4e2e2fa05fdcb82e402060b73f3e8160e4200`.
+
+- Command: `bash scripts/test_macos_launch_policy.sh`, `bash scripts/test_macos_input_source_registration.sh`, `bash scripts/check_stage12_release_sources.sh`, `bash scripts/check_desktop_writer_runtime_sources.sh`, and `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: The release preserves exact installed-bundle server ownership, includes registered-but-disabled TIS sources in registration health checks without enabling them, and keeps the Writer runtime license outside the nested-code signature boundary.
+
+- Release scope: `0.1.26` includes Writer V1 plus the fix for intermittent input loss caused by stale development or staging copies competing with the installed InputMethodKit server. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
 
 ## Open Items
 

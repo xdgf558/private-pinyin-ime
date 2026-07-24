@@ -14,6 +14,7 @@ macos_dir="$contents_dir/MacOS"
 frameworks_dir="$contents_dir/Frameworks"
 helpers_dir="$contents_dir/Helpers"
 resources_dir="$contents_dir/Resources"
+third_party_notices_dir="$resources_dir/ThirdPartyNotices"
 codesign_identity="${PRIVATE_PINYIN_MAC_APP_SIGN_IDENTITY:--}"
 skip_codesign="${PRIVATE_PINYIN_SKIP_CODESIGN:-0}"
 
@@ -21,7 +22,8 @@ cargo build -p private_pinyin_ime_ffi --features desktop-ai
 cargo build -p private_pinyin_ai_helper --release
 
 rm -rf "$build_dir" "$app_dir"
-mkdir -p "$module_dir" "$module_cache_dir" "$macos_dir" "$frameworks_dir" "$helpers_dir" "$resources_dir"
+mkdir -p "$module_dir" "$module_cache_dir" "$macos_dir" "$frameworks_dir" \
+  "$helpers_dir" "$resources_dir" "$third_party_notices_dir"
 
 cat > "$module_dir/module.modulemap" <<MODULEMAP
 module PrivatePinyinC [system] {
@@ -50,6 +52,8 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinUpdateController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinProcessRefreshPolicy.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPostInstallController.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinLaunchPolicy.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterModelManager.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift" \
@@ -75,6 +79,8 @@ cp "$repo_root/target/release/private_pinyin_ai_helper" \
 chmod 755 "$helpers_dir/PrivatePinyinAIHelper"
 bash "$repo_root/scripts/prepare_macos_writer_runtime.sh" \
   "$helpers_dir/WriterRuntime"
+mv "$helpers_dir/WriterRuntime/llama.cpp-LICENSE" \
+  "$third_party_notices_dir/llama.cpp-LICENSE"
 
 if command -v xattr >/dev/null 2>&1; then
   xattr -cr "$app_dir" || true

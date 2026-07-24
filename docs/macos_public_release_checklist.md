@@ -12,24 +12,25 @@ The project can already build a local package:
 bash scripts/package_macos_pkg.sh
 ```
 
-The `0.1.24` release candidate is signed with Developer ID Application and
+The `0.1.26` release candidate is signed with Developer ID Application and
 Developer ID Installer, accepted by Apple notarization, stapled, and accepted
-by Gatekeeper. Its `0.1.22` predecessor passed an installed-upgrade smoke in
-TextEdit, Chrome, and Safari; the shared-engine memory release still needs an
-installed-upgrade smoke and a clean-user install/uninstall smoke test,
-multi-client resident-memory validation, visible horizontal overflow and `1`
-through `9` candidate interaction checks, VS Code coverage, and website
-checksum publication before public distribution.
+by Gatekeeper. It adds Writer V1 and prevents stale development or staging
+copies from competing with the installed InputMethodKit server. Its `0.1.22`
+predecessor passed an installed-upgrade smoke in TextEdit, Chrome, and Safari;
+the current release still needs an installed-upgrade smoke, a clean-user
+install/uninstall smoke test, Writer model and strict-privacy validation,
+visible horizontal overflow and `1` through `9` candidate interaction checks,
+VS Code coverage, and website checksum publication before public distribution.
 
 Current artifact evidence:
 
-- Package: `dist/macos_imk/PrivatePinyin-0.1.24.pkg`
-- Size: `3,800,887` bytes
-- Notarization submission: `54645912-7b0d-4d83-b670-453067f3897f` (`Accepted`)
-- SHA256: `ff0d2d73e0ee63daf06ac052b5a06cf7a17df309ae7d1713c0867d09d832fc7d`
-- Static release validation on 2026-07-20: trusted Developer ID Installer signature, stapled notarization ticket, Gatekeeper `Notarized Developer ID`, usable notary profile, and complete repository public-release preflight.
+- Package: `dist/macos_imk/PrivatePinyin-0.1.26.pkg`
+- Size: `14,066,233` bytes
+- Notarization submission: `d12188ae-f39c-4044-babb-05578efd2b7d` (`Accepted`)
+- SHA256: `5c83e1770f7eb8d18096c08bf4e4e2e2fa05fdcb82e402060b73f3e8160e4200`
+- Static release validation on 2026-07-24: trusted Developer ID Installer signature, expanded-payload nested-code signatures, stapled notarization ticket, Gatekeeper `Notarized Developer ID`, usable notary profile, and complete repository public-release preflight.
 - Installed-upgrade smoke on 2026-07-19: TextEdit, Chrome, and Safari each committed `nihao -> 你好`; 20 rapid TextEdit commits completed without loss or duplication. The installed app reports `0.1.22 (22)`, and the packaged AI Lite dylib passed activation, secure fallback, and bounded pressure checks.
-- Unexecuted on `0.1.24`: installed-upgrade smoke, clean-user install/uninstall, visible horizontal overflow plus `1` through `9` candidate selection, multi-client memory validation, and VS Code coverage remain release gates.
+- Unexecuted on `0.1.26`: installed-upgrade smoke, clean-user install/uninstall, Writer model and strict-privacy checks, visible horizontal overflow plus `1` through `9` candidate selection, and VS Code coverage remain release gates.
 
 ## One-Time Owner Setup
 

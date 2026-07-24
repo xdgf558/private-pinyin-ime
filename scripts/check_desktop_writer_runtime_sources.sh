@@ -82,6 +82,7 @@ grep -q '生成结果已丢弃' "$windows_writer"
 
 grep -q 'prepare_macos_writer_runtime.sh' scripts/build_macos_imk.sh
 grep -q 'helpers_dir/WriterRuntime' scripts/build_macos_imk.sh
+grep -q 'third_party_notices_dir/llama.cpp-LICENSE' scripts/build_macos_imk.sh
 grep -q '\\( -type f -o -type l \\)' scripts/prepare_macos_writer_runtime.sh
 grep -q 'llama-server.*--version' scripts/prepare_macos_writer_runtime.sh
 grep -q -- '--api-key-file' scripts/prepare_macos_writer_runtime.sh
