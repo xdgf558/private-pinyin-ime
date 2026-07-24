@@ -1,3 +1,5 @@
+#![cfg(feature = "reviewed-rime-frost")]
+
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};

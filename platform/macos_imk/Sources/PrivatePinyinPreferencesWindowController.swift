@@ -415,6 +415,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private var rimeFrostEnableButton: StationButton?
     private var rimeFrostClearButton: StationButton?
     private var rimeFrostCheckButton: StationButton?
+    private var isRimeFrostImporting = false
     private let writerModelStatusLabel = NSTextField(labelWithString: "Writer 模型未安装")
     private var writerDownloadButton: StationButton?
     private var writerOpenButton: StationButton?
@@ -423,6 +424,10 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
     private let updateDetailLabel = NSTextField(labelWithString: "输入功能始终不依赖更新服务。")
     private let lexiconCore = PinyinCoreBridge()
+    private let rimeFrostImportQueue = DispatchQueue(
+        label: "com.privatepinyin.inputmethod.rime-frost-import",
+        qos: .userInitiated
+    )
     private let boardScrollView = NSScrollView(frame: .zero)
     private let boardView = StationBoardBackgroundView(
         frame: NSRect(x: 0, y: 0, width: boardWidth, height: initialBoardHeight)
@@ -1643,30 +1648,36 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         let installed = PrivatePinyinSettingsStore.isRimeFrostInstalled()
         let enabled = PrivatePinyinSettingsStore.isRimeFrostEnabled()
 
-        switch manager.state {
-        case .idle:
-            rimeFrostStatusLabel.stringValue = PrivatePinyinSettingsStore
-                .rimeFrostSummaryText()
-        case let .downloading(percent):
-            rimeFrostStatusLabel.stringValue = "正在从官方 Release 下载：\(percent)%"
-        case .checking:
-            rimeFrostStatusLabel.stringValue = "正在检查白霜拼音官方稳定版..."
-        case let .pendingReview(version):
-            rimeFrostStatusLabel.stringValue =
-                "发现上游 \(version)；新版待审核。当前仅允许导入 1.0.4。"
-        case let .failed(message):
-            rimeFrostStatusLabel.stringValue = message
+        if isRimeFrostImporting {
+            rimeFrostStatusLabel.stringValue = "正在后台校验并导入，普通拼音输入不受影响..."
+        } else {
+            switch manager.state {
+            case .idle:
+                rimeFrostStatusLabel.stringValue = PrivatePinyinSettingsStore
+                    .rimeFrostSummaryText()
+            case let .downloading(percent):
+                rimeFrostStatusLabel.stringValue = "正在从官方 Release 下载：\(percent)%"
+            case .checking:
+                rimeFrostStatusLabel.stringValue = "正在检查白霜拼音官方稳定版..."
+            case let .pendingReview(version):
+                rimeFrostStatusLabel.stringValue =
+                    "发现上游 \(version)；新版待审核。当前仅允许导入 1.0.4。"
+            case let .failed(message):
+                rimeFrostStatusLabel.stringValue = message
+            }
         }
         rimeFrostStatusLabel.toolTip = rimeFrostStatusLabel.stringValue
         rimeFrostPrimaryButton?.setStationTitle(installed ? "重新导入" : "导入白霜")
         rimeFrostPrimaryButton?.isEnabled = {
+            if isRimeFrostImporting { return false }
             if case .downloading = manager.state { return false }
             return true
         }()
         rimeFrostEnableButton?.setStationTitle(enabled ? "停用" : "启用")
-        rimeFrostEnableButton?.isEnabled = installed
-        rimeFrostClearButton?.isEnabled = installed
+        rimeFrostEnableButton?.isEnabled = installed && !isRimeFrostImporting
+        rimeFrostClearButton?.isEnabled = installed && !isRimeFrostImporting
         rimeFrostCheckButton?.isEnabled = {
+            if isRimeFrostImporting { return false }
             if case .downloading = manager.state { return false }
             return true
         }()
@@ -1697,21 +1708,33 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             guard let self else { return }
             switch result {
             case let .success(archiveURL):
-                defer { try? FileManager.default.removeItem(at: archiveURL) }
-                guard let accepted = lexiconCore?
-                    .importReviewedRimeFrostArchive(from: archiveURL.path),
-                    PrivatePinyinSettingsStore.recordReviewedRimeFrostImport()
-                else {
-                    showAlert("白霜拼音导入失败，旧词库已保留。")
-                    refreshRimeFrostPresentation()
-                    return
+                isRimeFrostImporting = true
+                refreshRimeFrostPresentation()
+                let settingsPath = PrivatePinyinSettingsStore.ensureSettingsFile()
+                rimeFrostImportQueue.async { [weak self] in
+                    defer { try? FileManager.default.removeItem(at: archiveURL) }
+                    let accepted = PinyinCoreBridge.importReviewedRimeFrostArchive(
+                        from: archiveURL.path,
+                        settingsPath: settingsPath
+                    )
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        isRimeFrostImporting = false
+                        guard let accepted,
+                              PrivatePinyinSettingsStore.recordReviewedRimeFrostImport()
+                        else {
+                            showAlert("白霜拼音导入失败，旧词库已保留。")
+                            refreshRimeFrostPresentation()
+                            return
+                        }
+                        reloadFromSettings()
+                        NotificationCenter.default.post(
+                            name: .privatePinyinSettingsChanged,
+                            object: self
+                        )
+                        showAlert("已导入白霜拼音 1.0.4，共 \(accepted) 条词库记录。")
+                    }
                 }
-                reloadFromSettings()
-                NotificationCenter.default.post(
-                    name: .privatePinyinSettingsChanged,
-                    object: self
-                )
-                showAlert("已导入白霜拼音 1.0.4，共 \(accepted) 条词库记录。")
             case .failure:
                 refreshRimeFrostPresentation()
                 showAlert(

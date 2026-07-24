@@ -14,6 +14,7 @@ pub mod pinyin_parser;
 pub mod predictor;
 pub mod privacy;
 pub mod ranker;
+#[cfg(feature = "reviewed-rime-frost")]
 pub mod reviewed_rime_frost;
 pub mod session;
 pub mod settings;

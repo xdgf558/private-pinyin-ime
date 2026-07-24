@@ -3,6 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "FROST-01 source checks require ripgrep (rg)." >&2
+  exit 1
+fi
+
 required_files=(
   "ime_core/src/reviewed_rime_frost.rs"
   "ime_core/tests/reviewed_rime_frost_tests.rs"
@@ -45,6 +50,11 @@ grep -q 'rime_frost.tsv' platform/windows_tsf/installer/open-settings.ps1
 grep -q 'import-rime-frost' tools/settings_cli/src/main.rs
 grep -q 'ime_engine_import_rime_frost_archive' ffi/c_api.h
 grep -q 'ime_engine_clear_rime_frost_lexicon' ffi/c_api.h
+grep -q 'reviewed-rime-frost = \["dep:sha2", "dep:zip"\]' ime_core/Cargo.toml
+grep -q 'desktop-ai = \["local-ai", "reviewed-rime-frost"\]' ffi/ime_ffi/Cargo.toml
+grep -q 'features = \["reviewed-rime-frost"\]' tools/settings_cli/Cargo.toml
+grep -q '#\[cfg(feature = "reviewed-rime-frost")\]' ime_core/src/reviewed_rime_frost.rs \
+  ime_core/src/lib.rs ime_core/src/api.rs ffi/ime_ffi/src/lib.rs
 
 grep -q 'GPL-3.0' platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q '新版待审核' platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
@@ -53,6 +63,12 @@ grep -q '新版待审核' platform/windows_tsf/installer/open-settings.ps1
 grep -q "$approved_sha" platform/macos_imk/Sources/PrivatePinyinRimeFrostManager.swift
 grep -q "$approved_sha" platform/windows_tsf/installer/open-settings.ps1
 grep -q "$approved_bytes" platform/windows_tsf/installer/open-settings.ps1
+grep -q 'rime-frost-import' \
+  platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q 'static func importReviewedRimeFrostArchive' \
+  platform/macos_imk/Sources/CAbiBridge.swift
+grep -q '\$currentSettings = Read-Settings' \
+  platform/windows_tsf/installer/open-settings.ps1
 
 grep -q 'ImportedLexiconLimits::new(64 \* 1024 \* 1024, 128 \* 1024 \* 1024, 750_000)' \
   ime_core/src/imported_lexicon.rs
@@ -64,6 +80,28 @@ grep -q "$approved_sha" docs/rime_frost_integration.md
 
 if rg -n '白霜拼音|rime_frost|rime-frost' platform/ios_keyboard; then
   echo "FROST-01 must remain desktop-only; iOS contains White Frost integration." >&2
+  exit 1
+fi
+
+ios_features="$(
+  cargo tree -p private_pinyin_ime_ffi \
+    --no-default-features \
+    --features ios-ai \
+    -e features
+)"
+if printf '%s\n' "$ios_features" \
+  | rg -q 'ime_core feature "reviewed-rime-frost"|(^| )zip v|(^| )zopfli v'
+then
+  echo "FROST-01 ZIP support leaked into the iOS FFI dependency graph." >&2
+  exit 1
+fi
+if cargo tree -p private_pinyin_ime_ffi \
+    --no-default-features \
+    --features ios-ai \
+    -i sha2 \
+  | rg -q 'ime_core v'
+then
+  echo "FROST-01 SHA-256 support leaked from ime_core into the iOS FFI graph." >&2
   exit 1
 fi
 

@@ -2,6 +2,8 @@
 
 FROST-01 adds an optional White Frost dictionary layer to macOS and Windows. It does not add White Frost data to the repository, application bundle, installer, permissive base lexicon, or iOS Keyboard Extension.
 
+The ZIP verifier is compiled only behind the desktop `reviewed-rime-frost` Cargo feature. The iOS `ios-ai` build does not enable that feature and does not link the White Frost `zip`/compression dependency chain; its existing local-import limits and network-free extension behavior remain unchanged.
+
 ## Reviewed Source
 
 | Field | Approved value |

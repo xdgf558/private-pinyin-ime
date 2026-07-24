@@ -223,6 +223,7 @@ pub extern "C" fn ime_engine_clear_imported_lexicon(engine: *mut ImeEngine) -> c
     })
 }
 
+#[cfg(feature = "reviewed-rime-frost")]
 #[no_mangle]
 pub extern "C" fn ime_engine_import_rime_frost_archive(
     engine: *mut ImeEngine,
@@ -245,6 +246,7 @@ pub extern "C" fn ime_engine_import_rime_frost_archive(
     .unwrap_or(-1)
 }
 
+#[cfg(feature = "reviewed-rime-frost")]
 #[no_mangle]
 pub extern "C" fn ime_engine_clear_rime_frost_lexicon(engine: *mut ImeEngine) -> c_int {
     catch_status(|| {

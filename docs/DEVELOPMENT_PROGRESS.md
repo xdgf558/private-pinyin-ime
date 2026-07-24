@@ -1153,6 +1153,32 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 
 - Release scope: `0.1.27` adds the reviewed tiered Station Board preferences navigation and retains the signed Writer V1 and input-server reliability fixes from `0.1.26`. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
 
+### FROST-01 Review Closure Validation
+
+- Summary: Reviewed White Frost ZIP parsing and hashing are now compiled only through the desktop `reviewed-rime-frost` feature. The iOS `ios-ai` graph does not enable that feature and no longer links `zip`, `flate2`, or `zopfli` through `ime_core`.
+
+- Command: `cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests`
+- Result: passed (6 tests)
+- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio limit, entry-count limit, and atomic old-layer preservation all remain green.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`, plus FFI Clippy with `desktop-ai` and `ios-ai`
+- Result: passed
+- Notes: Both host feature graphs compile without warnings. `scripts/check_frost01_sources.sh` now fails immediately if `rg` is unavailable and inspects the resolved iOS Cargo graph for the desktop Frost feature and archive dependencies.
+
+- Command: `bash scripts/check_frost01_sources.sh`, `bash scripts/check_windows_tsf_sources.sh`, `bash scripts/check_installers_settings_sources.sh`, and `bash scripts/check_ios_keyboard_sources.sh`
+- Result: passed
+- Notes: The Windows settings save path rereads the latest persisted settings before applying form fields, so a newly changed White Frost enable state is not overwritten by the launch-time snapshot.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Reviewed archive verification and parsing now run on a dedicated serial background queue with a short-lived import engine. Only final status and shared-engine reload return to the main queue, so a large import no longer blocks the InputMethodKit UI or typing event loop.
+
+- Command: `bash scripts/build_ios_keyboard.sh`
+- Result: passed (`BUILD SUCCEEDED`)
+- Notes: The iOS container and keyboard extension build with `ios-ai` while excluding the desktop White Frost archive parser and ZIP dependency chain.
+
+- Local baseline note: the unfiltered macOS `cargo test --workspace` run reached three existing interactive latency assertions at approximately `70-79 ms` for isolated nine-key lookup and higher under parallel load, above their fixed `60 ms` budget. All non-latency candidate tests passed when those three budget assertions were skipped. The Writer absent-model lifecycle test also passed under an isolated empty `HOME`; with the locally installed Writer model it correctly exercised a different runtime path. Neither observation is caused by or changes FROST-01 behavior.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.

@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Kept the reviewed White Frost archive parser off the macOS IMK main thread, prevented the Windows settings window from overwriting a newly changed White Frost enable state, made the desktop-only iOS purity gate fail explicitly when its required source scanner is unavailable, and excluded White Frost ZIP parsing dependencies from iOS builds.
 - Moved the bundled llama.cpp license notice out of the macOS `Helpers` code-signing boundary and added expanded-payload signature validation, preventing pkg serialization from invalidating Apple notarization.
 - Fixed macOS input-source repair treating a registered but disabled source as
   missing. Registration health now includes every installed TIS source while

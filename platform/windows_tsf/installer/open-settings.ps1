@@ -621,7 +621,7 @@ $rimeFrostImport.Add_Click({
             throw "归档校验或词库解析失败"
         }
         Write-RimeFrostManifest
-        $settings = Read-Settings
+        $script:settings = Read-Settings
         $statusLabel.Text = "白霜拼音 1.0.4 已导入，重新切换一次输入法后生效"
         $statusLabel.ForeColor = $colors.Success
     } catch {
@@ -649,7 +649,7 @@ $rimeFrostEnable.Add_Click({
         "--settings", $settingsPath,
         "--enabled", $enable.ToString().ToLowerInvariant()
     )
-    $settings = Read-Settings
+    $script:settings = Read-Settings
     $statusLabel.Text = if ($ok) {
         if ($enable) { "白霜拼音已启用" } else { "白霜拼音已停用" }
     } else {
@@ -811,19 +811,23 @@ $privacy.Add_CheckedChanged({ Update-PrivacyControls })
 Update-PrivacyControls
 
 $save.Add_Click({
-    $settings.default_mode = if ($defaultMode.SelectedIndex -eq 1) { "English" } else { "Chinese" }
-    $settings.toggle_key = if ($toggleKey.SelectedIndex -eq 1) { "CtrlSpace" } else { "Shift" }
-    $settings.enable_prediction = $prediction.Checked
-    $settings.candidate_page_size = [decimal]::ToInt32($candidatePageSize.Value)
-    $settings.candidate_font_size = [decimal]::ToInt32($candidateFontSize.Value)
-    $settings.theme = switch ($theme.SelectedIndex) {
+    # Always merge form values into the latest on-disk snapshot. Other page actions
+    # (including White Frost enable/disable) can update settings while this window is open.
+    $currentSettings = Read-Settings
+    $currentSettings.default_mode = if ($defaultMode.SelectedIndex -eq 1) { "English" } else { "Chinese" }
+    $currentSettings.toggle_key = if ($toggleKey.SelectedIndex -eq 1) { "CtrlSpace" } else { "Shift" }
+    $currentSettings.enable_prediction = $prediction.Checked
+    $currentSettings.candidate_page_size = [decimal]::ToInt32($candidatePageSize.Value)
+    $currentSettings.candidate_font_size = [decimal]::ToInt32($candidateFontSize.Value)
+    $currentSettings.theme = switch ($theme.SelectedIndex) {
         1 { "light" }
         2 { "dark" }
         default { "system" }
     }
-    $settings.strict_privacy_mode = $privacy.Checked
-    $settings.enable_user_learning = if ($privacy.Checked) { $false } else { $learning.Checked }
-    Write-Settings $settings
+    $currentSettings.strict_privacy_mode = $privacy.Checked
+    $currentSettings.enable_user_learning = if ($privacy.Checked) { $false } else { $learning.Checked }
+    Write-Settings $currentSettings
+    $script:settings = $currentSettings
     $statusLabel.Text = "设置已保存，重新切换一次输入法后生效"
     $statusLabel.ForeColor = $colors.Success
 })

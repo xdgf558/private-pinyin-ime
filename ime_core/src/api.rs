@@ -10,6 +10,7 @@ use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
 use crate::ranker::Ranker;
+#[cfg(feature = "reviewed-rime-frost")]
 use crate::reviewed_rime_frost;
 use crate::session::InputSession;
 use crate::settings::{ImeMode, ImeSettings};
@@ -154,6 +155,7 @@ impl ImeEngine {
         imported_lexicon::clear_imported_file(destination_path)
     }
 
+    #[cfg(feature = "reviewed-rime-frost")]
     pub fn import_reviewed_rime_frost_archive(
         &self,
         archive_path: impl AsRef<Path>,
@@ -166,6 +168,7 @@ impl ImeEngine {
         reviewed_rime_frost::import_reviewed_rime_frost_archive(archive_path, destination_path)
     }
 
+    #[cfg(feature = "reviewed-rime-frost")]
     pub fn clear_rime_frost_lexicon(&self) -> ImeResult<()> {
         let destination_path = self
             .settings

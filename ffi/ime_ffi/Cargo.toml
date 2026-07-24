@@ -12,7 +12,8 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 local-ai = ["dep:private_pinyin_local_ai_core"]
-desktop-ai = ["local-ai"]
+reviewed-rime-frost = ["ime_core/reviewed-rime-frost"]
+desktop-ai = ["local-ai", "reviewed-rime-frost"]
 ios-ai = ["local-ai"]
 
 [dependencies]
