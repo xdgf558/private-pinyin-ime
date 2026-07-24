@@ -2,6 +2,10 @@ import Carbon
 import Foundation
 
 enum PrivatePinyinInputSourceRegistration {
+    // Registration health includes disabled sources. Enabling remains an
+    // explicit user action in System Settings.
+    static let includeAllInstalledSources = true
+
     static let requiredSourceIdentifiers: Set<String> = [
         "com.privatepinyin.inputmethod.PrivatePinyin",
         "com.privatepinyin.inputmethod.PrivatePinyin.Mode",
@@ -15,7 +19,7 @@ enum PrivatePinyinInputSourceRegistration {
 
     static func ensureRegistered(bundleURL: URL, forceRefresh: Bool = false) -> Result {
         if !shouldRegister(
-            sourceIdentifiers: registeredSourceIdentifiers(),
+            sourceIdentifiers: installedSourceIdentifiers(),
             forceRefresh: forceRefresh
         ) {
             return .alreadyRegistered
@@ -25,7 +29,7 @@ enum PrivatePinyinInputSourceRegistration {
             return .failed
         }
 
-        return needsRegistration(sourceIdentifiers: registeredSourceIdentifiers())
+        return needsRegistration(sourceIdentifiers: installedSourceIdentifiers())
             ? .failed
             : .registered
     }
@@ -41,8 +45,11 @@ enum PrivatePinyinInputSourceRegistration {
         forceRefresh || needsRegistration(sourceIdentifiers: sourceIdentifiers)
     }
 
-    private static func registeredSourceIdentifiers() -> Set<String> {
-        guard let sourceList = TISCreateInputSourceList(nil, false)?.takeRetainedValue(),
+    private static func installedSourceIdentifiers() -> Set<String> {
+        guard let sourceList = TISCreateInputSourceList(
+            nil,
+            includeAllInstalledSources
+        )?.takeRetainedValue(),
               let sources = sourceList as? [TISInputSource]
         else {
             return []

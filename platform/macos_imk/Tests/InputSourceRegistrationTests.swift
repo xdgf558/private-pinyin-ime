@@ -7,6 +7,10 @@ enum InputSourceRegistrationTests {
         let modeIdentifier = "\(bundleIdentifier).Mode"
 
         require(
+            PrivatePinyinInputSourceRegistration.includeAllInstalledSources,
+            "registration checks include installed sources that are not enabled"
+        )
+        require(
             PrivatePinyinInputSourceRegistration.needsRegistration(
                 sourceIdentifiers: []
             ),
@@ -22,7 +26,7 @@ enum InputSourceRegistrationTests {
             !PrivatePinyinInputSourceRegistration.needsRegistration(
                 sourceIdentifiers: [bundleIdentifier, modeIdentifier]
             ),
-            "the complete registration set is already healthy"
+            "the complete installed registration set is healthy even when disabled"
         )
         require(
             !PrivatePinyinInputSourceRegistration.needsRegistration(

@@ -76,6 +76,10 @@ grep -q "/Library/Input Methods/PrivatePinyin.app" \
   platform/macos_imk/Sources/PrivatePinyinLaunchPolicy.swift
 grep -q "TISRegisterInputSource" \
   platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
+grep -q "includeAllInstalledSources = true" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
+grep -q "TISCreateInputSourceList" \
+  platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift
 if grep -q "TISEnableInputSource" \
   platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift; then
   echo "automatic input-source enabling is forbidden" >&2
