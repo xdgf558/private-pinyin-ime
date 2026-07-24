@@ -13,6 +13,7 @@ final class KeyboardViewController: UIInputViewController {
         label: "com.privatepinyin.ios.core-operations",
         qos: .userInteractive
     )
+    private static let idleCorePrewarmDelay: TimeInterval = 0.12
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
@@ -51,6 +52,7 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
+    private var candidateCommitInFlight = false
     private var candidatesExpanded = false
     private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
     private let typingFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
@@ -97,7 +99,9 @@ final class KeyboardViewController: UIInputViewController {
         updateCandidateBar()
         // Let the keyboard's first frame appear before parsing the bundled lexicon.
         // An immediate key press still starts the same load without waiting.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.idleCorePrewarmDelay
+        ) { [weak self] in
             self?.startCoreLoadIfNeeded()
         }
 #if DEBUG
@@ -112,6 +116,7 @@ final class KeyboardViewController: UIInputViewController {
 
         coreInteractionRevision &+= 1
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        candidateCommitInFlight = false
         currentPreedit = ""
         currentCandidates = []
         candidatesExpanded = false
@@ -1119,6 +1124,8 @@ final class KeyboardViewController: UIInputViewController {
             let candidateText = displayText(currentCandidates[index].text)
             button.setTitle(candidateText, for: .normal)
             button.accessibilityLabel = "候选词 \(candidateText)"
+            button.isEnabled = !candidateCommitInFlight
+            button.alpha = candidateCommitInFlight ? 0.45 : 1
             button.isHidden = false
         }
         if candidatesChanged {
@@ -1148,8 +1155,8 @@ final class KeyboardViewController: UIInputViewController {
             let candidateText = displayText(candidate.text)
             button.setTitle(candidateText, for: .normal)
             button.accessibilityLabel = "候选词 \(candidateText)，拼音 \(candidate.pinyin)"
-            button.isEnabled = true
-            button.alpha = 1
+            button.isEnabled = !candidateCommitInFlight
+            button.alpha = candidateCommitInFlight ? 0.45 : 1
         }
     }
 
@@ -1364,10 +1371,29 @@ private extension KeyboardViewController {
     }
 
     func commitCandidate(_ index: Int) {
-        provideSelectionFeedback()
-        performCoreOutput { core in
-            core.commitCandidate(index: index)
+        guard !candidateCommitInFlight,
+              currentCandidates.indices.contains(index) else {
+            return
         }
+        provideSelectionFeedback()
+        candidateCommitInFlight = true
+        updateCandidateBar()
+        performCoreOutput(
+            afterApply: { [weak self] _ in
+                self?.finishCandidateCommit()
+            },
+            operation: { core in
+                core.commitCandidate(index: index)
+            }
+        )
+    }
+
+    func finishCandidateCommit() {
+        guard candidateCommitInFlight else {
+            return
+        }
+        candidateCommitInFlight = false
+        updateCandidateBar()
     }
 
     func provideSelectionFeedback() {
@@ -1564,6 +1590,7 @@ private extension KeyboardViewController {
         coreLoadGeneration &+= 1
         coreInteractionRevision &+= 1
         coreLoadInProgress = false
+        candidateCommitInFlight = false
         pendingCoreOperations.removeAll(keepingCapacity: true)
         let observers = coreLoadObservers
         coreLoadObservers.removeAll(keepingCapacity: true)
@@ -1778,6 +1805,7 @@ private extension KeyboardViewController {
 
         coreInteractionRevision &+= 1
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        candidateCommitInFlight = false
         clearCompositionState()
         enqueueCoreOperation(
             operation: { core in core.reset() },

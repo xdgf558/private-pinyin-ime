@@ -116,6 +116,11 @@ grep -q "func enqueueCoreOperation(" platform/ios_keyboard/KeyboardExtension/Key
 grep -q "func scheduleCoreOperation(" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreOperationQueue.async" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreInteractionRevision" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "idleCorePrewarmDelay: TimeInterval = 0.12" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "candidateCommitInFlight = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "guard !candidateCommitInFlight," platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "button.isEnabled = !candidateCommitInFlight" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func finishCandidateCommit()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
