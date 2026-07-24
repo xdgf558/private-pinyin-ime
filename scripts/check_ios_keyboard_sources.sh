@@ -112,9 +112,15 @@ grep -q "private-pinyin-expanded-candidates" platform/ios_keyboard/KeyboardExten
 grep -q "private-pinyin-expanded-candidate-" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func toggleExpandedCandidates" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func startCoreLoadIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "func configuredCore() -> IosPinyinCoreBridge?" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "apply(configuredCore()?.commitCandidate(index: index))" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "guard let output = configuredCore()?.feed(keyCode: keyCode)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func enqueueCoreOperation(" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func scheduleCoreOperation(" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "coreOperationQueue.async" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "coreInteractionRevision" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "idleCorePrewarmDelay: TimeInterval = 0.12" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "candidateCommitInFlight = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "guard !candidateCommitInFlight," platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "button.isEnabled = !candidateCommitInFlight" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func finishCandidateCommit()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "var activationEvent: UIControl.Event" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchDown" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "return .touchUpInside" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -142,9 +148,13 @@ grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/K
 grep -q 'CandidateScrollView' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'touchesShouldCancel' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'UISelectionFeedbackGenerator' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'UIImpactFeedbackGenerator(style: .light)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'impactOccurred(intensity: 0.62)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'hitTestOutsets.left = 10' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq 'currentCandidates.first?.pinyin' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq '"2": "ABC"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -Fq 'joined(separator: " ")' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title = "回车"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'scriptSegmentedControl = UISegmentedControl(items: \["简体", "繁體"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'IosChineseTextConverter.convert(text, to: chineseScript)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -207,10 +217,32 @@ if "IosPinyinCoreBridge()" in view_did_load:
 core_loader = source.split("    func startCoreLoadIfNeeded()", 1)[1].split(
     "    func invalidateCore()", 1
 )[0]
-if "coreLoaderQueue.async" not in core_loader or "DispatchQueue.main.async" not in core_loader:
+if "coreOperationQueue.async" not in core_loader or "DispatchQueue.main.async" not in core_loader:
     raise SystemExit("The iOS lexicon must load off-main and publish its session on main.")
 if "pendingCoreOperations" not in core_loader:
     raise SystemExit("Early iOS key events must be replayed after background core loading.")
+
+core_operations = source.split("    func scheduleCoreOperation(", 1)[1].split(
+    "    func observeCoreLoad", 1
+)[0]
+if "coreOperationQueue.async" not in core_operations:
+    raise SystemExit("Every iOS Rust core operation must execute off the main thread.")
+if "core.setSecureInput" not in core_operations:
+    raise SystemExit("Every queued iOS core operation must refresh secure-input state.")
+if "pendingOperation.revision == self.coreInteractionRevision" not in core_operations:
+    raise SystemExit("Stale iOS core results must be rejected after context changes.")
+
+if "configuredCore()" in source:
+    raise SystemExit("The iOS keyboard must not expose a synchronous main-thread core accessor.")
+for forbidden in ("core?.feed(", "core?.reset(", "core?.commitCandidate("):
+    if forbidden in source:
+        raise SystemExit(f"iOS FFI operation escaped the serial worker queue: {forbidden}")
+
+preferences_setup = source.split("    private func setupPreferencesView()", 1)[1].split(
+    "    private func configurePreferenceSegmentedControl", 1
+)[0]
+if "guard !preferencesViewPrepared" not in preferences_setup:
+    raise SystemExit("Inline preferences must be built lazily after keyboard presentation.")
 
 rebuild_wrapper = source.split("    private func rebuildKeyboard()", 1)[1].split(
     "    private func rebuildKeyboardContents()", 1

@@ -146,15 +146,17 @@ Checklist:
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
 | Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
-| Keyboard transition | Switch repeatedly among the system Simplified Chinese keyboard, English, and 猫栈拼音, then type `mao` immediately after each return; the 猫栈 surface appears without a stale-frame flash, blank tray, or system-keyboard fallback, and every early key is applied exactly once | | Test both warm reuse and extension-process recreation in at least two host apps |
-| Immediate response | Rapid full-key and nine-key taps update preedit/candidates once per tap without waiting for an exaggerated release delay | | |
+| Keyboard transition | Switch at least ten times among the system Simplified Chinese keyboard, English, and 猫栈拼音, then type `mao` immediately after each return; the 猫栈 surface appears without a stale-frame flash lasting a visible beat, blank tray, or system-keyboard fallback, and every early key is applied exactly once | | Test both warm reuse and extension-process recreation in at least two host apps |
+| Immediate response | Rapid full-key and nine-key taps update preedit once per tap; QWERTY typing, empty-composition Backspace, and punctuation do not wait for candidate computation or an exaggerated release delay | | |
+| Candidate latency | On a warm engine, type `nihao`, `wojintian`, and `zyao` at normal speed; candidates keep pace with the composition and remain directly scrollable while background core work is active | | Capture a slow-motion screen recording if a visible delay remains |
 | Candidate groups | Each group exposes up to nine candidates; swipe the candidate strip to reach long-text candidates, while fixed next/previous controls remain visible and change groups once without being pushed offscreen | | |
 | Expanded candidates | Tap the candidate-bar expand control; all nine candidates in the current group appear in a stable 3-by-3 grid, each cell commits the matching candidate exactly once, and previous/next controls expose further groups before collapsing back to the keyboard | | Check QWERTY and nine-key layouts in portrait and landscape |
+| Candidate double-tap | Rapidly double-tap one compact candidate and one expanded-grid candidate; each gesture sequence commits exactly one candidate, and the candidate controls become available again after the queued commit finishes | | Repeat with a warm engine and immediately after keyboard activation |
 | Extended symbols | Open `123`, tap `#+=`, and verify `【】{}#%^*+=`, `_—\\|~《》$&·`, ellipsis, Chinese comma, `^^`, `?`, `!`, and apostrophe each insert once; tap `123` to return and confirm the basic symbol page is unchanged | | |
 | Nine-key switch | Tap `九宫` to show the 1/2-9 layout, tap `全键` to return to QWERTY, then switch among at least two host apps and recreate the keyboard process; the selected Chinese layout persists even with Full Access off, and the freshest timestamped shared/local preference wins when both stores exist | | |
 | Nine-key controls | The top row ends with `GHI`, Delete is the bottom-right key, and the top-left `，。？` key opens the selectable symbol page without inserting or losing composition unexpectedly | | |
 | Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
-| Nine-key preedit | Type `9664`; the composition strip shows the leading candidate's readable pinyin such as `yong`, never the internal `9664` lookup signature when candidates exist | | |
+| Nine-key preedit | Type `9664` and a digit sequence with no immediate candidate; the composition strip shows leading-candidate pinyin such as `yong` or readable key groups such as `WXYZ MNO MNO GHI`, never the internal digit signature | | |
 | Nine-key continuous input | A longer 2-9 digit sequence can produce a segmented phrase candidate without switching back to QWERTY | | |
 | Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
 | Return key | The bottom-right key is labeled `回车`; with no active composition it inserts a newline or lets the host field perform its normal Return action | | |
@@ -167,7 +169,8 @@ Checklist:
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |
 | Nine-key compact height | In landscape, the five-column nine-key grid fits without constraint warnings, clipping, or overlapping controls; Globe/layout, `中/英`, `候选`, Delete, and Return remain reachable | | |
 | Nine-key mode control | Tap `中/英` in nine-key mode; English QWERTY appears, and switching back to Chinese restores the saved nine-key layout and active controls | | |
-| Haptic fallback | With Full Access off, every key remains responsive whether iOS emits or suppresses the optional haptic feedback | | |
+| Haptic fallback | With Full Access off, ordinary typing produces light best-effort haptic feedback and commands/candidates use selection feedback; every key remains responsive if iOS or system settings suppress the haptic | | |
+| Host App policy | Confirm the keyboard works in Notes and Safari. If one host App such as Marriott never offers third-party keyboards, record it as the App's extension-point policy; the keyboard cannot override a host rejection | | Do not treat secure fields or phone-pad fields as extension activation failures |
 | Password fallback | Password fields force the system keyboard | | |
 | Phone fallback | Phone-number fields force the system keyboard | | |
 | No network | With Full Access off, there is no network API usage or network prompt | | |

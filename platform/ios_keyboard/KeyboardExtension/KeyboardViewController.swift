@@ -1,14 +1,25 @@
 import UIKit
 
+private struct PendingCoreOperation {
+    let generation: Int
+    let revision: Int
+    let secureInput: Bool
+    let operation: (IosPinyinCoreBridge) -> IosPinyinOutput?
+    let completion: (IosPinyinOutput?) -> Void
+}
+
 final class KeyboardViewController: UIInputViewController {
-    private static let coreLoaderQueue = DispatchQueue(
-        label: "com.privatepinyin.ios.core-loader",
-        qos: .userInitiated
+    private static let coreOperationQueue = DispatchQueue(
+        label: "com.privatepinyin.ios.core-operations",
+        qos: .userInteractive
     )
+    private static let idleCorePrewarmDelay: TimeInterval = 0.12
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
+    private var coreInteractionRevision = 0
     private var coreLoadInProgress = false
-    private var pendingCoreOperations: [(IosPinyinCoreBridge?) -> Void] = []
+    private var pendingCoreOperations: [PendingCoreOperation] = []
+    private var coreLoadObservers: [(Bool) -> Void] = []
     private let maximumPendingCoreOperations = 64
     private let rootStack = UIStackView()
     private let candidateBar = UIStackView()
@@ -41,8 +52,10 @@ final class KeyboardViewController: UIInputViewController {
     private var currentCandidates: [IosPinyinCandidate] = []
     private var candidatePage = 0
     private var candidatePageReachedEnd = false
+    private var candidateCommitInFlight = false
     private var candidatesExpanded = false
     private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
+    private let typingFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
     private var renderedCandidateSignature: [String] = []
     private var shifted = false
     private var symbolsVisible = false
@@ -64,16 +77,33 @@ final class KeyboardViewController: UIInputViewController {
     private var minimumHeightConstraint: NSLayoutConstraint?
     private var quickPunctuationPopup: NineKeyPunctuationPopupView?
     private var quickPunctuationGestureStart = CGPoint.zero
+    private var preferencesViewPrepared = false
+
+    deinit {
+        let coreToRelease = core
+        core = nil
+        if let coreToRelease {
+            Self.coreOperationQueue.async {
+                _ = coreToRelease
+            }
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
         keyFeedbackGenerator.prepare()
+        typingFeedbackGenerator.prepare()
         setupView()
         rebuildKeyboard()
         updateCandidateBar()
-        refreshPreferenceControls()
-        startCoreLoadIfNeeded()
+        // Let the keyboard's first frame appear before parsing the bundled lexicon.
+        // An immediate key press still starts the same load without waiting.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.idleCorePrewarmDelay
+        ) { [weak self] in
+            self?.startCoreLoadIfNeeded()
+        }
 #if DEBUG
         runKeyboardSmokeIfRequested()
 #endif
@@ -84,15 +114,24 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
 
-        pendingCoreOperations.removeAll()
-        if let output = core?.reset() {
-            englishMode = output.isEnglishMode
-        }
+        coreInteractionRevision &+= 1
+        pendingCoreOperations.removeAll(keepingCapacity: true)
+        candidateCommitInFlight = false
         currentPreedit = ""
         currentCandidates = []
         candidatesExpanded = false
         refreshKeyStates()
         updateCandidateBar()
+        enqueueCoreOperation(
+            operation: { core in core.reset() },
+            completion: { [weak self] output in
+                guard let self, let output else {
+                    return
+                }
+                self.englishMode = output.isEnglishMode
+                self.refreshKeyStates()
+            }
+        )
     }
 
     override func viewWillLayoutSubviews() {
@@ -112,7 +151,16 @@ final class KeyboardViewController: UIInputViewController {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         localAiSuspendedForMemoryPressure = true
-        core?.setSecureInput(true)
+        guard core != nil else {
+            return
+        }
+        enqueueCoreOperation(
+            operation: { core in
+                core.setSecureInput(true)
+                return nil
+            },
+            completion: { _ in }
+        )
     }
 
     private func setupView() {
@@ -151,7 +199,6 @@ final class KeyboardViewController: UIInputViewController {
         expandedCandidateView.isHidden = true
         rootStack.addArrangedSubview(expandedCandidateView)
 
-        setupPreferencesView()
         preferencesView.isHidden = true
         rootStack.addArrangedSubview(preferencesView)
 
@@ -440,6 +487,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func setupPreferencesView() {
+        guard !preferencesViewPrepared else {
+            return
+        }
+        preferencesViewPrepared = true
         preferencesView.backgroundColor = StationKeyboardTheme.functionKey
         preferencesView.layer.cornerRadius = 8
         preferencesView.layer.cornerCurve = .continuous
@@ -1073,6 +1124,8 @@ final class KeyboardViewController: UIInputViewController {
             let candidateText = displayText(currentCandidates[index].text)
             button.setTitle(candidateText, for: .normal)
             button.accessibilityLabel = "候选词 \(candidateText)"
+            button.isEnabled = !candidateCommitInFlight
+            button.alpha = candidateCommitInFlight ? 0.45 : 1
             button.isHidden = false
         }
         if candidatesChanged {
@@ -1102,8 +1155,8 @@ final class KeyboardViewController: UIInputViewController {
             let candidateText = displayText(candidate.text)
             button.setTitle(candidateText, for: .normal)
             button.accessibilityLabel = "候选词 \(candidateText)，拼音 \(candidate.pinyin)"
-            button.isEnabled = true
-            button.alpha = 1
+            button.isEnabled = !candidateCommitInFlight
+            button.alpha = candidateCommitInFlight ? 0.45 : 1
         }
     }
 
@@ -1117,7 +1170,14 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func handle(_ key: KeySpec) {
-        provideSelectionFeedback()
+        switch key.kind {
+        case .character, .text, .nineKeyDigit, .space, .nineKeySpace, .enter, .backspace:
+            provideTypingFeedback()
+        case .nineKeyPunctuation, .shift, .globe, .symbols, .extendedSymbols, .letters,
+             .nineKeyNumbers, .nineKeyLetters, .nineKeyLayout, .qwertyLayout,
+             .candidateNextPage, .modeToggle, .spacer:
+            provideSelectionFeedback()
+        }
         switch key.kind {
         case .character(let value):
             feedCharacter(value)
@@ -1241,8 +1301,9 @@ private extension KeyboardViewController {
         }
 
         if wasShifted && !englishMode {
-            endActiveInputIfNeeded()
-            insertDocumentText(value.uppercased())
+            endActiveInputIfNeeded { [weak self] in
+                self?.insertDocumentText(value.uppercased())
+            }
             return
         }
 
@@ -1264,8 +1325,9 @@ private extension KeyboardViewController {
             return
         }
 
-        endActiveInputIfNeeded()
-        insertDocumentText(value)
+        endActiveInputIfNeeded { [weak self] in
+            self?.insertDocumentText(value)
+        }
     }
 
     func insertQuickPunctuation(_ punctuation: String) {
@@ -1278,36 +1340,70 @@ private extension KeyboardViewController {
             // The shared core maps comma and period, so those can preserve an
             // active composition. Exclamation and question marks have no core
             // key code and therefore commit the composition before insertion.
-            if hasActiveInput, let core = configuredCore() {
-                if currentCandidates.isEmpty {
-                    apply(core.feed(keyCode: IosKeyCodeValue.enter))
-                } else {
-                    apply(core.commitCandidate(index: 0))
+            endActiveInputIfNeeded { [weak self] in
+                guard let self else {
+                    return
                 }
+                self.insertDocumentText(punctuation)
+                self.currentCandidates = []
+                self.candidatesExpanded = false
+                self.updateCandidateBar()
             }
-            insertDocumentText(punctuation)
-            currentCandidates = []
-            candidatesExpanded = false
-            updateCandidateBar()
         }
     }
 
     func handleBackspace() {
-        if hasActiveInput, let core = configuredCore() {
-            apply(core.feed(keyCode: IosKeyCodeValue.backspace))
-        } else {
+        guard hasActiveInput else {
             deleteDocumentBackward()
+            return
         }
+        enqueueCoreOperation(
+            operation: { core in
+                core.feed(keyCode: IosKeyCodeValue.backspace)
+            },
+            completion: { [weak self] output in
+                guard let self else {
+                    return
+                }
+                self.apply(output)
+            }
+        )
     }
 
     func commitCandidate(_ index: Int) {
+        guard !candidateCommitInFlight,
+              currentCandidates.indices.contains(index) else {
+            return
+        }
         provideSelectionFeedback()
-        apply(configuredCore()?.commitCandidate(index: index))
+        candidateCommitInFlight = true
+        updateCandidateBar()
+        performCoreOutput(
+            afterApply: { [weak self] _ in
+                self?.finishCandidateCommit()
+            },
+            operation: { core in
+                core.commitCandidate(index: index)
+            }
+        )
+    }
+
+    func finishCandidateCommit() {
+        guard candidateCommitInFlight else {
+            return
+        }
+        candidateCommitInFlight = false
+        updateCandidateBar()
     }
 
     func provideSelectionFeedback() {
         keyFeedbackGenerator.selectionChanged()
         keyFeedbackGenerator.prepare()
+    }
+
+    func provideTypingFeedback() {
+        typingFeedbackGenerator.impactOccurred(intensity: 0.62)
+        typingFeedbackGenerator.prepare()
     }
 
     func applyOrInsert(_ output: IosPinyinOutput?, fallback: String) {
@@ -1318,10 +1414,17 @@ private extension KeyboardViewController {
         }
     }
 
-    func endActiveInputIfNeeded() {
-        if hasActiveInput, let core = configuredCore() {
-            apply(core.feed(keyCode: IosKeyCodeValue.enter, text: "\n"))
+    func endActiveInputIfNeeded(after completion: @escaping () -> Void) {
+        guard hasActiveInput else {
+            completion()
+            return
         }
+        performCoreOutput(
+            afterApply: { _ in completion() },
+            operation: { core in
+                core.feed(keyCode: IosKeyCodeValue.enter, text: "\n")
+            }
+        )
     }
 
     func feedNineKeyDigit(_ value: String) {
@@ -1339,56 +1442,99 @@ private extension KeyboardViewController {
         }
         let previousSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         let keyCode = delta < 0 ? IosKeyCodeValue.pageUp : IosKeyCodeValue.pageDown
-        guard let output = configuredCore()?.feed(keyCode: keyCode) else {
-            updateCandidateBar()
-            return
-        }
-        let nextSignature = output.candidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
-        if nextSignature != previousSignature {
-            candidatePage = max(0, candidatePage + delta)
-            candidatePageReachedEnd = output.candidates.count < sessionCandidatePageSize
-        } else if delta > 0 {
-            candidatePageReachedEnd = true
-        }
-        apply(output)
+        performCoreOutput(
+            afterApply: { [weak self] output in
+                guard let self, let output else {
+                    return
+                }
+                let nextSignature = output.candidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
+                if nextSignature != previousSignature {
+                    self.candidatePage = max(0, self.candidatePage + delta)
+                    self.candidatePageReachedEnd =
+                        output.candidates.count < self.sessionCandidatePageSize
+                } else if delta > 0 {
+                    self.candidatePageReachedEnd = true
+                }
+                self.updateCandidateBar()
+            },
+            operation: { core in
+                core.feed(keyCode: keyCode)
+            }
+        )
     }
 
     func performCoreOutput(
         fallback: String? = nil,
+        afterApply: ((IosPinyinOutput?) -> Void)? = nil,
         operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?
     ) {
-        withCore { [weak self] core in
-            guard let self else {
-                return
+        enqueueCoreOperation(
+            operation: operation,
+            completion: { [weak self] output in
+                guard let self else {
+                    return
+                }
+                if let fallback {
+                    self.applyOrInsert(output, fallback: fallback)
+                } else {
+                    self.apply(output)
+                }
+                afterApply?(output)
             }
-            let output = core.flatMap(operation)
-            if let fallback {
-                self.applyOrInsert(output, fallback: fallback)
-            } else {
-                self.apply(output)
-            }
-        }
+        )
     }
 
-    func configuredCore() -> IosPinyinCoreBridge? {
-        guard let core else {
-            return nil
+    func enqueueCoreOperation(
+        operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?,
+        completion: @escaping (IosPinyinOutput?) -> Void
+    ) {
+        if core == nil {
+            startCoreLoadIfNeeded()
         }
-        configureSecureInput(on: core)
-        return core
-    }
+        let pendingOperation = PendingCoreOperation(
+            generation: coreLoadGeneration,
+            revision: coreInteractionRevision,
+            secureInput: localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext,
+            operation: operation,
+            completion: completion
+        )
 
-    func withCore(_ operation: @escaping (IosPinyinCoreBridge?) -> Void) {
-        if let core = configuredCore() {
-            operation(core)
+        if let core {
+            scheduleCoreOperation(pendingOperation, on: core)
             return
         }
 
         guard pendingCoreOperations.count < maximumPendingCoreOperations else {
-            operation(nil)
+            completion(nil)
             return
         }
-        pendingCoreOperations.append(operation)
+        pendingCoreOperations.append(pendingOperation)
+    }
+
+    func scheduleCoreOperation(
+        _ pendingOperation: PendingCoreOperation,
+        on core: IosPinyinCoreBridge
+    ) {
+        Self.coreOperationQueue.async {
+            core.setSecureInput(pendingOperation.secureInput)
+            let output = pendingOperation.operation(core)
+            DispatchQueue.main.async { [weak self] in
+                guard let self,
+                      pendingOperation.generation == self.coreLoadGeneration,
+                      pendingOperation.revision == self.coreInteractionRevision else {
+                    return
+                }
+                pendingOperation.completion(output)
+            }
+        }
+    }
+
+    func observeCoreLoad(_ observer: @escaping (Bool) -> Void) {
+        if core != nil {
+            observer(true)
+            return
+        }
+        coreLoadObservers.append(observer)
         startCoreLoadIfNeeded()
     }
 
@@ -1401,21 +1547,40 @@ private extension KeyboardViewController {
         coreUnavailable = false
         coreLoadGeneration &+= 1
         let generation = coreLoadGeneration
-        Self.coreLoaderQueue.async {
+        Self.coreOperationQueue.async {
             let loadedCore = IosPinyinCoreBridge()
             DispatchQueue.main.async { [weak self] in
-                guard let self, generation == self.coreLoadGeneration else {
+                guard let self else {
+                    if let loadedCore {
+                        Self.coreOperationQueue.async {
+                            _ = loadedCore
+                        }
+                    }
+                    return
+                }
+                guard generation == self.coreLoadGeneration else {
+                    if let loadedCore {
+                        Self.coreOperationQueue.async {
+                            _ = loadedCore
+                        }
+                    }
                     return
                 }
                 self.coreLoadInProgress = false
                 self.core = loadedCore
                 self.coreUnavailable = loadedCore == nil
-                if let loadedCore {
-                    self.configureSecureInput(on: loadedCore)
-                }
                 let operations = self.pendingCoreOperations
                 self.pendingCoreOperations.removeAll(keepingCapacity: true)
-                operations.forEach { $0(loadedCore) }
+                let observers = self.coreLoadObservers
+                self.coreLoadObservers.removeAll(keepingCapacity: true)
+                if let loadedCore {
+                    operations.forEach { operation in
+                        self.scheduleCoreOperation(operation, on: loadedCore)
+                    }
+                } else {
+                    operations.forEach { $0.completion(nil) }
+                }
+                observers.forEach { $0(loadedCore != nil) }
                 self.updateCandidateBar()
             }
         }
@@ -1423,16 +1588,21 @@ private extension KeyboardViewController {
 
     func invalidateCore() {
         coreLoadGeneration &+= 1
+        coreInteractionRevision &+= 1
         coreLoadInProgress = false
+        candidateCommitInFlight = false
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        let observers = coreLoadObservers
+        coreLoadObservers.removeAll(keepingCapacity: true)
+        observers.forEach { $0(false) }
+        let coreToRelease = core
         core = nil
+        if let coreToRelease {
+            Self.coreOperationQueue.async {
+                _ = coreToRelease
+            }
+        }
         coreUnavailable = false
-    }
-
-    func configureSecureInput(on core: IosPinyinCoreBridge) {
-        core.setSecureInput(
-            localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext
-        )
     }
 
     var shouldDisableAiForCurrentInputContext: Bool {
@@ -1598,7 +1768,17 @@ private extension KeyboardViewController {
             .trimmingCharacters(in: .whitespacesAndNewlines),
             !pinyin.isEmpty
         else {
-            return currentPreedit
+            let digitLabels = [
+                "2": "ABC",
+                "3": "DEF",
+                "4": "GHI",
+                "5": "JKL",
+                "6": "MNO",
+                "7": "PQRS",
+                "8": "TUV",
+                "9": "WXYZ",
+            ]
+            return currentPreedit.compactMap { digitLabels[String($0)] }.joined(separator: " ")
         }
         return pinyin
     }
@@ -1623,9 +1803,20 @@ private extension KeyboardViewController {
             return
         }
 
-        if hasActiveInput {
-            apply(core?.reset())
-        }
+        coreInteractionRevision &+= 1
+        pendingCoreOperations.removeAll(keepingCapacity: true)
+        candidateCommitInFlight = false
+        clearCompositionState()
+        enqueueCoreOperation(
+            operation: { core in core.reset() },
+            completion: { [weak self] output in
+                guard let self, let output else {
+                    return
+                }
+                self.englishMode = output.isEnglishMode
+                self.refreshKeyStates()
+            }
+        )
         preferredLayout = layout
         _ = IosSettingsStore.setKeyboardLayout(layout)
         rebuildKeyboard()
@@ -1641,6 +1832,9 @@ private extension KeyboardViewController {
         candidatesExpanded = false
         keyRowsStack.isHidden = preferencesVisible
         expandedCandidateView.isHidden = true
+        if preferencesVisible {
+            setupPreferencesView()
+        }
         preferencesView.isHidden = !preferencesVisible
         refreshMinimumHeight()
         if preferencesVisible {
@@ -1709,11 +1903,11 @@ private extension KeyboardViewController {
             let removed = try IosSettingsStore.clearLocalLexiconArtifacts()
             clearCompositionState()
             preferencesStatusLabel.text = "正在重新载入输入引擎…"
-            withCore { [weak self] core in
+            observeCoreLoad { [weak self] loaded in
                 guard let self else {
                     return
                 }
-                self.preferencesStatusLabel.text = core == nil
+                self.preferencesStatusLabel.text = !loaded
                     ? "输入引擎重新载入失败"
                     : (removed == 0 ? "没有本机学习记录" : "本机学习记录已清除")
             }
@@ -1727,8 +1921,8 @@ private extension KeyboardViewController {
         invalidateCore()
         clearCompositionState()
         preferencesStatusLabel.text = "正在重新载入输入引擎…"
-        withCore { [weak self] core in
-            self?.preferencesStatusLabel.text = core == nil ? "输入引擎重新载入失败" : status
+        observeCoreLoad { [weak self] loaded in
+            self?.preferencesStatusLabel.text = !loaded ? "输入引擎重新载入失败" : status
         }
     }
 
@@ -1750,15 +1944,21 @@ private extension KeyboardViewController {
                 guard let self else {
                     return
                 }
-                self.feedCharacter("w")
-                self.feedCharacter("a")
-                self.candidatesExpanded = !self.currentCandidates.isEmpty
-                self.updateCandidateBar()
-                NSLog(
-                    "PRIVATE_PINYIN_EXPANDED_CANDIDATES_SMOKE visible=%@ count=%ld",
-                    self.candidatesExpanded ? "true" : "false",
-                    self.currentCandidates.count
-                )
+                self.runCoreSmokeSequence([
+                    (IosKeyCodeValue.character, "w"),
+                    (IosKeyCodeValue.character, "a"),
+                ]) { [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    self.candidatesExpanded = !self.currentCandidates.isEmpty
+                    self.updateCandidateBar()
+                    NSLog(
+                        "PRIVATE_PINYIN_EXPANDED_CANDIDATES_SMOKE visible=%@ count=%ld",
+                        self.candidatesExpanded ? "true" : "false",
+                        self.currentCandidates.count
+                    )
+                }
             }
         }
 
@@ -1772,19 +1972,51 @@ private extension KeyboardViewController {
             guard let self else {
                 return
             }
-            for digit in ["6", "4", "4", "2", "6"] {
-                self.feedNineKeyDigit(digit)
+            self.runCoreSmokeSequence(
+                ["6", "4", "4", "2", "6"].map { (IosKeyCodeValue.nineKeyDigit, $0) }
+            ) { [weak self] in
+                guard let self,
+                      let candidateIndex = self.currentCandidates.firstIndex(where: {
+                          $0.text == "你好"
+                      }) else {
+                    NSLog("PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=false")
+                    return
+                }
+                self.performCoreOutput(
+                    afterApply: { [weak self] _ in
+                        let committed =
+                            self?.textDocumentProxy.documentContextBeforeInput?.hasSuffix("你好")
+                            == true
+                        NSLog(
+                            "PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=true committed=\(committed)"
+                        )
+                    },
+                    operation: { core in
+                        core.commitCandidate(index: candidateIndex)
+                    }
+                )
             }
-
-            guard let candidateIndex = self.currentCandidates.firstIndex(where: { $0.text == "你好" }) else {
-                NSLog("PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=false")
-                return
-            }
-
-            self.commitCandidate(candidateIndex)
-            let committed = self.textDocumentProxy.documentContextBeforeInput?.hasSuffix("你好") == true
-            NSLog("PRIVATE_PINYIN_KEYBOARD_SMOKE candidate_found=true committed=\(committed)")
         }
+    }
+
+    func runCoreSmokeSequence(
+        _ inputs: [(Int32, String)],
+        index: Int = 0,
+        completion: @escaping () -> Void
+    ) {
+        guard index < inputs.count else {
+            completion()
+            return
+        }
+        let input = inputs[index]
+        performCoreOutput(
+            afterApply: { [weak self] _ in
+                self?.runCoreSmokeSequence(inputs, index: index + 1, completion: completion)
+            },
+            operation: { core in
+                core.feed(keyCode: input.0, text: input.1)
+            }
+        )
     }
 #endif
 }
