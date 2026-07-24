@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Fixed macOS input-source repair treating a registered but disabled source as
+  missing. Registration health now includes every installed TIS source while
+  leaving enablement entirely under the user's control.
+- Fixed intermittent macOS input loss caused by development and package-staging app copies registering the production bundle identifier and starting competing InputMethodKit servers. Only bundles installed at the exact system or per-user Input Methods path may now start the IMK server; launching any other copy refreshes TIS registration from the exact installed bundle path, restores the installed server, and exits without enabling or duplicating input-source entries.
 - Separated the AI-09 Helper authentication token from the Helper-owned `llama-server` credential. Every server launch now uses an independent random key delivered through a private key file rather than process arguments, model verification observes cancellation and the absolute request deadline between hash chunks, and packaging verifies the pinned runtime's required command-line contract.
 - Discard Writer results if strict privacy, Writer consent, or model state changes while inference is running, and apply one absolute Windows read deadline across the entire Helper response frame.
 - Removed duplicate AI-12 Cargo executions from the source gate, made the release JSON explicitly declarative instead of presenting hand-authored status strings as measurements, and expanded AI-off equivalence coverage across backspace, paging, and consecutive commits.
