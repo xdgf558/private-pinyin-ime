@@ -111,6 +111,13 @@ grep -q "multiple macOS client controllers share one parsed engine" platform/mac
 grep -q "PrivatePinyinPreferencesWindowController" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "StationToggle" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "StationButton" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "StationNavigationButton" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "PreferencesPage" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "pageViews(for page: PreferencesPage)" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "makeNavigationGrid" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "showOverviewPage" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "词库管理" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q "关于与更新" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "NSTrackingArea" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "window.appearance = NSAppearance(named: .darkAqua)" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q "\.resizable" platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift

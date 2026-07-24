@@ -1037,6 +1037,22 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 
 - Release scope: macOS clients now share one immutable engine snapshot while retaining independent session state. Installed multi-client resident-memory and upgrade smokes remain manual release gates; the AI-09 Helper remains dormant and does not alter normal input behavior.
 
+### macOS Tiered Preferences Navigation Validation
+
+- Summary: The Station Board preferences now opens on a compact first-level overview with privacy, prediction, and learning controls plus navigation cards for lexicon management, local Writer, and about/updates. Each feature opens on a dedicated second-level page with one consistent return-to-overview action; existing settings, import, Writer, update, reload, and proportional-resize behavior remains on its original code path.
+
+- Command: `bash scripts/check_macos_imk_sources.sh`
+- Result: passed
+- Notes: The source gate now pins the tiered page enum, navigation cards, overview return action, and the three user-visible feature destinations.
+
+- Command: `bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: The complete Swift InputMethodKit host compiled successfully and produced `dist/macos_imk/PrivatePinyin.app` with the new preferences navigation.
+
+- Command: local `--show-preferences` overview and second-level visual smoke
+- Result: passed
+- Notes: The compact overview, lexicon, Writer, and about/update pages all render without clipping or overlap. Every navigation card opens its intended page, the shared `总览` action returns correctly, and the window preserves proportional sizing while adapting its height to the active page.
+
 ### Desktop 0.1.26 macOS Public Package Validation
 
 - Command: signed `PRIVATE_PINYIN_VERSION=0.1.26 bash scripts/package_macos_pkg.sh`

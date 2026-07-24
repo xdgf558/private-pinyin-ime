@@ -236,8 +236,164 @@ private final class StationButton: NSButton {
     }
 }
 
+private final class StationNavigationButton: NSButton {
+    private let normalBackground = StationTheme.cardBackground
+    private let hoverBackground = StationTheme.ghostHover
+    private let pressedBackground = StationTheme.ghostPressed
+    private let detailLabel: NSTextField
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false
+    private var isPressing = false
+
+    init(
+        symbolName: String,
+        title: String,
+        detail: String,
+        target: AnyObject,
+        action: Selector
+    ) {
+        detailLabel = NSTextField(labelWithString: detail)
+        super.init(frame: .zero)
+
+        self.target = target
+        self.action = action
+        self.title = ""
+        isBordered = false
+        setButtonType(.momentaryChange)
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        translatesAutoresizingMaskIntoConstraints = false
+        heightAnchor.constraint(equalToConstant: 112).isActive = true
+
+        let icon = NSImageView()
+        if #available(macOS 11.0, *) {
+            icon.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: title)
+        }
+        icon.contentTintColor = StationTheme.lampYellow
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            icon.heightAnchor.constraint(equalToConstant: 20),
+        ])
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.textColor = StationTheme.textPrimary
+        titleLabel.backgroundColor = .clear
+
+        let heading = NSStackView(views: [icon, titleLabel])
+        heading.orientation = .horizontal
+        heading.alignment = .centerY
+        heading.spacing = 9
+
+        detailLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        detailLabel.textColor = StationTheme.textSecondary
+        detailLabel.backgroundColor = .clear
+        detailLabel.lineBreakMode = .byTruncatingTail
+        detailLabel.cell?.usesSingleLineMode = true
+        detailLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let chevron = NSImageView()
+        if #available(macOS 11.0, *) {
+            chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: "进入")
+        }
+        chevron.contentTintColor = StationTheme.textFaint
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let detailRow = NSStackView(views: [detailLabel, spacer, chevron])
+        detailRow.orientation = .horizontal
+        detailRow.alignment = .centerY
+        detailRow.spacing = 8
+
+        let content = NSStackView(views: [heading, detailRow])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 12
+        content.translatesAutoresizingMaskIntoConstraints = false
+        detailRow.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            content.topAnchor.constraint(equalTo: topAnchor, constant: 18),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18),
+        ])
+
+        setAccessibilityLabel(title)
+        setAccessibilityHelp(detail)
+        updateAppearance()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    func setDetail(_ value: String) {
+        detailLabel.stringValue = value
+        detailLabel.toolTip = value
+        setAccessibilityHelp(value)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+        let area = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+        updateAppearance()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+        isPressing = false
+        updateAppearance()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        isPressing = true
+        updateAppearance()
+        super.mouseDown(with: event)
+        isPressing = false
+        updateAppearance()
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let localPoint = convert(point, from: superview)
+        guard !isHidden, alphaValue > 0, bounds.contains(localPoint) else {
+            return nil
+        }
+        return self
+    }
+
+    private func updateAppearance() {
+        let color = isPressing ? pressedBackground : (isHovering ? hoverBackground : normalBackground)
+        layer?.backgroundColor = color.cgColor
+    }
+}
+
 final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWindowDelegate {
     static let shared = PrivatePinyinPreferencesWindowController()
+
+    private enum PreferencesPage: Equatable {
+        case overview
+        case lexicon
+        case writer
+        case updates
+    }
 
     private static let boardWidth: CGFloat = 780
     private static let initialBoardHeight: CGFloat = 748
@@ -250,6 +406,8 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let learningToggle = StationToggle()
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
+    // These views survive page rebuilds and move between page stacks. Page
+    // factories must not attach persistent self-constraints to them.
     private let settingsPathLabel = NSTextField(labelWithString: "")
     private let importedLexiconStatusLabel = NSTextField(labelWithString: "当前导入词库：尚未导入")
     private let writerModelStatusLabel = NSTextField(labelWithString: "Writer 模型未安装")
@@ -266,6 +424,11 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     )
     private var boardDesignSize = NSSize(width: boardWidth, height: initialBoardHeight)
     private var checkUpdateButton: StationButton?
+    private var currentPage = PreferencesPage.overview
+    private var pageRoot: NSStackView?
+    private var lexiconNavigationButton: StationNavigationButton?
+    private var writerNavigationButton: StationNavigationButton?
+    private var updatesNavigationButton: StationNavigationButton?
 
     private init() {
         let window = NSWindow(
@@ -309,6 +472,9 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     }
 
     func showPreferences() {
+        if currentPage != .overview {
+            renderPage(.overview)
+        }
         reloadFromSettings()
         PrivatePinyinUpdateController.shared.scheduleAutomaticCheck()
         NSApp.activate(ignoringOtherApps: true)
@@ -352,66 +518,143 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         learningToggle.setAccessibilityLabel("用户学习")
         automaticUpdateToggle.setAccessibilityLabel("自动检查更新")
 
-        let topRail = makeTopRail()
-        let brandCard = makeBrandCard()
-        let privacyCard = makePrivacyCard()
-        let settingsGrid = makeSettingsGrid()
-        let pathSection = makePathSection()
-        let importedLexiconSection = makeImportedLexiconSection()
-        let writerSection = makeWriterSection()
-        let versionSection = makeVersionSection()
-        let footer = makeFooterRow()
+        configurePersistentPageViews()
+        renderPage(.overview, preferredScale: Self.defaultBoardScale)
+    }
 
+    private func configurePersistentPageViews() {
+        importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        importedLexiconStatusLabel.textColor = StationTheme.lampYellow
+        importedLexiconStatusLabel.maximumNumberOfLines = 1
+        importedLexiconStatusLabel.lineBreakMode = .byTruncatingTail
+        importedLexiconStatusLabel.cell?.usesSingleLineMode = true
+        importedLexiconStatusLabel.cell?.wraps = false
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .required,
+            for: .vertical
+        )
+        importedLexiconStatusLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        importedLexiconStatusLabel.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: 18
+        ).isActive = true
+    }
+
+    private func renderPage(_ page: PreferencesPage, preferredScale: CGFloat? = nil) {
         let topInset: CGFloat = 18
         let sideInset: CGFloat = 28
         let bottomInset: CGFloat = 22
+        let scale = preferredScale ?? currentWindowScale()
 
-        let root = NSStackView(views: [
-            topRail,
-            hairline(),
-            brandCard,
-            privacyCard,
-            settingsGrid,
-            pathSection,
-            importedLexiconSection,
-            writerSection,
-            versionSection,
-            footer,
-        ])
+        pageRoot?.removeFromSuperview()
+        pageRoot = nil
+        writerDownloadButton = nil
+        writerOpenButton = nil
+        checkUpdateButton = nil
+        lexiconNavigationButton = nil
+        writerNavigationButton = nil
+        updatesNavigationButton = nil
+        currentPage = page
+
+        let arrangedViews = pageViews(for: page)
+
+        let root = NSStackView(views: arrangedViews)
         root.orientation = .vertical
         root.alignment = .leading
         root.spacing = 14
         root.translatesAutoresizingMaskIntoConstraints = false
         boardView.addSubview(root)
+        pageRoot = root
 
-        NSLayoutConstraint.activate([
+        var constraints = [
             root.leadingAnchor.constraint(equalTo: boardView.leadingAnchor, constant: sideInset),
             root.trailingAnchor.constraint(equalTo: boardView.trailingAnchor, constant: -sideInset),
             root.topAnchor.constraint(equalTo: boardView.topAnchor, constant: topInset),
             root.bottomAnchor.constraint(lessThanOrEqualTo: boardView.bottomAnchor, constant: -bottomInset),
-            topRail.widthAnchor.constraint(equalTo: root.widthAnchor),
-            brandCard.widthAnchor.constraint(equalTo: root.widthAnchor),
-            privacyCard.widthAnchor.constraint(equalTo: root.widthAnchor),
-            settingsGrid.widthAnchor.constraint(equalTo: root.widthAnchor),
-            pathSection.widthAnchor.constraint(equalTo: root.widthAnchor),
-            importedLexiconSection.widthAnchor.constraint(equalTo: root.widthAnchor),
-            writerSection.widthAnchor.constraint(equalTo: root.widthAnchor),
-            versionSection.widthAnchor.constraint(equalTo: root.widthAnchor),
-            footer.widthAnchor.constraint(equalTo: root.widthAnchor),
-        ])
+        ]
+        constraints.append(contentsOf: arrangedViews.map {
+            $0.widthAnchor.constraint(equalTo: root.widthAnchor)
+        })
+        NSLayoutConstraint.activate(constraints)
 
         boardView.layoutSubtreeIfNeeded()
         let fitted = topInset + root.fittingSize.height + bottomInset
-        boardDesignSize = NSSize(width: Self.boardWidth, height: ceil(fitted))
+        boardDesignSize = NSSize(
+            width: Self.boardWidth,
+            height: max(520, ceil(fitted))
+        )
         boardView.frame = NSRect(origin: .zero, size: boardDesignSize)
 
         window?.contentAspectRatio = boardDesignSize
         window?.contentMinSize = scaledBoardSize(Self.minimumBoardScale)
         window?.contentMaxSize = scaledBoardSize(Self.maximumBoardScale)
         window?.preservesContentDuringLiveResize = true
-        window?.setContentSize(scaledBoardSize(Self.defaultBoardScale))
-        contentView.layoutSubtreeIfNeeded()
+        window?.setContentSize(scaledBoardSize(scale))
+        window?.contentView?.layoutSubtreeIfNeeded()
         updateBoardScale()
+        refreshOverviewNavigation()
+    }
+
+    private func pageViews(for page: PreferencesPage) -> [NSView] {
+        let topRail = makeTopRail()
+        switch page {
+        case .overview:
+            return [
+                topRail,
+                hairline(),
+                makeBrandCard(),
+                makePrivacyCard(),
+                makeSettingsGrid(),
+                makeNavigationGrid(),
+                makeQuietFooter(),
+            ]
+        case .lexicon:
+            return [
+                topRail,
+                hairline(),
+                makeSubpageHeader(
+                    tag: "LEXICON",
+                    title: "词库管理",
+                    detail: "管理本机导入的 Rime 词典；升级不会覆盖导入层。"
+                ),
+                makeImportedLexiconSection(),
+                makeQuietFooter(),
+            ]
+        case .writer:
+            return [
+                topRail,
+                hairline(),
+                makeSubpageHeader(
+                    tag: "WRITER",
+                    title: "本地 Writer",
+                    detail: "按需管理本机生成式模型与 Writer 工具。"
+                ),
+                makeWriterSection(),
+                makeQuietFooter(),
+            ]
+        case .updates:
+            return [
+                topRail,
+                hairline(),
+                makeSubpageHeader(
+                    tag: "ABOUT",
+                    title: "关于与更新",
+                    detail: "查看当前版本、更新内容和高级设置文件。"
+                ),
+                makePathSection(),
+                makeVersionSection(),
+                makeFooterRow(),
+            ]
+        }
+    }
+
+    private func currentWindowScale() -> CGFloat {
+        guard let width = window?.contentView?.bounds.width, width > 0 else {
+            return Self.defaultBoardScale
+        }
+        return min(max(width / Self.boardWidth, Self.minimumBoardScale), Self.maximumBoardScale)
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -587,6 +830,103 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         return row
     }
 
+    private func makeNavigationGrid() -> NSView {
+        let lexiconButton = StationNavigationButton(
+            symbolName: "books.vertical",
+            title: "词库管理",
+            detail: "查看或导入本地 Rime 词典",
+            target: self,
+            action: #selector(showLexiconPage(_:))
+        )
+        lexiconNavigationButton = lexiconButton
+
+        let writerButton = StationNavigationButton(
+            symbolName: "wand.and.stars",
+            title: "本地 Writer",
+            detail: "管理模型与本地 AI 工具",
+            target: self,
+            action: #selector(showWriterPage(_:))
+        )
+        writerNavigationButton = writerButton
+
+        let updatesButton = StationNavigationButton(
+            symbolName: "arrow.triangle.2.circlepath",
+            title: "关于与更新",
+            detail: bundleVersionText,
+            target: self,
+            action: #selector(showUpdatesPage(_:))
+        )
+        updatesNavigationButton = updatesButton
+
+        let row = NSStackView(views: [lexiconButton, writerButton, updatesButton])
+        row.orientation = .horizontal
+        row.alignment = .top
+        row.distribution = .fillEqually
+        row.spacing = 14
+        row.translatesAutoresizingMaskIntoConstraints = false
+        lexiconButton.heightAnchor.constraint(equalTo: writerButton.heightAnchor).isActive = true
+        writerButton.heightAnchor.constraint(equalTo: updatesButton.heightAnchor).isActive = true
+        return row
+    }
+
+    private func makeSubpageHeader(tag: String, title: String, detail: String) -> NSView {
+        let backButton = StationButton(
+            title: "总览",
+            target: self,
+            action: #selector(showOverviewPage(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        if #available(macOS 11.0, *) {
+            backButton.image = NSImage(
+                systemSymbolName: "chevron.left",
+                accessibilityDescription: "返回总览"
+            )
+            backButton.imagePosition = .imageLeading
+            backButton.contentTintColor = StationTheme.textStep
+        }
+        backButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
+
+        let titleLabel = label(
+            title,
+            font: .systemFont(ofSize: 23, weight: .bold),
+            color: StationTheme.textPrimary
+        )
+        let detailLabel = wrappingLabel(
+            detail,
+            font: .systemFont(ofSize: 13, weight: .regular),
+            color: StationTheme.textSecondary
+        )
+        detailLabel.maximumNumberOfLines = 2
+        let textColumn = NSStackView(views: [paddedBadge(text: tag), titleLabel, detailLabel])
+        textColumn.orientation = .vertical
+        textColumn.alignment = .leading
+        textColumn.spacing = 7
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [backButton, textColumn, spacer])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 18
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let card = roundedBox(background: StationTheme.brandBackground, cornerRadius: 8)
+        card.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 104),
+            detailLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 470),
+        ])
+        return card
+    }
+
     private func makeSettingCard(
         tag: String,
         titleLabel: NSTextField,
@@ -629,6 +969,33 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             card.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight),
         ])
         return card
+    }
+
+    private func makeQuietFooter() -> NSView {
+        let signatureFont = NSFontManager.shared.convert(
+            .systemFont(ofSize: 12, weight: .regular),
+            toHaveTrait: .italicFontMask
+        )
+        let signature = label(
+            "a small station, still lit at night",
+            font: signatureFont,
+            color: StationTheme.textFaint
+        )
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [spacer, signature])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+
+        let divider = hairline()
+        let column = NSStackView(views: [divider, row])
+        column.orientation = .vertical
+        column.alignment = .leading
+        column.spacing = 10
+        column.translatesAutoresizingMaskIntoConstraints = false
+        divider.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        row.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        return column
     }
 
     private func makePathSection() -> NSView {
@@ -690,24 +1057,6 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             color: StationTheme.textSecondary
         )
         detail.maximumNumberOfLines = 2
-
-        importedLexiconStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        importedLexiconStatusLabel.textColor = StationTheme.lampYellow
-        importedLexiconStatusLabel.maximumNumberOfLines = 1
-        importedLexiconStatusLabel.lineBreakMode = .byTruncatingTail
-        importedLexiconStatusLabel.cell?.usesSingleLineMode = true
-        importedLexiconStatusLabel.cell?.wraps = false
-        importedLexiconStatusLabel.setContentCompressionResistancePriority(
-            .required,
-            for: .vertical
-        )
-        importedLexiconStatusLabel.setContentCompressionResistancePriority(
-            .defaultLow,
-            for: .horizontal
-        )
-        importedLexiconStatusLabel.heightAnchor.constraint(
-            greaterThanOrEqualToConstant: 18
-        ).isActive = true
 
         let textColumn = NSStackView(views: [title, detail, importedLexiconStatusLabel])
         textColumn.orientation = .vertical
@@ -1013,6 +1362,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             .importedLexiconSummaryText()
         importedLexiconStatusLabel.toolTip = importedLexiconStatusLabel.stringValue
         refreshWriterPresentation()
+        refreshOverviewNavigation()
     }
 
     private func setLearningEnabled(_ enabled: Bool) {
@@ -1043,6 +1393,40 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             reloadFromSettings()
             showAlert("无法更新设置。")
         }
+    }
+
+    @objc private func showOverviewPage(_ sender: Any?) {
+        navigate(to: .overview)
+    }
+
+    @objc private func showLexiconPage(_ sender: Any?) {
+        navigate(to: .lexicon)
+    }
+
+    @objc private func showWriterPage(_ sender: Any?) {
+        navigate(to: .writer)
+    }
+
+    @objc private func showUpdatesPage(_ sender: Any?) {
+        navigate(to: .updates)
+    }
+
+    private func navigate(to page: PreferencesPage) {
+        guard currentPage != page else {
+            return
+        }
+        renderPage(page)
+        reloadFromSettings()
+    }
+
+    private func refreshOverviewNavigation() {
+        let lexiconSummary = importedLexiconStatusLabel.stringValue
+            .replacingOccurrences(of: "当前导入词库：", with: "")
+        lexiconNavigationButton?.setDetail(lexiconSummary)
+        writerNavigationButton?.setDetail(writerModelStatusLabel.stringValue)
+        updatesNavigationButton?.setDetail(
+            "\(bundleVersionText) · \(updateStatusLabel.stringValue)"
+        )
     }
 
     @objc private func openSettingsFile(_ sender: Any?) {
@@ -1160,6 +1544,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             writerDownloadButton?.isEnabled = !strictPrivacy
             writerOpenButton?.isEnabled = false
         }
+        refreshOverviewNavigation()
     }
 
     @objc private func writerDownloadPressed(_ sender: Any?) {
@@ -1272,6 +1657,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             updateStatusLabel.textColor = StationTheme.textPrimary
             updateDetailLabel.stringValue = "输入功能不受影响，请稍后重试。"
         }
+        refreshOverviewNavigation()
     }
 
     private static let updateDateFormatter: DateFormatter = {
