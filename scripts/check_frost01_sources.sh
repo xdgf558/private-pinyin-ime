@@ -8,6 +8,11 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 1
 fi
 
+if rg -n '[“”]' platform/windows_tsf/installer --glob '*.ps1'; then
+  echo "Windows PowerShell scripts must not contain smart quotes; PowerShell treats them as string delimiters." >&2
+  exit 1
+fi
+
 required_files=(
   "ime_core/src/reviewed_rime_frost.rs"
   "ime_core/tests/reviewed_rime_frost_tests.rs"

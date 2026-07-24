@@ -593,7 +593,7 @@ function Refresh-RimeFrostSummary {
 
 $rimeFrostImport.Add_Click({
     $answer = [System.Windows.Forms.MessageBox]::Show(
-        "白霜拼音由 gaboolic/rime-frost 项目提供，采用 GPL-3.0 许可。`r`n`r`n猫栈只会从官方 GitHub Release 下载经 Owner 审核的 1.0.4，并校验文件大小、SHA-256 与 ZIP 安全边界。`r`n`r`n选择“是”表示同意 GPL-3.0 并导入；选择“否”打开许可页面。",
+        "白霜拼音由 gaboolic/rime-frost 项目提供，采用 GPL-3.0 许可。`r`n`r`n猫栈只会从官方 GitHub Release 下载经 Owner 审核的 1.0.4，并校验文件大小、SHA-256 与 ZIP 安全边界。`r`n`r`n选择「是」表示同意 GPL-3.0 并导入；选择「否」打开许可页面。",
         "导入白霜拼音 1.0.4",
         [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
         [System.Windows.Forms.MessageBoxIcon]::Information
