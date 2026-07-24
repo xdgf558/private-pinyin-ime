@@ -10,6 +10,7 @@ use crate::logger;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
 use crate::ranker::Ranker;
+use crate::reviewed_rime_frost;
 use crate::session::InputSession;
 use crate::settings::{ImeMode, ImeSettings};
 use crate::user_lexicon::UserLexicon;
@@ -64,16 +65,37 @@ impl ImeEngine {
             .transpose()?
             .map(Arc::new);
 
-        let lexicon = match settings.imported_lexicon_path.as_ref() {
-            Some(path) if path.exists() => match Lexicon::load_embedded_with_imported(path) {
-                Ok(lexicon) => lexicon,
-                Err(error) => {
-                    logger::emit_error(error);
-                    Lexicon::load_embedded()?
-                }
-            },
-            _ => Lexicon::load_embedded()?,
-        };
+        let mut imported_paths = Vec::new();
+        if let Some(path) = settings
+            .imported_lexicon_path
+            .as_deref()
+            .filter(|path| path.exists())
+        {
+            imported_paths.push(path);
+        }
+        if settings.enable_rime_ice_lexicon {
+            if let Some(path) = settings
+                .rime_ice_lexicon_path
+                .as_deref()
+                .filter(|path| path.exists())
+            {
+                imported_paths.push(path);
+            }
+        }
+        if settings.enable_rime_frost_lexicon {
+            if let Some(path) = settings
+                .rime_frost_lexicon_path
+                .as_deref()
+                .filter(|path| path.exists())
+            {
+                imported_paths.push(path);
+            }
+        }
+        let (lexicon, errors) = Lexicon::load_embedded_with_imported_paths(imported_paths);
+        for error in errors {
+            logger::emit_error(error);
+        }
+        let lexicon = lexicon?;
 
         Ok(Self {
             lexicon: Arc::new(lexicon),
@@ -129,6 +151,27 @@ impl ImeEngine {
             .imported_lexicon_path
             .as_ref()
             .ok_or(crate::error::ImeError::ImportedLexiconNotConfigured)?;
+        imported_lexicon::clear_imported_file(destination_path)
+    }
+
+    pub fn import_reviewed_rime_frost_archive(
+        &self,
+        archive_path: impl AsRef<Path>,
+    ) -> ImeResult<ImportedLexiconReport> {
+        let destination_path = self
+            .settings
+            .rime_frost_lexicon_path
+            .as_ref()
+            .ok_or(crate::error::ImeError::ReviewedLexiconNotConfigured)?;
+        reviewed_rime_frost::import_reviewed_rime_frost_archive(archive_path, destination_path)
+    }
+
+    pub fn clear_rime_frost_lexicon(&self) -> ImeResult<()> {
+        let destination_path = self
+            .settings
+            .rime_frost_lexicon_path
+            .as_ref()
+            .ok_or(crate::error::ImeError::ReviewedLexiconNotConfigured)?;
         imported_lexicon::clear_imported_file(destination_path)
     }
 

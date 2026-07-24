@@ -186,14 +186,35 @@ impl Lexicon {
     }
 
     pub fn load_embedded_with_imported(path: impl AsRef<Path>) -> ImeResult<Self> {
-        let path = path.as_ref();
-        let mut entries = Self::load_embedded()?.entries;
-        let imported = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
-        let imported_entries = Self::from_tsv(&imported)
-            .map_err(|_| ImeError::ImportedLexiconParse)?
-            .entries;
-        validate_imported_entries(&imported_entries)?;
-        entries.extend(imported_entries);
+        let (lexicon, errors) = Self::load_embedded_with_imported_paths([path.as_ref()]);
+        if let Some(error) = errors.into_iter().next() {
+            return Err(error);
+        }
+        lexicon
+    }
+
+    pub fn load_embedded_with_imported_paths<'a>(
+        paths: impl IntoIterator<Item = &'a Path>,
+    ) -> (ImeResult<Self>, Vec<ImeError>) {
+        let mut entries = match Self::load_embedded() {
+            Ok(lexicon) => lexicon.entries,
+            Err(error) => return (Err(error), Vec::new()),
+        };
+        let mut errors = Vec::new();
+        for path in paths {
+            let imported_entries = (|| {
+                let imported = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
+                let imported_entries = Self::from_tsv(&imported)
+                    .map_err(|_| ImeError::ImportedLexiconParse)?
+                    .entries;
+                validate_imported_entries(&imported_entries)?;
+                Ok::<_, ImeError>(imported_entries)
+            })();
+            match imported_entries {
+                Ok(imported_entries) => entries.extend(imported_entries),
+                Err(error) => errors.push(error),
+            }
+        }
 
         let mut identities = HashMap::<(String, String), u32>::new();
         for entry in entries {
@@ -210,7 +231,7 @@ impl Lexicon {
                 frequency,
             })
             .collect();
-        Ok(Self::from_entries(entries))
+        (Ok(Self::from_entries(entries)), errors)
     }
 
     pub fn from_tsv(tsv: &str) -> ImeResult<Self> {

@@ -26,6 +26,7 @@ fn run() -> Result<String, String> {
     let mut settings_path = None;
     let mut user_lexicon_path = None;
     let mut imported_lexicon_path = None;
+    let mut rime_frost_lexicon_path = None;
     let mut export_path = None;
     let mut input_path = None;
     let mut enabled = None;
@@ -35,6 +36,7 @@ fn run() -> Result<String, String> {
             "--settings" => settings_path = args.next().map(PathBuf::from),
             "--user-lexicon" => user_lexicon_path = args.next().map(PathBuf::from),
             "--imported-lexicon" => imported_lexicon_path = args.next().map(PathBuf::from),
+            "--rime-frost-lexicon" => rime_frost_lexicon_path = args.next().map(PathBuf::from),
             "--output" => export_path = args.next().map(PathBuf::from),
             "--input" => input_path = args.next().map(PathBuf::from),
             "--enabled" => enabled = args.next().map(|value| parse_bool(&value)),
@@ -48,6 +50,7 @@ fn run() -> Result<String, String> {
             let settings = ImeSettings {
                 user_lexicon_path,
                 imported_lexicon_path,
+                rime_frost_lexicon_path,
                 ..ImeSettings::default()
             };
             settings
@@ -105,6 +108,38 @@ fn run() -> Result<String, String> {
                 .map_err(|error| error.code().to_owned())?;
             Ok("cleared imported lexicon".to_owned())
         }
+        "import-rime-frost" => {
+            let settings = settings_from_path(settings_path)?;
+            let path = required_path(input_path, "--input")?;
+            let report = ImeEngine::with_settings(settings)
+                .and_then(|engine| engine.import_reviewed_rime_frost_archive(&path))
+                .map_err(|error| error.code().to_owned())?;
+            Ok(format!(
+                "imported {} reviewed Frost rows; {} total: {}",
+                report.accepted_rows,
+                report.total_entries,
+                path.display()
+            ))
+        }
+        "clear-rime-frost" => {
+            let settings = settings_from_path(settings_path)?;
+            ImeEngine::with_settings(settings)
+                .and_then(|engine| engine.clear_rime_frost_lexicon())
+                .map_err(|error| error.code().to_owned())?;
+            Ok("cleared reviewed Frost lexicon".to_owned())
+        }
+        "set-rime-frost-enabled" => {
+            let path = required_path(settings_path, "--settings")?;
+            let mut settings = ImeSettings::from_json_file_or_default(&path);
+            settings.enable_rime_frost_lexicon = enabled
+                .transpose()
+                .map_err(|_| "expected --enabled true or false".to_owned())?
+                .ok_or_else(usage)?;
+            settings
+                .write_json_file(&path)
+                .map_err(|error| error.code().to_owned())?;
+            Ok(format!("updated Frost lexicon state: {}", path.display()))
+        }
         _ => Err(usage()),
     }
 }
@@ -130,11 +165,14 @@ fn parse_bool(value: &str) -> Result<bool, ()> {
 
 fn usage() -> String {
     "usage:
-  private-pinyin-settings write-default --settings PATH [--user-lexicon PATH] [--imported-lexicon PATH]
+  private-pinyin-settings write-default --settings PATH [--user-lexicon PATH] [--imported-lexicon PATH] [--rime-frost-lexicon PATH]
   private-pinyin-settings set-strict-privacy --settings PATH --enabled true|false
   private-pinyin-settings clear-user-lexicon --settings PATH
   private-pinyin-settings export-user-lexicon --settings PATH --output PATH
   private-pinyin-settings import-rime-lexicon --settings PATH --input PATH
-  private-pinyin-settings clear-imported-lexicon --settings PATH"
+  private-pinyin-settings clear-imported-lexicon --settings PATH
+  private-pinyin-settings import-rime-frost --settings PATH --input PATH
+  private-pinyin-settings clear-rime-frost --settings PATH
+  private-pinyin-settings set-rime-frost-enabled --settings PATH --enabled true|false"
         .to_owned()
 }

@@ -1,8 +1,60 @@
 # Development Progress
 
-Last updated: 2026-07-24
-Current stage: Post-AI-12 desktop Writer V1
-Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
+Last updated: 2026-07-25
+Current stage: FROST-01 reviewed White Frost desktop import
+Current status: macOS and Windows can explicitly download and import the pinned official White Frost 1.0.4 Release into an independent, upgrade-safe layer after GPL-3.0 confirmation. Exact artifact identity, bounded ZIP parsing, atomic replacement, enable/disable, clear, and review-gated update reporting are implemented; iOS remains unchanged.
+
+## FROST-01 Reviewed White Frost Desktop Import (2026-07-25)
+
+- Audited the official `gaboolic/rime-frost` 1.0.4 stable Release and pinned its
+  44,008,360-byte `rime-frost-schemas.zip` asset with SHA-256
+  `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`.
+  The GPL-3.0 archive is never committed or bundled.
+- Added a shared Rust importer that validates every ZIP member without extracting
+  it, rejects traversal, duplicate names, symlinks, special files, excessive
+  members, expanded size, member size, or compression ratio, and reads only six
+  reviewed dictionaries.
+- A real import of the approved archive accepted 653,308 rows, retained 653,136
+  unique phrase/pinyin identities, and produced an 18,083,664-byte
+  `rime_frost.tsv` including its header. The import completed in approximately
+  11.4 seconds on the development Mac.
+- White Frost is stored independently from the bundled lexicon,
+  `imported_lexicon.tsv`, `rime_ice.tsv`, and local learning. A failed download,
+  identity check, archive validation, parse, or limit check leaves the previous
+  White Frost layer byte-for-byte unchanged.
+- macOS and Windows require a visible GPL-3.0 confirmation before downloading
+  from the fixed official GitHub Release. Both show the installed version and
+  support import/update, enable/disable, clear, license access, and a latest-tag
+  check that reports unreviewed releases as `新版待审核`.
+- Desktop generic Rime imports now allow 64 MiB per selected source, 128 MiB per
+  canonical layer, and 750,000 retained entries. The reviewed White Frost archive
+  applies a tighter 32-MiB per-member cap. iOS remains unchanged at 16 MiB,
+  32 MiB, and 200,000 entries and exposes no White Frost network action.
+- Dedicated Rust tests cover valid import, artifact mismatch, traversal,
+  excessive entries, symlink members, compression bombs, old-layer preservation,
+  independent layer loading, and enable/disable behavior. The FROST-01 source
+  gate pins platform scope, artifact identity, GPL consent, update-review state,
+  and the unchanged iOS limits.
+- `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D
+  warnings`, `cargo fmt --all -- --check`, and the desktop/iOS AI FFI feature
+  suites passed. The official 1.0.4 archive was also imported through the
+  production parser rather than a synthetic fixture.
+- `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh` passed after
+  staging the pinned Writer runtime, including the new AppKit download manager,
+  consent UI, FFI bridge, and preference controls.
+- Beta Xcode `bash scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` with the
+  Rust `aarch64-apple-ios-sim` target. This is a non-regression build only:
+  FROST-01 remains desktop-only and the iOS import limits and network policy are
+  unchanged.
+
+## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
+
+- Split imported Rime dictionary limits into explicit platform policies. macOS and Windows now accept source files up to 64 MiB, canonical imported layers up to 128 MiB, and 750,000 merged entries.
+- iOS remains unchanged at 16 MiB per source, 32 MiB for the canonical imported layer, and 200,000 merged entries. Other unclassified targets use the same conservative policy rather than inheriting desktop capacity.
+- The shared 4-KiB line limit, 32-character phrase limit, explicit-pinyin requirement, atomic replacement, and separate imported-layer storage remain unchanged.
+- Added direct policy tests plus injected small-limit boundary tests. Oversized sources are rejected before reading, entry-limit failures preserve the previous imported file byte-for-byte, and repeated imports still merge and deduplicate.
+- `cargo test --workspace` passed with an isolated HOME so the existing "approved Writer model is absent" fixture could not see the developer machine's installed model. `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check`, `scripts/check_local_lexicon_import_sources.sh`, and the imported-lexicon integration suite passed.
+- Beta Xcode `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED`, including the Rust `aarch64-apple-ios-sim` target, confirming that the unchanged conservative iOS policy still compiles through the container App and Keyboard Extension.
 
 ## iOS Keyboard Input-Latency Remediation (2026-07-24)
 

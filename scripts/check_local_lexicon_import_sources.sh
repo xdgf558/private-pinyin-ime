@@ -18,6 +18,13 @@ grep -q 'imported_lexicon_path' config/default_settings.json
 grep -q 'MAX_RIME_SOURCE_BYTES' ime_core/src/imported_lexicon.rs
 grep -q 'MAX_IMPORTED_FILE_BYTES' ime_core/src/imported_lexicon.rs
 grep -q 'MAX_IMPORTED_ENTRIES' ime_core/src/imported_lexicon.rs
+grep -q 'IOS_IMPORTED_LEXICON_LIMITS' ime_core/src/imported_lexicon.rs
+grep -q 'ImportedLexiconLimits::new(16 \* 1024 \* 1024, 32 \* 1024 \* 1024, 200_000)' \
+  ime_core/src/imported_lexicon.rs
+grep -q 'DESKTOP_IMPORTED_LEXICON_LIMITS' ime_core/src/imported_lexicon.rs
+grep -q 'ImportedLexiconLimits::new(64 \* 1024 \* 1024, 128 \* 1024 \* 1024, 750_000)' \
+  ime_core/src/imported_lexicon.rs
+grep -q 'target_os = "macos", target_os = "windows"' ime_core/src/imported_lexicon.rs
 grep -q 'AtomicFile::create' ime_core/src/imported_lexicon.rs
 grep -q 'ime_engine_import_rime_lexicon' ffi/c_api.h
 grep -q 'ime_engine_clear_imported_lexicon' ffi/c_api.h

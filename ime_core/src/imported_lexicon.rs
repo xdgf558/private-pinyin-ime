@@ -8,10 +8,41 @@ use crate::error::{ImeError, ImeResult};
 use crate::lexicon::{Lexicon, LexiconEntry};
 use crate::syllable::is_legal_syllable;
 
-pub const MAX_RIME_SOURCE_BYTES: u64 = 16 * 1024 * 1024;
-pub const MAX_IMPORTED_FILE_BYTES: u64 = 32 * 1024 * 1024;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ImportedLexiconLimits {
+    pub max_source_bytes: u64,
+    pub max_imported_file_bytes: u64,
+    pub max_entries: usize,
+}
+
+impl ImportedLexiconLimits {
+    pub const fn new(
+        max_source_bytes: u64,
+        max_imported_file_bytes: u64,
+        max_entries: usize,
+    ) -> Self {
+        Self {
+            max_source_bytes,
+            max_imported_file_bytes,
+            max_entries,
+        }
+    }
+}
+
+pub const IOS_IMPORTED_LEXICON_LIMITS: ImportedLexiconLimits =
+    ImportedLexiconLimits::new(16 * 1024 * 1024, 32 * 1024 * 1024, 200_000);
+pub const DESKTOP_IMPORTED_LEXICON_LIMITS: ImportedLexiconLimits =
+    ImportedLexiconLimits::new(64 * 1024 * 1024, 128 * 1024 * 1024, 750_000);
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+pub const ACTIVE_IMPORTED_LEXICON_LIMITS: ImportedLexiconLimits = DESKTOP_IMPORTED_LEXICON_LIMITS;
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub const ACTIVE_IMPORTED_LEXICON_LIMITS: ImportedLexiconLimits = IOS_IMPORTED_LEXICON_LIMITS;
+
+pub const MAX_RIME_SOURCE_BYTES: u64 = ACTIVE_IMPORTED_LEXICON_LIMITS.max_source_bytes;
+pub const MAX_IMPORTED_FILE_BYTES: u64 = ACTIVE_IMPORTED_LEXICON_LIMITS.max_imported_file_bytes;
 pub const MAX_RIME_LINE_BYTES: usize = 4096;
-pub const MAX_IMPORTED_ENTRIES: usize = 200_000;
+pub const MAX_IMPORTED_ENTRIES: usize = ACTIVE_IMPORTED_LEXICON_LIMITS.max_entries;
 const MAX_IMPORTED_PHRASE_CHARS: usize = 32;
 const DEFAULT_IMPORTED_FREQUENCY: u32 = 1_000;
 const MAX_IMPORTED_FREQUENCY: u32 = 1_000_000;
@@ -27,18 +58,30 @@ pub fn import_rime_file(
     source_path: impl AsRef<Path>,
     destination_path: impl AsRef<Path>,
 ) -> ImeResult<ImportedLexiconReport> {
+    import_rime_file_with_limits(
+        source_path,
+        destination_path,
+        ACTIVE_IMPORTED_LEXICON_LIMITS,
+    )
+}
+
+pub fn import_rime_file_with_limits(
+    source_path: impl AsRef<Path>,
+    destination_path: impl AsRef<Path>,
+    limits: ImportedLexiconLimits,
+) -> ImeResult<ImportedLexiconReport> {
     let metadata = fs::metadata(source_path.as_ref()).map_err(|_| ImeError::ImportedLexiconIo)?;
-    if metadata.len() > MAX_RIME_SOURCE_BYTES {
+    if metadata.len() > limits.max_source_bytes {
         return Err(ImeError::ImportedLexiconLimit);
     }
 
-    let source = read_utf8_file_bounded(source_path.as_ref(), MAX_RIME_SOURCE_BYTES)?;
-    let (incoming, skipped_rows) = parse_rime_dictionary(&source)?;
+    let source = read_utf8_file_bounded(source_path.as_ref(), limits.max_source_bytes)?;
+    let (incoming, skipped_rows) = parse_rime_dictionary_with_limits(&source, limits)?;
     let accepted_rows = incoming.len();
     let destination_path = destination_path.as_ref();
-    let existing = load_existing_entries(destination_path)?;
-    let merged = merge_entries(existing, incoming)?;
-    write_canonical_tsv(destination_path, &merged)?;
+    let existing = load_existing_entries(destination_path, limits)?;
+    let merged = merge_entries(existing, incoming, limits)?;
+    write_canonical_tsv(destination_path, &merged, limits)?;
 
     Ok(ImportedLexiconReport {
         accepted_rows,
@@ -56,6 +99,13 @@ pub fn clear_imported_file(path: impl AsRef<Path>) -> ImeResult<()> {
 }
 
 pub fn parse_rime_dictionary(input: &str) -> ImeResult<(Vec<LexiconEntry>, usize)> {
+    parse_rime_dictionary_with_limits(input, ACTIVE_IMPORTED_LEXICON_LIMITS)
+}
+
+pub(crate) fn parse_rime_dictionary_with_limits(
+    input: &str,
+    limits: ImportedLexiconLimits,
+) -> ImeResult<(Vec<LexiconEntry>, usize)> {
     let mut entries = Vec::new();
     let mut skipped_rows = 0;
     let mut in_yaml_header = false;
@@ -104,7 +154,7 @@ pub fn parse_rime_dictionary(input: &str) -> ImeResult<(Vec<LexiconEntry>, usize
             pinyin,
             frequency,
         });
-        if entries.len() > MAX_IMPORTED_ENTRIES {
+        if entries.len() > limits.max_entries {
             return Err(ImeError::ImportedLexiconLimit);
         }
     }
@@ -116,18 +166,21 @@ pub fn parse_rime_dictionary(input: &str) -> ImeResult<(Vec<LexiconEntry>, usize
     Ok((deduplicate_entries(entries), skipped_rows))
 }
 
-fn load_existing_entries(path: &Path) -> ImeResult<Vec<LexiconEntry>> {
+fn load_existing_entries(
+    path: &Path,
+    limits: ImportedLexiconLimits,
+) -> ImeResult<Vec<LexiconEntry>> {
     match fs::metadata(path) {
-        Ok(metadata) if metadata.len() > MAX_IMPORTED_FILE_BYTES => {
+        Ok(metadata) if metadata.len() > limits.max_imported_file_bytes => {
             return Err(ImeError::ImportedLexiconLimit)
         }
         Ok(_) => {}
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(_) => return Err(ImeError::ImportedLexiconIo),
     }
-    let contents = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
+    let contents = read_utf8_file_bounded(path, limits.max_imported_file_bytes)?;
     let lexicon = Lexicon::from_tsv(&contents).map_err(|_| ImeError::ImportedLexiconParse)?;
-    validate_imported_entries(lexicon.entries())?;
+    validate_imported_entries_with_limits(lexicon.entries(), limits)?;
     Ok(lexicon.entries().to_vec())
 }
 
@@ -146,16 +199,17 @@ pub(crate) fn read_utf8_file_bounded(path: &Path, max_bytes: u64) -> ImeResult<S
 fn merge_entries(
     mut existing: Vec<LexiconEntry>,
     incoming: Vec<LexiconEntry>,
+    limits: ImportedLexiconLimits,
 ) -> ImeResult<Vec<LexiconEntry>> {
     existing.extend(incoming);
     let merged = deduplicate_entries(existing);
-    if merged.len() > MAX_IMPORTED_ENTRIES {
+    if merged.len() > limits.max_entries {
         return Err(ImeError::ImportedLexiconLimit);
     }
     Ok(merged)
 }
 
-fn deduplicate_entries(entries: Vec<LexiconEntry>) -> Vec<LexiconEntry> {
+pub(crate) fn deduplicate_entries(entries: Vec<LexiconEntry>) -> Vec<LexiconEntry> {
     let mut by_identity = HashMap::<(String, String), u32>::new();
     for entry in entries {
         let key = (entry.phrase, entry.pinyin);
@@ -182,9 +236,16 @@ fn deduplicate_entries(entries: Vec<LexiconEntry>) -> Vec<LexiconEntry> {
     entries
 }
 
-fn write_canonical_tsv(path: &Path, entries: &[LexiconEntry]) -> ImeResult<()> {
-    validate_imported_entries(entries)?;
-    ensure_canonical_size(entries.iter().map(canonical_row_size))?;
+pub(crate) fn write_canonical_tsv(
+    path: &Path,
+    entries: &[LexiconEntry],
+    limits: ImportedLexiconLimits,
+) -> ImeResult<()> {
+    validate_imported_entries_with_limits(entries, limits)?;
+    ensure_canonical_size(
+        entries.iter().map(canonical_row_size),
+        limits.max_imported_file_bytes,
+    )?;
 
     let mut file = AtomicFile::create(path).map_err(|_| ImeError::ImportedLexiconIo)?;
     file.write_all(b"phrase\tpinyin\tfrequency\n")
@@ -201,7 +262,14 @@ fn write_canonical_tsv(path: &Path, entries: &[LexiconEntry]) -> ImeResult<()> {
 }
 
 pub(crate) fn validate_imported_entries(entries: &[LexiconEntry]) -> ImeResult<()> {
-    if entries.len() > MAX_IMPORTED_ENTRIES {
+    validate_imported_entries_with_limits(entries, ACTIVE_IMPORTED_LEXICON_LIMITS)
+}
+
+fn validate_imported_entries_with_limits(
+    entries: &[LexiconEntry],
+    limits: ImportedLexiconLimits,
+) -> ImeResult<()> {
+    if entries.len() > limits.max_entries {
         return Err(ImeError::ImportedLexiconLimit);
     }
 
@@ -241,13 +309,16 @@ fn decimal_digits(value: u32) -> u64 {
     }
 }
 
-fn ensure_canonical_size(row_sizes: impl IntoIterator<Item = u64>) -> ImeResult<()> {
+fn ensure_canonical_size(
+    row_sizes: impl IntoIterator<Item = u64>,
+    max_imported_file_bytes: u64,
+) -> ImeResult<()> {
     let mut size = b"phrase\tpinyin\tfrequency\n".len() as u64;
     for row_size in row_sizes {
         size = size
             .checked_add(row_size)
             .ok_or(ImeError::ImportedLexiconLimit)?;
-        if size > MAX_IMPORTED_FILE_BYTES {
+        if size > max_imported_file_bytes {
             return Err(ImeError::ImportedLexiconLimit);
         }
     }
@@ -353,8 +424,34 @@ mod tests {
     #[test]
     fn rejects_a_canonical_file_that_would_exceed_the_runtime_limit() {
         assert_eq!(
-            ensure_canonical_size([MAX_IMPORTED_FILE_BYTES]),
+            ensure_canonical_size(
+                [MAX_IMPORTED_FILE_BYTES],
+                ACTIVE_IMPORTED_LEXICON_LIMITS.max_imported_file_bytes,
+            ),
             Err(ImeError::ImportedLexiconLimit)
         );
+    }
+
+    #[test]
+    fn desktop_limits_expand_without_changing_the_ios_policy() {
+        assert_eq!(
+            IOS_IMPORTED_LEXICON_LIMITS,
+            ImportedLexiconLimits::new(16 * 1024 * 1024, 32 * 1024 * 1024, 200_000)
+        );
+        assert_eq!(
+            DESKTOP_IMPORTED_LEXICON_LIMITS,
+            ImportedLexiconLimits::new(64 * 1024 * 1024, 128 * 1024 * 1024, 750_000)
+        );
+    }
+
+    #[test]
+    fn active_limits_match_the_target_platform() {
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        assert_eq!(
+            ACTIVE_IMPORTED_LEXICON_LIMITS,
+            DESKTOP_IMPORTED_LEXICON_LIMITS
+        );
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        assert_eq!(ACTIVE_IMPORTED_LEXICON_LIMITS, IOS_IMPORTED_LEXICON_LIMITS);
     }
 }

@@ -279,6 +279,26 @@ final class PinyinCoreBridge {
         } ?? false
     }
 
+    func importReviewedRimeFrostArchive(from path: String) -> Int? {
+        guard let imported = SharedPinyinEnginePool.shared.withEngine(
+            settingsPath: settingsPath,
+            { engine in
+                path.withCString { pathPointer in
+                    ime_engine_import_rime_frost_archive(engine, pathPointer)
+                }
+            }
+        ) else {
+            return nil
+        }
+        return imported >= 0 ? Int(imported) : nil
+    }
+
+    func clearRimeFrostLexicon() -> Bool {
+        SharedPinyinEnginePool.shared.withEngine(settingsPath: settingsPath) { engine in
+            ime_engine_clear_rime_frost_lexicon(engine) != 0
+        } ?? false
+    }
+
     static var sharedEngineLoadCountForTesting: Int {
         SharedPinyinEnginePool.shared.loadCount
     }

@@ -83,6 +83,9 @@ jobs:
       - name: Check local Rime lexicon import
         run: bash scripts/check_local_lexicon_import_sources.sh
 
+      - name: Check FROST-01 reviewed White Frost import
+        run: bash scripts/check_frost01_sources.sh
+
       - name: Check Stage 14 iOS signing scaffold
         run: bash scripts/check_stage14_ios_signing_sources.sh
 
