@@ -46,8 +46,16 @@ grep -q 'const MAX_ARCHIVE_MEMBER_BYTES: u64 = 32 \* 1024 \* 1024' \
 grep -q 'const MAX_COMPRESSION_RATIO: u64 = 200' ime_core/src/reviewed_rime_frost.rs
 grep -q 'validate_member_name' ime_core/src/reviewed_rime_frost.rs
 grep -q 'validate_member_type' ime_core/src/reviewed_rime_frost.rs
+grep -q 'if archive.len() != declared_entry_count' ime_core/src/reviewed_rime_frost.rs
+grep -q 'let mode = unix_mode.ok_or' ime_core/src/reviewed_rime_frost.rs
 grep -q 'write_canonical_tsv' ime_core/src/reviewed_rime_frost.rs
 grep -q 'AtomicFile::create' ime_core/src/imported_lexicon.rs
+grep -q 'member_without_unix_mode_is_rejected_without_overwriting' \
+  ime_core/tests/reviewed_rime_frost_tests.rs
+grep -q 'eocd_declared_entry_count_mismatch_is_rejected_without_overwriting' \
+  ime_core/tests/reviewed_rime_frost_tests.rs
+grep -q 'nonempty_zip_comment_is_accepted' \
+  ime_core/tests/reviewed_rime_frost_tests.rs
 
 grep -q 'rime_frost_lexicon_path' config/default_settings.json
 grep -q 'rime_frost.tsv' platform/macos_imk/Sources/SettingsStore.swift

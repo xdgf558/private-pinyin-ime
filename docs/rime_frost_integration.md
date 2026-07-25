@@ -27,6 +27,13 @@ The artifact identity was captured on 2026-07-24 from the official GitHub Releas
 
 The application and CI never trust a moving branch. Both desktop hosts pin the URL, version, exact byte count, and SHA-256 above. A release check may report a different official tag, but the UI labels it `新版待审核` and cannot import it until the Owner repeats this review and updates all pinned values.
 
+After the ZIP parser was hardened on 2026-07-25, the exact pinned asset was
+downloaded and verified again, then imported through the production settings
+CLI. All 161 central-directory entries exposed regular-file Unix types (159
+mode `100644`, two mode `100755`); the EOCD count matched the ZIP reader's 161
+entries. The import retained the same 653,136 unique identities and
+18,083,664-byte canonical output recorded below.
+
 ## License Boundary
 
 White Frost is GPL-3.0 data. PrivatePinyin is not redistributing it:
@@ -61,6 +68,10 @@ header.
 The shared Rust importer verifies the complete artifact before parsing and never extracts archive members to disk. It rejects:
 
 - A byte-count or SHA-256 mismatch.
+- A file replacement between identity verification and parsing by retaining and
+  reusing the same open file descriptor.
+- A missing or unsafe member type, or an EOCD-declared entry count that differs
+  from the ZIP reader's actual central directory.
 - More than 256 archive entries.
 - Duplicate, absolute, parent-relative, dot-relative, backslash, NUL, symlink, or special-file members.
 - A member larger than 32 MiB.

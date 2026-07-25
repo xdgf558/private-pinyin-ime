@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Revalidated the hardened White Frost ZIP importer against the exact approved 1.0.4 Release after adding same-descriptor artifact verification, EOCD entry-count matching, and mandatory member-type metadata. New fixtures cover missing Unix mode, forged EOCD counts, and valid non-empty ZIP comments; the production import still retains 653,136 unique entries in an 18,083,664-byte layer.
 - Fixed macOS shared-engine invalidation so importing, updating, or clearing reviewed Rime Ice and White Frost layers takes effect without restarting the input method process.
 - Closed the FROST-01 review blockers without relaxing the 60 ms candidate-latency budget: default installs retain the embedded-lexicon fast path, imported rows keep deterministic source order, reviewed ZIP import no longer constructs a second full engine, archive/download bounds and duplicate-member checks fail closed, and CI now parses every Windows PowerShell file while proving the iOS graph excludes desktop ZIP dependencies.
 - Kept the reviewed White Frost archive parser off the macOS IMK main thread, prevented the Windows settings window from overwriting a newly changed White Frost enable state, made the desktop-only iOS purity gate fail explicitly when its required source scanner is unavailable, and excluded White Frost ZIP parsing dependencies from iOS builds.

@@ -205,12 +205,14 @@ fn excessive_archive_entry_count_is_rejected() {
 }
 
 #[test]
-fn duplicate_archive_member_is_rejected_without_overwriting() {
+fn duplicate_archive_member_is_rejected_even_when_zip_reader_deduplicates() {
     let archive_path = temp_path("duplicate_member_frost", "zip");
     let destination_path = temp_path("duplicate_member_frost", "tsv");
     const PLACEHOLDER: &str = "cn_dicts/9999.dict.yaml";
     assert_eq!(PLACEHOLDER.len(), CORE_MEMBERS[0].len());
     write_archive(&archive_path, &[(PLACEHOLDER, "重复\tchong fu\t1\n")]);
+    // zip-rs deduplicates equal central-directory names. The EOCD count check
+    // must reject the archive before that behavior can hide this duplicate.
     replace_equal_length_member_name(&archive_path, PLACEHOLDER, CORE_MEMBERS[0]);
     assert_rejected_and_preserved(
         &archive_path,
@@ -275,6 +277,72 @@ fn member_larger_than_its_declared_size_is_rejected_without_overwriting() {
         &destination_path,
         ImeError::ReviewedLexiconArchive,
     );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn member_without_unix_mode_is_rejected_without_overwriting() {
+    let archive_path = temp_path("missing_unix_mode_frost", "zip");
+    let destination_path = temp_path("missing_unix_mode_frost", "tsv");
+    write_archive(&archive_path, &[]);
+    clear_central_external_attributes(&archive_path, CORE_MEMBERS[0]);
+
+    let file = std::fs::File::open(&archive_path).expect("open patched archive");
+    let mut archive = zip::ZipArchive::new(file).expect("read patched archive");
+    assert_eq!(
+        archive
+            .by_name(CORE_MEMBERS[0])
+            .expect("find patched member")
+            .unix_mode(),
+        None,
+        "fixture must exercise the missing-mode branch"
+    );
+
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ReviewedLexiconArchive,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn eocd_declared_entry_count_mismatch_is_rejected_without_overwriting() {
+    let archive_path = temp_path("eocd_entry_mismatch_frost", "zip");
+    let destination_path = temp_path("eocd_entry_mismatch_frost", "tsv");
+    write_archive(&archive_path, &[]);
+    reduce_eocd_entry_counts(&archive_path);
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ReviewedLexiconArchive,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn nonempty_zip_comment_is_accepted() {
+    let archive_path = temp_path("commented_frost", "zip");
+    let destination_path = temp_path("commented_frost", "tsv");
+    let file = std::fs::File::create(&archive_path).expect("create archive");
+    let mut archive = ZipWriter::new(file);
+    write_core_members(&mut archive, archive_options());
+    archive.set_comment("reviewed White Frost fixture");
+    archive.finish().expect("finish commented archive");
+    let (bytes, sha256) = artifact_identity(&archive_path);
+
+    let report = import_reviewed_rime_frost_archive_with_manifest(
+        &archive_path,
+        &destination_path,
+        ReviewedRimeFrostManifest {
+            archive_bytes: bytes,
+            archive_sha256: &sha256,
+        },
+    )
+    .expect("commented archive imports");
+
+    assert_eq!(report.accepted_rows, CORE_MEMBERS.len());
+    assert_eq!(report.total_entries, CORE_MEMBERS.len());
     cleanup(&[archive_path, destination_path]);
 }
 
@@ -380,6 +448,61 @@ fn reduce_declared_uncompressed_size(path: &Path, target_name: &str) {
         offset = name_end;
     }
     assert!(patched, "target central directory member was not found");
+    std::fs::write(path, bytes).expect("write patched archive");
+}
+
+fn clear_central_external_attributes(path: &Path, target_name: &str) {
+    const CENTRAL_HEADER: &[u8; 4] = b"PK\x01\x02";
+    const CENTRAL_FIXED_BYTES: usize = 46;
+    const FILE_NAME_LENGTH_OFFSET: usize = 28;
+    const EXTERNAL_ATTRIBUTES_OFFSET: usize = 38;
+
+    let mut bytes = std::fs::read(path).expect("read archive bytes");
+    let mut offset = 0_usize;
+    let mut patched = false;
+    while offset + CENTRAL_FIXED_BYTES <= bytes.len() {
+        if &bytes[offset..offset + 4] != CENTRAL_HEADER {
+            offset += 1;
+            continue;
+        }
+        let name_length = u16::from_le_bytes([
+            bytes[offset + FILE_NAME_LENGTH_OFFSET],
+            bytes[offset + FILE_NAME_LENGTH_OFFSET + 1],
+        ]) as usize;
+        let name_start = offset + CENTRAL_FIXED_BYTES;
+        let name_end = name_start + name_length;
+        if name_end <= bytes.len() && &bytes[name_start..name_end] == target_name.as_bytes() {
+            let attributes = offset + EXTERNAL_ATTRIBUTES_OFFSET;
+            bytes[attributes..attributes + 4].fill(0);
+            patched = true;
+            break;
+        }
+        offset = name_end;
+    }
+    assert!(patched, "target central directory member was not found");
+    std::fs::write(path, bytes).expect("write patched archive");
+}
+
+fn reduce_eocd_entry_counts(path: &Path) {
+    const EOCD_HEADER: &[u8; 4] = b"PK\x05\x06";
+    const ENTRIES_ON_DISK_OFFSET: usize = 8;
+    const TOTAL_ENTRIES_OFFSET: usize = 10;
+
+    let mut bytes = std::fs::read(path).expect("read archive bytes");
+    let offset = bytes
+        .windows(EOCD_HEADER.len())
+        .rposition(|window| window == EOCD_HEADER)
+        .expect("find EOCD");
+    let total = u16::from_le_bytes([
+        bytes[offset + TOTAL_ENTRIES_OFFSET],
+        bytes[offset + TOTAL_ENTRIES_OFFSET + 1],
+    ]);
+    assert!(total > 0, "fixture must contain archive members");
+    let reduced = total - 1;
+    bytes[offset + ENTRIES_ON_DISK_OFFSET..offset + ENTRIES_ON_DISK_OFFSET + 2]
+        .copy_from_slice(&reduced.to_le_bytes());
+    bytes[offset + TOTAL_ENTRIES_OFFSET..offset + TOTAL_ENTRIES_OFFSET + 2]
+        .copy_from_slice(&reduced.to_le_bytes());
     std::fs::write(path, bytes).expect("write patched archive");
 }
 

@@ -56,6 +56,14 @@ Current status: macOS and Windows can explicitly download and import the pinned 
   White Frost canonical files independently. Importing, replacing, or clearing
   either reviewed layer rebuilds one shared snapshot even when `settings.json`
   remains byte-for-byte unchanged; no process restart is required.
+- The hardened importer now hashes and parses through the same open file
+  descriptor, requires each member to expose safe type metadata, and compares
+  the EOCD-declared entry count with the ZIP reader's actual directory. A fresh
+  post-hardening production CLI import of the exact pinned 1.0.4 asset again
+  accepted 653,308 rows, retained 653,136 unique identities, and produced an
+  18,083,664-byte TSV. All 161 official members reported regular-file Unix
+  types (159 mode `100644`, two mode `100755`), so the stricter member-type
+  policy does not reject the only approved archive.
 
 ## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
 
@@ -1170,8 +1178,12 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 - Follow-up: The macOS settings layer now records caller-supplied reviewed source metadata instead of depending on the download manager's catalog type. This keeps the standalone shared-engine and source-label Swift tests independent from networking code while preserving the exact approved White Frost manifest values at the import call site.
 
 - Command: `cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests`
-- Result: passed (10 tests)
-- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio and entry-count limits, duplicate members, missing approved members, oversized members, false declared sizes, and atomic old-layer preservation all remain green.
+- Result: passed (13 tests)
+- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio and entry-count limits, duplicate members, missing approved members, oversized members, false declared sizes, and atomic old-layer preservation all remain green. Direct central-directory mutations additionally prove that missing Unix mode and forged EOCD entry counts fail closed, while a valid non-empty ZIP comment remains accepted.
+
+- Command: `cargo run -q -p private_pinyin_settings -- import-rime-frost --settings <temporary-settings> --input rime-frost-schemas.zip`
+- Result: passed against the fixed official 1.0.4 Release after the TOCTOU, EOCD, and Unix-mode hardening
+- Notes: The downloaded asset was independently rechecked as 44,008,360 bytes with SHA-256 `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`. The production CLI accepted 653,308 source rows, retained 653,136 unique phrase/pinyin identities, and wrote an 18,083,664-byte canonical TSV (653,137 lines including the header) in approximately 10.69 seconds. ZIP inventory inspection reported 161 central-directory entries: 159 regular files with Unix mode `100644` and two regular files with mode `100755`.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`, plus FFI Clippy with `desktop-ai` and `ios-ai`
 - Result: passed
