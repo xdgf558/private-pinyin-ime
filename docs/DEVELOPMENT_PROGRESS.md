@@ -52,6 +52,10 @@ Current status: macOS and Windows can explicitly download and import the pinned 
   refreshed Windows settings before saving the White Frost enable state, made
   missing `rg` fail the source gate, and feature-gated `zip`/`sha2` so the iOS
   FFI dependency graph contains no reviewed-import ZIP stack.
+- The macOS shared-engine fingerprint now tracks the manual, Rime Ice, and
+  White Frost canonical files independently. Importing, replacing, or clearing
+  either reviewed layer rebuilds one shared snapshot even when `settings.json`
+  remains byte-for-byte unchanged; no process restart is required.
 
 ## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
 
@@ -1183,7 +1187,7 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 
 - Command: `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_shared_engine.sh` and `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_imported_lexicon_source.sh`
 - Result: passed
-- Notes: The standalone Swift targets compile without the White Frost network manager, continue to prove process-wide engine sharing for ordinary clients, and retain imported-source status behavior.
+- Notes: The standalone Swift targets compile without the White Frost network manager, continue to prove process-wide engine sharing for ordinary clients, and retain imported-source status behavior. The shared-engine test also creates temporary reviewed-layer settings and proves that adding White Frost, adding Rime Ice, and removing White Frost each invalidate exactly one shared snapshot while an unchanged configuration remains coalesced. Layer-only candidates become visible immediately after each reload and disappear after the corresponding layer is cleared.
 
 - Command: `bash scripts/build_ios_keyboard.sh`
 - Result: passed (`BUILD SUCCEEDED`)

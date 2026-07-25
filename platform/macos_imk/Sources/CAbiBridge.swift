@@ -46,25 +46,35 @@ private struct PinyinEngineConfigurationFingerprint: Equatable {
     let settingsPath: String?
     let settingsData: Data?
     let importedLexicon: PinyinEngineFileFingerprint
+    let rimeIceLexicon: PinyinEngineFileFingerprint
+    let rimeFrostLexicon: PinyinEngineFileFingerprint
 
     init(settingsPath: String?) {
         let normalizedSettingsPath = settingsPath.map {
             URL(fileURLWithPath: $0).standardizedFileURL.path
         }
         let settingsData = normalizedSettingsPath.flatMap(FileManager.default.contents(atPath:))
-        let importedLexiconPath = settingsData.flatMap { data -> String? in
+        let settings = settingsData.flatMap { data -> [String: Any]? in
             guard
                 let object = try? JSONSerialization.jsonObject(with: data),
                 let settings = object as? [String: Any]
             else {
                 return nil
             }
-            return settings["imported_lexicon_path"] as? String
+            return settings
         }
 
         self.settingsPath = normalizedSettingsPath
         self.settingsData = settingsData
-        importedLexicon = PinyinEngineFileFingerprint(path: importedLexiconPath)
+        importedLexicon = PinyinEngineFileFingerprint(
+            path: settings?["imported_lexicon_path"] as? String
+        )
+        rimeIceLexicon = PinyinEngineFileFingerprint(
+            path: settings?["rime_ice_lexicon_path"] as? String
+        )
+        rimeFrostLexicon = PinyinEngineFileFingerprint(
+            path: settings?["rime_frost_lexicon_path"] as? String
+        )
     }
 }
 
@@ -277,20 +287,6 @@ final class PinyinCoreBridge {
         SharedPinyinEnginePool.shared.withEngine(settingsPath: settingsPath) { engine in
             ime_engine_clear_imported_lexicon(engine) != 0
         } ?? false
-    }
-
-    func importReviewedRimeFrostArchive(from path: String) -> Int? {
-        guard let imported = SharedPinyinEnginePool.shared.withEngine(
-            settingsPath: settingsPath,
-            { engine in
-                path.withCString { pathPointer in
-                    ime_engine_import_rime_frost_archive(engine, pathPointer)
-                }
-            }
-        ) else {
-            return nil
-        }
-        return imported >= 0 ? Int(imported) : nil
     }
 
     // Reviewed archive import reads only its destination setting. It does not

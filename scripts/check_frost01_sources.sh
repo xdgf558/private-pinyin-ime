@@ -74,6 +74,19 @@ grep -q 'rime-frost-import' \
   platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q 'static func importReviewedRimeFrostArchive' \
   platform/macos_imk/Sources/CAbiBridge.swift
+grep -q 'let rimeIceLexicon: PinyinEngineFileFingerprint' \
+  platform/macos_imk/Sources/CAbiBridge.swift
+grep -q 'let rimeFrostLexicon: PinyinEngineFileFingerprint' \
+  platform/macos_imk/Sources/CAbiBridge.swift
+grep -q 'a new White Frost file invalidates the shared-engine fingerprint' \
+  platform/macos_imk/Tests/SharedEnginePoolTests.swift
+grep -q 'a new Rime Ice file invalidates the shared-engine fingerprint' \
+  platform/macos_imk/Tests/SharedEnginePoolTests.swift
+if grep -q 'func importReviewedRimeFrostArchive(from path: String)' \
+  platform/macos_imk/Sources/CAbiBridge.swift; then
+  echo "White Frost archive import must not run while holding the shared-engine lock." >&2
+  exit 1
+fi
 static_import="$(
   sed -n '/static func importReviewedRimeFrostArchive/,/^    }/p' \
     platform/macos_imk/Sources/CAbiBridge.swift

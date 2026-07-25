@@ -8,6 +8,14 @@ enum PrivatePinyinRimeFrostState: Equatable {
     case failed(String)
 }
 
+enum PrivatePinyinRimeFrostManagerError: LocalizedError, Equatable {
+    case operationInProgress
+
+    var errorDescription: String? {
+        "另一项白霜拼音操作正在进行，请稍后重试。"
+    }
+}
+
 enum PrivatePinyinRimeFrostCatalog {
     static let displayName = "白霜拼音核心词库"
     static let approvedVersion = "1.0.4"
@@ -73,6 +81,9 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         stateLock.lock()
         guard downloadTask == nil, releaseCheckTask == nil else {
             stateLock.unlock()
+            DispatchQueue.main.async {
+                completion(.failure(PrivatePinyinRimeFrostManagerError.operationInProgress))
+            }
             return
         }
         self.completion = completion

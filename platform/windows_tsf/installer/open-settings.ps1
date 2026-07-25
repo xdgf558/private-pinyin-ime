@@ -217,6 +217,7 @@ function New-OfficialHttpClient {
 
 function Download-ApprovedRimeFrostArchive {
     $client = New-OfficialHttpClient
+    $response = $null
     $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ("rime-frost-" + [Guid]::NewGuid().ToString("N") + ".zip")
     try {
         $response = $client.GetAsync(
@@ -263,12 +264,16 @@ function Download-ApprovedRimeFrostArchive {
         Remove-Item -Force -ErrorAction SilentlyContinue $temporary
         throw
     } finally {
+        if ($null -ne $response) {
+            $response.Dispose()
+        }
         $client.Dispose()
     }
 }
 
 function Get-LatestRimeFrostVersion {
     $client = New-OfficialHttpClient
+    $response = $null
     try {
         $response = $client.GetAsync($rimeFrostLatestReleaseApiUrl).GetAwaiter().GetResult()
         if (-not $response.IsSuccessStatusCode -or
@@ -283,6 +288,9 @@ function Get-LatestRimeFrostVersion {
         }
         return $normalized
     } finally {
+        if ($null -ne $response) {
+            $response.Dispose()
+        }
         $client.Dispose()
     }
 }

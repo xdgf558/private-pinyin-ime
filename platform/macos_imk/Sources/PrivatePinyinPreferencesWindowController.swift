@@ -1749,11 +1749,15 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                         }
                     }
                 }
-            case .failure:
+            case let .failure(error):
                 refreshRimeFrostPresentation()
-                showAlert(
-                    "无法从白霜拼音官方 GitHub Release 下载。请检查网络后重试。"
-                )
+                if error as? PrivatePinyinRimeFrostManagerError == .operationInProgress {
+                    showAlert(error.localizedDescription)
+                } else {
+                    showAlert(
+                        "无法从白霜拼音官方 GitHub Release 下载。请检查网络后重试。"
+                    )
+                }
             }
         }
     }
