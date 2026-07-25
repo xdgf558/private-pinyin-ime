@@ -54,6 +54,7 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPostInstallController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinLaunchPolicy.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinRimeFrostManager.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterModelManager.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinWriterWindowController.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift" \

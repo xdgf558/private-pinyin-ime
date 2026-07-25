@@ -1,8 +1,96 @@
 # Development Progress
 
-Last updated: 2026-07-24
-Current stage: Post-AI-12 desktop Writer V1
-Current status: Explicit local rewrite and Chinese/English translation are integrated for macOS arm64 and Windows x64 through the AI-09 Helper. The pinned llama.cpp runtime is packaged, the exact Qwen model remains an explicit verified on-demand download, strict privacy disables Writer, and automatic short completion remains off. Automated gates, the macOS host build, and a real-model end-to-end smoke pass; signed final-package and native Windows RSS smokes remain release gates
+Last updated: 2026-07-25
+Current stage: FROST-01 reviewed White Frost desktop import
+Current status: macOS and Windows can explicitly download and import the pinned official White Frost 1.0.4 Release into an independent, upgrade-safe layer after GPL-3.0 confirmation. Exact artifact identity, bounded ZIP parsing, atomic replacement, enable/disable, clear, and review-gated update reporting are implemented; iOS remains unchanged.
+
+## FROST-01 Reviewed White Frost Desktop Import (2026-07-25)
+
+- Audited the official `gaboolic/rime-frost` 1.0.4 stable Release and pinned its
+  44,008,360-byte `rime-frost-schemas.zip` asset with SHA-256
+  `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`.
+  The GPL-3.0 archive is never committed or bundled.
+- Added a shared Rust importer that validates every ZIP member without extracting
+  it, rejects traversal, duplicate names, symlinks, special files, excessive
+  members, expanded size, member size, or compression ratio, and reads only six
+  reviewed dictionaries.
+- A real import of the approved archive accepted 653,308 rows, retained 653,136
+  unique phrase/pinyin identities, and produced an 18,083,664-byte
+  `rime_frost.tsv` including its header. The import completed in approximately
+  11.4 seconds on the development Mac.
+- White Frost is stored independently from the bundled lexicon,
+  `imported_lexicon.tsv`, `rime_ice.tsv`, and local learning. A failed download,
+  identity check, archive validation, parse, or limit check leaves the previous
+  White Frost layer byte-for-byte unchanged.
+- macOS and Windows require a visible GPL-3.0 confirmation before downloading
+  from the fixed official GitHub Release. Both show the installed version and
+  support import/update, enable/disable, clear, license access, and a latest-tag
+  check that reports unreviewed releases as `新版待审核`.
+- Desktop generic Rime imports now allow 64 MiB per selected source, 128 MiB per
+  canonical layer, and 750,000 retained entries. The reviewed White Frost archive
+  applies a tighter 32-MiB per-member cap. iOS remains unchanged at 16 MiB,
+  32 MiB, and 200,000 entries and exposes no White Frost network action.
+- Dedicated Rust tests cover valid import, artifact mismatch, traversal,
+  excessive entries, symlink members, compression bombs, old-layer preservation,
+  independent layer loading, and enable/disable behavior. The FROST-01 source
+  gate pins platform scope, artifact identity, GPL consent, update-review state,
+  and the unchanged iOS limits.
+- `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D
+  warnings`, `cargo fmt --all -- --check`, and the desktop/iOS AI FFI feature
+  suites passed. The official 1.0.4 archive was also imported through the
+  production parser rather than a synthetic fixture.
+- `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh` passed after
+  staging the pinned Writer runtime, including the new AppKit download manager,
+  consent UI, FFI bridge, and preference controls.
+- Beta Xcode `bash scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED` with the
+  Rust `aarch64-apple-ios-sim` target. This is a non-regression build only:
+  FROST-01 remains desktop-only and the iOS import limits and network policy are
+  unchanged.
+- PR remediation moved the 11.4-second reviewed-archive import completely off
+  the macOS IMK main queue and changed it to a no-engine static FFI import, so
+  the import path does not construct a second full lexicon snapshot. It also
+  refreshed Windows settings before saving the White Frost enable state, made
+  missing `rg` fail the source gate, and feature-gated `zip`/`sha2` so the iOS
+  FFI dependency graph contains no reviewed-import ZIP stack.
+- The macOS shared-engine fingerprint now tracks the manual, Rime Ice, and
+  White Frost canonical files independently. Importing, replacing, or clearing
+  either reviewed layer rebuilds one shared snapshot even when `settings.json`
+  remains byte-for-byte unchanged; no process restart is required.
+- The hardened importer now hashes and parses through the same open file
+  descriptor, requires each member to expose safe type metadata, and compares
+  the EOCD-declared entry count with the ZIP reader's actual directory. A fresh
+  post-hardening production CLI import of the exact pinned 1.0.4 asset again
+  accepted 653,308 rows, retained 653,136 unique identities, and produced an
+  18,083,664-byte TSV. All 161 official members reported regular-file Unix
+  types (159 mode `100644`, two mode `100755`), so the stricter member-type
+  policy does not reject the only approved archive.
+- Closed the remaining review follow-ups without weakening artifact identity.
+  macOS version checks now report a bounded `operationInProgress` or
+  `versionCheckFailed` result instead of silently omitting their completion.
+  White Frost downloads still start at the fixed official GitHub Release URL
+  and require HTTPS on every redirect, while exact size and SHA-256 are the
+  authoritative content identity; changeable GitHub asset-CDN hostnames are no
+  longer pinned. Windows HTTP responses are disposed in `finally`, and the
+  existing PowerShell AST parser remains required by the `windows-2022` CI job.
+- Added `private-pinyin-settings measure-engine-load --settings PATH` so the
+  same cold engine-construction measurement can be repeated on macOS and native
+  Windows without loading user content. On the development arm64 Mac running
+  macOS 26.5.2 (build 25F84), five Release-process samples measured the bundled
+  base at a 70.350-ms median and 27,066,368-byte median maximum RSS (25.81 MiB).
+  With the approved 653,136-entry White Frost layer enabled, the median was
+  1,011.915 ms and 271,679,488 bytes (259.09 MiB). These are development CLI
+  reference values rather than signed IMK lifecycle evidence. Native Windows
+  x64 TSF RSS, post-reload RSS, and five-minute idle retention remain mandatory
+  release smoke items because the TSF DLL is hosted by multiple applications.
+
+## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
+
+- Split imported Rime dictionary limits into explicit platform policies. macOS and Windows now accept source files up to 64 MiB, canonical imported layers up to 128 MiB, and 750,000 merged entries.
+- iOS remains unchanged at 16 MiB per source, 32 MiB for the canonical imported layer, and 200,000 merged entries. Other unclassified targets use the same conservative policy rather than inheriting desktop capacity.
+- The shared 4-KiB line limit, 32-character phrase limit, explicit-pinyin requirement, atomic replacement, and separate imported-layer storage remain unchanged.
+- Added direct policy tests plus injected small-limit boundary tests. Oversized sources are rejected before reading, entry-limit failures preserve the previous imported file byte-for-byte, and repeated imports still merge and deduplicate.
+- `cargo test --workspace` passed with an isolated HOME so the existing "approved Writer model is absent" fixture could not see the developer machine's installed model. `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check`, `scripts/check_local_lexicon_import_sources.sh`, and the imported-lexicon integration suite passed.
+- Beta Xcode `scripts/build_ios_keyboard.sh`: `BUILD SUCCEEDED`, including the Rust `aarch64-apple-ios-sim` target, confirming that the unchanged conservative iOS policy still compiles through the container App and Keyboard Extension.
 
 ## iOS Keyboard Input-Latency Remediation (2026-07-24)
 
@@ -1100,6 +1188,46 @@ Current status: Explicit local rewrite and Chinese/English translation are integ
 - Notes: The release preserves the exact installed-bundle server and registered-but-disabled source repairs while adding the compact overview plus dedicated lexicon, Writer, and version/update preference pages.
 
 - Release scope: `0.1.27` adds the reviewed tiered Station Board preferences navigation and retains the signed Writer V1 and input-server reliability fixes from `0.1.26`. An installed-upgrade typing smoke and clean-user install/uninstall smoke remain manual release gates.
+
+### FROST-01 Review Closure Validation
+
+- Summary: Reviewed White Frost ZIP parsing and hashing are now compiled only through the desktop `reviewed-rime-frost` feature. The iOS `ios-ai` graph does not enable that feature and no longer links `zip`, `flate2`, or `zopfli` through `ime_core`.
+
+- Follow-up: The macOS settings layer now records caller-supplied reviewed source metadata instead of depending on the download manager's catalog type. This keeps the standalone shared-engine and source-label Swift tests independent from networking code while preserving the exact approved White Frost manifest values at the import call site.
+
+- Command: `cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests`
+- Result: passed (13 tests)
+- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio and entry-count limits, duplicate members, missing approved members, oversized members, false declared sizes, and atomic old-layer preservation all remain green. Direct central-directory mutations additionally prove that missing Unix mode and forged EOCD entry counts fail closed, while a valid non-empty ZIP comment remains accepted.
+
+- Command: `cargo run -q -p private_pinyin_settings -- import-rime-frost --settings <temporary-settings> --input rime-frost-schemas.zip`
+- Result: passed against the fixed official 1.0.4 Release after the TOCTOU, EOCD, and Unix-mode hardening
+- Notes: The downloaded asset was independently rechecked as 44,008,360 bytes with SHA-256 `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`. The production CLI accepted 653,308 source rows, retained 653,136 unique phrase/pinyin identities, and wrote an 18,083,664-byte canonical TSV (653,137 lines including the header) in approximately 10.69 seconds. ZIP inventory inspection reported 161 central-directory entries: 159 regular files with Unix mode `100644` and two regular files with mode `100755`.
+
+- Command: `cargo clippy --workspace --all-targets -- -D warnings`, plus FFI Clippy with `desktop-ai` and `ios-ai`
+- Result: passed
+- Notes: Both host feature graphs compile without warnings. `scripts/check_frost01_sources.sh` now fails immediately if `rg` is unavailable and inspects the resolved iOS Cargo graph for the desktop Frost feature and archive dependencies.
+
+- Command: `bash scripts/check_frost01_sources.sh`, `bash scripts/check_windows_tsf_sources.sh`, `bash scripts/check_installers_settings_sources.sh`, and `bash scripts/check_ios_keyboard_sources.sh`
+- Result: passed
+- Notes: The Windows settings save path rereads the latest persisted settings before applying form fields, so a newly changed White Frost enable state is not overwritten by the launch-time snapshot. A negative control temporarily enabled `reviewed-rime-frost` in the `ios-ai` feature graph; the FROST-01 gate failed with the expected iOS dependency-leak error, and passed again after restoring the graph. The PowerShell AST parser is wired into the `windows-2022` job because this development Mac does not provide `pwsh`.
+
+- Command: `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh`
+- Result: passed
+- Notes: Reviewed archive verification and parsing now run on a dedicated serial background queue through the static no-engine FFI import. Only final status and one shared-engine reload return to the main queue, so a large import neither blocks the InputMethodKit UI nor creates a second full lexicon engine.
+
+- Command: `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_shared_engine.sh` and `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_imported_lexicon_source.sh`
+- Result: passed
+- Notes: The standalone Swift targets compile without the White Frost network manager, continue to prove process-wide engine sharing for ordinary clients, and retain imported-source status behavior. The shared-engine test also creates temporary reviewed-layer settings and proves that adding White Frost, adding Rime Ice, and removing White Frost each invalidate exactly one shared snapshot while an unchanged configuration remains coalesced. Layer-only candidates become visible immediately after each reload and disappear after the corresponding layer is cleared.
+
+- Command: `bash scripts/build_ios_keyboard.sh`
+- Result: passed (`BUILD SUCCEEDED`)
+- Notes: The iOS container and keyboard extension build with `ios-ai` while excluding the desktop White Frost archive parser and ZIP dependency chain.
+
+- Command: `cargo test -p ime_core --test candidate_tests continuous_sentence_latency_budget`, `nine_key_latency_budget`, and `nine_key_continuous_sentence_latency_budget`
+- Result: passed
+- Notes: The default no-import fast path and deterministic compact index keep all three candidate paths under their unchanged 60 ms assertions; FROST-01 does not widen an unrelated latency budget.
+
+- Manual release gate: capture macOS and Windows RSS before White Frost import, at peak verification/import, immediately after the one shared-engine reload, and after five idle minutes, together with the shared-engine reload duration. The implementation prevents a second full engine during import, but release evidence must still prove the real signed desktop processes return to the normal single-engine retained-memory range.
 
 ## Open Items
 

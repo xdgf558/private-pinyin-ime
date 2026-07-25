@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Closed the remaining FROST-01 follow-ups: macOS update checks now always complete with success or a visible sanitized error, reviewed downloads start at the fixed official URL while treating exact size/SHA-256 as the trust anchor instead of pinning GitHub CDN hostnames, and imported-layer deduplication no longer clones every phrase/pinyin identity during engine construction.
+- Revalidated the hardened White Frost ZIP importer against the exact approved 1.0.4 Release after adding same-descriptor artifact verification, EOCD entry-count matching, and mandatory member-type metadata. New fixtures cover missing Unix mode, forged EOCD counts, and valid non-empty ZIP comments; the production import still retains 653,136 unique entries in an 18,083,664-byte layer.
+- Fixed macOS shared-engine invalidation so importing, updating, or clearing reviewed Rime Ice and White Frost layers takes effect without restarting the input method process.
+- Closed the FROST-01 review blockers without relaxing the 60 ms candidate-latency budget: default installs retain the embedded-lexicon fast path, imported rows keep deterministic source order, reviewed ZIP import no longer constructs a second full engine, archive/download bounds and duplicate-member checks fail closed, and CI now parses every Windows PowerShell file while proving the iOS graph excludes desktop ZIP dependencies.
+- Kept the reviewed White Frost archive parser off the macOS IMK main thread, prevented the Windows settings window from overwriting a newly changed White Frost enable state, made the desktop-only iOS purity gate fail explicitly when its required source scanner is unavailable, and excluded White Frost ZIP parsing dependencies from iOS builds.
 - Moved the bundled llama.cpp license notice out of the macOS `Helpers` code-signing boundary and added expanded-payload signature validation, preventing pkg serialization from invalidating Apple notarization.
 - Fixed macOS input-source repair treating a registered but disabled source as
   missing. Registration health now includes every installed TIS source while
@@ -24,6 +29,8 @@
 
 ### Added
 
+- Added FROST-01 reviewed White Frost import on macOS and Windows: users explicitly accept GPL-3.0 before downloading the pinned official `rime-frost` 1.0.4 Release, and exact size/SHA-256 plus bounded ZIP validation protect an independent atomic `rime_frost.tsv` layer. The UI reports its version and supports update checks, disable/enable, and clear without touching built-in, manual, Rime Ice, or learned data.
+- Raised only the macOS and Windows local Rime import policy to 64 MiB per source, 128 MiB for canonical imported layers, and 750,000 retained entries. iOS keeps its existing 16 MiB, 32 MiB, and 200,000-entry limits.
 - Added the post-AI-12 desktop Writer V1 for macOS arm64 and Windows x64: explicit rewrite plus Chinese/English translation previews run locally through the authenticated AI-09 Helper, never replace text automatically, and fail without affecting ordinary input.
 - Added a user-initiated, fixed-source Writer model installer with exact size and SHA-256 verification. The approximately 1.1-GB Qwen model is not committed or bundled; installers contain only the pinned MIT llama.cpp runtime.
 - Added strict-privacy request cancellation before Writer source dispatch and mid-flight result invalidation, a private random-key loopback runtime boundary, bounded deadlines, runtime/model use-time verification, and source gates that keep automatic short completion disabled.

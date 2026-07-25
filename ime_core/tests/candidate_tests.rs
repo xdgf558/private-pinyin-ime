@@ -174,10 +174,11 @@ fn joint_decoder_stays_within_interactive_lookup_budget() {
         let candidates = engine.candidates_for_raw("wojintianxiangquchifan");
         !candidates.is_empty()
     });
+    let budget = Duration::from_millis(60);
 
     assert!(
-        median < Duration::from_millis(60),
-        "median continuous lookup took {median:?}"
+        median < budget,
+        "median continuous lookup took {median:?}, budget {budget:?}"
     );
 }
 

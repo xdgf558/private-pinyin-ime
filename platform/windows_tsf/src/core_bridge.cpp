@@ -124,6 +124,10 @@ std::string default_settings_template() {
          "  \"strict_privacy_mode\": false,\n"
          "  \"user_lexicon_path\": null,\n"
          "  \"imported_lexicon_path\": null,\n"
+         "  \"rime_ice_lexicon_path\": null,\n"
+         "  \"enable_rime_ice_lexicon\": false,\n"
+         "  \"rime_frost_lexicon_path\": null,\n"
+         "  \"enable_rime_frost_lexicon\": true,\n"
          "  \"fuzzy_pinyin\": {\n"
          "    \"zh_z\": false,\n"
          "    \"ch_c\": false,\n"
@@ -182,11 +186,18 @@ std::string ensure_settings_file() {
   const std::wstring settings_path = support_dir + L"\\settings.json";
   const std::wstring user_lexicon_path = support_dir + L"\\user_lexicon.sqlite";
   const std::wstring imported_lexicon_path = support_dir + L"\\imported_lexicon.tsv";
+  const std::wstring rime_ice_lexicon_path = support_dir + L"\\rime_ice.tsv";
+  const std::wstring rime_frost_lexicon_path = support_dir + L"\\rime_frost.tsv";
   if (!file_exists(settings_path)) {
     std::string user_lexicon_utf8 = wide_to_utf8(user_lexicon_path);
     std::replace(user_lexicon_utf8.begin(), user_lexicon_utf8.end(), '\\', '/');
     std::string imported_lexicon_utf8 = wide_to_utf8(imported_lexicon_path);
     std::replace(imported_lexicon_utf8.begin(), imported_lexicon_utf8.end(), '\\', '/');
+    std::string rime_ice_lexicon_utf8 = wide_to_utf8(rime_ice_lexicon_path);
+    std::replace(rime_ice_lexicon_utf8.begin(), rime_ice_lexicon_utf8.end(), '\\', '/');
+    std::string rime_frost_lexicon_utf8 = wide_to_utf8(rime_frost_lexicon_path);
+    std::replace(
+        rime_frost_lexicon_utf8.begin(), rime_frost_lexicon_utf8.end(), '\\', '/');
 
     std::string contents;
     const std::wstring template_path = module_directory() + L"\\default_settings.json";
@@ -204,6 +215,17 @@ std::string ensure_settings_file() {
     const std::string imported_replacement =
         "\"imported_lexicon_path\": \"" + json_escape(imported_lexicon_utf8) + "\"";
     if (!replace_first(contents, "\"imported_lexicon_path\": null", imported_replacement)) {
+      return {};
+    }
+    const std::string rime_ice_replacement =
+        "\"rime_ice_lexicon_path\": \"" + json_escape(rime_ice_lexicon_utf8) + "\"";
+    if (!replace_first(contents, "\"rime_ice_lexicon_path\": null", rime_ice_replacement)) {
+      return {};
+    }
+    const std::string rime_frost_replacement =
+        "\"rime_frost_lexicon_path\": \"" + json_escape(rime_frost_lexicon_utf8) + "\"";
+    if (!replace_first(
+            contents, "\"rime_frost_lexicon_path\": null", rime_frost_replacement)) {
       return {};
     }
 

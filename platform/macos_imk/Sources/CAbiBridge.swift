@@ -46,25 +46,35 @@ private struct PinyinEngineConfigurationFingerprint: Equatable {
     let settingsPath: String?
     let settingsData: Data?
     let importedLexicon: PinyinEngineFileFingerprint
+    let rimeIceLexicon: PinyinEngineFileFingerprint
+    let rimeFrostLexicon: PinyinEngineFileFingerprint
 
     init(settingsPath: String?) {
         let normalizedSettingsPath = settingsPath.map {
             URL(fileURLWithPath: $0).standardizedFileURL.path
         }
         let settingsData = normalizedSettingsPath.flatMap(FileManager.default.contents(atPath:))
-        let importedLexiconPath = settingsData.flatMap { data -> String? in
+        let settings = settingsData.flatMap { data -> [String: Any]? in
             guard
                 let object = try? JSONSerialization.jsonObject(with: data),
                 let settings = object as? [String: Any]
             else {
                 return nil
             }
-            return settings["imported_lexicon_path"] as? String
+            return settings
         }
 
         self.settingsPath = normalizedSettingsPath
         self.settingsData = settingsData
-        importedLexicon = PinyinEngineFileFingerprint(path: importedLexiconPath)
+        importedLexicon = PinyinEngineFileFingerprint(
+            path: settings?["imported_lexicon_path"] as? String
+        )
+        rimeIceLexicon = PinyinEngineFileFingerprint(
+            path: settings?["rime_ice_lexicon_path"] as? String
+        )
+        rimeFrostLexicon = PinyinEngineFileFingerprint(
+            path: settings?["rime_frost_lexicon_path"] as? String
+        )
     }
 }
 
@@ -276,6 +286,29 @@ final class PinyinCoreBridge {
     func clearImportedLexicon() -> Bool {
         SharedPinyinEnginePool.shared.withEngine(settingsPath: settingsPath) { engine in
             ime_engine_clear_imported_lexicon(engine) != 0
+        } ?? false
+    }
+
+    // Reviewed archive import reads only its destination setting. It does not
+    // construct a second full lexicon snapshot while the shared engine is live.
+    static func importReviewedRimeFrostArchive(
+        from path: String,
+        settingsPath: String?
+    ) -> Int? {
+        guard let settingsPath else {
+            return nil
+        }
+        let imported = settingsPath.withCString { settingsPointer in
+            path.withCString { archivePointer in
+                ime_import_rime_frost_archive(settingsPointer, archivePointer)
+            }
+        }
+        return imported >= 0 ? Int(imported) : nil
+    }
+
+    func clearRimeFrostLexicon() -> Bool {
+        SharedPinyinEnginePool.shared.withEngine(settingsPath: settingsPath) { engine in
+            ime_engine_clear_rime_frost_lexicon(engine) != 0
         } ?? false
     }
 

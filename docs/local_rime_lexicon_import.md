@@ -4,14 +4,17 @@ PrivatePinyin ships a reviewed permissive base dictionary for every user. Advanc
 
 ## Storage Model
 
-The three layers are independent:
+The writable and immutable layers are independent:
 
 1. `base_lexicon.tsv`: immutable, bundled, reviewed Apache-2.0/MIT data.
 2. `imported_lexicon.tsv`: user-selected Rime rows; preserved by app upgrades.
 3. `imported_lexicon_manifest.json`: source names/versions for UI only; no rows or source paths.
-4. `user_lexicon.sqlite`: selections learned locally by PrivatePinyin.
+4. `rime_ice.tsv`: reviewed optional Rime Ice data.
+5. `rime_frost.tsv`: reviewed optional White Frost data on macOS and Windows.
+6. `rime_frost_manifest.json`: reviewed White Frost version and artifact identity for UI only.
+7. `user_lexicon.sqlite`: selections learned locally by PrivatePinyin.
 
-Clearing one writable layer does not clear the other. Importing or clearing a Rime dictionary takes effect after the engine/session is recreated; platform controls perform or request that reload.
+Clearing any one mutable data layer leaves every remaining layer unchanged. Importing or clearing a Rime dictionary takes effect after the engine/session is recreated; platform controls perform or request that reload.
 
 Source labels are captured only when an import succeeds. On macOS, known upstream dictionary filenames selected under a `rime-ice`, `雾凇`, or `霧凇` directory are shown as `雾凇拼音`; custom dictionaries in the same directory retain their cleaned filename. Version dates are accepted only from the matched source directory and its descendants, so an ancestor backup-directory date is not presented as the dictionary version. Legacy imported layers created before the source manifest existed cannot reconstruct their origin from normalized phrase/pinyin rows, so the preferences UI asks the user to re-import the original files. Re-importing is cumulative and deduplicated, and records the source label without duplicating phrase/pinyin identities.
 
@@ -24,7 +27,14 @@ Source labels are captured only when an import succeeds. On macOS, known upstrea
 - Tone marks/numbers and `v`/`u:` spellings are normalized.
 - Rows that rely on automatic pronunciation from another Rime schema are skipped.
 
-Each source file is capped at 16 MiB, the canonical imported file at 32 MiB, individual lines at 4 KiB, phrases at 32 Han characters, and the merged imported layer at 200,000 entries. The shared Rust importer never follows a URL, invokes Rime code, or loads schema plugins.
+Import limits are selected by the Rust target:
+
+| Target | Source file | Canonical imported file | Retained entries |
+| --- | ---: | ---: | ---: |
+| macOS / Windows | 64 MiB | 128 MiB | 750,000 |
+| iOS and conservative fallback targets | 16 MiB | 32 MiB | 200,000 |
+
+The desktop allowance supports larger user-selected dictionaries without widening the iOS Keyboard Extension memory boundary. All targets retain the 4 KiB line limit and 32-Han-character phrase limit. The shared Rust importer never follows a URL, invokes Rime code, or loads schema plugins.
 
 The 4 KiB line limit is checked before comments are discarded. A line containing only `---` starts a YAML header and a line containing only `...` ends it; those delimiter-only lines are therefore reserved and must not appear in dictionary data. An unclosed header causes the remaining rows to be ignored and the import fails when no usable rows remain.
 
@@ -40,6 +50,8 @@ If `imported_lexicon.tsv` is damaged, normal engine creation ignores that layer 
 
 PrivatePinyin does not bundle or redistribute `rime-ice`. Its GPL-3.0-only data is not used for the default asset. Local file imports remain the user's choice. The iOS container App additionally offers an explicit opt-in import of a reviewed upstream subset and shows the source/license before downloading; those optional data remain a separate GPL layer and are never copied into the app package.
 
+The macOS and Windows settings hosts also provide an explicit opt-in White Frost action. White Frost remains GPL-3.0 data outside every app bundle and installer. Its complete source, artifact identity, selected dictionary list, archive defenses, and review procedure are recorded in [`rime_frost_integration.md`](rime_frost_integration.md).
+
 The reviewed iOS action is pinned to official release `2026.03.26` and imports only:
 
 | File | Bytes | SHA-256 |
@@ -54,7 +66,7 @@ The values above were independently captured from the official `iDvel/rime-ice` 
 
 The review downloaded that asset with `gh release download`, extracted it with `/usr/bin/unzip`, and calculated each selected file with `/usr/bin/shasum -a 256`. A second capture downloaded the three fixed raw tag URLs with `/usr/bin/curl --fail --location`; their byte counts and SHA-256 values exactly matched the files extracted from the official release asset. CI intentionally makes no network request and instead pins these reviewed values. Any upstream tag movement or asset replacement therefore fails closed until the Owner reviews and records a new release.
 
-This is deliberately labeled `雾凇拼音精选`, not a complete upstream installation. The larger `base`, `ext`, and `tencent` dictionaries do not fit the current per-source or 200,000-entry import policy and are not downloaded.
+This is deliberately labeled `雾凇拼音精选`, not a complete upstream installation. The larger `base`, `ext`, and `tencent` dictionaries do not fit the conservative iOS per-source or 200,000-entry import policy and are not downloaded.
 
 The default supplemental phrase data comes from `mozillazg/phrase-pinyin-data` v0.19.0 under MIT; its exact revision and notice are recorded in `ime_core/assets/lexicon_manifest.json` and `THIRD_PARTY_NOTICES.md`.
 
@@ -62,6 +74,7 @@ The default supplemental phrase data comes from `mozillazg/phrase-pinyin-data` v
 
 - macOS: 猫栈拼音 menu or Station Board preferences, `导入 Rime 词库...`.
 - Windows: 偏好设置 > 隐私与词库 > 本地导入词库.
+- macOS / Windows White Frost: the dedicated `白霜拼音核心词库` card shows the approved or installed version and provides import/update, enable/disable, clear, license, and explicit update-check actions. An upstream version not present in the Owner allowlist is shown as `新版待审核` and cannot be imported.
 - iOS: container App > `本地导入词库` opens the system document picker. `一键导入雾凇精选` is a separate default-off action that requires confirmation, downloads only the pinned files above through an ephemeral session, and rejects any host, size, or SHA-256 mismatch. In both paths the container App calls the same Rust importer and writes the bounded `imported_lexicon.tsv` layer into the App Group. The keyboard extension only reads that layer, so it does not need Full Access, arbitrary document access, a network API, or a second parser. If App Group storage is unavailable, importing is disabled and normal typing continues with the bundled base.
 
 CLI example:

@@ -58,8 +58,18 @@ Checklist:
 | Writer rewrite/translation | With strict privacy off and Writer consent on, explicit rewrite, Chinese-to-English, and English-to-Chinese actions return copyable previews; no action automatically replaces the current document | | Repeat one cold and one warm request and record latency/RSS without content |
 | Writer privacy race | While a request is running, enable strict privacy, revoke Writer consent, and remove the model in separate runs; every result is discarded and ordinary input remains available | | The UI may show a sanitized discarded-result message |
 | Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, cancellation during cold model verification, offline reuse, and ten-minute idle shutdown; confirm neither the Helper token nor server API key appears in process arguments | | No prompt/result logs, and Notepad composition remains responsive throughout |
+| White Frost consent and import | From Windows settings, confirm the GPL-3.0 page, import approved White Frost 1.0.4, restart the input session, and type a phrase found only in the imported layer | | Confirm the request starts at the fixed official GitHub Release URL, every redirect remains HTTPS, exact artifact verification passes, and no input content appears in the request |
+| White Frost isolation and recovery | Disable, re-enable, and clear White Frost without changing the bundled, manual Rime, Rime Ice, or learned layers; retry with a corrupt/oversized archive and confirm the previous `rime_frost.tsv` remains intact | | A newer upstream release must show `新版待审核` until its identity is reviewed |
+| White Frost memory budget | Record the settings/IME process RSS before import, peak RSS during archive verification/import, the shared-engine reload duration, RSS immediately after reload, and RSS after five idle minutes | | Confirm import does not construct a second full engine and retained RSS returns to the normal single-shared-engine range; attach numbers without dictionary content |
 | Settings UI | Privacy, learning, prediction, clear, and export actions run | | |
 | Uninstall | Unregister/uninstall removes the input method from the user account | | |
+
+Development reference only: run
+`private-pinyin-settings.exe measure-engine-load --settings <path>` against
+base-only and White-Frost-enabled temporary settings, and sample the process
+with native Windows tools. No native Windows x64 numbers were produced on the
+development Mac; the White Frost memory row remains a release gate rather than
+being inferred from macOS.
 
 ## macOS InputMethodKit Smoke
 
@@ -114,10 +124,22 @@ Checklist:
 | Writer rewrite/translation | With strict privacy off and Writer consent on, explicit rewrite, Chinese-to-English, and English-to-Chinese actions return copyable previews; no action automatically replaces the current document | | Repeat one cold and one warm request and record latency/RSS without content |
 | Writer privacy race | While a request is running, enable strict privacy, revoke Writer consent, and remove the model in separate runs; every result is discarded and ordinary input remains available | | The UI may show a sanitized discarded-result message |
 | Writer runtime faults | Test missing, silent, and terminated Helper/`llama-server`, queue saturation, timeout, cancellation during cold model verification, offline reuse, and ten-minute idle shutdown; confirm neither the Helper token nor server API key appears in process arguments | | No prompt/result logs, and TextEdit composition remains responsive throughout |
+| White Frost consent and import | From Station Board, confirm the GPL-3.0 page, import approved White Frost 1.0.4, reload the input method without restarting its process, and type a phrase found only in the imported layer | | Confirm the request starts at the fixed official GitHub Release URL, every redirect remains HTTPS, exact artifact verification passes, and no input content appears in the request |
+| White Frost isolation and recovery | Disable, re-enable, and clear White Frost without changing the bundled, manual Rime, Rime Ice, or learned layers; retry with a corrupt/oversized archive and confirm the previous `rime_frost.tsv` remains intact | | A newer upstream release must show `新版待审核` until its identity is reviewed |
+| White Frost memory budget | Record the IMK process RSS before import, peak RSS during archive verification/import, the shared-engine reload duration, RSS immediately after reload, and RSS after five idle minutes | | Confirm import does not construct a second full engine and retained RSS returns to the normal single-shared-engine range; attach numbers without dictionary content |
 | Settings menu | Strict privacy toggle, clear, export, and open-settings actions run | | |
 | Browser/editor pass | Repeat basic `nihao -> 你好` in Safari, Chrome, and VS Code | | |
 | Stale process check | After the guided refresh or logout/login fallback, no pre-install PrivatePinyin PID remains before smoke testing | | |
 | Uninstall | `platform/macos_imk/installer/uninstall-local.sh` removes the app | | |
+
+Development reference only (2026-07-25, macOS 26.5.2 build 25F84, arm64,
+Release CLI, five cold process samples): the bundled base measured a
+70.350-ms median engine initialization and 27,066,368-byte median maximum RSS
+(25.81 MiB). The approved 653,136-entry White Frost layer measured
+1,011.915 ms and 271,679,488 bytes (259.09 MiB). Reproduce with
+`private-pinyin-settings measure-engine-load --settings <path>`; these numbers
+do not replace the signed IMK reload, immediate RSS, and five-minute idle checks
+in the table above.
 
 ## iOS Keyboard Smoke
 

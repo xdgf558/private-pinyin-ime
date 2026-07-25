@@ -7,6 +7,10 @@
   "strict_privacy_mode": false,
   "user_lexicon_path": null,
   "imported_lexicon_path": null,
+  "rime_ice_lexicon_path": null,
+  "enable_rime_ice_lexicon": false,
+  "rime_frost_lexicon_path": null,
+  "enable_rime_frost_lexicon": true,
   "fuzzy_pinyin": {
     "zh_z": false,
     "ch_c": false,

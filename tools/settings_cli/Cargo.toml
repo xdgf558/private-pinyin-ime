@@ -10,4 +10,4 @@ name = "private-pinyin-settings"
 path = "src/main.rs"
 
 [dependencies]
-ime_core = { path = "../../ime_core" }
+ime_core = { path = "../../ime_core", features = ["reviewed-rime-frost"] }

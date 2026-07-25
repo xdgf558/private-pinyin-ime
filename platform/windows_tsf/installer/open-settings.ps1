@@ -1,7 +1,7 @@
 ﻿param(
     [string]$SettingsTool = (Join-Path $PSScriptRoot "private-pinyin-settings.exe"),
     [string]$PreviewPath = "",
-    [ValidateSet("general", "privacy", "writer", "about")][string]$PreviewTab = "general"
+    [ValidateSet("general", "privacy", "lexicon", "writer", "about")][string]$PreviewTab = "general"
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,17 +9,29 @@ Set-StrictMode -Version 2
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Net.Http
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $dataDir = Join-Path $env:LOCALAPPDATA "PrivatePinyin"
 $settingsPath = Join-Path $dataDir "settings.json"
 $userLexiconPath = Join-Path $dataDir "user_lexicon.sqlite"
 $importedLexiconPath = Join-Path $dataDir "imported_lexicon.tsv"
+$rimeIceLexiconPath = Join-Path $dataDir "rime_ice.tsv"
+$rimeFrostLexiconPath = Join-Path $dataDir "rime_frost.tsv"
+$rimeFrostManifestPath = Join-Path $dataDir "rime_frost_manifest.json"
 $iconPath = Join-Path $PSScriptRoot "PrivatePinyinInstaller.ico"
 $logoPath = Join-Path $PSScriptRoot "PrivatePinyinLogo.png"
 $writerScriptPath = Join-Path $PSScriptRoot "open-writer.ps1"
 $writerModelPath = Join-Path $dataDir "WriterModels\qwen2.5-1.5b-instruct-q4-k-m\qwen2.5-1.5b-instruct-q4_k_m.gguf"
 $writerModelSize = [int64]1117320736
+$rimeFrostDisplayName = "白霜拼音核心词库"
+$rimeFrostApprovedVersion = "1.0.4"
+$rimeFrostArchiveBytes = [int64]44008360
+$rimeFrostArchiveSha256 = "4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5"
+$rimeFrostArchiveUrl = "https://github.com/gaboolic/rime-frost/releases/download/1.0.4/rime-frost-schemas.zip"
+$rimeFrostReleaseUrl = "https://github.com/gaboolic/rime-frost/releases/tag/1.0.4"
+$rimeFrostLicenseUrl = "https://github.com/gaboolic/rime-frost/blob/master/LICENSE"
+$rimeFrostLatestReleaseApiUrl = "https://api.github.com/repos/gaboolic/rime-frost/releases/latest"
 
 function Get-DefaultSettingsTemplatePath {
     $candidates = @(
@@ -61,7 +73,17 @@ function Get-DefaultSettings {
     $settings = Get-Content -Raw -Path (Get-DefaultSettingsTemplatePath) | ConvertFrom-Json
     $settings.user_lexicon_path = $userLexiconPath.Replace("\", "/")
     $settings.imported_lexicon_path = $importedLexiconPath.Replace("\", "/")
+    $settings.rime_ice_lexicon_path = $rimeIceLexiconPath.Replace("\", "/")
+    $settings.rime_frost_lexicon_path = $rimeFrostLexiconPath.Replace("\", "/")
     return $settings
+}
+
+function Set-JsonProperty($object, [string]$name, $value) {
+    if ($null -eq $object.PSObject.Properties[$name]) {
+        $object | Add-Member -NotePropertyName $name -NotePropertyValue $value
+    } else {
+        $object.$name = $value
+    }
 }
 
 function Ensure-SettingsFile {
@@ -76,6 +98,8 @@ function Ensure-SettingsFile {
     $needsWrite = $false
     $expectedUserPath = $userLexiconPath.Replace("\", "/")
     $expectedImportedPath = $importedLexiconPath.Replace("\", "/")
+    $expectedRimeIcePath = $rimeIceLexiconPath.Replace("\", "/")
+    $expectedRimeFrostPath = $rimeFrostLexiconPath.Replace("\", "/")
     if ($settings.user_lexicon_path -ne $expectedUserPath) {
         $settings.user_lexicon_path = $expectedUserPath
         $needsWrite = $true
@@ -85,6 +109,24 @@ function Ensure-SettingsFile {
         $needsWrite = $true
     } elseif ($settings.imported_lexicon_path -ne $expectedImportedPath) {
         $settings.imported_lexicon_path = $expectedImportedPath
+        $needsWrite = $true
+    }
+    if ($null -eq $settings.PSObject.Properties["rime_ice_lexicon_path"] -or
+        $settings.rime_ice_lexicon_path -ne $expectedRimeIcePath) {
+        Set-JsonProperty $settings "rime_ice_lexicon_path" $expectedRimeIcePath
+        $needsWrite = $true
+    }
+    if ($null -eq $settings.PSObject.Properties["enable_rime_ice_lexicon"]) {
+        Set-JsonProperty $settings "enable_rime_ice_lexicon" $false
+        $needsWrite = $true
+    }
+    if ($null -eq $settings.PSObject.Properties["rime_frost_lexicon_path"] -or
+        $settings.rime_frost_lexicon_path -ne $expectedRimeFrostPath) {
+        Set-JsonProperty $settings "rime_frost_lexicon_path" $expectedRimeFrostPath
+        $needsWrite = $true
+    }
+    if ($null -eq $settings.PSObject.Properties["enable_rime_frost_lexicon"]) {
+        Set-JsonProperty $settings "enable_rime_frost_lexicon" $true
         $needsWrite = $true
     }
     if ($needsWrite) {
@@ -116,6 +158,136 @@ function Run-SettingsTool($arguments) {
 
     $process = Start-Process -FilePath $SettingsTool -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
     return $process.ExitCode -eq 0
+}
+
+function Get-RimeFrostManifest {
+    if (-not (Test-Path $rimeFrostManifestPath)) {
+        return $null
+    }
+    try {
+        return Get-Content -Raw -Path $rimeFrostManifestPath | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+}
+
+function Write-RimeFrostManifest {
+    $manifest = [ordered]@{
+        schema_version = 1
+        display_name = $rimeFrostDisplayName
+        version = $rimeFrostApprovedVersion
+        release_url = $rimeFrostReleaseUrl
+        archive_sha256 = $rimeFrostArchiveSha256
+        imported_at = [DateTime]::UtcNow.ToString("o")
+    }
+    $temporary = "$rimeFrostManifestPath.tmp"
+    $manifest | ConvertTo-Json | Set-Content -Path $temporary -Encoding UTF8
+    Move-Item -Force -Path $temporary -Destination $rimeFrostManifestPath
+}
+
+function Get-RimeFrostSummary {
+    if (-not (Test-Path $rimeFrostLexiconPath)) {
+        return "当前白霜拼音：尚未导入"
+    }
+    $manifest = Get-RimeFrostManifest
+    $version = if ($null -ne $manifest -and $manifest.version) {
+        [string]$manifest.version
+    } else {
+        "本地数据（来源记录不可用）"
+    }
+    $current = Read-Settings
+    $suffix = if ([bool]$current.enable_rime_frost_lexicon) { "" } else { "（已停用）" }
+    return "当前白霜拼音：$version$suffix"
+}
+
+function New-OfficialHttpClient {
+    $handler = New-Object System.Net.Http.HttpClientHandler
+    $handler.AllowAutoRedirect = $true
+    $handler.MaxAutomaticRedirections = 5
+    $client = New-Object System.Net.Http.HttpClient($handler)
+    $client.Timeout = [TimeSpan]::FromMinutes(5)
+    $client.DefaultRequestHeaders.UserAgent.ParseAdd("StationCat-PrivatePinyin")
+    return $client
+}
+
+function Download-ApprovedRimeFrostArchive {
+    $client = New-OfficialHttpClient
+    $response = $null
+    $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ("rime-frost-" + [Guid]::NewGuid().ToString("N") + ".zip")
+    try {
+        $response = $client.GetAsync(
+            $rimeFrostArchiveUrl,
+            [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead
+        ).GetAwaiter().GetResult()
+        if (-not $response.IsSuccessStatusCode) {
+            throw "GitHub 返回 HTTP $([int]$response.StatusCode)"
+        }
+        $finalUri = $response.RequestMessage.RequestUri
+        if ($finalUri.Scheme -ne [System.Uri]::UriSchemeHttps) {
+            throw "下载被重定向到非 HTTPS 地址"
+        }
+        $declaredLength = $response.Content.Headers.ContentLength
+        if ($null -ne $declaredLength -and [int64]$declaredLength -ne $rimeFrostArchiveBytes) {
+            throw "下载文件大小与审核清单不一致"
+        }
+        $source = $response.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+        $destination = [System.IO.File]::Open(
+            $temporary,
+            [System.IO.FileMode]::CreateNew,
+            [System.IO.FileAccess]::Write,
+            [System.IO.FileShare]::None
+        )
+        try {
+            $buffer = New-Object byte[] (64 * 1024)
+            [int64]$totalBytes = 0
+            while (($read = $source.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $totalBytes += $read
+                if ($totalBytes -gt $rimeFrostArchiveBytes) {
+                    throw "下载文件超过审核清单大小"
+                }
+                $destination.Write($buffer, 0, $read)
+            }
+        } finally {
+            $destination.Dispose()
+            $source.Dispose()
+        }
+        if ((Get-Item $temporary).Length -ne $rimeFrostArchiveBytes) {
+            throw "下载文件大小与审核清单不一致"
+        }
+        return $temporary
+    } catch {
+        Remove-Item -Force -ErrorAction SilentlyContinue $temporary
+        throw
+    } finally {
+        if ($null -ne $response) {
+            $response.Dispose()
+        }
+        $client.Dispose()
+    }
+}
+
+function Get-LatestRimeFrostVersion {
+    $client = New-OfficialHttpClient
+    $response = $null
+    try {
+        $response = $client.GetAsync($rimeFrostLatestReleaseApiUrl).GetAwaiter().GetResult()
+        if (-not $response.IsSuccessStatusCode -or
+            $response.RequestMessage.RequestUri.Host.ToLowerInvariant() -ne "api.github.com") {
+            throw "无法读取官方版本信息"
+        }
+        $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        $release = $body | ConvertFrom-Json
+        $normalized = ([string]$release.tag_name).Trim()
+        if ($normalized.StartsWith("v", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $normalized = $normalized.Substring(1)
+        }
+        return $normalized
+    } finally {
+        if ($null -ne $response) {
+            $response.Dispose()
+        }
+        $client.Dispose()
+    }
 }
 
 $colors = @{
@@ -367,6 +539,206 @@ $clearImported.Font = New-UiFont -Size 9
 $clearImported.ForeColor = $colors.Danger
 $privacyPage.Controls.Add($clearImported)
 
+$lexiconPage = New-Object System.Windows.Forms.TabPage
+$lexiconPage.Text = "白霜词库"
+$lexiconPage.BackColor = $colors.White
+$tabs.TabPages.Add($lexiconPage)
+
+[void](New-UiLabel -Parent $lexiconPage -Text "白霜拼音核心词库" -X 24 -Y 24 -Width 320 -Height 32 -Size 15 -Style ([System.Drawing.FontStyle]::Bold))
+[void](New-UiLabel -Parent $lexiconPage -Text "仅从 gaboolic/rime-frost 官方 GitHub Release 下载 Owner 审核的稳定版。文件大小、SHA-256 与 ZIP 安全边界均会校验。" -X 26 -Y 64 -Width 650 -Height 50 -Size 9 -Color $colors.Muted)
+
+$rimeFrostStatus = New-UiLabel -Parent $lexiconPage -Text "" -X 26 -Y 126 -Width 650 -Height 54 -Size 9 -Style ([System.Drawing.FontStyle]::Bold) -Color $colors.Header
+
+$rimeFrostImport = New-Object System.Windows.Forms.Button
+$rimeFrostImport.Text = "导入白霜"
+$rimeFrostImport.Location = New-Object System.Drawing.Point(26, 198)
+$rimeFrostImport.Size = New-Object System.Drawing.Size(138, 40)
+$rimeFrostImport.Font = New-UiFont -Size 9 -Style ([System.Drawing.FontStyle]::Bold)
+$rimeFrostImport.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$rimeFrostImport.FlatAppearance.BorderSize = 0
+$rimeFrostImport.BackColor = $colors.Accent
+$rimeFrostImport.ForeColor = $colors.Text
+$lexiconPage.Controls.Add($rimeFrostImport)
+
+$rimeFrostEnable = New-Object System.Windows.Forms.Button
+$rimeFrostEnable.Text = "停用"
+$rimeFrostEnable.Location = New-Object System.Drawing.Point(176, 198)
+$rimeFrostEnable.Size = New-Object System.Drawing.Size(100, 40)
+$rimeFrostEnable.Font = New-UiFont -Size 9
+$lexiconPage.Controls.Add($rimeFrostEnable)
+
+$rimeFrostClear = New-Object System.Windows.Forms.Button
+$rimeFrostClear.Text = "清除"
+$rimeFrostClear.Location = New-Object System.Drawing.Point(288, 198)
+$rimeFrostClear.Size = New-Object System.Drawing.Size(100, 40)
+$rimeFrostClear.Font = New-UiFont -Size 9
+$rimeFrostClear.ForeColor = $colors.Danger
+$lexiconPage.Controls.Add($rimeFrostClear)
+
+$rimeFrostCheck = New-Object System.Windows.Forms.Button
+$rimeFrostCheck.Text = "检查新版"
+$rimeFrostCheck.Location = New-Object System.Drawing.Point(400, 198)
+$rimeFrostCheck.Size = New-Object System.Drawing.Size(120, 40)
+$rimeFrostCheck.Font = New-UiFont -Size 9
+$lexiconPage.Controls.Add($rimeFrostCheck)
+
+Add-Separator -Parent $lexiconPage -Y 270
+[void](New-UiLabel -Parent $lexiconPage -Text "许可与分层" -X 24 -Y 292 -Width 180 -Height 28 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
+[void](New-UiLabel -Parent $lexiconPage -Text "白霜拼音采用 GPL-3.0。导入只在你明确确认后进行，并写入独立的 rime_frost.tsv；不会覆盖内置词库、手动导入词库、雾凇词库或用户学习数据。" -X 26 -Y 332 -Width 650 -Height 58 -Size 9 -Color $colors.Muted)
+
+$rimeFrostLicense = New-Object System.Windows.Forms.LinkLabel
+$rimeFrostLicense.Text = "查看 GPL-3.0 许可与官方 Release"
+$rimeFrostLicense.Location = New-Object System.Drawing.Point(26, 386)
+$rimeFrostLicense.Size = New-Object System.Drawing.Size(320, 24)
+$rimeFrostLicense.Font = New-UiFont -Size 9
+$rimeFrostLicense.LinkColor = $colors.Header
+$rimeFrostLicense.Add_LinkClicked({ Start-Process $rimeFrostLicenseUrl })
+$lexiconPage.Controls.Add($rimeFrostLicense)
+
+function Refresh-RimeFrostSummary {
+    $installed = Test-Path $rimeFrostLexiconPath
+    $current = Read-Settings
+    $enabled = [bool]$current.enable_rime_frost_lexicon
+    $rimeFrostStatus.Text = Get-RimeFrostSummary
+    $rimeFrostImport.Text = if ($installed) { "重新导入" } else { "导入白霜" }
+    $rimeFrostEnable.Text = if ($enabled) { "停用" } else { "启用" }
+    $rimeFrostEnable.Enabled = $installed
+    $rimeFrostClear.Enabled = $installed
+}
+
+$rimeFrostImport.Add_Click({
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+        "白霜拼音由 gaboolic/rime-frost 项目提供，采用 GPL-3.0 许可。`r`n`r`n猫栈只会从官方 GitHub Release 下载经 Owner 审核的 1.0.4，并校验文件大小、SHA-256 与 ZIP 安全边界。`r`n`r`n选择「是」表示同意 GPL-3.0 并导入；选择「否」打开许可页面。",
+        "导入白霜拼音 1.0.4",
+        [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+    if ($answer -eq [System.Windows.Forms.DialogResult]::No) {
+        Start-Process $rimeFrostLicenseUrl
+        return
+    }
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    $rimeFrostImport.Enabled = $false
+    $rimeFrostStatus.Text = "正在从白霜拼音官方 GitHub Release 下载..."
+    [System.Windows.Forms.Application]::DoEvents()
+    $archive = $null
+    try {
+        $archive = Download-ApprovedRimeFrostArchive
+        $ok = Run-SettingsTool @(
+            "import-rime-frost",
+            "--settings", $settingsPath,
+            "--input", $archive
+        )
+        if (-not $ok) {
+            throw "归档校验或词库解析失败"
+        }
+
+        $metadataProblems = New-Object System.Collections.Generic.List[string]
+        $enabled = Run-SettingsTool @(
+            "set-rime-frost-enabled",
+            "--settings", $settingsPath,
+            "--enabled", "true"
+        )
+        if (-not $enabled) {
+            $metadataProblems.Add("启用设置写入失败，可稍后手动启用。")
+        }
+        try {
+            Write-RimeFrostManifest
+        } catch {
+            $metadataProblems.Add("来源记录写入失败，词库数据仍已导入。")
+        }
+        $script:settings = Read-Settings
+        if ($metadataProblems.Count -eq 0) {
+            $statusLabel.Text = "白霜拼音 1.0.4 已导入，重新切换一次输入法后生效"
+            $statusLabel.ForeColor = $colors.Success
+        } else {
+            $detail = $metadataProblems -join " "
+            $statusLabel.Text = "白霜拼音词库已导入；$detail"
+            $statusLabel.ForeColor = $colors.Accent
+            [System.Windows.Forms.MessageBox]::Show(
+                "白霜拼音词库数据已经导入。$detail",
+                "猫栈拼音",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            ) | Out-Null
+        }
+    } catch {
+        $statusLabel.Text = "白霜拼音导入失败，旧词库已保留"
+        $statusLabel.ForeColor = $colors.Danger
+        [System.Windows.Forms.MessageBox]::Show(
+            "无法导入白霜拼音。下载、文件校验或词库解析未通过；已有白霜词库未被覆盖。",
+            "猫栈拼音",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        ) | Out-Null
+    } finally {
+        if ($archive) {
+            Remove-Item -Force -ErrorAction SilentlyContinue $archive
+        }
+        $rimeFrostImport.Enabled = $true
+        Refresh-RimeFrostSummary
+    }
+})
+
+$rimeFrostEnable.Add_Click({
+    $enable = -not [bool](Read-Settings).enable_rime_frost_lexicon
+    $ok = Run-SettingsTool @(
+        "set-rime-frost-enabled",
+        "--settings", $settingsPath,
+        "--enabled", $enable.ToString().ToLowerInvariant()
+    )
+    $script:settings = Read-Settings
+    $statusLabel.Text = if ($ok) {
+        if ($enable) { "白霜拼音已启用" } else { "白霜拼音已停用" }
+    } else {
+        "无法更新白霜拼音状态"
+    }
+    $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
+    Refresh-RimeFrostSummary
+})
+
+$rimeFrostClear.Add_Click({
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+        "只会删除白霜拼音独立词库层，不影响内置词库、手动导入、雾凇或用户学习数据。",
+        "清除白霜拼音？",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+    $ok = Run-SettingsTool @("clear-rime-frost", "--settings", $settingsPath)
+    if ($ok -and (Test-Path $rimeFrostManifestPath)) {
+        Remove-Item -Force $rimeFrostManifestPath
+    }
+    $statusLabel.Text = if ($ok) { "白霜拼音已清除" } else { "无法清除白霜拼音" }
+    $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
+    Refresh-RimeFrostSummary
+})
+
+$rimeFrostCheck.Add_Click({
+    $rimeFrostCheck.Enabled = $false
+    $rimeFrostStatus.Text = "正在检查白霜拼音官方稳定版..."
+    [System.Windows.Forms.Application]::DoEvents()
+    try {
+        $latest = Get-LatestRimeFrostVersion
+        if ($latest -eq $rimeFrostApprovedVersion) {
+            $rimeFrostStatus.Text = "$(Get-RimeFrostSummary)；审核清单已是最新版"
+        } else {
+            $rimeFrostStatus.Text = "发现上游 $latest；新版待审核。当前仅允许导入 $rimeFrostApprovedVersion。"
+        }
+    } catch {
+        $rimeFrostStatus.Text = "无法检查白霜拼音版本，请稍后重试。"
+    } finally {
+        $rimeFrostCheck.Enabled = $true
+    }
+})
+
+Refresh-RimeFrostSummary
+
 $writerPage = New-Object System.Windows.Forms.TabPage
 $writerPage.Text = "本地 Writer"
 $writerPage.BackColor = $colors.White
@@ -480,19 +852,23 @@ $privacy.Add_CheckedChanged({ Update-PrivacyControls })
 Update-PrivacyControls
 
 $save.Add_Click({
-    $settings.default_mode = if ($defaultMode.SelectedIndex -eq 1) { "English" } else { "Chinese" }
-    $settings.toggle_key = if ($toggleKey.SelectedIndex -eq 1) { "CtrlSpace" } else { "Shift" }
-    $settings.enable_prediction = $prediction.Checked
-    $settings.candidate_page_size = [decimal]::ToInt32($candidatePageSize.Value)
-    $settings.candidate_font_size = [decimal]::ToInt32($candidateFontSize.Value)
-    $settings.theme = switch ($theme.SelectedIndex) {
+    # Always merge form values into the latest on-disk snapshot. Other page actions
+    # (including White Frost enable/disable) can update settings while this window is open.
+    $currentSettings = Read-Settings
+    $currentSettings.default_mode = if ($defaultMode.SelectedIndex -eq 1) { "English" } else { "Chinese" }
+    $currentSettings.toggle_key = if ($toggleKey.SelectedIndex -eq 1) { "CtrlSpace" } else { "Shift" }
+    $currentSettings.enable_prediction = $prediction.Checked
+    $currentSettings.candidate_page_size = [decimal]::ToInt32($candidatePageSize.Value)
+    $currentSettings.candidate_font_size = [decimal]::ToInt32($candidateFontSize.Value)
+    $currentSettings.theme = switch ($theme.SelectedIndex) {
         1 { "light" }
         2 { "dark" }
         default { "system" }
     }
-    $settings.strict_privacy_mode = $privacy.Checked
-    $settings.enable_user_learning = if ($privacy.Checked) { $false } else { $learning.Checked }
-    Write-Settings $settings
+    $currentSettings.strict_privacy_mode = $privacy.Checked
+    $currentSettings.enable_user_learning = if ($privacy.Checked) { $false } else { $learning.Checked }
+    Write-Settings $currentSettings
+    $script:settings = $currentSettings
     $statusLabel.Text = "设置已保存，重新切换一次输入法后生效"
     $statusLabel.ForeColor = $colors.Success
 })
@@ -565,8 +941,9 @@ $openJson.Add_Click({ Start-Process notepad.exe $settingsPath })
 if ($PreviewPath) {
     $tabs.SelectedIndex = switch ($PreviewTab) {
         "privacy" { 1 }
-        "writer" { 2 }
-        "about" { 3 }
+        "lexicon" { 2 }
+        "writer" { 3 }
+        "about" { 4 }
         default { 0 }
     }
     $previewDirectory = Split-Path -Parent $PreviewPath

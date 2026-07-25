@@ -115,6 +115,17 @@ int ime_engine_import_rime_lexicon(ImeEngine* engine, const char* source_path);
 // Removes only the separately configured imported lexicon layer. The bundled
 // base lexicon and learned user lexicon remain unchanged. Returns 1 on success.
 int ime_engine_clear_imported_lexicon(ImeEngine* engine);
+// Imports the Owner-approved White Frost release archive after exact size,
+// SHA-256, ZIP safety, and explicit-pinyin validation. Returns accepted rows,
+// or -1 on error. The destination is the independent rime_frost_lexicon_path.
+int ime_engine_import_rime_frost_archive(ImeEngine* engine,
+                                         const char* archive_path);
+// Imports the reviewed White Frost archive without constructing an input
+// engine or loading lexicon snapshots. Both paths must be UTF-8 and non-NULL.
+int ime_import_rime_frost_archive(const char* settings_path,
+                                  const char* archive_path);
+// Removes only the reviewed White Frost lexicon layer.
+int ime_engine_clear_rime_frost_lexicon(ImeEngine* engine);
 void ime_engine_free(ImeEngine* engine);
 
 ImeSession* ime_session_new(ImeEngine* engine);

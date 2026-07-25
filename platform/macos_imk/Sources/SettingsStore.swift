@@ -44,6 +44,24 @@ enum PrivatePinyinSettingsStore {
         }
     }
 
+    private struct ReviewedRimeFrostManifest: Codable {
+        let schemaVersion: Int
+        let displayName: String
+        let version: String
+        let releaseURL: String
+        let archiveSHA256: String
+        let importedAt: String
+
+        enum CodingKeys: String, CodingKey {
+            case schemaVersion = "schema_version"
+            case displayName = "display_name"
+            case version
+            case releaseURL = "release_url"
+            case archiveSHA256 = "archive_sha256"
+            case importedAt = "imported_at"
+        }
+    }
+
     static var supportDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library", isDirectory: true)
@@ -66,6 +84,21 @@ enum PrivatePinyinSettingsStore {
     static var importedLexiconManifestURL: URL {
         supportDirectory.appendingPathComponent(
             "imported_lexicon_manifest.json",
+            isDirectory: false
+        )
+    }
+
+    static var rimeIceLexiconURL: URL {
+        supportDirectory.appendingPathComponent("rime_ice.tsv", isDirectory: false)
+    }
+
+    static var rimeFrostLexiconURL: URL {
+        supportDirectory.appendingPathComponent("rime_frost.tsv", isDirectory: false)
+    }
+
+    static var rimeFrostManifestURL: URL {
+        supportDirectory.appendingPathComponent(
+            "rime_frost_manifest.json",
             isDirectory: false
         )
     }
@@ -149,6 +182,73 @@ enum PrivatePinyinSettingsStore {
         let visible = names.prefix(3).joined(separator: "、")
         let remainder = names.count > 3 ? " 等 \(names.count) 项" : ""
         return "当前导入词库：\(visible)\(remainder)"
+    }
+
+    static func rimeFrostSummaryText() -> String {
+        guard FileManager.default.fileExists(atPath: rimeFrostLexiconURL.path) else {
+            return "当前白霜拼音：尚未导入"
+        }
+        guard let manifest = readReviewedRimeFrostManifest() else {
+            return "当前白霜拼音：本地数据（来源记录不可用）"
+        }
+        let enabled = readSettings()["enable_rime_frost_lexicon"] as? Bool ?? true
+        return "当前白霜拼音：\(manifest.version)\(enabled ? "" : "（已停用）")"
+    }
+
+    static func isRimeFrostInstalled() -> Bool {
+        FileManager.default.fileExists(atPath: rimeFrostLexiconURL.path)
+    }
+
+    static func isRimeFrostEnabled() -> Bool {
+        readSettings()["enable_rime_frost_lexicon"] as? Bool ?? true
+    }
+
+    @discardableResult
+    static func setRimeFrostEnabled(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            settings["enable_rime_frost_lexicon"] = enabled
+        }
+    }
+
+    @discardableResult
+    static func recordReviewedRimeFrostImport(
+        displayName: String,
+        version: String,
+        releaseURL: URL,
+        archiveSHA256: String
+    ) -> Bool {
+        let manifest = ReviewedRimeFrostManifest(
+            schemaVersion: 1,
+            displayName: displayName,
+            version: version,
+            releaseURL: releaseURL.absoluteString,
+            archiveSHA256: archiveSHA256,
+            importedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        do {
+            try FileManager.default.createDirectory(
+                at: supportDirectory,
+                withIntermediateDirectories: true
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(manifest).write(to: rimeFrostManifestURL, options: [.atomic])
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    @discardableResult
+    static func clearReviewedRimeFrostManifest() -> Bool {
+        do {
+            if FileManager.default.fileExists(atPath: rimeFrostManifestURL.path) {
+                try FileManager.default.removeItem(at: rimeFrostManifestURL)
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     static func importedLexiconSourceDescriptor(
@@ -250,6 +350,10 @@ enum PrivatePinyinSettingsStore {
         settings["candidate_page_size"] = macOSCandidatePageSize
         settings["user_lexicon_path"] = userLexiconURL.path
         settings["imported_lexicon_path"] = importedLexiconURL.path
+        settings["rime_ice_lexicon_path"] = rimeIceLexiconURL.path
+        settings["rime_frost_lexicon_path"] = rimeFrostLexiconURL.path
+        settings["enable_rime_ice_lexicon"] = settings["enable_rime_ice_lexicon"] as? Bool ?? false
+        settings["enable_rime_frost_lexicon"] = settings["enable_rime_frost_lexicon"] as? Bool ?? true
         return settings
     }
 
@@ -289,6 +393,22 @@ enum PrivatePinyinSettingsStore {
         }
         if settings["imported_lexicon_path"] as? String != importedLexiconURL.path {
             settings["imported_lexicon_path"] = importedLexiconURL.path
+            needsWrite = true
+        }
+        if settings["rime_ice_lexicon_path"] as? String != rimeIceLexiconURL.path {
+            settings["rime_ice_lexicon_path"] = rimeIceLexiconURL.path
+            needsWrite = true
+        }
+        if settings["rime_frost_lexicon_path"] as? String != rimeFrostLexiconURL.path {
+            settings["rime_frost_lexicon_path"] = rimeFrostLexiconURL.path
+            needsWrite = true
+        }
+        if settings["enable_rime_ice_lexicon"] == nil {
+            settings["enable_rime_ice_lexicon"] = false
+            needsWrite = true
+        }
+        if settings["enable_rime_frost_lexicon"] == nil {
+            settings["enable_rime_frost_lexicon"] = true
             needsWrite = true
         }
 
@@ -345,6 +465,17 @@ enum PrivatePinyinSettingsStore {
             to: importedLexiconManifestURL,
             options: [.atomic]
         )
+    }
+
+    private static func readReviewedRimeFrostManifest() -> ReviewedRimeFrostManifest? {
+        guard
+            let data = try? Data(contentsOf: rimeFrostManifestURL),
+            let manifest = try? JSONDecoder().decode(ReviewedRimeFrostManifest.self, from: data),
+            manifest.schemaVersion == 1
+        else {
+            return nil
+        }
+        return manifest
     }
 
     private static func friendlyDictionaryName(for sourceURL: URL) -> String {

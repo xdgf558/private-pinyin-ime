@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
@@ -186,31 +188,55 @@ impl Lexicon {
     }
 
     pub fn load_embedded_with_imported(path: impl AsRef<Path>) -> ImeResult<Self> {
-        let path = path.as_ref();
-        let mut entries = Self::load_embedded()?.entries;
-        let imported = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
-        let imported_entries = Self::from_tsv(&imported)
-            .map_err(|_| ImeError::ImportedLexiconParse)?
-            .entries;
-        validate_imported_entries(&imported_entries)?;
-        entries.extend(imported_entries);
-
-        let mut identities = HashMap::<(String, String), u32>::new();
-        for entry in entries {
-            identities
-                .entry((entry.phrase, entry.pinyin))
-                .and_modify(|frequency| *frequency = (*frequency).max(entry.frequency))
-                .or_insert(entry.frequency);
+        let (lexicon, errors) = Self::load_embedded_with_imported_paths([path.as_ref()]);
+        if let Some(error) = errors.into_iter().next() {
+            return Err(error);
         }
-        let entries = identities
-            .into_iter()
-            .map(|((phrase, pinyin), frequency)| LexiconEntry {
-                phrase,
-                pinyin,
-                frequency,
-            })
-            .collect();
-        Ok(Self::from_entries(entries))
+        lexicon
+    }
+
+    pub fn load_embedded_with_imported_paths<'a>(
+        paths: impl IntoIterator<Item = &'a Path>,
+    ) -> (ImeResult<Self>, Vec<ImeError>) {
+        let mut entries = match Self::load_embedded() {
+            Ok(lexicon) => lexicon.entries,
+            Err(error) => return (Err(error), Vec::new()),
+        };
+        let mut errors = Vec::new();
+        for path in paths {
+            let imported_entries = (|| {
+                let imported = read_utf8_file_bounded(path, MAX_IMPORTED_FILE_BYTES)?;
+                let imported_entries = Self::from_tsv(&imported)
+                    .map_err(|_| ImeError::ImportedLexiconParse)?
+                    .entries;
+                validate_imported_entries(&imported_entries)?;
+                Ok::<_, ImeError>(imported_entries)
+            })();
+            match imported_entries {
+                Ok(imported_entries) => entries.extend(imported_entries),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        let mut identities = HashMap::<u64, Vec<usize>>::new();
+        let mut deduplicated = Vec::<LexiconEntry>::with_capacity(entries.len());
+        for entry in entries {
+            let identity_hash = lexicon_identity_hash(&entry);
+            let duplicate_index = identities.get(&identity_hash).and_then(|indexes| {
+                indexes.iter().copied().find(|index| {
+                    let existing = &deduplicated[*index];
+                    existing.phrase == entry.phrase && existing.pinyin == entry.pinyin
+                })
+            });
+            if let Some(index) = duplicate_index {
+                deduplicated[index].frequency = deduplicated[index].frequency.max(entry.frequency);
+            } else {
+                let index = deduplicated.len();
+                deduplicated.push(entry);
+                identities.entry(identity_hash).or_default().push(index);
+            }
+        }
+        (Ok(Self::from_entries(deduplicated)), errors)
     }
 
     pub fn from_tsv(tsv: &str) -> ImeResult<Self> {
@@ -839,11 +865,8 @@ impl Lexicon {
         let mut seen = HashSet::<&str>::new();
         for indexed_entry in self
             .nine_key_index
-            .range(self.nine_key_prefix_range(digits))
+            .range(self.nine_key_index.exact_range(digits))
         {
-            if self.nine_key_index.key(indexed_entry) != digits {
-                continue;
-            }
             let entry = &self.entries[indexed_entry.entry_index as usize];
             if seen.insert(entry.phrase.as_str()) {
                 entries.push(entry);
@@ -896,6 +919,13 @@ impl Lexicon {
         entries.truncate(limit);
         entries
     }
+}
+
+fn lexicon_identity_hash(entry: &LexiconEntry) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    entry.phrase.hash(&mut hasher);
+    entry.pinyin.hash(&mut hasher);
+    hasher.finish()
 }
 
 pub fn merge_user_and_base_candidates(

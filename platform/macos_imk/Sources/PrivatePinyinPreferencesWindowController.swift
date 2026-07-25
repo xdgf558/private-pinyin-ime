@@ -410,6 +410,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     // factories must not attach persistent self-constraints to them.
     private let settingsPathLabel = NSTextField(labelWithString: "")
     private let importedLexiconStatusLabel = NSTextField(labelWithString: "当前导入词库：尚未导入")
+    private let rimeFrostStatusLabel = NSTextField(labelWithString: "当前白霜拼音：尚未导入")
+    private var rimeFrostPrimaryButton: StationButton?
+    private var rimeFrostEnableButton: StationButton?
+    private var rimeFrostClearButton: StationButton?
+    private var rimeFrostCheckButton: StationButton?
+    private var isRimeFrostImporting = false
     private let writerModelStatusLabel = NSTextField(labelWithString: "Writer 模型未安装")
     private var writerDownloadButton: StationButton?
     private var writerOpenButton: StationButton?
@@ -418,6 +424,10 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let updateStatusLabel = NSTextField(labelWithString: "尚未检查更新")
     private let updateDetailLabel = NSTextField(labelWithString: "输入功能始终不依赖更新服务。")
     private let lexiconCore = PinyinCoreBridge()
+    private let rimeFrostImportQueue = DispatchQueue(
+        label: "com.privatepinyin.inputmethod.rime-frost-import",
+        qos: .userInitiated
+    )
     private let boardScrollView = NSScrollView(frame: .zero)
     private let boardView = StationBoardBackgroundView(
         frame: NSRect(x: 0, y: 0, width: boardWidth, height: initialBoardHeight)
@@ -461,6 +471,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             self,
             selector: #selector(writerModelStateChanged(_:)),
             name: .privatePinyinWriterModelStateChanged,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(rimeFrostStateChanged(_:)),
+            name: .privatePinyinRimeFrostStateChanged,
             object: nil
         )
         reloadFromSettings()
@@ -552,6 +568,10 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         pageRoot = nil
         writerDownloadButton = nil
         writerOpenButton = nil
+        rimeFrostPrimaryButton = nil
+        rimeFrostEnableButton = nil
+        rimeFrostClearButton = nil
+        rimeFrostCheckButton = nil
         checkUpdateButton = nil
         lexiconNavigationButton = nil
         writerNavigationButton = nil
@@ -620,6 +640,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                     detail: "管理本机导入的 Rime 词典；升级不会覆盖导入层。"
                 ),
                 makeImportedLexiconSection(),
+                makeRimeFrostSection(),
                 makeQuietFooter(),
             ]
         case .writer:
@@ -1113,6 +1134,113 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         return card
     }
 
+    private func makeRimeFrostSection() -> NSView {
+        let title = label(
+            "白霜拼音核心词库",
+            font: .systemFont(ofSize: 15, weight: .semibold),
+            color: StationTheme.textPrimary
+        )
+        let detail = wrappingLabel(
+            "从白霜拼音官方 GitHub Release 导入经审核的稳定版。该词库采用 GPL-3.0，导入前会明确征求同意。",
+            font: .systemFont(ofSize: 12, weight: .regular),
+            color: StationTheme.textSecondary
+        )
+        detail.maximumNumberOfLines = 2
+
+        rimeFrostStatusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        rimeFrostStatusLabel.textColor = StationTheme.lampYellow
+        rimeFrostStatusLabel.maximumNumberOfLines = 2
+        rimeFrostStatusLabel.lineBreakMode = .byWordWrapping
+        rimeFrostStatusLabel.setContentCompressionResistancePriority(
+            .defaultLow,
+            for: .horizontal
+        )
+        let textColumn = NSStackView(views: [title, detail, rimeFrostStatusLabel])
+        textColumn.orientation = .vertical
+        textColumn.alignment = .leading
+        textColumn.spacing = 5
+        textColumn.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let primaryButton = StationButton(
+            title: "导入白霜",
+            target: self,
+            action: #selector(importRimeFrost(_:)),
+            normalBackground: StationTheme.lampYellow,
+            hoverBackground: StationTheme.lampYellowHover,
+            pressedBackground: StationTheme.lampYellowPressed,
+            titleColor: StationTheme.onLamp
+        )
+        primaryButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 112).isActive = true
+        rimeFrostPrimaryButton = primaryButton
+
+        let enableButton = StationButton(
+            title: "停用",
+            target: self,
+            action: #selector(toggleRimeFrost(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        enableButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 72).isActive = true
+        rimeFrostEnableButton = enableButton
+
+        let clearButton = StationButton(
+            title: "清除",
+            target: self,
+            action: #selector(clearRimeFrost(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        clearButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 72).isActive = true
+        rimeFrostClearButton = clearButton
+
+        let checkButton = StationButton(
+            title: "检查新版",
+            target: self,
+            action: #selector(checkRimeFrostUpdate(_:)),
+            normalBackground: .clear,
+            hoverBackground: StationTheme.ghostHover,
+            pressedBackground: StationTheme.ghostPressed,
+            titleColor: StationTheme.textStep,
+            borderColor: StationTheme.border
+        )
+        checkButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
+        rimeFrostCheckButton = checkButton
+
+        let buttons = NSStackView(views: [
+            primaryButton,
+            enableButton,
+            clearButton,
+            checkButton,
+        ])
+        buttons.orientation = .horizontal
+        buttons.alignment = .centerY
+        buttons.spacing = 8
+
+        let content = NSStackView(views: [textColumn, buttons])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 12
+        content.translatesAutoresizingMaskIntoConstraints = false
+        textColumn.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+
+        let card = roundedBox(background: StationTheme.cardBackground, cornerRadius: 12)
+        card.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 144),
+        ])
+        return card
+    }
+
     private func makeWriterSection() -> NSView {
         let title = label(
             "本地 Writer",
@@ -1361,6 +1489,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         importedLexiconStatusLabel.stringValue = PrivatePinyinSettingsStore
             .importedLexiconSummaryText()
         importedLexiconStatusLabel.toolTip = importedLexiconStatusLabel.stringValue
+        refreshRimeFrostPresentation()
         refreshWriterPresentation()
         refreshOverviewNavigation()
     }
@@ -1420,9 +1549,11 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     }
 
     private func refreshOverviewNavigation() {
-        let lexiconSummary = importedLexiconStatusLabel.stringValue
+        let manualSummary = importedLexiconStatusLabel.stringValue
             .replacingOccurrences(of: "当前导入词库：", with: "")
-        lexiconNavigationButton?.setDetail(lexiconSummary)
+        let frostSummary = rimeFrostStatusLabel.stringValue
+            .replacingOccurrences(of: "当前白霜拼音：", with: "")
+        lexiconNavigationButton?.setDetail("\(manualSummary) · 白霜 \(frostSummary)")
         writerNavigationButton?.setDetail(writerModelStatusLabel.stringValue)
         updatesNavigationButton?.setDetail(
             "\(bundleVersionText) · \(updateStatusLabel.stringValue)"
@@ -1505,6 +1636,168 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             showAlert("导入词库已清空。")
         } else {
             showAlert("无法清空导入词库。")
+        }
+    }
+
+    @objc private func rimeFrostStateChanged(_ notification: Notification) {
+        refreshRimeFrostPresentation()
+    }
+
+    private func refreshRimeFrostPresentation() {
+        let manager = PrivatePinyinRimeFrostManager.shared
+        let installed = PrivatePinyinSettingsStore.isRimeFrostInstalled()
+        let enabled = PrivatePinyinSettingsStore.isRimeFrostEnabled()
+
+        if isRimeFrostImporting {
+            rimeFrostStatusLabel.stringValue = "正在后台校验并导入，普通拼音输入不受影响..."
+        } else {
+            switch manager.state {
+            case .idle:
+                rimeFrostStatusLabel.stringValue = PrivatePinyinSettingsStore
+                    .rimeFrostSummaryText()
+            case let .downloading(percent):
+                rimeFrostStatusLabel.stringValue = "正在从官方 Release 下载：\(percent)%"
+            case .checking:
+                rimeFrostStatusLabel.stringValue = "正在检查白霜拼音官方稳定版..."
+            case let .pendingReview(version):
+                rimeFrostStatusLabel.stringValue =
+                    "发现上游 \(version)；新版待审核。当前仅允许导入 1.0.4。"
+            case let .failed(message):
+                rimeFrostStatusLabel.stringValue = message
+            }
+        }
+        rimeFrostStatusLabel.toolTip = rimeFrostStatusLabel.stringValue
+        rimeFrostPrimaryButton?.setStationTitle(installed ? "重新导入" : "导入白霜")
+        rimeFrostPrimaryButton?.isEnabled = {
+            if isRimeFrostImporting { return false }
+            if case .downloading = manager.state { return false }
+            return true
+        }()
+        rimeFrostEnableButton?.setStationTitle(enabled ? "停用" : "启用")
+        rimeFrostEnableButton?.isEnabled = installed && !isRimeFrostImporting
+        rimeFrostClearButton?.isEnabled = installed && !isRimeFrostImporting
+        rimeFrostCheckButton?.isEnabled = {
+            if isRimeFrostImporting { return false }
+            if case .downloading = manager.state { return false }
+            return true
+        }()
+    }
+
+    @objc private func importRimeFrost(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "导入白霜拼音 1.0.4？"
+        alert.informativeText = """
+        白霜拼音由 gaboolic/rime-frost 项目提供，采用 GPL-3.0 许可。
+        猫栈将仅从官方 GitHub Release 下载经 Owner 审核的稳定版，并校验文件大小与 SHA-256。导入层独立保存，可随时停用或清除。
+        """
+        alert.addButton(withTitle: "同意 GPL-3.0 并导入")
+        alert.addButton(withTitle: "查看许可")
+        alert.addButton(withTitle: "取消")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            break
+        case .alertSecondButtonReturn:
+            NSWorkspace.shared.open(PrivatePinyinRimeFrostCatalog.licenseURL)
+            return
+        default:
+            return
+        }
+
+        PrivatePinyinRimeFrostManager.shared.downloadApprovedArchive {
+            [weak self] result in
+            guard let self else { return }
+            switch result {
+            case let .success(archiveURL):
+                isRimeFrostImporting = true
+                refreshRimeFrostPresentation()
+                let settingsPath = PrivatePinyinSettingsStore.ensureSettingsFile()
+                rimeFrostImportQueue.async { [weak self] in
+                    defer { try? FileManager.default.removeItem(at: archiveURL) }
+                    let accepted = PinyinCoreBridge.importReviewedRimeFrostArchive(
+                        from: archiveURL.path,
+                        settingsPath: settingsPath
+                    )
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        isRimeFrostImporting = false
+                        guard let accepted else {
+                            showAlert("白霜拼音导入失败，旧词库已保留。")
+                            refreshRimeFrostPresentation()
+                            return
+                        }
+                        let enabled = PrivatePinyinSettingsStore.setRimeFrostEnabled(true)
+                        let recorded = PrivatePinyinSettingsStore.recordReviewedRimeFrostImport(
+                            displayName: PrivatePinyinRimeFrostCatalog.displayName,
+                            version: PrivatePinyinRimeFrostCatalog.approvedVersion,
+                            releaseURL: PrivatePinyinRimeFrostCatalog.releaseURL,
+                            archiveSHA256: PrivatePinyinRimeFrostCatalog.archiveSHA256
+                        )
+                        reloadFromSettings()
+                        NotificationCenter.default.post(
+                            name: .privatePinyinSettingsChanged,
+                            object: self
+                        )
+                        if enabled, recorded {
+                            showAlert("已导入白霜拼音 1.0.4，共 \(accepted) 条词库记录。")
+                        } else {
+                            let detail = !enabled
+                                ? "启用设置写入失败，可稍后手动启用。"
+                                : "来源记录写入失败，词库仍已导入并启用。"
+                            showAlert(
+                                "白霜拼音已导入，共 \(accepted) 条词库记录；\(detail)"
+                            )
+                        }
+                    }
+                }
+            case let .failure(error):
+                refreshRimeFrostPresentation()
+                if error as? PrivatePinyinRimeFrostManagerError == .operationInProgress {
+                    showAlert(error.localizedDescription)
+                } else {
+                    showAlert(
+                        "无法从白霜拼音官方 GitHub Release 下载。请检查网络后重试。"
+                    )
+                }
+            }
+        }
+    }
+
+    @objc private func toggleRimeFrost(_ sender: Any?) {
+        let enabled = !PrivatePinyinSettingsStore.isRimeFrostEnabled()
+        guard PrivatePinyinSettingsStore.setRimeFrostEnabled(enabled) else {
+            showAlert("无法更新白霜拼音状态。")
+            return
+        }
+        reloadFromSettings()
+        NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
+    }
+
+    @objc private func clearRimeFrost(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "清除白霜拼音？"
+        alert.informativeText =
+            "只会删除白霜拼音独立词库层，不影响内置词库、手动导入、雾凇或用户学习数据。"
+        alert.addButton(withTitle: "清除")
+        alert.addButton(withTitle: "取消")
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+        guard lexiconCore?.clearRimeFrostLexicon() == true else {
+            showAlert("无法清除白霜拼音，旧词库已保留。")
+            return
+        }
+        _ = PrivatePinyinSettingsStore.clearReviewedRimeFrostManifest()
+        reloadFromSettings()
+        NotificationCenter.default.post(name: .privatePinyinSettingsChanged, object: self)
+        showAlert("白霜拼音已清除。")
+    }
+
+    @objc private func checkRimeFrostUpdate(_ sender: Any?) {
+        PrivatePinyinRimeFrostManager.shared.checkLatestRelease { [weak self] result in
+            guard case let .failure(error) = result else {
+                return
+            }
+            self?.showAlert(error.localizedDescription)
         }
     }
 

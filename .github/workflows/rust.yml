@@ -41,6 +41,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace
 
+      - name: Run reviewed White Frost archive tests
+        run: cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests
+
       - name: Run desktop AI FFI tests
         run: cargo test -p private_pinyin_ime_ffi --features desktop-ai
 
@@ -82,6 +85,9 @@ jobs:
 
       - name: Check local Rime lexicon import
         run: bash scripts/check_local_lexicon_import_sources.sh
+
+      - name: Check FROST-01 reviewed White Frost import
+        run: bash scripts/check_frost01_sources.sh
 
       - name: Check Stage 14 iOS signing scaffold
         run: bash scripts/check_stage14_ios_signing_sources.sh
@@ -214,6 +220,10 @@ jobs:
       - name: Run Windows Rust tests
         shell: pwsh
         run: cargo test --workspace
+
+      - name: Validate all Windows PowerShell scripts
+        shell: pwsh
+        run: .\scripts\test_windows_powershell_syntax.ps1
 
       - name: Validate Windows onboarding compatibility
         shell: pwsh
