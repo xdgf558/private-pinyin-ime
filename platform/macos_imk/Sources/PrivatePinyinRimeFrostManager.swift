@@ -40,19 +40,18 @@ extension Notification.Name {
 final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate {
     static let shared = PrivatePinyinRimeFrostManager()
 
-    private(set) var state: PrivatePinyinRimeFrostState = .idle {
-        didSet {
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: .privatePinyinRimeFrostStateChanged,
-                    object: self
-                )
-            }
-        }
+    var state: PrivatePinyinRimeFrostState {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return storedState
     }
 
+    private let stateLock = NSLock()
+    private var storedState: PrivatePinyinRimeFrostState = .idle
     private var session: URLSession!
     private var downloadTask: URLSessionDownloadTask?
+    private var releaseCheckTask: URLSessionDataTask?
+    private var releaseCheckID: UUID?
     private var completion: ((Result<URL, Error>) -> Void)?
 
     private override init() {
@@ -70,25 +69,25 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
     func downloadApprovedArchive(
         completion: @escaping (Result<URL, Error>) -> Void
     ) {
-        guard downloadTask == nil else {
+        let task = session.downloadTask(with: PrivatePinyinRimeFrostCatalog.archiveURL)
+        stateLock.lock()
+        guard downloadTask == nil, releaseCheckTask == nil else {
+            stateLock.unlock()
             return
         }
         self.completion = completion
-        state = .downloading(0)
-        let task = session.downloadTask(with: PrivatePinyinRimeFrostCatalog.archiveURL)
         downloadTask = task
+        stateLock.unlock()
+        setState(.downloading(0))
         task.resume()
     }
 
     func checkLatestRelease() {
-        guard downloadTask == nil else {
-            return
-        }
-        state = .checking
         var request = URLRequest(url: PrivatePinyinRimeFrostCatalog.latestReleaseAPIURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("StationCat-PrivatePinyin", forHTTPHeaderField: "User-Agent")
-        session.dataTask(with: request) { [weak self] data, response, error in
+        let requestID = UUID()
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             guard error == nil,
                   let http = response as? HTTPURLResponse,
@@ -98,14 +97,36 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = object["tag_name"] as? String
             else {
-                self.state = .failed("无法检查白霜拼音版本，请稍后重试。")
+                self.finishReleaseCheck(
+                    requestID: requestID,
+                    state: .failed("无法检查白霜拼音版本，请稍后重试。")
+                )
                 return
             }
-            let normalized = tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
-            self.state = normalized == PrivatePinyinRimeFrostCatalog.approvedVersion
-                ? .idle
-                : .pendingReview(normalized)
-        }.resume()
+            let trimmedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalized: String
+            if let first = trimmedTag.first, first == "v" || first == "V" {
+                normalized = String(trimmedTag.dropFirst())
+            } else {
+                normalized = trimmedTag
+            }
+            self.finishReleaseCheck(
+                requestID: requestID,
+                state: normalized == PrivatePinyinRimeFrostCatalog.approvedVersion
+                    ? .idle
+                    : .pendingReview(normalized)
+            )
+        }
+        stateLock.lock()
+        guard downloadTask == nil, releaseCheckTask == nil else {
+            stateLock.unlock()
+            return
+        }
+        releaseCheckTask = task
+        releaseCheckID = requestID
+        stateLock.unlock()
+        setState(.checking)
+        task.resume()
     }
 
     func urlSession(
@@ -115,8 +136,19 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         totalBytesWritten: Int64,
         totalBytesExpectedToWrite: Int64
     ) {
-        let denominator = max(totalBytesExpectedToWrite, PrivatePinyinRimeFrostCatalog.archiveBytes)
-        state = .downloading(Int(min(100, totalBytesWritten * 100 / max(1, denominator))))
+        guard totalBytesWritten <= PrivatePinyinRimeFrostCatalog.archiveBytes else {
+            downloadTask.cancel()
+            finishDownload(
+                .failure(URLError(.dataLengthExceedsMaximum)),
+                task: downloadTask
+            )
+            return
+        }
+        let denominator = PrivatePinyinRimeFrostCatalog.archiveBytes
+        updateDownloadProgress(
+            Int(min(100, totalBytesWritten * 100 / denominator)),
+            task: downloadTask
+        )
     }
 
     func urlSession(
@@ -139,13 +171,13 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        guard downloadTask === self.downloadTask,
+        guard isCurrentDownloadTask(downloadTask),
               let response = downloadTask.response as? HTTPURLResponse,
               response.statusCode == 200,
               let host = response.url?.host?.lowercased(),
               PrivatePinyinRimeFrostCatalog.allowedDownloadHosts.contains(host)
         else {
-            finish(.failure(URLError(.badServerResponse)))
+            finishDownload(.failure(URLError(.badServerResponse)), task: downloadTask)
             return
         }
         do {
@@ -171,9 +203,9 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
                 [.posixPermissions: 0o600],
                 ofItemAtPath: destination.path
             )
-            finish(.success(destination))
+            finishDownload(.success(destination), task: downloadTask)
         } catch {
-            finish(.failure(error))
+            finishDownload(.failure(error), task: downloadTask)
         }
     }
 
@@ -182,24 +214,83 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         task: URLSessionTask,
         didCompleteWithError error: Error?
     ) {
-        guard task === downloadTask, let error else {
+        guard let downloadTask = task as? URLSessionDownloadTask, let error else {
             return
         }
-        finish(.failure(error))
+        finishDownload(.failure(error), task: downloadTask)
     }
 
-    private func finish(_ result: Result<URL, Error>) {
+    private func finishDownload(
+        _ result: Result<URL, Error>,
+        task: URLSessionDownloadTask
+    ) {
+        stateLock.lock()
+        guard task === downloadTask else {
+            stateLock.unlock()
+            return
+        }
         let callback = completion
         completion = nil
         downloadTask = nil
-        switch result {
+        storedState = switch result {
         case .success:
-            state = .idle
+            .idle
         case .failure:
-            state = .failed("无法从白霜拼音官方 GitHub Release 下载。")
+            .failed("无法从白霜拼音官方 GitHub Release 下载。")
         }
+        stateLock.unlock()
+        notifyStateChanged()
         DispatchQueue.main.async {
             callback?(result)
+        }
+    }
+
+    private func finishReleaseCheck(
+        requestID: UUID,
+        state: PrivatePinyinRimeFrostState
+    ) {
+        stateLock.lock()
+        guard requestID == releaseCheckID else {
+            stateLock.unlock()
+            return
+        }
+        releaseCheckTask = nil
+        releaseCheckID = nil
+        storedState = state
+        stateLock.unlock()
+        notifyStateChanged()
+    }
+
+    private func isCurrentDownloadTask(_ task: URLSessionDownloadTask) -> Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return task === downloadTask
+    }
+
+    private func updateDownloadProgress(_ progress: Int, task: URLSessionDownloadTask) {
+        stateLock.lock()
+        guard task === downloadTask else {
+            stateLock.unlock()
+            return
+        }
+        storedState = .downloading(progress)
+        stateLock.unlock()
+        notifyStateChanged()
+    }
+
+    private func setState(_ state: PrivatePinyinRimeFrostState) {
+        stateLock.lock()
+        storedState = state
+        stateLock.unlock()
+        notifyStateChanged()
+    }
+
+    private func notifyStateChanged() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .privatePinyinRimeFrostStateChanged,
+                object: self
+            )
         }
     }
 }

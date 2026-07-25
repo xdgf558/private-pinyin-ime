@@ -1720,24 +1720,33 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
                         isRimeFrostImporting = false
-                        guard let accepted,
-                              PrivatePinyinSettingsStore.recordReviewedRimeFrostImport(
-                                  displayName: PrivatePinyinRimeFrostCatalog.displayName,
-                                  version: PrivatePinyinRimeFrostCatalog.approvedVersion,
-                                  releaseURL: PrivatePinyinRimeFrostCatalog.releaseURL,
-                                  archiveSHA256: PrivatePinyinRimeFrostCatalog.archiveSHA256
-                              )
-                        else {
+                        guard let accepted else {
                             showAlert("白霜拼音导入失败，旧词库已保留。")
                             refreshRimeFrostPresentation()
                             return
                         }
+                        let enabled = PrivatePinyinSettingsStore.setRimeFrostEnabled(true)
+                        let recorded = PrivatePinyinSettingsStore.recordReviewedRimeFrostImport(
+                            displayName: PrivatePinyinRimeFrostCatalog.displayName,
+                            version: PrivatePinyinRimeFrostCatalog.approvedVersion,
+                            releaseURL: PrivatePinyinRimeFrostCatalog.releaseURL,
+                            archiveSHA256: PrivatePinyinRimeFrostCatalog.archiveSHA256
+                        )
                         reloadFromSettings()
                         NotificationCenter.default.post(
                             name: .privatePinyinSettingsChanged,
                             object: self
                         )
-                        showAlert("已导入白霜拼音 1.0.4，共 \(accepted) 条词库记录。")
+                        if enabled, recorded {
+                            showAlert("已导入白霜拼音 1.0.4，共 \(accepted) 条词库记录。")
+                        } else {
+                            let detail = !enabled
+                                ? "启用设置写入失败，可稍后手动启用。"
+                                : "来源记录写入失败，词库仍已导入并启用。"
+                            showAlert(
+                                "白霜拼音已导入，共 \(accepted) 条词库记录；\(detail)"
+                            )
+                        }
                     }
                 }
             case .failure:

@@ -216,22 +216,18 @@ impl Lexicon {
             }
         }
 
-        let mut identities = HashMap::<(String, String), u32>::new();
+        let mut identities = HashMap::<(String, String), usize>::new();
+        let mut deduplicated = Vec::<LexiconEntry>::with_capacity(entries.len());
         for entry in entries {
-            identities
-                .entry((entry.phrase, entry.pinyin))
-                .and_modify(|frequency| *frequency = (*frequency).max(entry.frequency))
-                .or_insert(entry.frequency);
+            let identity = (entry.phrase.clone(), entry.pinyin.clone());
+            if let Some(index) = identities.get(&identity).copied() {
+                deduplicated[index].frequency = deduplicated[index].frequency.max(entry.frequency);
+            } else {
+                identities.insert(identity, deduplicated.len());
+                deduplicated.push(entry);
+            }
         }
-        let entries = identities
-            .into_iter()
-            .map(|((phrase, pinyin), frequency)| LexiconEntry {
-                phrase,
-                pinyin,
-                frequency,
-            })
-            .collect();
-        (Ok(Self::from_entries(entries)), errors)
+        (Ok(Self::from_entries(deduplicated)), errors)
     }
 
     pub fn from_tsv(tsv: &str) -> ImeResult<Self> {
@@ -860,11 +856,8 @@ impl Lexicon {
         let mut seen = HashSet::<&str>::new();
         for indexed_entry in self
             .nine_key_index
-            .range(self.nine_key_prefix_range(digits))
+            .range(self.nine_key_index.exact_range(digits))
         {
-            if self.nine_key_index.key(indexed_entry) != digits {
-                continue;
-            }
             let entry = &self.entries[indexed_entry.entry_index as usize];
             if seen.insert(entry.phrase.as_str()) {
                 entries.push(entry);

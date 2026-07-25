@@ -120,6 +120,10 @@ int ime_engine_clear_imported_lexicon(ImeEngine* engine);
 // or -1 on error. The destination is the independent rime_frost_lexicon_path.
 int ime_engine_import_rime_frost_archive(ImeEngine* engine,
                                          const char* archive_path);
+// Imports the reviewed White Frost archive without constructing an input
+// engine or loading lexicon snapshots. Both paths must be UTF-8 and non-NULL.
+int ime_import_rime_frost_archive(const char* settings_path,
+                                  const char* archive_path);
 // Removes only the reviewed White Frost lexicon layer.
 int ime_engine_clear_rime_frost_lexicon(ImeEngine* engine);
 void ime_engine_free(ImeEngine* engine);

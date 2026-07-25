@@ -233,7 +233,7 @@ enum PrivatePinyinSettingsStore {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(manifest).write(to: rimeFrostManifestURL, options: [.atomic])
-            return setRimeFrostEnabled(true)
+            return true
         } catch {
             return false
         }

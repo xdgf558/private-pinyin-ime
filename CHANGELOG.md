@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Closed the FROST-01 review blockers without relaxing the 60 ms candidate-latency budget: default installs retain the embedded-lexicon fast path, imported rows keep deterministic source order, reviewed ZIP import no longer constructs a second full engine, archive/download bounds and duplicate-member checks fail closed, and CI now parses every Windows PowerShell file while proving the iOS graph excludes desktop ZIP dependencies.
 - Kept the reviewed White Frost archive parser off the macOS IMK main thread, prevented the Windows settings window from overwriting a newly changed White Frost enable state, made the desktop-only iOS purity gate fail explicitly when its required source scanner is unavailable, and excluded White Frost ZIP parsing dependencies from iOS builds.
 - Moved the bundled llama.cpp license notice out of the macOS `Helpers` code-signing boundary and added expanded-payload signature validation, preventing pkg serialization from invalidating Apple notarization.
 - Fixed macOS input-source repair treating a registered but disabled source as

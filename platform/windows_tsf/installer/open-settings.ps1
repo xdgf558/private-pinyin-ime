@@ -242,7 +242,15 @@ function Download-ApprovedRimeFrostArchive {
             [System.IO.FileShare]::None
         )
         try {
-            $source.CopyTo($destination)
+            $buffer = New-Object byte[] (64 * 1024)
+            [int64]$totalBytes = 0
+            while (($read = $source.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $totalBytes += $read
+                if ($totalBytes -gt $rimeFrostArchiveBytes) {
+                    throw "下载文件超过审核清单大小"
+                }
+                $destination.Write($buffer, 0, $read)
+            }
         } finally {
             $destination.Dispose()
             $source.Dispose()
@@ -269,7 +277,11 @@ function Get-LatestRimeFrostVersion {
         }
         $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
         $release = $body | ConvertFrom-Json
-        return ([string]$release.tag_name).TrimStart([char[]]"vV")
+        $normalized = ([string]$release.tag_name).Trim()
+        if ($normalized.StartsWith("v", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $normalized = $normalized.Substring(1)
+        }
+        return $normalized
     } finally {
         $client.Dispose()
     }
@@ -620,10 +632,36 @@ $rimeFrostImport.Add_Click({
         if (-not $ok) {
             throw "归档校验或词库解析失败"
         }
-        Write-RimeFrostManifest
+
+        $metadataProblems = New-Object System.Collections.Generic.List[string]
+        $enabled = Run-SettingsTool @(
+            "set-rime-frost-enabled",
+            "--settings", $settingsPath,
+            "--enabled", "true"
+        )
+        if (-not $enabled) {
+            $metadataProblems.Add("启用设置写入失败，可稍后手动启用。")
+        }
+        try {
+            Write-RimeFrostManifest
+        } catch {
+            $metadataProblems.Add("来源记录写入失败，词库数据仍已导入。")
+        }
         $script:settings = Read-Settings
-        $statusLabel.Text = "白霜拼音 1.0.4 已导入，重新切换一次输入法后生效"
-        $statusLabel.ForeColor = $colors.Success
+        if ($metadataProblems.Count -eq 0) {
+            $statusLabel.Text = "白霜拼音 1.0.4 已导入，重新切换一次输入法后生效"
+            $statusLabel.ForeColor = $colors.Success
+        } else {
+            $detail = $metadataProblems -join " "
+            $statusLabel.Text = "白霜拼音词库已导入；$detail"
+            $statusLabel.ForeColor = $colors.Accent
+            [System.Windows.Forms.MessageBox]::Show(
+                "白霜拼音词库数据已经导入。$detail",
+                "猫栈拼音",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            ) | Out-Null
+        }
     } catch {
         $statusLabel.Text = "白霜拼音导入失败，旧词库已保留"
         $statusLabel.ForeColor = $colors.Danger

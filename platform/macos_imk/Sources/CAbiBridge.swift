@@ -293,23 +293,19 @@ final class PinyinCoreBridge {
         return imported >= 0 ? Int(imported) : nil
     }
 
-    // Large reviewed archives use a short-lived engine entirely on the import queue.
-    // This keeps ZIP parsing off AppKit's main thread and never holds the shared input pool lock.
+    // Reviewed archive import reads only its destination setting. It does not
+    // construct a second full lexicon snapshot while the shared engine is live.
     static func importReviewedRimeFrostArchive(
         from path: String,
         settingsPath: String?
     ) -> Int? {
-        let engine: OpaquePointer? = if let settingsPath {
-            settingsPath.withCString { ime_engine_new($0) }
-        } else {
-            ime_engine_new(nil)
-        }
-        guard let engine else {
+        guard let settingsPath else {
             return nil
         }
-        defer { ime_engine_free(engine) }
-        let imported = path.withCString {
-            ime_engine_import_rime_frost_archive(engine, $0)
+        let imported = settingsPath.withCString { settingsPointer in
+            path.withCString { archivePointer in
+                ime_import_rime_frost_archive(settingsPointer, archivePointer)
+            }
         }
         return imported >= 0 ? Int(imported) : nil
     }

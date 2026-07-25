@@ -204,10 +204,84 @@ fn excessive_archive_entry_count_is_rejected() {
     cleanup(&[archive_path, destination_path]);
 }
 
+#[test]
+fn duplicate_archive_member_is_rejected_without_overwriting() {
+    let archive_path = temp_path("duplicate_member_frost", "zip");
+    let destination_path = temp_path("duplicate_member_frost", "tsv");
+    const PLACEHOLDER: &str = "cn_dicts/9999.dict.yaml";
+    assert_eq!(PLACEHOLDER.len(), CORE_MEMBERS[0].len());
+    write_archive(&archive_path, &[(PLACEHOLDER, "重复\tchong fu\t1\n")]);
+    replace_equal_length_member_name(&archive_path, PLACEHOLDER, CORE_MEMBERS[0]);
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ReviewedLexiconArchive,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn missing_approved_member_is_rejected_without_overwriting() {
+    let archive_path = temp_path("missing_member_frost", "zip");
+    let destination_path = temp_path("missing_member_frost", "tsv");
+    let file = std::fs::File::create(&archive_path).expect("create archive");
+    let mut archive = ZipWriter::new(file);
+    let options = archive_options();
+    for (index, name) in CORE_MEMBERS.iter().enumerate().skip(1) {
+        write_core_member(&mut archive, options, index, name);
+    }
+    archive.finish().expect("finish archive");
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ReviewedLexiconArchive,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn oversized_archive_member_is_rejected_without_overwriting() {
+    let archive_path = temp_path("oversized_member_frost", "zip");
+    let destination_path = temp_path("oversized_member_frost", "tsv");
+    let file = std::fs::File::create(&archive_path).expect("create archive");
+    let mut archive = ZipWriter::new(file);
+    let options = archive_options();
+    write_core_members(&mut archive, options);
+    archive
+        .start_file("extra/oversized.bin", options)
+        .expect("start oversized member");
+    std::io::copy(
+        &mut std::io::repeat(0x5a).take(32 * 1024 * 1024 + 1),
+        &mut archive,
+    )
+    .expect("write oversized member");
+    archive.finish().expect("finish archive");
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ImportedLexiconLimit,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
+#[test]
+fn member_larger_than_its_declared_size_is_rejected_without_overwriting() {
+    let archive_path = temp_path("false_declared_size_frost", "zip");
+    let destination_path = temp_path("false_declared_size_frost", "tsv");
+    write_archive(&archive_path, &[]);
+    reduce_declared_uncompressed_size(&archive_path, CORE_MEMBERS[0]);
+    assert_rejected_and_preserved(
+        &archive_path,
+        &destination_path,
+        ImeError::ReviewedLexiconArchive,
+    );
+    cleanup(&[archive_path, destination_path]);
+}
+
 fn write_archive(path: &Path, extras: &[(&str, &str)]) {
     let file = std::fs::File::create(path).expect("create archive");
     let mut archive = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = archive_options();
     write_core_members(&mut archive, options);
     for (name, contents) in extras {
         archive
@@ -222,18 +296,113 @@ fn write_archive(path: &Path, extras: &[(&str, &str)]) {
 
 fn write_core_members(archive: &mut ZipWriter<std::fs::File>, options: SimpleFileOptions) {
     for (index, name) in CORE_MEMBERS.iter().enumerate() {
-        archive
-            .start_file(name, options)
-            .expect("start core member");
-        writeln!(
-            archive,
-            "白霜{}\tbai shuang {}\t{}",
-            han_digit(index),
-            pinyin_digit(index),
-            1000 - index
-        )
-        .expect("write core member");
+        write_core_member(archive, options, index, name);
     }
+}
+
+fn write_core_member(
+    archive: &mut ZipWriter<std::fs::File>,
+    options: SimpleFileOptions,
+    index: usize,
+    name: &str,
+) {
+    archive
+        .start_file(name, options)
+        .expect("start core member");
+    writeln!(
+        archive,
+        "白霜{}\tbai shuang {}\t{}",
+        han_digit(index),
+        pinyin_digit(index),
+        1000 - index
+    )
+    .expect("write core member");
+}
+
+fn archive_options() -> SimpleFileOptions {
+    SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(0o100644)
+}
+
+fn assert_rejected_and_preserved(archive_path: &Path, destination_path: &Path, expected: ImeError) {
+    std::fs::write(destination_path, "previous frost layer").expect("write previous layer");
+    let (bytes, sha256) = artifact_identity(archive_path);
+    assert_eq!(
+        import_reviewed_rime_frost_archive_with_manifest(
+            archive_path,
+            destination_path,
+            ReviewedRimeFrostManifest {
+                archive_bytes: bytes,
+                archive_sha256: &sha256,
+            },
+        ),
+        Err(expected)
+    );
+    assert_eq!(
+        std::fs::read_to_string(destination_path).expect("read preserved layer"),
+        "previous frost layer"
+    );
+}
+
+fn reduce_declared_uncompressed_size(path: &Path, target_name: &str) {
+    const CENTRAL_HEADER: &[u8; 4] = b"PK\x01\x02";
+    const CENTRAL_FIXED_BYTES: usize = 46;
+    const UNCOMPRESSED_SIZE_OFFSET: usize = 24;
+    const FILE_NAME_LENGTH_OFFSET: usize = 28;
+
+    let mut bytes = std::fs::read(path).expect("read archive bytes");
+    let mut offset = 0_usize;
+    let mut patched = false;
+    while offset + CENTRAL_FIXED_BYTES <= bytes.len() {
+        if &bytes[offset..offset + 4] != CENTRAL_HEADER {
+            offset += 1;
+            continue;
+        }
+        let name_length = u16::from_le_bytes([
+            bytes[offset + FILE_NAME_LENGTH_OFFSET],
+            bytes[offset + FILE_NAME_LENGTH_OFFSET + 1],
+        ]) as usize;
+        let name_start = offset + CENTRAL_FIXED_BYTES;
+        let name_end = name_start + name_length;
+        if name_end <= bytes.len() && &bytes[name_start..name_end] == target_name.as_bytes() {
+            let size_offset = offset + UNCOMPRESSED_SIZE_OFFSET;
+            let size = u32::from_le_bytes(
+                bytes[size_offset..size_offset + 4]
+                    .try_into()
+                    .expect("central size bytes"),
+            );
+            bytes[size_offset..size_offset + 4]
+                .copy_from_slice(&size.saturating_sub(1).to_le_bytes());
+            patched = true;
+            break;
+        }
+        offset = name_end;
+    }
+    assert!(patched, "target central directory member was not found");
+    std::fs::write(path, bytes).expect("write patched archive");
+}
+
+fn replace_equal_length_member_name(path: &Path, old_name: &str, new_name: &str) {
+    assert_eq!(old_name.len(), new_name.len());
+    let mut bytes = std::fs::read(path).expect("read archive bytes");
+    let old = old_name.as_bytes();
+    let mut replacements = 0;
+    let mut offset = 0;
+    while let Some(relative) = bytes[offset..]
+        .windows(old.len())
+        .position(|window| window == old)
+    {
+        let start = offset + relative;
+        bytes[start..start + old.len()].copy_from_slice(new_name.as_bytes());
+        replacements += 1;
+        offset = start + old.len();
+    }
+    assert_eq!(
+        replacements, 2,
+        "member name must appear in local and central headers"
+    );
+    std::fs::write(path, bytes).expect("write patched archive");
 }
 
 fn artifact_identity(path: &Path) -> (u64, String) {

@@ -248,6 +248,29 @@ pub extern "C" fn ime_engine_import_rime_frost_archive(
 
 #[cfg(feature = "reviewed-rime-frost")]
 #[no_mangle]
+pub extern "C" fn ime_import_rime_frost_archive(
+    settings_path: *const c_char,
+    archive_path: *const c_char,
+) -> c_int {
+    catch_unwind(AssertUnwindSafe(|| {
+        let settings_path = read_c_string(settings_path);
+        let archive_path = read_c_string(archive_path);
+        if settings_path.is_empty() || archive_path.is_empty() {
+            return None;
+        }
+        let settings = ime_core::ImeSettings::from_json_file(settings_path).ok()?;
+        let report =
+            CoreImeEngine::import_reviewed_rime_frost_archive_for_settings(&settings, archive_path)
+                .ok()?;
+        c_int::try_from(report.accepted_rows).ok()
+    }))
+    .ok()
+    .flatten()
+    .unwrap_or(-1)
+}
+
+#[cfg(feature = "reviewed-rime-frost")]
+#[no_mangle]
 pub extern "C" fn ime_engine_clear_rime_frost_lexicon(engine: *mut ImeEngine) -> c_int {
     catch_status(|| {
         let engine = unsafe { engine.as_ref()? };

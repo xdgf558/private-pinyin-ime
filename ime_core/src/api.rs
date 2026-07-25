@@ -92,7 +92,11 @@ impl ImeEngine {
                 imported_paths.push(path);
             }
         }
-        let (lexicon, errors) = Lexicon::load_embedded_with_imported_paths(imported_paths);
+        let (lexicon, errors) = if imported_paths.is_empty() {
+            (Lexicon::load_embedded(), Vec::new())
+        } else {
+            Lexicon::load_embedded_with_imported_paths(imported_paths)
+        };
         for error in errors {
             logger::emit_error(error);
         }
@@ -160,8 +164,15 @@ impl ImeEngine {
         &self,
         archive_path: impl AsRef<Path>,
     ) -> ImeResult<ImportedLexiconReport> {
-        let destination_path = self
-            .settings
+        Self::import_reviewed_rime_frost_archive_for_settings(&self.settings, archive_path)
+    }
+
+    #[cfg(feature = "reviewed-rime-frost")]
+    pub fn import_reviewed_rime_frost_archive_for_settings(
+        settings: &ImeSettings,
+        archive_path: impl AsRef<Path>,
+    ) -> ImeResult<ImportedLexiconReport> {
+        let destination_path = settings
             .rime_frost_lexicon_path
             .as_ref()
             .ok_or(crate::error::ImeError::ReviewedLexiconNotConfigured)?;

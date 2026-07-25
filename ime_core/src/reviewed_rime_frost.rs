@@ -1,6 +1,6 @@
 use std::collections::HashSet;
-use std::fs::{self, File};
-use std::io::{BufReader, Read};
+use std::fs::File;
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::{Component, Path};
 
 use sha2::{Digest, Sha256};
@@ -74,12 +74,18 @@ pub fn import_reviewed_rime_frost_archive_with_manifest(
     manifest: ReviewedRimeFrostManifest<'_>,
 ) -> ImeResult<ImportedLexiconReport> {
     let archive_path = archive_path.as_ref();
-    verify_artifact(archive_path, manifest)?;
-
-    let file = File::open(archive_path).map_err(|_| ImeError::ImportedLexiconIo)?;
-    let mut archive =
-        ZipArchive::new(BufReader::new(file)).map_err(|_| ImeError::ReviewedLexiconArchive)?;
-    if archive.len() > MAX_ARCHIVE_ENTRIES {
+    let mut reader = open_verified_artifact(archive_path, manifest)?;
+    let declared_entry_count = declared_zip_entry_count(&mut reader)?;
+    reader
+        .seek(SeekFrom::Start(0))
+        .map_err(|_| ImeError::ReviewedLexiconArchive)?;
+    let mut archive = ZipArchive::new(reader).map_err(|_| ImeError::ReviewedLexiconArchive)?;
+    // zip deduplicates equal central-directory names internally. Comparing against
+    // EOCD keeps duplicate-name archives from disappearing before our validation.
+    if archive.len() != declared_entry_count {
+        return Err(ImeError::ReviewedLexiconArchive);
+    }
+    if declared_entry_count > MAX_ARCHIVE_ENTRIES {
         return Err(ImeError::ImportedLexiconLimit);
     }
 
@@ -128,7 +134,8 @@ pub fn import_reviewed_rime_frost_archive_with_manifest(
                 .take(member_bytes.saturating_add(1))
                 .read_to_string(&mut source)
                 .map_err(|_| ImeError::ReviewedLexiconArchive)?;
-            if source.len() as u64 > member_bytes {
+            let source_bytes = source.len() as u64;
+            if source_bytes > member_bytes || source_bytes > RIME_FROST_LIMITS.max_source_bytes {
                 return Err(ImeError::ReviewedLexiconArchive);
             }
             let (incoming, skipped) =
@@ -162,14 +169,17 @@ pub fn import_reviewed_rime_frost_archive_with_manifest(
     })
 }
 
-fn verify_artifact(archive_path: &Path, manifest: ReviewedRimeFrostManifest<'_>) -> ImeResult<()> {
-    let metadata = fs::metadata(archive_path).map_err(|_| ImeError::ImportedLexiconIo)?;
+fn open_verified_artifact(
+    archive_path: &Path,
+    manifest: ReviewedRimeFrostManifest<'_>,
+) -> ImeResult<BufReader<File>> {
+    let file = File::open(archive_path).map_err(|_| ImeError::ImportedLexiconIo)?;
+    let metadata = file.metadata().map_err(|_| ImeError::ImportedLexiconIo)?;
     if !metadata.is_file() || metadata.len() != manifest.archive_bytes {
         return Err(ImeError::ReviewedLexiconArtifact);
     }
 
-    let mut reader =
-        BufReader::new(File::open(archive_path).map_err(|_| ImeError::ImportedLexiconIo)?);
+    let mut reader = BufReader::new(file);
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
     loop {
@@ -189,7 +199,54 @@ fn verify_artifact(archive_path: &Path, manifest: ReviewedRimeFrostManifest<'_>)
     if actual != manifest.archive_sha256 {
         return Err(ImeError::ReviewedLexiconArtifact);
     }
-    Ok(())
+    reader
+        .seek(SeekFrom::Start(0))
+        .map_err(|_| ImeError::ImportedLexiconIo)?;
+    Ok(reader)
+}
+
+fn declared_zip_entry_count(reader: &mut (impl Read + Seek)) -> ImeResult<usize> {
+    const EOCD_SIGNATURE: &[u8; 4] = b"PK\x05\x06";
+    const EOCD_FIXED_BYTES: usize = 22;
+    const MAX_EOCD_BYTES: usize = EOCD_FIXED_BYTES + u16::MAX as usize;
+
+    let archive_bytes = reader
+        .seek(SeekFrom::End(0))
+        .map_err(|_| ImeError::ReviewedLexiconArchive)?;
+    let tail_bytes = usize::try_from(archive_bytes.min(MAX_EOCD_BYTES as u64))
+        .map_err(|_| ImeError::ReviewedLexiconArchive)?;
+    reader
+        .seek(SeekFrom::End(-(tail_bytes as i64)))
+        .map_err(|_| ImeError::ReviewedLexiconArchive)?;
+    let mut tail = vec![0_u8; tail_bytes];
+    reader
+        .read_exact(&mut tail)
+        .map_err(|_| ImeError::ReviewedLexiconArchive)?;
+
+    let offset = tail
+        .windows(EOCD_SIGNATURE.len())
+        .rposition(|window| window == EOCD_SIGNATURE)
+        .ok_or(ImeError::ReviewedLexiconArchive)?;
+    if offset + EOCD_FIXED_BYTES > tail.len() {
+        return Err(ImeError::ReviewedLexiconArchive);
+    }
+    let field = |relative: usize| {
+        u16::from_le_bytes([tail[offset + relative], tail[offset + relative + 1]])
+    };
+    let disk_number = field(4);
+    let directory_disk = field(6);
+    let entries_on_disk = field(8);
+    let total_entries = field(10);
+    let comment_bytes = field(20) as usize;
+    if disk_number != 0
+        || directory_disk != 0
+        || entries_on_disk != total_entries
+        || total_entries == u16::MAX
+        || offset + EOCD_FIXED_BYTES + comment_bytes != tail.len()
+    {
+        return Err(ImeError::ReviewedLexiconArchive);
+    }
+    Ok(total_entries as usize)
 }
 
 fn validate_member_name(name: &str) -> ImeResult<()> {
@@ -206,9 +263,7 @@ fn validate_member_name(name: &str) -> ImeResult<()> {
 }
 
 fn validate_member_type(unix_mode: Option<u32>, is_directory: bool) -> ImeResult<()> {
-    let Some(mode) = unix_mode else {
-        return Ok(());
-    };
+    let mode = unix_mode.ok_or(ImeError::ReviewedLexiconArchive)?;
     let file_type = mode & 0o170000;
     let expected = if is_directory { 0o040000 } else { 0o100000 };
     if file_type != 0 && file_type != expected {

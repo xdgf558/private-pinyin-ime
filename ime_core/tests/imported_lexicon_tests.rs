@@ -144,6 +144,64 @@ fn desktop_import_layers_remain_independent_and_respect_enable_flags() {
 }
 
 #[test]
+fn imported_entries_preserve_embedded_order_and_deduplicate_deterministically() {
+    let imported_path = temp_path("deterministic_imported_lexicon", "tsv");
+    let embedded = Lexicon::load_embedded().expect("embedded lexicon");
+    let duplicate = embedded
+        .entries()
+        .first()
+        .expect("embedded lexicon has entries");
+    let raised_frequency = duplicate.frequency.saturating_add(1_000_000);
+    std::fs::write(
+        &imported_path,
+        format!(
+            "phrase\tpinyin\tfrequency\n{}\t{}\t{}\n顺序新词\tshun xu xin ci\t900000\n",
+            duplicate.phrase, duplicate.pinyin, raised_frequency
+        ),
+    )
+    .expect("write deterministic imported layer");
+
+    let (first, first_errors) =
+        Lexicon::load_embedded_with_imported_paths([imported_path.as_path()]);
+    let (second, second_errors) =
+        Lexicon::load_embedded_with_imported_paths([imported_path.as_path()]);
+    assert!(first_errors.is_empty());
+    assert!(second_errors.is_empty());
+    let first = first.expect("first merged lexicon");
+    let second = second.expect("second merged lexicon");
+
+    let embedded_identities = embedded
+        .entries()
+        .iter()
+        .map(|entry| (&entry.phrase, &entry.pinyin))
+        .collect::<Vec<_>>();
+    let first_identities = first
+        .entries()
+        .iter()
+        .map(|entry| (&entry.phrase, &entry.pinyin))
+        .collect::<Vec<_>>();
+    let second_identities = second
+        .entries()
+        .iter()
+        .map(|entry| (&entry.phrase, &entry.pinyin))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        &first_identities[..embedded_identities.len()],
+        embedded_identities.as_slice()
+    );
+    assert_eq!(first_identities, second_identities);
+    assert_eq!(first.entries().len(), embedded.entries().len() + 1);
+    assert_eq!(first.entries()[0].frequency, raised_frequency);
+    assert_eq!(
+        first.entries().last().map(|entry| entry.phrase.as_str()),
+        Some("顺序新词")
+    );
+
+    let _ = std::fs::remove_file(imported_path);
+}
+
+#[test]
 fn import_requires_a_configured_separate_destination() {
     let source_path = temp_path("unconfigured_rime_source", "dict.yaml");
     std::fs::write(&source_path, "你好\tni hao\t100\n").expect("write source");

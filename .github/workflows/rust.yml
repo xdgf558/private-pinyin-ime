@@ -221,6 +221,10 @@ jobs:
         shell: pwsh
         run: cargo test --workspace
 
+      - name: Validate all Windows PowerShell scripts
+        shell: pwsh
+        run: .\scripts\test_windows_powershell_syntax.ps1
+
       - name: Validate Windows onboarding compatibility
         shell: pwsh
         run: |

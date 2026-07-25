@@ -111,9 +111,9 @@ fn run() -> Result<String, String> {
         "import-rime-frost" => {
             let settings = settings_from_path(settings_path)?;
             let path = required_path(input_path, "--input")?;
-            let report = ImeEngine::with_settings(settings)
-                .and_then(|engine| engine.import_reviewed_rime_frost_archive(&path))
-                .map_err(|error| error.code().to_owned())?;
+            let report =
+                ImeEngine::import_reviewed_rime_frost_archive_for_settings(&settings, &path)
+                    .map_err(|error| error.code().to_owned())?;
             Ok(format!(
                 "imported {} reviewed Frost rows; {} total: {}",
                 report.accepted_rows,

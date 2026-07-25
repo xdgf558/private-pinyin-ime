@@ -47,16 +47,11 @@ Current status: macOS and Windows can explicitly download and import the pinned 
   FROST-01 remains desktop-only and the iOS import limits and network policy are
   unchanged.
 - PR remediation moved the 11.4-second reviewed-archive import completely off
-  the macOS IMK main queue, refreshed Windows settings before saving the White
-  Frost enable state, made missing `rg` fail the source gate, and feature-gated
-  `zip`/`sha2` so the iOS FFI dependency graph contains no reviewed-import ZIP
-  stack. Native macOS and iOS builds passed after the split.
-- Two consecutive `windows-2022` debug runs measured the unchanged continuous
-  decoder at 62.79 ms and 61.71 ms against the previous cross-platform 60-ms
-  threshold, while the same commits passed the Ubuntu suite. The hosted Windows
-  debug budget is therefore calibrated to 75 ms with headroom for runner jitter;
-  Apple and other targets retain 60 ms, and the separate mixed-decoder budget
-  remains 60 ms everywhere.
+  the macOS IMK main queue and changed it to a no-engine static FFI import, so
+  the import path does not construct a second full lexicon snapshot. It also
+  refreshed Windows settings before saving the White Frost enable state, made
+  missing `rg` fail the source gate, and feature-gated `zip`/`sha2` so the iOS
+  FFI dependency graph contains no reviewed-import ZIP stack.
 
 ## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
 
@@ -1171,8 +1166,8 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 - Follow-up: The macOS settings layer now records caller-supplied reviewed source metadata instead of depending on the download manager's catalog type. This keeps the standalone shared-engine and source-label Swift tests independent from networking code while preserving the exact approved White Frost manifest values at the import call site.
 
 - Command: `cargo test -p ime_core --features reviewed-rime-frost --test reviewed_rime_frost_tests`
-- Result: passed (6 tests)
-- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio limit, entry-count limit, and atomic old-layer preservation all remain green.
+- Result: passed (10 tests)
+- Notes: The approved archive path, SHA-256 rejection, traversal and symlink rejection, compression-ratio and entry-count limits, duplicate members, missing approved members, oversized members, false declared sizes, and atomic old-layer preservation all remain green.
 
 - Command: `cargo clippy --workspace --all-targets -- -D warnings`, plus FFI Clippy with `desktop-ai` and `ios-ai`
 - Result: passed
@@ -1180,11 +1175,11 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 
 - Command: `bash scripts/check_frost01_sources.sh`, `bash scripts/check_windows_tsf_sources.sh`, `bash scripts/check_installers_settings_sources.sh`, and `bash scripts/check_ios_keyboard_sources.sh`
 - Result: passed
-- Notes: The Windows settings save path rereads the latest persisted settings before applying form fields, so a newly changed White Frost enable state is not overwritten by the launch-time snapshot.
+- Notes: The Windows settings save path rereads the latest persisted settings before applying form fields, so a newly changed White Frost enable state is not overwritten by the launch-time snapshot. A negative control temporarily enabled `reviewed-rime-frost` in the `ios-ai` feature graph; the FROST-01 gate failed with the expected iOS dependency-leak error, and passed again after restoring the graph. The PowerShell AST parser is wired into the `windows-2022` job because this development Mac does not provide `pwsh`.
 
-- Command: `bash scripts/build_macos_imk.sh`
+- Command: `PRIVATE_PINYIN_SKIP_CODESIGN=1 bash scripts/build_macos_imk.sh`
 - Result: passed
-- Notes: Reviewed archive verification and parsing now run on a dedicated serial background queue with a short-lived import engine. Only final status and shared-engine reload return to the main queue, so a large import no longer blocks the InputMethodKit UI or typing event loop.
+- Notes: Reviewed archive verification and parsing now run on a dedicated serial background queue through the static no-engine FFI import. Only final status and one shared-engine reload return to the main queue, so a large import neither blocks the InputMethodKit UI nor creates a second full lexicon engine.
 
 - Command: `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_shared_engine.sh` and `PRIVATE_PINYIN_REQUIRE_SWIFTC=1 bash scripts/test_macos_imported_lexicon_source.sh`
 - Result: passed
@@ -1194,7 +1189,11 @@ Current status: macOS and Windows can explicitly download and import the pinned 
 - Result: passed (`BUILD SUCCEEDED`)
 - Notes: The iOS container and keyboard extension build with `ios-ai` while excluding the desktop White Frost archive parser and ZIP dependency chain.
 
-- Local baseline note: the unfiltered macOS `cargo test --workspace` run reached three existing interactive latency assertions at approximately `70-79 ms` for isolated nine-key lookup and higher under parallel load, above their fixed `60 ms` budget. All non-latency candidate tests passed when those three budget assertions were skipped. The Writer absent-model lifecycle test also passed under an isolated empty `HOME`; with the locally installed Writer model it correctly exercised a different runtime path. Neither observation is caused by or changes FROST-01 behavior.
+- Command: `cargo test -p ime_core --test candidate_tests continuous_sentence_latency_budget`, `nine_key_latency_budget`, and `nine_key_continuous_sentence_latency_budget`
+- Result: passed
+- Notes: The default no-import fast path and deterministic compact index keep all three candidate paths under their unchanged 60 ms assertions; FROST-01 does not widen an unrelated latency budget.
+
+- Manual release gate: capture macOS and Windows RSS before White Frost import, at peak verification/import, immediately after the one shared-engine reload, and after five idle minutes, together with the shared-engine reload duration. The implementation prevents a second full engine during import, but release evidence must still prove the real signed desktop processes return to the normal single-engine retained-memory range.
 
 ## Open Items
 
