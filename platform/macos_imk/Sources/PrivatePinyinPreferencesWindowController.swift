@@ -1793,7 +1793,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     }
 
     @objc private func checkRimeFrostUpdate(_ sender: Any?) {
-        PrivatePinyinRimeFrostManager.shared.checkLatestRelease()
+        PrivatePinyinRimeFrostManager.shared.checkLatestRelease { [weak self] result in
+            guard case let .failure(error) = result else {
+                return
+            }
+            self?.showAlert(error.localizedDescription)
+        }
     }
 
     @objc private func writerModelStateChanged(_ notification: Notification) {

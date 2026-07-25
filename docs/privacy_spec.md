@@ -34,9 +34,11 @@ from the shared Rust engine.
 The request is fixed to the official `gaboolic/rime-frost` GitHub Release
 `1.0.4`. It carries no raw keys, pinyin, candidates, committed text, document
 context, learning data, account identifier, telemetry, cookies, or
-user-derived query parameters. The host and Rust importer verify the approved
-archive byte count and SHA-256 before parsing. Temporary archives are removed
-after import, and the normalized `rime_frost.tsv` layer remains local,
+user-derived query parameters. Redirects must remain HTTPS; the implementation
+does not pin GitHub's changeable asset-CDN hostnames. The host and Rust importer
+verify the approved archive byte count and SHA-256 before parsing, so a
+redirected or substituted artifact fails closed. Temporary archives are
+removed after import, and the normalized `rime_frost.tsv` layer remains local,
 independent, and user-removable.
 
 Version checks read only the official GitHub latest-release endpoint after a

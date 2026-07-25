@@ -32,11 +32,6 @@ $rimeFrostArchiveUrl = "https://github.com/gaboolic/rime-frost/releases/download
 $rimeFrostReleaseUrl = "https://github.com/gaboolic/rime-frost/releases/tag/1.0.4"
 $rimeFrostLicenseUrl = "https://github.com/gaboolic/rime-frost/blob/master/LICENSE"
 $rimeFrostLatestReleaseApiUrl = "https://api.github.com/repos/gaboolic/rime-frost/releases/latest"
-$allowedRimeFrostHosts = @(
-    "github.com",
-    "objects.githubusercontent.com",
-    "release-assets.githubusercontent.com"
-)
 
 function Get-DefaultSettingsTemplatePath {
     $candidates = @(
@@ -227,9 +222,9 @@ function Download-ApprovedRimeFrostArchive {
         if (-not $response.IsSuccessStatusCode) {
             throw "GitHub 返回 HTTP $([int]$response.StatusCode)"
         }
-        $finalHost = $response.RequestMessage.RequestUri.Host.ToLowerInvariant()
-        if ($allowedRimeFrostHosts -notcontains $finalHost) {
-            throw "下载被重定向到未批准的主机：$finalHost"
+        $finalUri = $response.RequestMessage.RequestUri
+        if ($finalUri.Scheme -ne [System.Uri]::UriSchemeHttps) {
+            throw "下载被重定向到非 HTTPS 地址"
         }
         $declaredLength = $response.Content.Headers.ContentLength
         if ($null -ne $declaredLength -and [int64]$declaredLength -ne $rimeFrostArchiveBytes) {

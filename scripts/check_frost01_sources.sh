@@ -90,6 +90,15 @@ grep -q 'a new White Frost file invalidates the shared-engine fingerprint' \
   platform/macos_imk/Tests/SharedEnginePoolTests.swift
 grep -q 'a new Rime Ice file invalidates the shared-engine fingerprint' \
   platform/macos_imk/Tests/SharedEnginePoolTests.swift
+grep -q 'completion(.failure(PrivatePinyinRimeFrostManagerError.operationInProgress))' \
+  platform/macos_imk/Sources/PrivatePinyinRimeFrostManager.swift
+if grep -En 'allowedDownloadHosts|allowedRimeFrostHosts' \
+  platform/macos_imk/Sources/PrivatePinyinRimeFrostManager.swift \
+  platform/windows_tsf/installer/open-settings.ps1
+then
+  echo "White Frost downloads must not pin changeable GitHub CDN hostnames." >&2
+  exit 1
+fi
 if grep -q 'func importReviewedRimeFrostArchive(from path: String)' \
   platform/macos_imk/Sources/CAbiBridge.swift; then
   echo "White Frost archive import must not run while holding the shared-engine lock." >&2
@@ -106,6 +115,11 @@ if printf '%s\n' "$static_import" | grep -q 'ime_engine_new'; then
 fi
 grep -q '\$currentSettings = Read-Settings' \
   platform/windows_tsf/installer/open-settings.ps1
+grep -q '\$response.Dispose()' platform/windows_tsf/installer/open-settings.ps1
+grep -q 'System.Management.Automation.Language.Parser]::ParseFile' \
+  scripts/test_windows_powershell_syntax.ps1
+grep -q 'test_windows_powershell_syntax.ps1' .github/workflows/rust.yml
+grep -q '"measure-engine-load"' tools/settings_cli/src/main.rs
 
 grep -q 'ImportedLexiconLimits::new(64 \* 1024 \* 1024, 128 \* 1024 \* 1024, 750_000)' \
   ime_core/src/imported_lexicon.rs

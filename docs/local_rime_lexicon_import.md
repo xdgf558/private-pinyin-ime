@@ -14,7 +14,7 @@ The writable and immutable layers are independent:
 6. `rime_frost_manifest.json`: reviewed White Frost version and artifact identity for UI only.
 7. `user_lexicon.sqlite`: selections learned locally by PrivatePinyin.
 
-Clearing one writable layer does not clear any other layer. Importing or clearing a Rime dictionary takes effect after the engine/session is recreated; platform controls perform or request that reload.
+Clearing any one mutable data layer leaves every remaining layer unchanged. Importing or clearing a Rime dictionary takes effect after the engine/session is recreated; platform controls perform or request that reload.
 
 Source labels are captured only when an import succeeds. On macOS, known upstream dictionary filenames selected under a `rime-ice`, `雾凇`, or `霧凇` directory are shown as `雾凇拼音`; custom dictionaries in the same directory retain their cleaned filename. Version dates are accepted only from the matched source directory and its descendants, so an ancestor backup-directory date is not presented as the dictionary version. Legacy imported layers created before the source manifest existed cannot reconstruct their origin from normalized phrase/pinyin rows, so the preferences UI asks the user to re-import the original files. Re-importing is cumulative and deduplicated, and records the source label without duplicating phrase/pinyin identities.
 

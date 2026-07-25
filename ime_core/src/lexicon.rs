@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
@@ -216,15 +218,22 @@ impl Lexicon {
             }
         }
 
-        let mut identities = HashMap::<(String, String), usize>::new();
+        let mut identities = HashMap::<u64, Vec<usize>>::new();
         let mut deduplicated = Vec::<LexiconEntry>::with_capacity(entries.len());
         for entry in entries {
-            let identity = (entry.phrase.clone(), entry.pinyin.clone());
-            if let Some(index) = identities.get(&identity).copied() {
+            let identity_hash = lexicon_identity_hash(&entry);
+            let duplicate_index = identities.get(&identity_hash).and_then(|indexes| {
+                indexes.iter().copied().find(|index| {
+                    let existing = &deduplicated[*index];
+                    existing.phrase == entry.phrase && existing.pinyin == entry.pinyin
+                })
+            });
+            if let Some(index) = duplicate_index {
                 deduplicated[index].frequency = deduplicated[index].frequency.max(entry.frequency);
             } else {
-                identities.insert(identity, deduplicated.len());
+                let index = deduplicated.len();
                 deduplicated.push(entry);
+                identities.entry(identity_hash).or_default().push(index);
             }
         }
         (Ok(Self::from_entries(deduplicated)), errors)
@@ -910,6 +919,13 @@ impl Lexicon {
         entries.truncate(limit);
         entries
     }
+}
+
+fn lexicon_identity_hash(entry: &LexiconEntry) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    entry.phrase.hash(&mut hasher);
+    entry.pinyin.hash(&mut hasher);
+    hasher.finish()
 }
 
 pub fn merge_user_and_base_candidates(

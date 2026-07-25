@@ -64,6 +64,24 @@ Current status: macOS and Windows can explicitly download and import the pinned 
   18,083,664-byte TSV. All 161 official members reported regular-file Unix
   types (159 mode `100644`, two mode `100755`), so the stricter member-type
   policy does not reject the only approved archive.
+- Closed the remaining review follow-ups without weakening artifact identity.
+  macOS version checks now report a bounded `operationInProgress` or
+  `versionCheckFailed` result instead of silently omitting their completion.
+  White Frost downloads still start at the fixed official GitHub Release URL
+  and require HTTPS on every redirect, while exact size and SHA-256 are the
+  authoritative content identity; changeable GitHub asset-CDN hostnames are no
+  longer pinned. Windows HTTP responses are disposed in `finally`, and the
+  existing PowerShell AST parser remains required by the `windows-2022` CI job.
+- Added `private-pinyin-settings measure-engine-load --settings PATH` so the
+  same cold engine-construction measurement can be repeated on macOS and native
+  Windows without loading user content. On the development arm64 Mac running
+  macOS 26.5.2 (build 25F84), five Release-process samples measured the bundled
+  base at a 70.350-ms median and 27,066,368-byte median maximum RSS (25.81 MiB).
+  With the approved 653,136-entry White Frost layer enabled, the median was
+  1,011.915 ms and 271,679,488 bytes (259.09 MiB). These are development CLI
+  reference values rather than signed IMK lifecycle evidence. Native Windows
+  x64 TSF RSS, post-reload RSS, and five-minute idle retention remain mandatory
+  release smoke items because the TSF DLL is hosted by multiple applications.
 
 ## Desktop Imported-Lexicon Capacity Expansion (2026-07-24)
 

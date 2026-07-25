@@ -10,9 +10,15 @@ enum PrivatePinyinRimeFrostState: Equatable {
 
 enum PrivatePinyinRimeFrostManagerError: LocalizedError, Equatable {
     case operationInProgress
+    case versionCheckFailed
 
     var errorDescription: String? {
-        "另一项白霜拼音操作正在进行，请稍后重试。"
+        switch self {
+        case .operationInProgress:
+            "另一项白霜拼音操作正在进行，请稍后重试。"
+        case .versionCheckFailed:
+            "无法检查白霜拼音版本，请稍后重试。"
+        }
     }
 }
 
@@ -33,11 +39,9 @@ enum PrivatePinyinRimeFrostCatalog {
     static let latestReleaseAPIURL = URL(
         string: "https://api.github.com/repos/gaboolic/rime-frost/releases/latest"
     )!
-    static let allowedDownloadHosts: Set<String> = [
-        "github.com",
-        "objects.githubusercontent.com",
-        "release-assets.githubusercontent.com",
-    ]
+    static func isSecureArtifactURL(_ url: URL?) -> Bool {
+        url?.scheme?.lowercased() == "https" && url?.host?.isEmpty == false
+    }
 }
 
 extension Notification.Name {
@@ -93,7 +97,9 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         task.resume()
     }
 
-    func checkLatestRelease() {
+    func checkLatestRelease(
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
         var request = URLRequest(url: PrivatePinyinRimeFrostCatalog.latestReleaseAPIURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("StationCat-PrivatePinyin", forHTTPHeaderField: "User-Agent")
@@ -108,9 +114,11 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = object["tag_name"] as? String
             else {
-                self.finishReleaseCheck(
+                self.completeReleaseCheck(
                     requestID: requestID,
-                    state: .failed("无法检查白霜拼音版本，请稍后重试。")
+                    state: .failed("无法检查白霜拼音版本，请稍后重试。"),
+                    result: .failure(PrivatePinyinRimeFrostManagerError.versionCheckFailed),
+                    completion: completion
                 )
                 return
             }
@@ -121,16 +129,21 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
             } else {
                 normalized = trimmedTag
             }
-            self.finishReleaseCheck(
+            self.completeReleaseCheck(
                 requestID: requestID,
                 state: normalized == PrivatePinyinRimeFrostCatalog.approvedVersion
                     ? .idle
-                    : .pendingReview(normalized)
+                    : .pendingReview(normalized),
+                result: .success(normalized),
+                completion: completion
             )
         }
         stateLock.lock()
         guard downloadTask == nil, releaseCheckTask == nil else {
             stateLock.unlock()
+            DispatchQueue.main.async {
+                completion(.failure(PrivatePinyinRimeFrostManagerError.operationInProgress))
+            }
             return
         }
         releaseCheckTask = task
@@ -169,11 +182,8 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
-        let host = request.url?.host?.lowercased()
         completionHandler(
-            host.map(PrivatePinyinRimeFrostCatalog.allowedDownloadHosts.contains) == true
-                ? request
-                : nil
+            PrivatePinyinRimeFrostCatalog.isSecureArtifactURL(request.url) ? request : nil
         )
     }
 
@@ -185,8 +195,7 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         guard isCurrentDownloadTask(downloadTask),
               let response = downloadTask.response as? HTTPURLResponse,
               response.statusCode == 200,
-              let host = response.url?.host?.lowercased(),
-              PrivatePinyinRimeFrostCatalog.allowedDownloadHosts.contains(host)
+              PrivatePinyinRimeFrostCatalog.isSecureArtifactURL(response.url)
         else {
             finishDownload(.failure(URLError(.badServerResponse)), task: downloadTask)
             return
@@ -256,9 +265,11 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         }
     }
 
-    private func finishReleaseCheck(
+    private func completeReleaseCheck(
         requestID: UUID,
-        state: PrivatePinyinRimeFrostState
+        state: PrivatePinyinRimeFrostState,
+        result: Result<String, Error>,
+        completion: @escaping (Result<String, Error>) -> Void
     ) {
         stateLock.lock()
         guard requestID == releaseCheckID else {
@@ -270,6 +281,9 @@ final class PrivatePinyinRimeFrostManager: NSObject, URLSessionDownloadDelegate 
         storedState = state
         stateLock.unlock()
         notifyStateChanged()
+        DispatchQueue.main.async {
+            completion(result)
+        }
     }
 
     private func isCurrentDownloadTask(_ task: URLSessionDownloadTask) -> Bool {

@@ -1,6 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::Instant;
 
 use ime_core::{ImeEngine, ImeSettings};
 
@@ -140,6 +141,18 @@ fn run() -> Result<String, String> {
                 .map_err(|error| error.code().to_owned())?;
             Ok(format!("updated Frost lexicon state: {}", path.display()))
         }
+        "measure-engine-load" => {
+            let settings = settings_from_path(settings_path)?;
+            let started = Instant::now();
+            let engine =
+                ImeEngine::with_settings(settings).map_err(|error| error.code().to_owned())?;
+            let elapsed = started.elapsed();
+            drop(engine);
+            Ok(format!(
+                "engine initialized in {:.3} ms",
+                elapsed.as_secs_f64() * 1_000.0
+            ))
+        }
         _ => Err(usage()),
     }
 }
@@ -173,6 +186,7 @@ fn usage() -> String {
   private-pinyin-settings clear-imported-lexicon --settings PATH
   private-pinyin-settings import-rime-frost --settings PATH --input PATH
   private-pinyin-settings clear-rime-frost --settings PATH
-  private-pinyin-settings set-rime-frost-enabled --settings PATH --enabled true|false"
+  private-pinyin-settings set-rime-frost-enabled --settings PATH --enabled true|false
+  private-pinyin-settings measure-engine-load --settings PATH"
         .to_owned()
 }

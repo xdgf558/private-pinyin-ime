@@ -93,3 +93,9 @@ The canonical output is written through `AtomicFile`. Verification, ZIP validati
 | `user_lexicon.sqlite` | Local learning | No |
 
 macOS and Windows expose import/update, enable/disable, clear, license, and update-check controls. iOS remains unchanged at its existing 16-MiB source, 32-MiB canonical-file, and 200,000-entry limits and has no White Frost action.
+
+The artifact request always starts at the fixed official GitHub Release URL.
+Redirects must remain HTTPS, while the exact byte count and SHA-256 are the
+authoritative content identity. This avoids coupling availability to GitHub's
+current asset-CDN hostnames without permitting a redirected or substituted
+archive to pass verification.
