@@ -21,6 +21,9 @@ fn spawn_helper(idle_timeout_ms: u64) -> (Child, ChildStdin, ChildStdout) {
         .arg("--idle-timeout-ms")
         .arg(idle_timeout_ms.to_string())
         .env("PRIVATE_PINYIN_AI_HELPER_TOKEN", token_hex())
+        // Lifecycle tests must not observe a model installed by the developer.
+        .env_remove("HOME")
+        .env_remove("LOCALAPPDATA")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

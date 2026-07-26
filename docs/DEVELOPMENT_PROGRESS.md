@@ -4,6 +4,31 @@ Last updated: 2026-07-26
 Current stage: NINEKEY-PERF-01 incremental nine-key decoding
 Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
 
+## iOS 0.1.26 (23) TestFlight Upload (2026-07-26)
+
+- Released from merged `main` commit `e12f6f7`, which includes the approved
+  NINEKEY-PERF-01 exact-key lookup, complete stateless/incremental candidate
+  equivalence regressions, and the bounded session-local nine-key lattice cache.
+- Updated the container App and Keyboard Extension to `0.1.26 (23)`. The
+  archive was initially created with source build `22`; Xcode's default
+  App Store export behavior changed the uploaded build to `23`. The source
+  metadata is now aligned to `23`, and `ExportOptions.plist` explicitly sets
+  `manageAppVersionAndBuildNumber=false` so future uploads preserve the
+  reviewed repository build number.
+- Xcode 26.6 (`17F109`) archived the arm64 app with the iPhoneOS 26.5 SDK and
+  iOS 18.0 minimum deployment target at
+  `dist/ios/PrivatePinyin-0.1.26-build22-xcode26.xcarchive`. Strict nested
+  code-signature verification passed.
+- `cargo test --workspace`, `cargo fmt --all -- --check`, the iOS source gate,
+  plist validation, and `git diff --check` passed. The Helper lifecycle tests
+  now remove host home-directory model discovery so release verification cannot
+  accidentally observe a developer-installed Writer model.
+- App Store Connect upload succeeded after removing terminal-level proxy
+  environment variables and letting Shadowrocket's system routing handle the
+  Apple connection. Apple accepted `0.1.26 (23)` under delivery UUID
+  `840e9dc7-8e12-4286-a9da-c147abe2ebab`; the upload file reached `COMPLETE`
+  with no errors or warnings and is awaiting App Store Connect build processing.
+
 ## NINEKEY-PERF-01 Incremental Nine-Key Decoding (2026-07-26)
 
 - Replaced the direct nine-key exact-match check inside the prefix scan with
