@@ -92,6 +92,50 @@ fn nine_key_session_commits_candidate_and_supports_backspace() {
 }
 
 #[test]
+fn nine_key_incremental_session_preserves_stateless_candidate_order() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut session = engine.create_session();
+    let mut typed = String::new();
+
+    // The stateless oracle is exact here because this session has no user
+    // lexicon, no committed previous context, and a zero user-transition
+    // weight; both Ranker entry points therefore produce the same score.
+    for digit in digits.chars() {
+        let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+        typed.push(char::from(b'0' + digit));
+        session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            session.candidates, expected,
+            "cached candidates diverged after {typed}"
+        );
+    }
+
+    let retyped_suffix = typed[typed.len() - 3..].to_owned();
+    for _ in retyped_suffix.chars() {
+        typed.pop();
+        session.feed_key(KeyEvent::new(KeyCode::Backspace));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            session.candidates, expected,
+            "cached candidates diverged after backspace to {typed}"
+        );
+    }
+
+    for digit in retyped_suffix.chars() {
+        let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+        typed.push(char::from(b'0' + digit));
+        session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            session.candidates, expected,
+            "cached candidates diverged after retyping to {typed}"
+        );
+    }
+}
+
+#[test]
 fn continuous_pinyin_returns_phrase_candidate() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let candidates = engine.candidates_for_raw("xiangqu");
@@ -196,6 +240,40 @@ fn nine_key_decoder_stays_within_interactive_lookup_budget() {
         median < Duration::from_millis(60),
         "median nine-key continuous lookup took {median:?}"
     );
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
+    const BATCH_COUNT: usize = 5;
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let sentence_digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut maximum_digits = sentence_digits.repeat(4);
+    maximum_digits.truncate(MAX_RAW_INPUT_CHARS);
+
+    for (label, digits) in [
+        ("21-key sentence", sentence_digits.as_str()),
+        ("64-key maximum", maximum_digits.as_str()),
+    ] {
+        let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
+        for _ in 0..BATCH_COUNT {
+            let mut session = engine.create_session();
+            for digit in digits.chars() {
+                let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+                let started = Instant::now();
+                session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+                samples.push(started.elapsed());
+            }
+        }
+        samples.sort_unstable();
+        let median = samples[samples.len() / 2];
+        eprintln!("nine-key incremental {label} median per-key lookup: {median:?}");
+
+        assert!(
+            median < Duration::from_millis(60),
+            "median incremental nine-key {label} keypress took {median:?}"
+        );
+    }
 }
 
 #[test]

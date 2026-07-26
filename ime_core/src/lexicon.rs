@@ -81,6 +81,20 @@ impl PackedLexiconIndex {
         let end = self.items.partition_point(|item| self.key(item) <= key);
         start..end
     }
+
+    fn exact_and_prefix_ranges(
+        &self,
+        key: &str,
+    ) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
+        let upper_bound = compact_prefix_upper_bound(key);
+        let start = self.items.partition_point(|item| self.key(item) < key);
+        let exact_end = self.items.partition_point(|item| self.key(item) <= key);
+        let prefix_end = self
+            .items
+            .partition_point(|item| self.key(item) < upper_bound.as_str());
+
+        (start..exact_end, start..prefix_end)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -173,6 +187,60 @@ impl ContinuousDecodeCache {
         self.compact_input.clear();
         self.compact_input.push_str(compact_input);
         self.forced_boundaries.clone_from(forced_boundaries);
+        self.previous_context = previous_context.map(str::to_owned);
+        #[cfg(test)]
+        {
+            self.last_reused_chars = reusable_chars;
+        }
+        reusable_chars
+    }
+}
+
+// Nine-key decoding uses the same bounded lattice strategy as continuous pinyin,
+// but keeps its state separate because its input alphabet and boundaries differ.
+// `digits` identifies the input that produced `lattice`; short or invalid lookups
+// return before `prepare`, so it is not necessarily the last queried input.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct NineKeyDecodeCache {
+    digits: String,
+    previous_context: Option<String>,
+    lattice: Vec<Vec<ContinuousPath>>,
+    #[cfg(test)]
+    last_reused_chars: usize,
+}
+
+impl NineKeyDecodeCache {
+    pub(crate) fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn prepare(&mut self, digits: &str, previous_context: Option<&str>) -> usize {
+        let input_chars = digits.chars().count();
+        let reusable_chars = if self.previous_context.as_deref() == previous_context {
+            common_prefix_chars(&self.digits, digits)
+                .min(self.lattice.len().saturating_sub(1))
+                .min(input_chars)
+        } else {
+            0
+        };
+
+        if reusable_chars == 0 || self.lattice.is_empty() {
+            self.lattice = vec![Vec::new(); input_chars + 1];
+            self.lattice[0].push(ContinuousPath {
+                text: String::new(),
+                pinyin: String::new(),
+                score: 0.0,
+                segments: Vec::new(),
+                abbreviated_syllables: 0,
+                full_pinyin_chars: 0,
+            });
+        } else {
+            self.lattice.truncate(reusable_chars + 1);
+            self.lattice.resize_with(input_chars + 1, Vec::new);
+        }
+
+        self.digits.clear();
+        self.digits.push_str(digits);
         self.previous_context = previous_context.map(str::to_owned);
         #[cfg(test)]
         {
@@ -428,6 +496,22 @@ impl Lexicon {
         previous_context: Option<&str>,
         transition_score: impl Fn(&str, &str) -> f64,
     ) -> Vec<Candidate> {
+        let mut cache = NineKeyDecodeCache::default();
+        self.lookup_nine_key_with_context_cached(
+            digits,
+            previous_context,
+            transition_score,
+            &mut cache,
+        )
+    }
+
+    pub(crate) fn lookup_nine_key_with_context_cached(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+        nine_key_cache: &mut NineKeyDecodeCache,
+    ) -> Vec<Candidate> {
         if !is_valid_nine_key_input(digits) {
             return Vec::new();
         }
@@ -437,40 +521,48 @@ impl Lexicon {
         let mut prefix_candidates = Vec::new();
         let mut seen = HashSet::<String>::new();
 
-        for indexed_entry in self
-            .nine_key_index
-            .range(self.nine_key_prefix_range(digits))
-        {
+        let (exact_range, prefix_range) = self.nine_key_index.exact_and_prefix_ranges(digits);
+
+        for indexed_entry in self.nine_key_index.range(exact_range.clone()) {
             let entry = &self.entries[indexed_entry.entry_index as usize];
             if !seen.insert(entry.phrase.clone()) {
                 continue;
             }
 
-            let exact_match = self.nine_key_index.key(indexed_entry) == digits;
-            let match_kind = if exact_match {
-                CandidateMatchKind::Exact
-            } else {
-                CandidateMatchKind::Prefix
-            };
-            let candidate = Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
-                .with_score(Ranker::score(entry.frequency))
-                .with_rank_score(Ranker::score_match(
-                    entry.frequency,
-                    match_kind,
-                    CandidateSource::Base,
-                ));
-            if exact_match {
-                exact_candidates.push(candidate);
-            } else {
-                prefix_candidates.push(candidate);
-            }
+            exact_candidates.push(
+                Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                    .with_score(Ranker::score(entry.frequency))
+                    .with_rank_score(Ranker::score_match(
+                        entry.frequency,
+                        CandidateMatchKind::Exact,
+                        CandidateSource::Base,
+                    )),
+            );
         }
 
-        continuous_candidates.extend(self.continuous_nine_key_candidates(
+        for indexed_entry in self.nine_key_index.range(exact_range.end..prefix_range.end) {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
+            if !seen.insert(entry.phrase.clone()) {
+                continue;
+            }
+
+            prefix_candidates.push(
+                Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                    .with_score(Ranker::score(entry.frequency))
+                    .with_rank_score(Ranker::score_match(
+                        entry.frequency,
+                        CandidateMatchKind::Prefix,
+                        CandidateSource::Base,
+                    )),
+            );
+        }
+
+        continuous_candidates.extend(self.continuous_nine_key_candidates_cached(
             digits,
             previous_context,
             &transition_score,
             &mut seen,
+            nine_key_cache,
         ));
         Ranker::sort_candidates(&mut exact_candidates);
         Ranker::sort_candidates(&mut continuous_candidates);
@@ -488,10 +580,6 @@ impl Lexicon {
 
     fn initial_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
         self.initial_index.prefix_range(prefix)
-    }
-
-    fn nine_key_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
-        self.nine_key_index.prefix_range(prefix)
     }
 
     fn initial_candidates(
@@ -705,37 +793,35 @@ impl Lexicon {
         candidates
     }
 
-    fn continuous_nine_key_candidates(
+    fn continuous_nine_key_candidates_cached(
         &self,
         digits: &str,
         previous_context: Option<&str>,
         transition_score: &impl Fn(&str, &str) -> f64,
         seen: &mut HashSet<String>,
+        cache: &mut NineKeyDecodeCache,
     ) -> Vec<Candidate> {
         let chars = digits.chars().collect::<Vec<_>>();
         if chars.len() < 2 {
             return Vec::new();
         }
 
-        let mut lattice = vec![Vec::<ContinuousPath>::new(); chars.len() + 1];
-        lattice[0].push(ContinuousPath {
-            text: String::new(),
-            pinyin: String::new(),
-            score: 0.0,
-            segments: Vec::new(),
-            abbreviated_syllables: 0,
-            full_pinyin_chars: 0,
-        });
+        let reused_chars = cache.prepare(digits, previous_context);
 
         for start in 0..chars.len() {
-            if lattice[start].is_empty() {
+            if cache.lattice[start].is_empty() {
                 continue;
             }
 
             let end_limit = chars
                 .len()
                 .min(start.saturating_add(self.max_nine_key_chars));
-            for end in (start + 1)..=end_limit {
+            let first_unprocessed_end = (start + 1).max(reused_chars + 1);
+            if first_unprocessed_end > end_limit {
+                continue;
+            }
+
+            for end in first_unprocessed_end..=end_limit {
                 let edge = chars[start..end].iter().collect::<String>();
                 let entries =
                     self.exact_entries_for_nine_key(&edge, MAX_CONTINUOUS_OPTIONS_PER_EDGE);
@@ -743,7 +829,7 @@ impl Lexicon {
                     continue;
                 }
 
-                let previous_paths = lattice[start].clone();
+                let previous_paths = cache.lattice[start].clone();
                 for previous in previous_paths {
                     for entry in &entries {
                         let left = previous
@@ -766,7 +852,7 @@ impl Lexicon {
                             text: entry.phrase.clone(),
                             pinyin: entry.pinyin.clone(),
                         });
-                        lattice[end].push(ContinuousPath {
+                        cache.lattice[end].push(ContinuousPath {
                             text,
                             pinyin,
                             score: previous.score
@@ -781,13 +867,14 @@ impl Lexicon {
                         });
                     }
                 }
-                sort_continuous_paths(&mut lattice[end], CONTINUOUS_BEAM_WIDTH);
+                sort_continuous_paths(&mut cache.lattice[end], CONTINUOUS_BEAM_WIDTH);
             }
         }
 
-        sort_continuous_paths(&mut lattice[chars.len()], MAX_CONTINUOUS_CANDIDATES);
+        let mut complete_paths = cache.lattice[chars.len()].clone();
+        sort_continuous_paths(&mut complete_paths, MAX_CONTINUOUS_CANDIDATES);
         let mut candidates = Vec::new();
-        for path in &lattice[chars.len()] {
+        for path in &complete_paths {
             if path.segments.len() < 2 || !seen.insert(path.text.clone()) {
                 continue;
             }
@@ -1288,6 +1375,62 @@ mod tests {
     }
 
     #[test]
+    fn nine_key_exact_range_preserves_the_legacy_prefix_scan_coverage() {
+        let lexicon = Lexicon::from_tsv(
+            "你\tni\t90000\n你好\tni hao\t100000\n你好啊\tni hao a\t80000\n你号\tni hao\t70000\n",
+        )
+        .expect("test lexicon loads");
+        let digits = "64426";
+        let index = &lexicon.nine_key_index;
+        let legacy = index
+            .range(index.prefix_range(digits))
+            .iter()
+            .map(|item| item.entry_index)
+            .collect::<Vec<_>>();
+        let (exact_range, prefix_range) = index.exact_and_prefix_ranges(digits);
+        let split = index
+            .range(exact_range.clone())
+            .iter()
+            .chain(index.range(exact_range.end..prefix_range.end).iter())
+            .map(|item| item.entry_index)
+            .collect::<Vec<_>>();
+
+        assert_eq!(split, legacy);
+    }
+
+    #[test]
+    fn nine_key_cache_is_bounded_and_released_with_the_composition() {
+        let mut source = String::new();
+        for index in 0..(MAX_CONTINUOUS_OPTIONS_PER_EDGE + 2) {
+            source.push_str(&format!("词{index}\two\t{}\n", 100_000 - index));
+        }
+        let lexicon = Lexicon::from_tsv(&source).expect("test lexicon loads");
+        let digits = pinyin_to_nine_key("wo").repeat(crate::session::MAX_RAW_INPUT_CHARS / 2);
+        let mut cache = NineKeyDecodeCache::default();
+
+        lexicon.lookup_nine_key_with_context_cached(&digits, None, |_, _| 0.0, &mut cache);
+
+        assert_eq!(
+            cache.lattice.len(),
+            crate::session::MAX_RAW_INPUT_CHARS + 1,
+            "the session input cap bounds the cached lattice positions"
+        );
+        assert!(cache
+            .lattice
+            .iter()
+            .all(|paths| paths.len() <= CONTINUOUS_BEAM_WIDTH));
+        assert!(cache
+            .lattice
+            .iter()
+            .any(|paths| paths.len() == CONTINUOUS_BEAM_WIDTH));
+
+        cache.clear();
+        assert!(cache.lattice.is_empty());
+        assert!(cache.digits.is_empty());
+        assert!(cache.previous_context.is_none());
+    }
+
+    #[test]
     fn mixed_input_parser_stops_at_its_dedicated_length_limit() {
         assert!(!mixed_input_parses("wojtxqcfjttqbcsj").is_empty());
         assert!(mixed_input_parses("wojtxqcfjttqbcsja").is_empty());
@@ -1325,6 +1468,37 @@ mod tests {
 
         let parses = parser.parse("woj");
         lexicon.lookup_with_context_cached("woj", &parses, Some("前文"), |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 0);
+    }
+
+    #[test]
+    fn nine_key_cache_reuses_prefixes_and_invalidates_changed_context() {
+        let lexicon = Lexicon::from_tsv(
+            "我\two\t100000\n今天\tjin tian\t90000\n今\tjin\t80000\n天\ttian\t70000\n",
+        )
+        .expect("test lexicon loads");
+        let mut cache = NineKeyDecodeCache::default();
+
+        let initial =
+            lexicon.lookup_nine_key_with_context_cached("96", None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 0);
+        assert_eq!(
+            initial,
+            lexicon.lookup_nine_key_with_context("96", None, |_, _| 0.0)
+        );
+
+        lexicon.lookup_nine_key_with_context_cached("965", None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 2);
+
+        let candidates =
+            lexicon.lookup_nine_key_with_context_cached("96548", None, |_, _| 0.0, &mut cache);
+        assert_eq!(cache.last_reused_chars, 3);
+        assert_eq!(
+            candidates,
+            lexicon.lookup_nine_key_with_context("96548", None, |_, _| 0.0)
+        );
+
+        lexicon.lookup_nine_key_with_context_cached("96548", Some("前文"), |_, _| 0.0, &mut cache);
         assert_eq!(cache.last_reused_chars, 0);
     }
 }

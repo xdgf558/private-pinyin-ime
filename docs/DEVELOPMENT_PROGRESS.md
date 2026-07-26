@@ -1,8 +1,53 @@
 # Development Progress
 
-Last updated: 2026-07-25
-Current stage: FROST-01 reviewed White Frost desktop import
-Current status: macOS and Windows can explicitly download and import the pinned official White Frost 1.0.4 Release into an independent, upgrade-safe layer after GPL-3.0 confirmation. Exact artifact identity, bounded ZIP parsing, atomic replacement, enable/disable, clear, and review-gated update reporting are implemented; iOS remains unchanged.
+Last updated: 2026-07-26
+Current stage: NINEKEY-PERF-01 incremental nine-key decoding
+Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
+
+## NINEKEY-PERF-01 Incremental Nine-Key Decoding (2026-07-26)
+
+- Replaced the direct nine-key exact-match check inside the prefix scan with
+  one packed-index lookup that returns both exact and prefix bounds, then scan
+  only the remaining prefix range. This preserves direct-candidate order while
+  avoiding the duplicated lower-bound binary search and every exact-key string
+  comparison inside the prefix scan.
+- Added a dedicated nine-key decode cache alongside the existing continuous
+  full-pinyin cache. Appended digits reuse prior bounded lattice positions;
+  Backspace truncates the cached suffix; changing the previous committed context
+  invalidates the cache. Full-pinyin and nine-key state remain separate.
+- Added direct range-coverage and cache invalidation unit tests, plus an
+  integration test that compares the complete candidate list (not only the
+  visible page) after every incremental append, Backspace, and retyped suffix
+  with the stateless candidate order.
+- Added an Apple-only per-key regression that records each incremental
+  nine-key `InputSession::feed_key` call for both the 21-key sentence and a
+  64-key maximum-length composition, while retaining the existing median
+  `60 ms` budget. This is intentionally a local Apple-target measurement,
+  because the hosted Linux and Windows CI jobs do not execute it; CI continues
+  to protect ordering and platform integration, not the machine-dependent
+  latency figure.
+- On the development arm64 Mac in the Rust test profile, three warmed runs of
+  the same 5-session, 21-key sequence produced a median per-key result of
+  `7.284542 ms` on `main` and `0.722500 ms` with this branch's cache: a
+  `90.1%` median reduction (about `10.1x` faster). These are local reference
+  measurements from the unoptimized test profile (`opt-level = 0`) and must not
+  be read as release-build or directly user-visible latency.
+- Repeating the comparison with `cargo test --release` on the same Mac produced
+  median-of-three per-key results of `3.445083 ms` versus `0.391167 ms` for the
+  21-key sequence (`88.6%`, about `8.8x` faster), and `13.654250 ms` versus
+  `0.495208 ms` for a 64-key composition (`96.4%`, about `27.6x` faster).
+  These release figures cover the maximum supported raw-input length, remain
+  local reference measurements, and do not replace the unchanged `60 ms`
+  regression budget.
+- The cache exists only for an active composition. Input sessions cap raw
+  nine-key input at 64 digits, so the cache holds at most 65 lattice positions
+  and each position is beam-capped at 32 paths; commit, cancel, reset, and mode
+  changes drop the complete cache. A direct regression proves both bounds and
+  release-on-clear behavior.
+- Validation passed locally: `cargo fmt --all -- --check`, `cargo test
+  --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, and
+  the desktop/iOS FFI test and clippy suites with their respective
+  `desktop-ai` and `ios-ai` features. `git diff --check` also passed.
 
 ## FROST-01 Reviewed White Frost Desktop Import (2026-07-25)
 
