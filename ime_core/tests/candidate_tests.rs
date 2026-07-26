@@ -92,6 +92,42 @@ fn nine_key_session_commits_candidate_and_supports_backspace() {
 }
 
 #[test]
+fn nine_key_incremental_session_preserves_stateless_candidate_order() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut session = engine.create_session();
+    let mut typed = String::new();
+
+    for digit in digits.bytes().map(|digit| digit - b'0') {
+        typed.push(char::from(b'0' + digit));
+        let output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            output.candidates,
+            expected
+                .into_iter()
+                .take(output.candidates.len())
+                .collect::<Vec<_>>(),
+            "cached candidates diverged after {typed}"
+        );
+    }
+
+    for _ in 0..3 {
+        typed.pop();
+        let output = session.feed_key(KeyEvent::new(KeyCode::Backspace));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            output.candidates,
+            expected
+                .into_iter()
+                .take(output.candidates.len())
+                .collect::<Vec<_>>(),
+            "cached candidates diverged after backspace to {typed}"
+        );
+    }
+}
+
+#[test]
 fn continuous_pinyin_returns_phrase_candidate() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let candidates = engine.candidates_for_raw("xiangqu");
@@ -195,6 +231,32 @@ fn nine_key_decoder_stays_within_interactive_lookup_budget() {
     assert!(
         median < Duration::from_millis(60),
         "median nine-key continuous lookup took {median:?}"
+    );
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
+    const BATCH_COUNT: usize = 5;
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
+
+    for _ in 0..BATCH_COUNT {
+        let mut session = engine.create_session();
+        for digit in digits.bytes().map(|digit| digit - b'0') {
+            let started = Instant::now();
+            let output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+            assert!(output.should_update_preedit);
+            samples.push(started.elapsed());
+        }
+    }
+    samples.sort_unstable();
+    let median = samples[samples.len() / 2];
+
+    assert!(
+        median < Duration::from_millis(60),
+        "median incremental nine-key keypress took {median:?}"
     );
 }
 

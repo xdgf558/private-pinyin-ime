@@ -180,6 +180,7 @@ Checklist:
 | Nine-key composition | In the nine-key layout, typing `64426` shows `你好`; Space or tapping the candidate commits exactly once | | |
 | Nine-key preedit | Type `9664` and a digit sequence with no immediate candidate; the composition strip shows leading-candidate pinyin such as `yong` or readable key groups such as `WXYZ MNO MNO GHI`, never the internal digit signature | | |
 | Nine-key continuous input | A longer 2-9 digit sequence can produce a segmented phrase candidate without switching back to QWERTY | | |
+| Nine-key incremental response | Rapidly enter a longer 2-9 sequence, then Backspace and re-enter its final digits. Candidates remain in the same order as the equivalent fresh lookup and each tap updates composition without a visible stall. | | Compare perceived response with the same phrase typed on QWERTY |
 | Nine-key mode isolation | Switching to English shows QWERTY; switching back to Chinese restores the saved nine-key layout without stale composition | | |
 | Return key | The bottom-right key is labeled `回车`; with no active composition it inserts a newline or lets the host field perform its normal Return action | | |
 | Simplified/Traditional output | Open inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm it displays and commits `里面` without rebuilding the keyboard engine | | |

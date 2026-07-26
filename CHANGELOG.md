@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Optimized nine-key typing without relaxing the existing 60 ms Apple latency budget: direct candidates now use the compact exact-key range before prefix expansion, and a session-local bounded lattice reuses unchanged digit prefixes across appended input and Backspace. Candidate ordering remains equivalent to the stateless lookup path.
 - Closed the remaining FROST-01 follow-ups: macOS update checks now always complete with success or a visible sanitized error, reviewed downloads start at the fixed official URL while treating exact size/SHA-256 as the trust anchor instead of pinning GitHub CDN hostnames, and imported-layer deduplication no longer clones every phrase/pinyin identity during engine construction.
 - Revalidated the hardened White Frost ZIP importer against the exact approved 1.0.4 Release after adding same-descriptor artifact verification, EOCD entry-count matching, and mandatory member-type metadata. New fixtures cover missing Unix mode, forged EOCD counts, and valid non-empty ZIP comments; the production import still retains 653,136 unique entries in an 18,083,664-byte layer.
 - Fixed macOS shared-engine invalidation so importing, updating, or clearing reviewed Rime Ice and White Frost layers takes effect without restarting the input method process.

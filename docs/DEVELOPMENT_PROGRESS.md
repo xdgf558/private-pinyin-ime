@@ -1,8 +1,26 @@
 # Development Progress
 
-Last updated: 2026-07-25
-Current stage: FROST-01 reviewed White Frost desktop import
-Current status: macOS and Windows can explicitly download and import the pinned official White Frost 1.0.4 Release into an independent, upgrade-safe layer after GPL-3.0 confirmation. Exact artifact identity, bounded ZIP parsing, atomic replacement, enable/disable, clear, and review-gated update reporting are implemented; iOS remains unchanged.
+Last updated: 2026-07-26
+Current stage: NINEKEY-PERF-01 incremental nine-key decoding
+Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
+
+## NINEKEY-PERF-01 Incremental Nine-Key Decoding (2026-07-26)
+
+- Replaced the direct nine-key exact-match check inside the prefix scan with the
+  packed index's `exact_range`, then scan only the remaining prefix range. This
+  preserves direct-candidate order and avoids comparing every prefix key to the
+  typed digits.
+- Added a dedicated nine-key decode cache alongside the existing continuous
+  full-pinyin cache. Appended digits reuse prior bounded lattice positions;
+  Backspace truncates the cached suffix; changing the previous committed context
+  invalidates the cache. Full-pinyin and nine-key state remain separate.
+- Added direct range-coverage and cache invalidation unit tests, plus an
+  integration test that compares every incremental nine-key append and
+  Backspace result with the stateless candidate order.
+- Added an Apple-only per-key regression that records each incremental
+  nine-key `InputSession::feed_key` call and retains the existing median
+  `60 ms` budget. Targeted nine-key candidate tests, cache unit tests,
+  `cargo fmt --all -- --check`, and `git diff --check` passed locally.
 
 ## FROST-01 Reviewed White Frost Desktop Import (2026-07-25)
 
