@@ -4,30 +4,32 @@ Last updated: 2026-07-26
 Current stage: NINEKEY-PERF-01 incremental nine-key decoding
 Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
 
-## iOS 0.1.26 (23) TestFlight Upload (2026-07-26)
+## iOS 0.1.27 (23) TestFlight Upload (2026-07-26)
 
 - Released from merged `main` commit `e12f6f7`, which includes the approved
   NINEKEY-PERF-01 exact-key lookup, complete stateless/incremental candidate
   equivalence regressions, and the bounded session-local nine-key lattice cache.
-- Updated the container App and Keyboard Extension to `0.1.26 (23)`. The
-  archive was initially created with source build `22`; Xcode's default
-  App Store export behavior changed the uploaded build to `23`. The source
-  metadata is now aligned to `23`, and `ExportOptions.plist` explicitly sets
-  `manageAppVersionAndBuildNumber=false` so future uploads preserve the
+- Updated the container App and Keyboard Extension to `0.1.27 (23)`.
+  `0.1.26 (23)` was accepted by upload transport, but it cannot be submitted
+  to the external group while `0.1.26 (22)` is already in Beta App Review.
+  Advancing the marketing version keeps build `23` available as a separate
+  review candidate. `ExportOptions.plist` explicitly sets
+  `manageAppVersionAndBuildNumber=false` so the corrected upload preserves the
   reviewed repository build number.
-- Xcode 26.6 (`17F109`) archived the arm64 app with the iPhoneOS 26.5 SDK and
-  iOS 18.0 minimum deployment target at
-  `dist/ios/PrivatePinyin-0.1.26-build22-xcode26.xcarchive`. Strict nested
-  code-signature verification passed.
+- The superseded `0.1.26 (23)` upload remains in App Store Connect but will not
+  be assigned to a testing group. Its delivery UUID is
+  `840e9dc7-8e12-4286-a9da-c147abe2ebab`.
+- Xcode 26.6 (`17F109`) archived the corrected arm64 app with the iPhoneOS 26.5
+  SDK and iOS 18.0 minimum deployment target at
+  `dist/ios/PrivatePinyin-0.1.27-build23-xcode26.xcarchive`. The archive,
+  container App, and Keyboard Extension metadata all report `0.1.27 (23)`.
 - `cargo test --workspace`, `cargo fmt --all -- --check`, the iOS source gate,
   plist validation, and `git diff --check` passed. The Helper lifecycle tests
   now remove host home-directory model discovery so release verification cannot
   accidentally observe a developer-installed Writer model.
-- App Store Connect upload succeeded after removing terminal-level proxy
-  environment variables and letting Shadowrocket's system routing handle the
-  Apple connection. Apple accepted `0.1.26 (23)` under delivery UUID
-  `840e9dc7-8e12-4286-a9da-c147abe2ebab`; the upload file reached `COMPLETE`
-  with no errors or warnings and is awaiting App Store Connect build processing.
+- App Store Connect accepted the corrected `0.1.27 (23)` upload under delivery
+  UUID `f1fd7ee0-9b84-4963-9f8d-d8f166fe780a`. The 6,608,723-byte IPA reached
+  `COMPLETE` with no errors or warnings and entered build processing.
 
 ## NINEKEY-PERF-01 Incremental Nine-Key Decoding (2026-07-26)
 
