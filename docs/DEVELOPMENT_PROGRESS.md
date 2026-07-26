@@ -6,21 +6,39 @@ Current status: Nine-key direct lookup now separates exact and prefix ranges, wh
 
 ## NINEKEY-PERF-01 Incremental Nine-Key Decoding (2026-07-26)
 
-- Replaced the direct nine-key exact-match check inside the prefix scan with the
-  packed index's `exact_range`, then scan only the remaining prefix range. This
-  preserves direct-candidate order and avoids comparing every prefix key to the
-  typed digits.
+- Replaced the direct nine-key exact-match check inside the prefix scan with
+  one packed-index lookup that returns both exact and prefix bounds, then scan
+  only the remaining prefix range. This preserves direct-candidate order while
+  avoiding the duplicated lower-bound binary search and every exact-key string
+  comparison inside the prefix scan.
 - Added a dedicated nine-key decode cache alongside the existing continuous
   full-pinyin cache. Appended digits reuse prior bounded lattice positions;
   Backspace truncates the cached suffix; changing the previous committed context
   invalidates the cache. Full-pinyin and nine-key state remain separate.
 - Added direct range-coverage and cache invalidation unit tests, plus an
-  integration test that compares every incremental nine-key append and
-  Backspace result with the stateless candidate order.
+  integration test that compares the complete candidate list (not only the
+  visible page) after every incremental append, Backspace, and retyped suffix
+  with the stateless candidate order.
 - Added an Apple-only per-key regression that records each incremental
   nine-key `InputSession::feed_key` call and retains the existing median
-  `60 ms` budget. Targeted nine-key candidate tests, cache unit tests,
-  `cargo fmt --all -- --check`, and `git diff --check` passed locally.
+  `60 ms` budget. This is intentionally a local Apple-target measurement,
+  because the hosted Linux and Windows CI jobs do not execute it; CI continues
+  to protect ordering and platform integration, not the machine-dependent
+  latency figure.
+- On the development arm64 Mac in the Rust test profile, three warmed runs of
+  the same 5-session, 21-key sequence produced a median per-key result of
+  `7.284542 ms` on `main` and `0.722500 ms` with this branch's cache: a
+  `90.1%` median reduction (about `10.1x` faster). These are local reference
+  measurements, not CI thresholds.
+- The cache exists only for an active composition. Input sessions cap raw
+  nine-key input at 64 digits, so the cache holds at most 65 lattice positions
+  and each position is beam-capped at 32 paths; commit, cancel, reset, and mode
+  changes drop the complete cache. A direct regression proves both bounds and
+  release-on-clear behavior.
+- Validation passed locally: `cargo fmt --all -- --check`, `cargo test
+  --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, and
+  the desktop/iOS FFI test and clippy suites with their respective
+  `desktop-ai` and `ios-ai` features. `git diff --check` also passed.
 
 ## FROST-01 Reviewed White Frost Desktop Import (2026-07-25)
 

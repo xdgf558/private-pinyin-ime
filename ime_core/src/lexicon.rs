@@ -81,6 +81,20 @@ impl PackedLexiconIndex {
         let end = self.items.partition_point(|item| self.key(item) <= key);
         start..end
     }
+
+    fn exact_and_prefix_ranges(
+        &self,
+        key: &str,
+    ) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
+        let upper_bound = compact_prefix_upper_bound(key);
+        let start = self.items.partition_point(|item| self.key(item) < key);
+        let exact_end = self.items.partition_point(|item| self.key(item) <= key);
+        let prefix_end = self
+            .items
+            .partition_point(|item| self.key(item) < upper_bound.as_str());
+
+        (start..exact_end, start..prefix_end)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -505,9 +519,7 @@ impl Lexicon {
         let mut prefix_candidates = Vec::new();
         let mut seen = HashSet::<String>::new();
 
-        let exact_range = self.nine_key_index.exact_range(digits);
-        let prefix_range = self.nine_key_prefix_range(digits);
-        debug_assert_eq!(exact_range.start, prefix_range.start);
+        let (exact_range, prefix_range) = self.nine_key_index.exact_and_prefix_ranges(digits);
 
         for indexed_entry in self.nine_key_index.range(exact_range.clone()) {
             let entry = &self.entries[indexed_entry.entry_index as usize];
@@ -566,10 +578,6 @@ impl Lexicon {
 
     fn initial_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
         self.initial_index.prefix_range(prefix)
-    }
-
-    fn nine_key_prefix_range(&self, prefix: &str) -> std::ops::Range<usize> {
-        self.nine_key_index.prefix_range(prefix)
     }
 
     fn initial_candidates(
@@ -1377,8 +1385,7 @@ mod tests {
             .iter()
             .map(|item| item.entry_index)
             .collect::<Vec<_>>();
-        let exact_range = index.exact_range(digits);
-        let prefix_range = index.prefix_range(digits);
+        let (exact_range, prefix_range) = index.exact_and_prefix_ranges(digits);
         let split = index
             .range(exact_range.clone())
             .iter()
@@ -1387,6 +1394,38 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(split, legacy);
+    }
+
+    #[test]
+    fn nine_key_cache_is_bounded_and_released_with_the_composition() {
+        let mut source = String::new();
+        for index in 0..(MAX_CONTINUOUS_OPTIONS_PER_EDGE + 2) {
+            source.push_str(&format!("词{index}\two\t{}\n", 100_000 - index));
+        }
+        let lexicon = Lexicon::from_tsv(&source).expect("test lexicon loads");
+        let digits = pinyin_to_nine_key("wo").repeat(crate::session::MAX_RAW_INPUT_CHARS / 2);
+        let mut cache = NineKeyDecodeCache::default();
+
+        lexicon.lookup_nine_key_with_context_cached(&digits, None, |_, _| 0.0, &mut cache);
+
+        assert_eq!(
+            cache.lattice.len(),
+            crate::session::MAX_RAW_INPUT_CHARS + 1,
+            "the session input cap bounds the cached lattice positions"
+        );
+        assert!(cache
+            .lattice
+            .iter()
+            .all(|paths| paths.len() <= CONTINUOUS_BEAM_WIDTH));
+        assert!(cache
+            .lattice
+            .iter()
+            .any(|paths| paths.len() == CONTINUOUS_BEAM_WIDTH));
+
+        cache.clear();
+        assert!(cache.lattice.is_empty());
+        assert!(cache.digits.is_empty());
+        assert!(cache.previous_context.is_none());
     }
 
     #[test]

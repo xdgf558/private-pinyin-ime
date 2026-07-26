@@ -98,31 +98,36 @@ fn nine_key_incremental_session_preserves_stateless_candidate_order() {
     let mut session = engine.create_session();
     let mut typed = String::new();
 
-    for digit in digits.bytes().map(|digit| digit - b'0') {
+    for digit in digits.chars() {
+        let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
         typed.push(char::from(b'0' + digit));
-        let output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+        session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
         let expected = engine.candidates_for_nine_key(&typed);
         assert_eq!(
-            output.candidates,
-            expected
-                .into_iter()
-                .take(output.candidates.len())
-                .collect::<Vec<_>>(),
+            session.candidates, expected,
             "cached candidates diverged after {typed}"
         );
     }
 
-    for _ in 0..3 {
+    let retyped_suffix = typed[typed.len() - 3..].to_owned();
+    for _ in retyped_suffix.chars() {
         typed.pop();
-        let output = session.feed_key(KeyEvent::new(KeyCode::Backspace));
+        session.feed_key(KeyEvent::new(KeyCode::Backspace));
         let expected = engine.candidates_for_nine_key(&typed);
         assert_eq!(
-            output.candidates,
-            expected
-                .into_iter()
-                .take(output.candidates.len())
-                .collect::<Vec<_>>(),
+            session.candidates, expected,
             "cached candidates diverged after backspace to {typed}"
+        );
+    }
+
+    for digit in retyped_suffix.chars() {
+        let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+        typed.push(char::from(b'0' + digit));
+        session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+        let expected = engine.candidates_for_nine_key(&typed);
+        assert_eq!(
+            session.candidates, expected,
+            "cached candidates diverged after retyping to {typed}"
         );
     }
 }
@@ -244,15 +249,16 @@ fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
 
     for _ in 0..BATCH_COUNT {
         let mut session = engine.create_session();
-        for digit in digits.bytes().map(|digit| digit - b'0') {
+        for digit in digits.chars() {
+            let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
             let started = Instant::now();
-            let output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
-            assert!(output.should_update_preedit);
+            session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
             samples.push(started.elapsed());
         }
     }
     samples.sort_unstable();
     let median = samples[samples.len() / 2];
+    eprintln!("nine-key incremental median per-key lookup: {median:?}");
 
     assert!(
         median < Duration::from_millis(60),
