@@ -404,6 +404,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let strictPrivacyToggle = StationToggle()
     private let predictionToggle = StationToggle()
     private let learningToggle = StationToggle()
+    private let pinyinCorrectionToggle = StationToggle()
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     // These views survive page rebuilds and move between page stacks. Page
@@ -528,10 +529,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         strictPrivacyToggle.onToggle = { [weak self] in self?.commitSettings() }
         predictionToggle.onToggle = { [weak self] in self?.commitSettings() }
         learningToggle.onToggle = { [weak self] in self?.commitSettings() }
+        pinyinCorrectionToggle.onToggle = { [weak self] in self?.commitSettings() }
         automaticUpdateToggle.onToggle = { [weak self] in self?.automaticUpdateSettingChanged() }
         strictPrivacyToggle.setAccessibilityLabel("严格隐私模式")
         predictionToggle.setAccessibilityLabel("显示预测候选")
         learningToggle.setAccessibilityLabel("用户学习")
+        pinyinCorrectionToggle.setAccessibilityLabel("拼音智能纠错")
         automaticUpdateToggle.setAccessibilityLabel("自动检查更新")
 
         configurePersistentPageViews()
@@ -798,7 +801,7 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             tag: "PRIVACY",
             titleLabel: label("严格隐私模式", font: .systemFont(ofSize: 17, weight: .semibold), color: StationTheme.textPrimary),
             detailLabel: wrappingLabel(
-                "关闭用户学习与统计；无状态的本地候选重排仍可使用。",
+                "关闭用户学习与统计；无状态的本地候选重排与拼音纠错仍可使用。",
                 font: .systemFont(ofSize: 13, weight: .regular),
                 color: StationTheme.textSecondary
             ),
@@ -840,14 +843,30 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             toggle: learningToggle,
             minimumHeight: 142
         )
+        let correctionCard = makeSettingCard(
+            tag: "TYPO",
+            titleLabel: label(
+                "拼音智能纠错",
+                font: .systemFont(ofSize: 17, weight: .semibold),
+                color: StationTheme.textPrimary
+            ),
+            detailLabel: wrappingLabel(
+                "保留原始候选，仅补充少量低优先级纠错。",
+                font: .systemFont(ofSize: 13, weight: .regular),
+                color: StationTheme.textSecondary
+            ),
+            toggle: pinyinCorrectionToggle,
+            minimumHeight: 142
+        )
 
-        let row = NSStackView(views: [predictionCard, learningCard])
+        let row = NSStackView(views: [predictionCard, learningCard, correctionCard])
         row.orientation = .horizontal
         row.alignment = .top
         row.distribution = .fillEqually
         row.spacing = 16
         row.translatesAutoresizingMaskIntoConstraints = false
         predictionCard.heightAnchor.constraint(equalTo: learningCard.heightAnchor).isActive = true
+        learningCard.heightAnchor.constraint(equalTo: correctionCard.heightAnchor).isActive = true
         return row
     }
 
@@ -1472,6 +1491,8 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         let strictPrivacy = settings["strict_privacy_mode"] as? Bool ?? false
         strictPrivacyToggle.isOn = strictPrivacy
         predictionToggle.isOn = settings["enable_prediction"] as? Bool ?? true
+        let ai = settings["ai"] as? [String: Any] ?? [:]
+        pinyinCorrectionToggle.isOn = ai["enable_pinyin_correction"] as? Bool ?? true
         let learning = settings["enable_user_learning"] as? Bool ?? true
         learningToggle.isOn = strictPrivacy ? false : learning
         setLearningEnabled(!strictPrivacy)
@@ -1506,13 +1527,14 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             settings["strict_privacy_mode"] = strictPrivacy
             settings["enable_prediction"] = predictionToggle.isOn
             settings["enable_user_learning"] = strictPrivacy ? false : learningToggle.isOn
+            var ai = settings["ai"] as? [String: Any] ?? [:]
+            ai["enable_pinyin_correction"] = pinyinCorrectionToggle.isOn
             if strictPrivacy {
-                var ai = settings["ai"] as? [String: Any] ?? [:]
                 ai["enable_short_completion"] = false
                 ai["enable_rewrite"] = false
                 ai["enable_translation"] = false
-                settings["ai"] = ai
             }
+            settings["ai"] = ai
         }
 
         if ok {

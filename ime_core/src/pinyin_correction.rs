@@ -5,12 +5,13 @@ use std::sync::OnceLock;
 use crate::candidate::{
     Candidate, CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind,
 };
+use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
 
 pub const MAX_PINYIN_CORRECTIONS: usize = 2;
 pub const MAX_TYPO_INPUT_CHARS: usize = 24;
+pub const MAX_CORRECTION_ATTEMPTS: usize = 64;
 
-const MAX_GENERATED_CORRECTIONS: usize = 64;
 const CORRECTIONS_TSV: &str = include_str!("../../ai/local_ai_core/assets/pinyin_corrections.tsv");
 const CORRECTIONS_HEADER: &str = "typed\tcorrected\treason\tpriority\tprovenance";
 
@@ -80,15 +81,77 @@ pub struct PinyinCorrector {
     rules: Vec<CorrectionRule>,
 }
 
+struct SuggestionCollector<'a, F> {
+    raw_pinyin: &'a str,
+    suggestions: Vec<PinyinCorrectionSuggestion>,
+    seen_corrections: HashSet<String>,
+    remaining_attempts: usize,
+    is_viable: &'a mut F,
+}
+
+impl<'a, F> SuggestionCollector<'a, F>
+where
+    F: FnMut(&str) -> bool,
+{
+    fn new(raw_pinyin: &'a str, is_viable: &'a mut F) -> Self {
+        Self {
+            raw_pinyin,
+            suggestions: Vec::new(),
+            seen_corrections: HashSet::new(),
+            remaining_attempts: MAX_CORRECTION_ATTEMPTS,
+            is_viable,
+        }
+    }
+
+    fn push(
+        &mut self,
+        corrected: String,
+        kind: CandidateCorrectionKind,
+        confidence: CandidateCorrectionConfidence,
+        priority: u16,
+    ) {
+        if corrected == self.raw_pinyin
+            || self.remaining_attempts == 0
+            || !self.seen_corrections.insert(corrected.clone())
+        {
+            return;
+        }
+        let Some(edit_distance) = bounded_edit_distance(self.raw_pinyin, &corrected, 3) else {
+            return;
+        };
+        self.remaining_attempts -= 1;
+        if !(self.is_viable)(&corrected) {
+            return;
+        }
+        self.suggestions.push(PinyinCorrectionSuggestion {
+            corrected_pinyin: corrected,
+            correction: CandidateCorrection {
+                kind,
+                confidence,
+                edit_distance,
+            },
+            priority,
+        });
+    }
+
+    const fn exhausted(&self) -> bool {
+        self.remaining_attempts == 0
+    }
+
+    fn finish(self) -> Vec<PinyinCorrectionSuggestion> {
+        self.suggestions
+    }
+}
+
 impl PinyinCorrector {
     fn embedded() -> Self {
         Self::from_tsv(CORRECTIONS_TSV).expect("embedded pinyin correction rules must remain valid")
     }
 
-    fn from_tsv(contents: &str) -> Result<Self, ()> {
+    fn from_tsv(contents: &str) -> ImeResult<Self> {
         let mut lines = contents.lines().filter(|line| !line.trim().is_empty());
         if lines.next() != Some(CORRECTIONS_HEADER) {
-            return Err(());
+            return Err(ImeError::InvalidPinyinCorrectionRules);
         }
 
         let mut rules = Vec::new();
@@ -100,12 +163,15 @@ impl PinyinCorrector {
                 || !is_compact_ascii_pinyin(fields[1])
                 || fields[4] != "first_party"
             {
-                return Err(());
+                return Err(ImeError::InvalidPinyinCorrectionRules);
             }
-            let reason = RuleReason::parse(fields[2]).ok_or(())?;
-            let priority = fields[3].parse::<u16>().map_err(|_| ())?;
+            let reason =
+                RuleReason::parse(fields[2]).ok_or(ImeError::InvalidPinyinCorrectionRules)?;
+            let priority = fields[3]
+                .parse::<u16>()
+                .map_err(|_| ImeError::InvalidPinyinCorrectionRules)?;
             if !seen.insert((fields[0], fields[1])) {
-                return Err(());
+                return Err(ImeError::InvalidPinyinCorrectionRules);
             }
             rules.push(CorrectionRule {
                 typed: fields[0].to_owned(),
@@ -115,7 +181,7 @@ impl PinyinCorrector {
             });
         }
         if rules.is_empty() {
-            return Err(());
+            return Err(ImeError::InvalidPinyinCorrectionRules);
         }
         Ok(Self { rules })
     }
@@ -136,7 +202,7 @@ impl PinyinCorrector {
             return Vec::new();
         }
 
-        let mut suggestions = Vec::new();
+        let mut collector = SuggestionCollector::new(raw_pinyin, &mut is_viable);
         for rule in &self.rules {
             for (start, _) in raw_pinyin.match_indices(&rule.typed) {
                 let end = start + rule.typed.len();
@@ -146,24 +212,28 @@ impl PinyinCorrector {
                 corrected.push_str(&raw_pinyin[..start]);
                 corrected.push_str(&rule.corrected);
                 corrected.push_str(&raw_pinyin[end..]);
-                push_suggestion(
-                    &mut suggestions,
-                    raw_pinyin,
+                collector.push(
                     corrected,
                     rule.reason.candidate_kind(),
                     CandidateCorrectionConfidence::Exact,
                     rule.priority.saturating_add(1_000),
-                    &mut is_viable,
                 );
+                if collector.exhausted() {
+                    break;
+                }
+            }
+            if collector.exhausted() {
+                break;
             }
         }
 
-        if allow_generic_corrections {
-            generate_duplicate_letter_corrections(raw_pinyin, &mut suggestions, &mut is_viable);
-            generate_adjacent_transpositions(raw_pinyin, &mut suggestions, &mut is_viable);
-            generate_adjacent_key_corrections(raw_pinyin, &mut suggestions, &mut is_viable);
+        if allow_generic_corrections && !collector.exhausted() {
+            generate_duplicate_letter_corrections(raw_pinyin, &mut collector);
+            generate_adjacent_transpositions(raw_pinyin, &mut collector);
+            generate_adjacent_key_corrections(raw_pinyin, &mut collector);
         }
 
+        let mut suggestions = collector.finish();
         suggestions.sort_by(|left, right| {
             right
                 .priority
@@ -175,7 +245,6 @@ impl PinyinCorrector {
                 })
                 .then_with(|| left.corrected_pinyin.cmp(&right.corrected_pinyin))
         });
-        suggestions.dedup_by(|left, right| left.corrected_pinyin == right.corrected_pinyin);
         suggestions.truncate(MAX_PINYIN_CORRECTIONS);
         suggestions
     }
@@ -197,7 +266,8 @@ where
     F: FnMut(&str, &[PinyinParse]) -> Vec<Candidate>,
 {
     let normalized = PinyinParser::normalize_raw(raw_input);
-    if normalized.contains('\'') || normalized.len() != raw_input.len() {
+    // TYPO-01 is intentionally limited to compact ASCII full-keyboard pinyin.
+    if normalized.contains('\'') || !raw_input.is_ascii() {
         return candidates;
     }
 
@@ -211,7 +281,6 @@ where
         return candidates;
     }
 
-    let mut corrections = Vec::new();
     for suggestion in suggestions {
         let corrected_parses = parser.parse(suggestion.corrected_pinyin());
         let normalized_correction = PinyinParser::normalize_raw(suggestion.corrected_pinyin());
@@ -228,31 +297,54 @@ where
             .position(|existing| existing.text == candidate.text)
         {
             candidates[existing_index].correction = candidate.correction;
-            if existing_index >= candidate_page_size {
-                corrections.push(candidates.remove(existing_index));
-            }
         } else {
-            corrections.push(candidate);
+            candidates.push(candidate);
         }
     }
 
-    if corrections.is_empty() {
+    let correction_count = candidates
+        .iter()
+        .filter(|candidate| candidate.correction.is_some())
+        .count();
+    if correction_count == 0 {
         return candidates;
     }
-    corrections.truncate(MAX_PINYIN_CORRECTIONS);
+    debug_assert!(correction_count <= MAX_PINYIN_CORRECTIONS);
 
-    let visible_tail = candidate_page_size
-        .max(corrections.len().saturating_add(1))
-        .saturating_sub(corrections.len());
-    let insertion_index = visible_tail.min(candidates.len());
-    candidates.splice(insertion_index..insertion_index, corrections);
+    let visible_correction_limit: usize = if candidate_page_size <= 5 { 1 } else { 2 };
+    let already_visible = candidates
+        .iter()
+        .take(candidate_page_size)
+        .filter(|candidate| candidate.correction.is_some())
+        .count();
+    let promote_count = visible_correction_limit.saturating_sub(already_visible);
+    if promote_count == 0 {
+        return candidates;
+    }
+
+    let correction_indices = candidates
+        .iter()
+        .enumerate()
+        .skip(candidate_page_size)
+        .filter_map(|(index, candidate)| candidate.correction.is_some().then_some(index))
+        .take(promote_count)
+        .collect::<Vec<_>>();
+    let mut promoted = Vec::with_capacity(correction_indices.len());
+    for index in correction_indices.into_iter().rev() {
+        promoted.push(candidates.remove(index));
+    }
+    promoted.reverse();
+
+    let insertion_index = candidate_page_size
+        .saturating_sub(promoted.len())
+        .min(candidates.len());
+    candidates.splice(insertion_index..insertion_index, promoted);
     candidates
 }
 
 fn generate_duplicate_letter_corrections<F>(
     raw_pinyin: &str,
-    suggestions: &mut Vec<PinyinCorrectionSuggestion>,
-    is_viable: &mut F,
+    collector: &mut SuggestionCollector<'_, F>,
 ) where
     F: FnMut(&str) -> bool,
 {
@@ -263,23 +355,20 @@ fn generate_duplicate_letter_corrections<F>(
         }
         let mut corrected = raw_pinyin.to_owned();
         corrected.remove(index);
-        push_suggestion(
-            suggestions,
-            raw_pinyin,
+        collector.push(
             corrected,
             CandidateCorrectionKind::DuplicateLetter,
             CandidateCorrectionConfidence::Probable,
             800,
-            is_viable,
         );
+        if collector.exhausted() {
+            return;
+        }
     }
 }
 
-fn generate_adjacent_transpositions<F>(
-    raw_pinyin: &str,
-    suggestions: &mut Vec<PinyinCorrectionSuggestion>,
-    is_viable: &mut F,
-) where
+fn generate_adjacent_transpositions<F>(raw_pinyin: &str, collector: &mut SuggestionCollector<'_, F>)
+where
     F: FnMut(&str) -> bool,
 {
     let bytes = raw_pinyin.as_bytes();
@@ -291,22 +380,21 @@ fn generate_adjacent_transpositions<F>(
         corrected.swap(index, index + 1);
         let corrected =
             String::from_utf8(corrected).expect("ASCII pinyin remains valid after a swap");
-        push_suggestion(
-            suggestions,
-            raw_pinyin,
+        collector.push(
             corrected,
             CandidateCorrectionKind::TransposedLetters,
             CandidateCorrectionConfidence::Weak,
             750,
-            is_viable,
         );
+        if collector.exhausted() {
+            return;
+        }
     }
 }
 
 fn generate_adjacent_key_corrections<F>(
     raw_pinyin: &str,
-    suggestions: &mut Vec<PinyinCorrectionSuggestion>,
-    is_viable: &mut F,
+    collector: &mut SuggestionCollector<'_, F>,
 ) where
     F: FnMut(&str) -> bool,
 {
@@ -316,51 +404,17 @@ fn generate_adjacent_key_corrections<F>(
             corrected[index] = replacement;
             let corrected = String::from_utf8(corrected)
                 .expect("ASCII pinyin remains valid after an adjacent-key replacement");
-            push_suggestion(
-                suggestions,
-                raw_pinyin,
+            collector.push(
                 corrected,
                 CandidateCorrectionKind::AdjacentKey,
                 CandidateCorrectionConfidence::Probable,
                 700,
-                is_viable,
             );
-            if suggestions.len() >= MAX_GENERATED_CORRECTIONS {
+            if collector.exhausted() {
                 return;
             }
         }
     }
-}
-
-fn push_suggestion<F>(
-    suggestions: &mut Vec<PinyinCorrectionSuggestion>,
-    raw_pinyin: &str,
-    corrected: String,
-    kind: CandidateCorrectionKind,
-    confidence: CandidateCorrectionConfidence,
-    priority: u16,
-    is_viable: &mut F,
-) where
-    F: FnMut(&str) -> bool,
-{
-    if suggestions.len() >= MAX_GENERATED_CORRECTIONS
-        || corrected == raw_pinyin
-        || !is_viable(&corrected)
-    {
-        return;
-    }
-    let Some(edit_distance) = bounded_edit_distance(raw_pinyin, &corrected, 3) else {
-        return;
-    };
-    suggestions.push(PinyinCorrectionSuggestion {
-        corrected_pinyin: corrected,
-        correction: CandidateCorrection {
-            kind,
-            confidence,
-            edit_distance,
-        },
-        priority,
-    });
 }
 
 fn bounded_edit_distance(left: &str, right: &str, limit: u8) -> Option<u8> {
@@ -465,6 +519,19 @@ mod tests {
         assert!(transposed
             .iter()
             .any(|suggestion| suggestion.corrected_pinyin() == "nihao"));
+    }
+
+    #[test]
+    fn generic_corrections_bound_parser_attempts_before_acceptance() {
+        let mut attempts = 0;
+        let suggestions =
+            embedded_pinyin_corrector().suggest("wojintianxiangquchifanzx", true, |_| {
+                attempts += 1;
+                false
+            });
+
+        assert!(suggestions.is_empty());
+        assert_eq!(attempts, MAX_CORRECTION_ATTEMPTS);
     }
 
     #[test]

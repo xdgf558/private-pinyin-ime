@@ -170,6 +170,19 @@ enum IosSettingsStore {
         }
     }
 
+    static func isPinyinCorrectionEnabled() -> Bool {
+        let ai = readSettings()["ai"] as? [String: Any] ?? [:]
+        return ai["enable_pinyin_correction"] as? Bool ?? true
+    }
+
+    static func setPinyinCorrectionEnabled(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            var ai = settings["ai"] as? [String: Any] ?? [:]
+            ai["enable_pinyin_correction"] = enabled
+            settings["ai"] = ai
+        }
+    }
+
     static func keyboardLayout() -> IosKeyboardLayout {
         let storedSettings = readStoredSettings()
         let storedLayout = (storedSettings?["ios_keyboard_layout"] as? String)

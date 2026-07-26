@@ -3,6 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "TYPO-01 source contract requires ripgrep (rg)." >&2
+  exit 1
+fi
+
 required_files=(
   "ai/local_ai_core/assets/pinyin_corrections.tsv"
   "ime_core/src/pinyin_correction.rs"
@@ -22,6 +27,7 @@ done
 
 grep -q 'MAX_PINYIN_CORRECTIONS: usize = 2' ime_core/src/pinyin_correction.rs
 grep -q 'MAX_TYPO_INPUT_CHARS: usize = 24' ime_core/src/pinyin_correction.rs
+grep -q 'MAX_CORRECTION_ATTEMPTS: usize = 64' ime_core/src/pinyin_correction.rs
 grep -q 'pinyin_corrections.tsv' ime_core/src/pinyin_correction.rs
 grep -q 'CandidateCorrectionConfidence::Exact' ime_core/src/pinyin_correction.rs
 grep -q 'CandidateCorrectionConfidence::Probable' ime_core/src/pinyin_correction.rs
@@ -36,6 +42,16 @@ grep -q 'valid_full_pinyin_and_nine_key_results_are_unchanged_when_correction_is
   ime_core/tests/candidate_tests.rs
 grep -q 'full_keyboard_typo_correction_stays_within_interactive_lookup_budget' \
   ime_core/tests/candidate_tests.rs
+grep -q 'worst_case_typo_correction_stays_within_interactive_lookup_budget' \
+  ime_core/tests/candidate_tests.rs
+grep -q 'generic_corrections_bound_parser_attempts_before_acceptance' \
+  ime_core/src/pinyin_correction.rs
+grep -q '拼音智能纠错' \
+  platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
+grep -q '拼音智能纠错' platform/windows_tsf/installer/open-settings.ps1
+grep -q '拼音智能纠错' platform/ios_keyboard/ContainerApp/ContentView.swift
+grep -q 'setPinyinCorrectionEnabled' \
+  platform/ios_keyboard/ContainerApp/IosSettingsStore.swift
 grep -q 'Decision 045: Bounded Full-Keyboard Typo Candidates Before Nine-Key Correction' \
   docs/DECISIONS.md
 grep -q 'NINEKEY-TYPO-01' docs/OPEN_ITEMS.md

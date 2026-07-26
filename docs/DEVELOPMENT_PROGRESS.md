@@ -15,9 +15,18 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
   valid full pinyin, apostrophe input, non-ASCII input, and input longer than 24
   characters.
 - Preserved the raw composition and complete original candidate sequence.
-  TYPO-01 adds no more than two correction candidates at the low-priority tail
-  of the first visible page, and committing one correction is always an explicit
-  user selection.
+  TYPO-01 adds no more than two correction candidates. Five-item pages reserve
+  only one visible correction slot while wider pages may expose two; remaining
+  corrections stay reachable after the original paths instead of being
+  truncated.
+- Bounded actual complete-pinyin parser attempts to 64 per lookup, independently
+  of how many suggestions are accepted. Candidate spellings are deduplicated
+  before parser work, so repeated rules and generic edits cannot spend the
+  budget more than once on the same spelling.
+- Added independent default-on typo-correction controls to macOS, Windows, and
+  the iOS container App. Strict privacy continues to permit this stateless,
+  local-only path while disabling learning, statistics, and Writer content
+  actions.
 - Added exact/probable/weak correction metadata and wired it into the existing
   AI Lite `typo_correction` feature. AI Lite remains optional; unavailable,
   disabled, stale, or rejected AI work cannot remove the deterministic
@@ -31,9 +40,19 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
   digit sequences; ambiguous digit-signature correction is deferred to
   `NINEKEY-TYPO-01`.
 - On the development Apple host, the dedicated warm full-keyboard TYPO-01
-  lookup regression measured a `2.34102 ms` median for `nihap` in the Rust test
+  lookup regression measured a `2.398125 ms` median for `nihap` in the Rust test
   profile, below the unchanged `60 ms` interactive budget. This is a local
   reference rather than a hosted-CI or real-device release measurement.
+- On the same host and test profile, a 24-key incremental worst-case sequence
+  measured `1.77028 ms` per key with correction enabled and `0.914943 ms` with
+  correction disabled. The Apple-only regression keeps the enabled path below
+  the unchanged `60 ms` per-key budget; cross-platform CI still runs the
+  attempt-bound, candidate-preservation, and settings source contracts.
+- Repeating the same Apple-host regressions with the optimized Rust release
+  profile measured a `0.649302 ms` median for `nihap` and `0.452382 ms` per key
+  for the 24-key sequence with correction enabled versus `0.288388 ms` with it
+  disabled. These are local reference measurements rather than real-device
+  latency claims.
 
 ## iOS 0.1.27 (23) TestFlight Upload (2026-07-26)
 

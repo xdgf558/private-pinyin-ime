@@ -25,6 +25,7 @@ private enum SettingsDestination: Hashable {
 struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
+    @State private var pinyinCorrectionEnabled = true
     @State private var lexiconStatusText = ""
     @State private var lexiconOperationText = ""
     @State private var showingRimeImporter = false
@@ -70,6 +71,7 @@ struct ContentView: View {
         .onAppear {
             _ = IosSettingsStore.ensureSettingsFile()
             learningEnabled = IosSettingsStore.isLearningEnabled()
+            pinyinCorrectionEnabled = IosSettingsStore.isPinyinCorrectionEnabled()
             lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
             lexiconOperationText = IosSettingsStore.rimeImportStatusText() ?? ""
 #if DEBUG
@@ -329,6 +331,24 @@ struct ContentView: View {
                 .tint(StationTheme.lamp)
                 .disabled(!IosSettingsStore.usesAppGroupStorage)
                 .padding(16)
+
+                divider
+
+                Toggle("拼音智能纠错", isOn: Binding(
+                    get: { pinyinCorrectionEnabled },
+                    set: { setPinyinCorrectionEnabled($0) }
+                ))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(StationTheme.textPrimary)
+                .tint(StationTheme.lamp)
+                .padding(16)
+
+                Text("仅在本机补充少量低优先级候选，原始输入候选始终保留。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(StationTheme.textSecondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, -8)
+                    .padding(.bottom, 16)
 
                 divider
 
@@ -617,6 +637,16 @@ struct ContentView: View {
         } else {
             learningEnabled = IosSettingsStore.isLearningEnabled()
             statusText = "无法更新学习设置。"
+        }
+    }
+
+    private func setPinyinCorrectionEnabled(_ enabled: Bool) {
+        if IosSettingsStore.setPinyinCorrectionEnabled(enabled) {
+            pinyinCorrectionEnabled = enabled
+            statusText = enabled ? "拼音智能纠错已开启。" : "拼音智能纠错已关闭。"
+        } else {
+            pinyinCorrectionEnabled = IosSettingsStore.isPinyinCorrectionEnabled()
+            statusText = "无法更新拼音智能纠错设置。"
         }
     }
 

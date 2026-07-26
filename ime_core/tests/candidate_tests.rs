@@ -78,6 +78,43 @@ fn full_keyboard_typo_correction_preserves_every_original_candidate_path() {
 }
 
 #[test]
+fn compact_candidate_pages_keep_four_original_paths_before_one_correction() {
+    let enabled_settings = ImeSettings {
+        candidate_page_size: 5,
+        ..ImeSettings::default()
+    };
+    let enabled =
+        ImeEngine::with_settings(enabled_settings.clone()).expect("engine loads with compact page");
+
+    let mut disabled_settings = enabled_settings;
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
+
+    let corrected_candidates = enabled.candidates_for_raw("nihap");
+    let original_candidates = disabled.candidates_for_raw("nihap");
+    assert_eq!(
+        corrected_candidates
+            .iter()
+            .filter(|candidate| candidate.correction.is_none())
+            .collect::<Vec<_>>(),
+        original_candidates.iter().collect::<Vec<_>>()
+    );
+    assert!(
+        corrected_candidates
+            .iter()
+            .take(5)
+            .filter(|candidate| candidate.correction.is_some())
+            .count()
+            <= 1
+    );
+    assert!(corrected_candidates
+        .iter()
+        .take(4)
+        .all(|candidate| candidate.correction.is_none()));
+}
+
+#[test]
 fn adjacent_key_typo_commits_corrected_candidate_without_mutating_preedit() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let mut session = engine.create_session();
@@ -136,6 +173,41 @@ fn full_keyboard_typo_correction_stays_within_interactive_lookup_budget() {
     assert!(
         median <= Duration::from_millis(60),
         "full-keyboard typo correction median {median:?} exceeded 60 ms"
+    );
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn worst_case_typo_correction_stays_within_interactive_lookup_budget() {
+    const WORST_CASE_INPUT: &str = "wojintianxiangquchifanzx";
+
+    let enabled = ImeEngine::new().expect("engine loads production lexicon");
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
+
+    let enabled_median = median_lookup_duration(|| {
+        let mut session = enabled.create_session();
+        WORST_CASE_INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == WORST_CASE_INPUT
+    }) / WORST_CASE_INPUT.len() as u32;
+    let disabled_median = median_lookup_duration(|| {
+        let mut session = disabled.create_session();
+        WORST_CASE_INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == WORST_CASE_INPUT
+    }) / WORST_CASE_INPUT.len() as u32;
+    eprintln!(
+        "TYPO-01 24-key incremental median per key: enabled={enabled_median:?}, disabled={disabled_median:?}"
+    );
+
+    assert!(
+        enabled_median <= Duration::from_millis(60),
+        "worst-case correction median {enabled_median:?} exceeded 60 ms per key"
     );
 }
 
