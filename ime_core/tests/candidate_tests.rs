@@ -98,6 +98,9 @@ fn nine_key_incremental_session_preserves_stateless_candidate_order() {
     let mut session = engine.create_session();
     let mut typed = String::new();
 
+    // The stateless oracle is exact here because this session has no user
+    // lexicon, no committed previous context, and a zero user-transition
+    // weight; both Ranker entry points therefore produce the same score.
     for digit in digits.chars() {
         let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
         typed.push(char::from(b'0' + digit));
@@ -244,26 +247,33 @@ fn nine_key_decoder_stays_within_interactive_lookup_budget() {
 fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
     const BATCH_COUNT: usize = 5;
     let engine = ImeEngine::new().expect("engine loads production lexicon");
-    let digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
-    let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
+    let sentence_digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut maximum_digits = sentence_digits.repeat(4);
+    maximum_digits.truncate(MAX_RAW_INPUT_CHARS);
 
-    for _ in 0..BATCH_COUNT {
-        let mut session = engine.create_session();
-        for digit in digits.chars() {
-            let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
-            let started = Instant::now();
-            session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
-            samples.push(started.elapsed());
+    for (label, digits) in [
+        ("21-key sentence", sentence_digits.as_str()),
+        ("64-key maximum", maximum_digits.as_str()),
+    ] {
+        let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
+        for _ in 0..BATCH_COUNT {
+            let mut session = engine.create_session();
+            for digit in digits.chars() {
+                let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+                let started = Instant::now();
+                session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+                samples.push(started.elapsed());
+            }
         }
-    }
-    samples.sort_unstable();
-    let median = samples[samples.len() / 2];
-    eprintln!("nine-key incremental median per-key lookup: {median:?}");
+        samples.sort_unstable();
+        let median = samples[samples.len() / 2];
+        eprintln!("nine-key incremental {label} median per-key lookup: {median:?}");
 
-    assert!(
-        median < Duration::from_millis(60),
-        "median incremental nine-key keypress took {median:?}"
-    );
+        assert!(
+            median < Duration::from_millis(60),
+            "median incremental nine-key {label} keypress took {median:?}"
+        );
+    }
 }
 
 #[test]

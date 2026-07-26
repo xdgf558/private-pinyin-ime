@@ -20,7 +20,8 @@ Current status: Nine-key direct lookup now separates exact and prefix ranges, wh
   visible page) after every incremental append, Backspace, and retyped suffix
   with the stateless candidate order.
 - Added an Apple-only per-key regression that records each incremental
-  nine-key `InputSession::feed_key` call and retains the existing median
+  nine-key `InputSession::feed_key` call for both the 21-key sentence and a
+  64-key maximum-length composition, while retaining the existing median
   `60 ms` budget. This is intentionally a local Apple-target measurement,
   because the hosted Linux and Windows CI jobs do not execute it; CI continues
   to protect ordering and platform integration, not the machine-dependent
@@ -29,7 +30,15 @@ Current status: Nine-key direct lookup now separates exact and prefix ranges, wh
   the same 5-session, 21-key sequence produced a median per-key result of
   `7.284542 ms` on `main` and `0.722500 ms` with this branch's cache: a
   `90.1%` median reduction (about `10.1x` faster). These are local reference
-  measurements, not CI thresholds.
+  measurements from the unoptimized test profile (`opt-level = 0`) and must not
+  be read as release-build or directly user-visible latency.
+- Repeating the comparison with `cargo test --release` on the same Mac produced
+  median-of-three per-key results of `3.445083 ms` versus `0.391167 ms` for the
+  21-key sequence (`88.6%`, about `8.8x` faster), and `13.654250 ms` versus
+  `0.495208 ms` for a 64-key composition (`96.4%`, about `27.6x` faster).
+  These release figures cover the maximum supported raw-input length, remain
+  local reference measurements, and do not replace the unchanged `60 ms`
+  regression budget.
 - The cache exists only for an active composition. Input sessions cap raw
   nine-key input at 64 digits, so the cache holds at most 65 lattice positions
   and each position is beam-capped at 32 paths; commit, cancel, reset, and mode

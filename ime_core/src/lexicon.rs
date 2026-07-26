@@ -198,6 +198,8 @@ impl ContinuousDecodeCache {
 
 // Nine-key decoding uses the same bounded lattice strategy as continuous pinyin,
 // but keeps its state separate because its input alphabet and boundaries differ.
+// `digits` identifies the input that produced `lattice`; short or invalid lookups
+// return before `prepare`, so it is not necessarily the last queried input.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct NineKeyDecodeCache {
     digits: String,
