@@ -1065,6 +1065,28 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
 - MSI SHA-256: `42d46d0f4f3b4733397a511702c8e034b7a8bd96860a4988f32773b27ba85a7f`
 - ZIP SHA-256: `70b8d19b2f130e93bec24343674702049616a0c0f3ee727c2e3d5c5e0ccb0496`
 
+### Windows 0.1.24 Unsigned Feature Package
+
+- Command: GitHub Actions `Windows Unsigned Package`, run `30224705017`,
+  version input `0.1.24`
+- Result: passed in 4 minutes 11 seconds on `windows-2022`
+- Source: `main` commit `9f49898`
+- Notes: The NSIS EXE, WiX MSI, and ZIP include x64/x86 TSF components,
+  bounded full-keyboard typo correction, reviewed White Frost 1.0.4 import,
+  expanded desktop Rime limits, local AI Lite ranking, Writer V1, and the
+  matching Simplified Chinese release notes. The Writer model remains an
+  explicit on-demand download and is not bundled.
+- EXE: `dist/windows_tsf/PrivatePinyin-0.1.24-setup.exe`
+  (`13,421,061` bytes), SHA-256
+  `1252f8d00888be0cb2b0f25aaa5d4bdc357a441b94ffa183a76112851668be62`
+- MSI: `PrivatePinyin-0.1.24.msi` (`24,485,888` bytes), SHA-256
+  `594953721dda2c7b2e765cb02073c0cbfe5b738b2318984b24529fffe434b12a`
+- ZIP: `PrivatePinyin-0.1.24.zip` (`25,265,446` bytes), SHA-256
+  `ea301594bc82438c06b0207d742e79f98dafab1e2678bc18bd4d5d620110a24d`
+- Distribution note: these Windows artifacts are unsigned and remain
+  internal-test packages until a Windows code-signing certificate and native
+  Windows 11 install/uninstall smoke are available.
+
 ### Windows 0.1.13 Unsigned Internal-Test Package
 
 - Command: GitHub Actions `Windows Unsigned Package`, run `29180177697`, version input `0.1.13`
