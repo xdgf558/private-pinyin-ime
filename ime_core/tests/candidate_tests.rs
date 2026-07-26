@@ -6,8 +6,8 @@ use ime_core::predictor::Predictor;
 use ime_core::ranker::Ranker;
 use ime_core::session::MAX_RAW_INPUT_CHARS;
 use ime_core::{
-    pinyin_to_nine_key, ImeEngine, ImeSettings, InputSession, KeyCode, KeyEvent, Modifiers,
-    PinyinParser,
+    pinyin_to_nine_key, CandidateCorrectionKind, ImeEngine, ImeSettings, InputSession, KeyCode,
+    KeyEvent, Modifiers, PinyinParser,
 };
 
 fn median_lookup_duration(mut lookup: impl FnMut() -> bool) -> Duration {
@@ -39,6 +39,104 @@ fn nihao_returns_expected_candidates() {
     assert!(candidates
         .iter()
         .any(|candidate| candidate.text == "你好啊"));
+}
+
+#[test]
+fn full_keyboard_typo_correction_preserves_every_original_candidate_path() {
+    let enabled = ImeEngine::new().expect("engine loads production lexicon");
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
+
+    let corrected_candidates = enabled.candidates_for_raw("zongguo");
+    let original_candidates = disabled.candidates_for_raw("zongguo");
+    let retained_originals = corrected_candidates
+        .iter()
+        .filter(|candidate| candidate.correction.is_none())
+        .map(|candidate| (candidate.text.as_str(), candidate.pinyin.as_str()))
+        .collect::<Vec<_>>();
+    let expected_originals = original_candidates
+        .iter()
+        .map(|candidate| (candidate.text.as_str(), candidate.pinyin.as_str()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(retained_originals, expected_originals);
+    let correction = corrected_candidates
+        .iter()
+        .find(|candidate| candidate.text == "中国")
+        .and_then(|candidate| candidate.correction)
+        .expect("approved correction is visible without replacing the original path");
+    assert_eq!(correction.kind, CandidateCorrectionKind::CommonConfusion);
+    assert!(
+        corrected_candidates
+            .iter()
+            .filter(|candidate| candidate.correction.is_some())
+            .count()
+            <= 2
+    );
+}
+
+#[test]
+fn adjacent_key_typo_commits_corrected_candidate_without_mutating_preedit() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let mut session = engine.create_session();
+    let mut output = session.feed_key(KeyEvent::from_char('n'));
+    for character in ['i', 'h', 'a', 'p'] {
+        output = session.feed_key(KeyEvent::from_char(character));
+    }
+
+    assert_eq!(output.preedit, "nihap");
+    let correction_index = output
+        .candidates
+        .iter()
+        .position(|candidate| candidate.text == "你好" && candidate.correction.is_some())
+        .expect("adjacent-key correction is visible on the first page");
+    let commit = session.commit_candidate(correction_index);
+    assert_eq!(commit.commit_text, "你好");
+    assert!(session.raw_input.is_empty());
+}
+
+#[test]
+fn valid_full_pinyin_and_nine_key_results_are_unchanged_when_correction_is_enabled() {
+    let enabled = ImeEngine::new().expect("engine loads production lexicon");
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
+
+    for input in ["nihao", "wojintian", "zhongguo", "gailv"] {
+        assert_eq!(
+            enabled.candidates_for_raw(input),
+            disabled.candidates_for_raw(input),
+            "normal full pinyin changed for {input}"
+        );
+    }
+    for digits in ["64426", "94564", "426", "968"] {
+        assert_eq!(
+            enabled.candidates_for_nine_key(digits),
+            disabled.candidates_for_nine_key(digits),
+            "nine-key results changed for {digits}"
+        );
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn full_keyboard_typo_correction_stays_within_interactive_lookup_budget() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let median = median_lookup_duration(|| {
+        engine
+            .candidates_for_raw("nihap")
+            .iter()
+            .any(|candidate| candidate.text == "你好" && candidate.correction.is_some())
+    });
+    eprintln!("TYPO-01 full-keyboard correction median: {median:?}");
+
+    assert!(
+        median <= Duration::from_millis(60),
+        "full-keyboard typo correction median {median:?} exceeded 60 ms"
+    );
 }
 
 #[test]

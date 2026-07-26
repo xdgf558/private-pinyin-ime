@@ -1,8 +1,39 @@
 # Development Progress
 
 Last updated: 2026-07-26
-Current stage: NINEKEY-PERF-01 incremental nine-key decoding
-Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
+Current stage: TYPO-01 bounded full-keyboard pinyin correction
+Current status: The shared Rust full-keyboard path now preserves raw input and every original candidate while adding at most two validated low-priority typo candidates. Reviewed rules and constrained physical-key edits feed explicit correction metadata into AI Lite; nine-key behavior remains unchanged and is deferred to its own stage.
+
+## TYPO-01 Bounded Full-Keyboard Correction (2026-07-26)
+
+- Reused the reviewed first-party AI-04 correction table in the production Rust
+  core, then added bounded duplicate-key removal, adjacent QWERTY-key
+  substitution, and neighboring-letter transposition for otherwise invalid
+  full-keyboard input.
+- Required corrected spellings to produce a complete parser result and an exact
+  production-lexicon pinyin identity. Generic edits are disabled for already
+  valid full pinyin, apostrophe input, non-ASCII input, and input longer than 24
+  characters.
+- Preserved the raw composition and complete original candidate sequence.
+  TYPO-01 adds no more than two correction candidates at the low-priority tail
+  of the first visible page, and committing one correction is always an explicit
+  user selection.
+- Added exact/probable/weak correction metadata and wired it into the existing
+  AI Lite `typo_correction` feature. AI Lite remains optional; unavailable,
+  disabled, stale, or rejected AI work cannot remove the deterministic
+  correction or ordinary candidates.
+- Confirmed `zongguo` retains its original candidates while exposing `中国`,
+  and `nihap` retains the raw `nihap` preedit while exposing and committing
+  `你好`. Normal `nihao`, `wojintian`, `zhongguo`, and `gailv` results are
+  unchanged when correction is enabled.
+- Kept nine-key lookup and its incremental lattice untouched. Candidate
+  equality tests compare enabled and disabled settings for representative
+  digit sequences; ambiguous digit-signature correction is deferred to
+  `NINEKEY-TYPO-01`.
+- On the development Apple host, the dedicated warm full-keyboard TYPO-01
+  lookup regression measured a `2.34102 ms` median for `nihap` in the Rust test
+  profile, below the unchanged `60 ms` interactive budget. This is a local
+  reference rather than a hosted-CI or real-device release measurement.
 
 ## iOS 0.1.27 (23) TestFlight Upload (2026-07-26)
 

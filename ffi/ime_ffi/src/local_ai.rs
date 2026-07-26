@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use ime_core::{Candidate, CandidateSource, ImeOutput, InputSession};
+use ime_core::{Candidate, CandidateCorrection, CandidateSource, ImeOutput, InputSession};
 use private_pinyin_local_ai_core::{
     AiBudget, AiCandidateInput, AiCandidateSetHash, AiCompositionRevision, AiDeadline, AiFeature,
     AiFeaturePolicy, AiLiteCandidateFeatures, AiLiteRanker, AiPrivacyMode, AiRawInputKind,
@@ -320,9 +320,18 @@ fn build_candidate_inputs(
             let prediction = candidate.source == CandidateSource::Prediction;
             let bigram = u16::from(prediction && !session.context_tokens.is_empty()) * 1_000;
             let trigram = u16::from(prediction && session.context_tokens.len() >= 2) * 1_000;
-            let features =
-                AiLiteCandidateFeatures::new(frequency, segmentation, bigram, trigram, 0, 0)
-                    .unwrap_or_default();
+            let typo_correction = candidate
+                .correction
+                .map_or(0, CandidateCorrection::ai_lite_score);
+            let features = AiLiteCandidateFeatures::new(
+                frequency,
+                segmentation,
+                bigram,
+                trigram,
+                typo_correction,
+                0,
+            )
+            .unwrap_or_default();
             AiCandidateInput::new(&candidate.text, rank)
                 .with_pinyin(&candidate.pinyin)
                 .with_base_score(clamped_base_score(candidate.rank_score))
@@ -380,10 +389,31 @@ fn complete_candidate_order(
 mod tests {
     use std::time::{Duration, Instant};
 
-    use ime_core::{ImeEngine, KeyEvent};
+    use ime_core::{
+        CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind, ImeEngine,
+        KeyEvent,
+    };
     use private_pinyin_local_ai_core::{AiCandidateOutput, AiReasonCode};
 
     use super::*;
+
+    #[test]
+    fn correction_metadata_reaches_the_ai_lite_feature_slot() {
+        let engine = ImeEngine::new().expect("engine");
+        let session = engine.create_session();
+        let plain = Candidate::new("原", "yuan", CandidateSource::Base);
+        let corrected = Candidate::new("源", "yuan", CandidateSource::Base).with_correction(
+            CandidateCorrection {
+                kind: CandidateCorrectionKind::AdjacentKey,
+                confidence: CandidateCorrectionConfidence::Probable,
+                edit_distance: 1,
+            },
+        );
+
+        let inputs = build_candidate_inputs(&session, &[plain, corrected]);
+        assert_eq!(inputs[0].lite_features().typo_correction(), 0);
+        assert_eq!(inputs[1].lite_features().typo_correction(), 750);
+    }
 
     #[test]
     fn partial_ai_order_keeps_every_unranked_candidate_stable() {

@@ -8,6 +8,7 @@ use crate::lexicon::{
     MAX_LOOKUP_CANDIDATES,
 };
 use crate::logger;
+use crate::pinyin_correction::add_correction_candidates;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::{merge_prediction_candidates, Predictor};
 use crate::ranker::Ranker;
@@ -441,7 +442,44 @@ impl InputSession {
                 },
             )
             .unwrap_or_default();
-        self.candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        let candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        self.candidates = if self.settings_snapshot.ai.enable_pinyin_correction {
+            add_correction_candidates(
+                &self.raw_input,
+                &parses,
+                candidates,
+                self.settings_snapshot.candidate_page_size,
+                |corrected_input, corrected_parses| {
+                    let corrected_base = self.lexicon.lookup_with_context(
+                        corrected_input,
+                        corrected_parses,
+                        previous_context,
+                        |left, right| {
+                            Ranker::score_continuous_transition_weight(
+                                self.predictor.transition_frequency(left, right),
+                                user_transition_frequency(&self.user_transitions, left, right),
+                            )
+                        },
+                    );
+                    let corrected_user = self
+                        .user_lexicon
+                        .as_ref()
+                        .map(|user_lexicon| {
+                            match user_lexicon.lookup(corrected_input, corrected_parses) {
+                                Ok(candidates) => candidates,
+                                Err(error) => {
+                                    logger::emit_error(error);
+                                    Vec::new()
+                                }
+                            }
+                        })
+                        .unwrap_or_default();
+                    merge_user_and_base_candidates(corrected_user, corrected_base)
+                },
+            )
+        } else {
+            candidates
+        };
         self.candidate_page = 0;
         self.preedit_text = self.raw_input.clone();
         self.current_output(true, false, String::new())

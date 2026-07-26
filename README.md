@@ -148,6 +148,7 @@ bash scripts/check_ai01_evaluation_sources.sh
 bash scripts/check_ai02_runtime_contracts.sh
 bash scripts/check_ai03_privacy_sources.sh
 bash scripts/check_ai04_rules_sources.sh
+bash scripts/check_typo01_sources.sh
 bash scripts/check_ai05_model_gate_sources.sh
 bash scripts/check_ai06_lite_ranker_sources.sh
 bash scripts/check_ai07_desktop_integration_sources.sh
