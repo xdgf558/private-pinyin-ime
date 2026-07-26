@@ -10,6 +10,7 @@ pub mod key_event;
 pub mod lexicon;
 pub mod logger;
 pub mod nine_key;
+pub mod pinyin_correction;
 pub mod pinyin_parser;
 pub mod predictor;
 pub mod privacy;
@@ -22,11 +23,15 @@ pub mod syllable;
 pub mod user_lexicon;
 
 pub use api::{ImeEngine, ImeOutput};
-pub use candidate::{Candidate, CandidateSource};
+pub use candidate::{
+    Candidate, CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind,
+    CandidateSource,
+};
 pub use error::{ImeError, ImeResult};
 pub use imported_lexicon::ImportedLexiconReport;
 pub use key_event::{KeyCode, KeyEvent, Modifiers};
 pub use nine_key::pinyin_to_nine_key;
+pub use pinyin_correction::{PinyinCorrectionSuggestion, PinyinCorrector};
 pub use pinyin_parser::{PinyinParse, PinyinParser};
 pub use session::InputSession;
 pub use settings::{AiSettings, ImeMode, ImeSettings};

@@ -41,6 +41,7 @@ Checklist:
 | Notepad composition | Typing `nihao` shows composition and candidate `你好` | | |
 | Continuous pinyin | Typing a longer sentence pinyin such as `wojintianxiangquchifan` can produce a multi-word candidate when the segments exist in the lexicon | | |
 | Initials shorthand | Typing shorthand initials such as `nh` produces phrase candidates such as `你好` | | |
+| Full-key typo correction | Type `zongguo`, `nihap`, and `nihoa`; the raw composition remains unchanged, every ordinary candidate remains reachable, and no more than two low-priority corrected candidates are added. Selecting `你好` for `nihap` commits once | | Repeat with AI Lite available and unavailable; normal `nihao`, `wojintian`, `zhongguo`, and `gailv` ordering must not regress |
 | Chinese punctuation | Chinese mode commits full-width punctuation such as `，` and `。` | | |
 | Commit | `Space` commits `你好` | | |
 | Cancel | `Esc` clears composition without leaking keys | | |
@@ -106,6 +107,7 @@ Checklist:
 | Registered but disabled recovery | Remove `猫栈拼音` from the enabled input-source list without uninstalling its bundle, launch an uninstalled development/staging copy once, and confirm repair succeeds without automatically re-enabling the source; the installed server remains recoverable and the source can be added again in System Settings | | Registration health must enumerate all installed TIS sources, including disabled ones; user enablement remains explicit |
 | Enable input source | PrivatePinyin can be added and selected from the menu bar input menu | | |
 | TextEdit composition | Typing `nihao` shows composition and candidate `你好`; typing `zhongguo` shows candidate `中国` | | |
+| Full-key typo correction | Type `zongguo`, `nihap`, and `nihoa`; the raw composition remains unchanged, every ordinary candidate remains reachable, and no more than two low-priority corrected candidates are added. Selecting `你好` for `nihap` commits once | | Repeat in TextEdit, Safari, Chrome, and VS Code with AI Lite available and unavailable |
 | Commit | `Space` commits `你好` for `nihao` and `中国` for `zhongguo` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
 | Horizontal candidate layout | A pinyin query with at least nine matches displays candidates `1` through `9` in one horizontal row; number keys select the matching visible entry | | macOS `0.1.17` uses the native 9-column stepping panel and migrates the previous default page size from 5 to 9 |
@@ -166,6 +168,8 @@ Checklist:
 | Learning opt-in | Container app shows learning disabled by default; the toggle enables only when App Group storage is available | | |
 | App Group storage | With Full Access off, verify whether the keyboard extension can read/write the shared App Group settings and SQLite path; if denied, typing still works through built-in defaults and learning remains disabled | | |
 | Notes composition | Typing `nihao` shows candidate `你好`; tapping it commits `你好` | | |
+| Full-key typo correction | In QWERTY, type `zongguo`, `nihap`, and `nihoa`; the preedit stays raw, ordinary candidates remain reachable, and selecting a corrected candidate commits exactly once. Normal valid pinyin retains its existing order | | Repeat after AI Lite memory fallback; nine-key candidates must remain unchanged because nine-key correction is not part of TYPO-01 |
+| Typo correction setting | Turn 拼音智能纠错 off and confirm the same raw input remains usable without correction-tagged candidates; turn it back on and confirm the correction returns. Repeat with strict privacy enabled | | Strict privacy may keep stateless local correction enabled, but learning and Writer content actions remain disabled |
 | QWERTY preserved | The original full keyboard and symbols page remain available after the nine-key update | | |
 | Station Cat layout | Candidate strip, QWERTY keys, nine-key grid, inline preferences, and pressed states use the warm-dark handoff tokens without clipping or overlap | | |
 | Keyboard transition | Switch at least ten times among the system Simplified Chinese keyboard, English, and 猫栈拼音, then type `mao` immediately after each return; the 猫栈 surface appears without a stale-frame flash lasting a visible beat, blank tray, or system-keyboard fallback, and every early key is applied exactly once | | Test both warm reuse and extension-process recreation in at least two host apps |

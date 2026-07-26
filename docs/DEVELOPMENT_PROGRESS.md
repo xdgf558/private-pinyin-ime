@@ -1,8 +1,58 @@
 # Development Progress
 
 Last updated: 2026-07-26
-Current stage: NINEKEY-PERF-01 incremental nine-key decoding
-Current status: Nine-key direct lookup now separates exact and prefix ranges, while continuous digit decoding reuses a bounded session-local lattice after appended input and Backspace. Candidate order remains identical to the stateless path, and the Apple per-key 60-ms budget remains unchanged.
+Current stage: TYPO-01 bounded full-keyboard pinyin correction
+Current status: The shared Rust full-keyboard path now preserves raw input and every original candidate while adding at most two validated low-priority typo candidates. Reviewed rules and constrained physical-key edits feed explicit correction metadata into AI Lite; nine-key behavior remains unchanged and is deferred to its own stage.
+
+## TYPO-01 Bounded Full-Keyboard Correction (2026-07-26)
+
+- Reused the reviewed first-party AI-04 correction table in the production Rust
+  core, then added bounded duplicate-key removal, adjacent QWERTY-key
+  substitution, and neighboring-letter transposition for otherwise invalid
+  full-keyboard input.
+- Required corrected spellings to produce a complete parser result and an exact
+  production-lexicon pinyin identity. Generic edits are disabled for already
+  valid full pinyin, apostrophe input, non-ASCII input, and input longer than 24
+  characters.
+- Preserved the raw composition and complete original candidate sequence.
+  TYPO-01 adds no more than two correction candidates. Five-item pages reserve
+  only one visible correction slot while wider pages may expose two; remaining
+  corrections stay reachable after the original paths instead of being
+  truncated.
+- Bounded actual complete-pinyin parser attempts to 64 per lookup, independently
+  of how many suggestions are accepted. Candidate spellings are deduplicated
+  before parser work, so repeated rules and generic edits cannot spend the
+  budget more than once on the same spelling.
+- Added independent default-on typo-correction controls to macOS, Windows, and
+  the iOS container App. Strict privacy continues to permit this stateless,
+  local-only path while disabling learning, statistics, and Writer content
+  actions.
+- Added exact/probable/weak correction metadata and wired it into the existing
+  AI Lite `typo_correction` feature. AI Lite remains optional; unavailable,
+  disabled, stale, or rejected AI work cannot remove the deterministic
+  correction or ordinary candidates.
+- Confirmed `zongguo` retains its original candidates while exposing `中国`,
+  and `nihap` retains the raw `nihap` preedit while exposing and committing
+  `你好`. Normal `nihao`, `wojintian`, `zhongguo`, and `gailv` results are
+  unchanged when correction is enabled.
+- Kept nine-key lookup and its incremental lattice untouched. Candidate
+  equality tests compare enabled and disabled settings for representative
+  digit sequences; ambiguous digit-signature correction is deferred to
+  `NINEKEY-TYPO-01`.
+- On the development Apple host, the dedicated warm full-keyboard TYPO-01
+  lookup regression measured a `2.398125 ms` median for `nihap` in the Rust test
+  profile, below the unchanged `60 ms` interactive budget. This is a local
+  reference rather than a hosted-CI or real-device release measurement.
+- On the same host and test profile, a 24-key incremental worst-case sequence
+  measured `1.77028 ms` per key with correction enabled and `0.914943 ms` with
+  correction disabled. The Apple-only regression keeps the enabled path below
+  the unchanged `60 ms` per-key budget; cross-platform CI still runs the
+  attempt-bound, candidate-preservation, and settings source contracts.
+- Repeating the same Apple-host regressions with the optimized Rust release
+  profile measured a `0.649302 ms` median for `nihap` and `0.452382 ms` per key
+  for the 24-key sequence with correction enabled versus `0.288388 ms` with it
+  disabled. These are local reference measurements rather than real-device
+  latency claims.
 
 ## iOS 0.1.27 (23) TestFlight Upload (2026-07-26)
 

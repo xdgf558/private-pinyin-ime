@@ -434,6 +434,20 @@ $prediction.Font = New-UiFont -Size 9
 $prediction.Checked = [bool]$settings.enable_prediction
 $generalPage.Controls.Add($prediction)
 
+$correctionEnabled = $true
+if ($null -ne $settings.PSObject.Properties["ai"] -and
+    $null -ne $settings.ai -and
+    $null -ne $settings.ai.PSObject.Properties["enable_pinyin_correction"]) {
+    $correctionEnabled = [bool]$settings.ai.enable_pinyin_correction
+}
+$pinyinCorrection = New-Object System.Windows.Forms.CheckBox
+$pinyinCorrection.Text = "拼音智能纠错"
+$pinyinCorrection.Location = New-Object System.Drawing.Point(385, 238)
+$pinyinCorrection.Size = New-Object System.Drawing.Size(190, 28)
+$pinyinCorrection.Font = New-UiFont -Size 9
+$pinyinCorrection.Checked = $correctionEnabled
+$generalPage.Controls.Add($pinyinCorrection)
+
 [void](New-UiLabel -Parent $generalPage -Text "每页候选数量" -X 24 -Y 286 -Width 170 -Height 26 -Size 9)
 $candidatePageSize = New-Object System.Windows.Forms.NumericUpDown
 $candidatePageSize.Location = New-Object System.Drawing.Point(235, 281)
@@ -479,7 +493,7 @@ $privacy.Size = New-Object System.Drawing.Size(220, 28)
 $privacy.Font = New-UiFont -Size 10 -Style ([System.Drawing.FontStyle]::Bold)
 $privacy.Checked = [bool]$settings.strict_privacy_mode
 $privacyPage.Controls.Add($privacy)
-[void](New-UiLabel -Parent $privacyPage -Text "停止用户学习与统计；无状态的本地候选重排仍可使用，输入内容不会上传。" -X 46 -Y 59 -Width 600 -Height 24 -Size 8 -Color $colors.Muted)
+[void](New-UiLabel -Parent $privacyPage -Text "停止用户学习与统计；无状态的本地候选重排与拼音纠错仍可使用，输入内容不会上传。" -X 46 -Y 59 -Width 650 -Height 24 -Size 8 -Color $colors.Muted)
 
 $learning = New-Object System.Windows.Forms.CheckBox
 $learning.Text = "启用用户学习"
@@ -867,6 +881,10 @@ $save.Add_Click({
     }
     $currentSettings.strict_privacy_mode = $privacy.Checked
     $currentSettings.enable_user_learning = if ($privacy.Checked) { $false } else { $learning.Checked }
+    if ($null -eq $currentSettings.PSObject.Properties["ai"] -or $null -eq $currentSettings.ai) {
+        Set-JsonProperty $currentSettings "ai" ([pscustomobject]@{})
+    }
+    Set-JsonProperty $currentSettings.ai "enable_pinyin_correction" ([bool]$pinyinCorrection.Checked)
     Write-Settings $currentSettings
     $script:settings = $currentSettings
     $statusLabel.Text = "设置已保存，重新切换一次输入法后生效"

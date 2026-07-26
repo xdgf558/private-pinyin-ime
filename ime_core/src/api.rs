@@ -7,6 +7,7 @@ use crate::imported_lexicon::{self, ImportedLexiconReport};
 use crate::key_event::KeyEvent;
 use crate::lexicon::Lexicon;
 use crate::logger;
+use crate::pinyin_correction::add_correction_candidates;
 use crate::pinyin_parser::PinyinParser;
 use crate::predictor::Predictor;
 use crate::ranker::Ranker;
@@ -213,7 +214,45 @@ impl ImeEngine {
                 },
             )
             .unwrap_or_default();
-        crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates)
+        let candidates =
+            crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates);
+        if !self.settings.ai.enable_pinyin_correction {
+            return candidates;
+        }
+
+        add_correction_candidates(
+            raw_input,
+            &parses,
+            candidates,
+            self.settings.candidate_page_size,
+            |corrected_input, corrected_parses| {
+                let corrected_base = self.lexicon.lookup_with_context(
+                    corrected_input,
+                    corrected_parses,
+                    None,
+                    |left, right| {
+                        Ranker::score_continuous_transition(
+                            self.predictor.transition_frequency(left, right),
+                            0,
+                        )
+                    },
+                );
+                let corrected_user = self
+                    .user_lexicon
+                    .as_ref()
+                    .map(|user_lexicon| {
+                        match user_lexicon.lookup(corrected_input, corrected_parses) {
+                            Ok(candidates) => candidates,
+                            Err(error) => {
+                                logger::emit_error(error);
+                                Vec::new()
+                            }
+                        }
+                    })
+                    .unwrap_or_default();
+                crate::lexicon::merge_user_and_base_candidates(corrected_user, corrected_base)
+            },
+        )
     }
 
     pub fn candidates_for_nine_key(&self, digits: &str) -> Vec<Candidate> {

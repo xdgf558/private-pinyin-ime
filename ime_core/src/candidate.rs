@@ -32,12 +32,46 @@ pub struct Candidate {
     pub source: CandidateSource,
     pub comment: Option<String>,
     pub segments: Vec<CandidateSegment>,
+    pub correction: Option<CandidateCorrection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateSegment {
     pub text: String,
     pub pinyin: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CandidateCorrectionKind {
+    CommonConfusion,
+    DuplicateLetter,
+    MissingMedial,
+    AdjacentKey,
+    TransposedLetters,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CandidateCorrectionConfidence {
+    Exact,
+    Probable,
+    Weak,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CandidateCorrection {
+    pub kind: CandidateCorrectionKind,
+    pub confidence: CandidateCorrectionConfidence,
+    pub edit_distance: u8,
+}
+
+impl CandidateCorrection {
+    pub const fn ai_lite_score(self) -> u16 {
+        match self.confidence {
+            CandidateCorrectionConfidence::Exact => 1_000,
+            CandidateCorrectionConfidence::Probable => 750,
+            CandidateCorrectionConfidence::Weak => 450,
+        }
+    }
 }
 
 impl Candidate {
@@ -57,6 +91,7 @@ impl Candidate {
             source,
             comment: None,
             segments: Vec::new(),
+            correction: None,
         }
     }
 
@@ -73,6 +108,11 @@ impl Candidate {
 
     pub fn with_segments(mut self, segments: Vec<CandidateSegment>) -> Self {
         self.segments = segments;
+        self
+    }
+
+    pub fn with_correction(mut self, correction: CandidateCorrection) -> Self {
+        self.correction = Some(correction);
         self
     }
 }
