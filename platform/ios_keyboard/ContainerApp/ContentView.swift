@@ -552,6 +552,20 @@ struct ContentView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(StationTheme.textSecondary)
                 .padding(16)
+
+                divider
+
+                VStack(alignment: .leading, spacing: 9) {
+                    Text("本次更新")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(StationTheme.textPrimary)
+                    Label("全键盘新增本地拼音智能纠错，并保留全部原始候选", systemImage: "character.cursor.ibeam")
+                    Label("九宫格支持漏输、多输、邻键和数字顺序纠错", systemImage: "square.grid.3x3.fill")
+                    Label("优化键盘提交与切换动画，减少宿主界面拖拽感", systemImage: "sparkles")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(StationTheme.textSecondary)
+                .padding(16)
             }
             .background(StationTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

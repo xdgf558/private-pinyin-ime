@@ -4,6 +4,23 @@ Last updated: 2026-07-27
 Current stage: NINEKEY-TYPO-01 bounded nine-key correction
 Current status: The shared Rust nine-key path now adds at most two validated low-priority missing, extra, adjacent, or transposed-digit candidates after ordinary decoding. Raw digit composition and complete ordinary-candidate order remain unchanged, while the existing three-platform correction switch controls both QWERTY and nine-key behavior.
 
+## iOS 0.1.28 (24) TestFlight Upload (2026-07-27)
+
+- Advanced both the container App and Keyboard Extension to `0.1.28 (24)`.
+  The in-App About page now records full-key pinyin correction, bounded
+  nine-key correction, and smoother keyboard submission/transitions as this
+  release's update summary.
+- Xcode 26.6 (`17F109`) built the Release Rust device library with `ios-ai`,
+  passed the full iOS smoke-readiness gate, and archived the arm64 container
+  App and keyboard extension with an iOS 18 minimum.
+- Archive, App, and extension metadata all report `0.1.28 (24)`. The signed
+  archive is
+  `dist/ios/PrivatePinyin-0.1.28-build24-xcode26.xcarchive`.
+- Xcode re-signed the upload with the managed Apple Distribution identity and
+  uploaded it successfully to App Store Connect. Delivery
+  `a0389de8-7ca4-4818-92fb-c8994e07245c` entered TestFlight processing without
+  upload errors.
+
 ## Windows White Frost Import Diagnostics (2026-07-27)
 
 - Reproduced the fixed official White Frost 1.0.4 asset as 44,008,360 bytes with SHA-256 `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`.

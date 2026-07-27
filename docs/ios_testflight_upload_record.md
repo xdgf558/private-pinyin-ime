@@ -8,16 +8,16 @@ from owner-side App Store Connect evidence.
 | Field | Value |
 |---|---|
 | Tester | Owner/Codex signed archive run |
-| Date | 2026-07-26 19:37 +08 |
-| Commit | Release changes based on merged `main` commit `e12f6f7` |
-| Archive | `dist/ios/PrivatePinyin-0.1.27-build23-xcode26.xcarchive` |
+| Date | 2026-07-27 15:42 +08 |
+| Commit | Release changes based on merged `main` commit `8d91adf` |
+| Archive | `dist/ios/PrivatePinyin-0.1.28-build24-xcode26.xcarchive` |
 | Export path | Direct App Store Connect upload through `xcodebuild -exportArchive` |
 | Package summary | Xcode distribution logs, altool upload/status output, and App Store Connect TestFlight build table |
 | App bundle ID | `com.privatepinyin.ios` |
 | Keyboard bundle ID | `com.privatepinyin.ios.keyboard` |
 | App Group ID | `group.com.privatepinyin.ios` |
 | Export destination | `upload` |
-| Current candidate | `0.1.27 (23)` NINEKEY-PERF-01 exact-key lookup, complete candidate equivalence coverage, and bounded incremental nine-key lattice reuse |
+| Current candidate | `0.1.28 (24)` full-key and nine-key bounded correction plus smoother host submission and keyboard transitions |
 
 ## Archive And Export
 
@@ -32,19 +32,19 @@ bash scripts/package_ios_app_store.sh
 |---|---|---|---|
 | Owner signing env | Team ID, app bundle ID, keyboard bundle ID, App Group ID, ExportOptions plist, and profiles are configured | passed | Team `Y35K7AQ974`; App Group `group.com.privatepinyin.ios`; automatic signing created App Store profiles |
 | App Store Connect API key | Upload mode has key path, key ID, and issuer ID configured | not used | Upload used the signed-in Xcode account and Cloud Managed Apple Distribution certificate |
-| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.27-build23-xcode26.xcarchive`; Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `0.1.27 (23)`, arm64, and iOS 18 minimum |
-| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `f1fd7ee0-9b84-4963-9f8d-d8f166fe780a`; the 6,608,723-byte IPA reached `COMPLETE` with no upload errors or warnings; `manageAppVersionAndBuildNumber=false` preserved build `23` |
+| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.28-build24-xcode26.xcarchive`; Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `0.1.28 (24)`, arm64, and iOS 18 minimum |
+| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `a0389de8-7ca4-4818-92fb-c8994e07245c`; Apple accepted the package into processing with no upload errors; `manageAppVersionAndBuildNumber=false` preserved build `24` |
 | Package summary | `dist/ios/package_summary.txt` records mode, bundle IDs, App Group, and paths | superseded | Manual automatic-signing run recorded here because the scripted manual-profile path was not used |
 
 ## App Store Connect
 
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
-| Uploaded build | Build appears in App Store Connect | uploaded | App Store Connect app ID `6789098978`; version `0.1.27`; build `23`; delivery `f1fd7ee0-9b84-4963-9f8d-d8f166fe780a` |
-| Processing | Build processing completes | pending | Upload transport completed without errors; App Store Connect is processing `0.1.27 (23)` |
-| TestFlight availability | Processed build can be assigned to a TestFlight group | pending | Assign build `23` after App Store Connect finishes processing |
+| Uploaded build | Build appears in App Store Connect | uploaded | App Store Connect app ID `6789098978`; version `0.1.28`; build `24`; delivery `a0389de8-7ca4-4818-92fb-c8994e07245c` |
+| Processing | Build processing completes | pending | Upload transport completed without errors; App Store Connect is processing `0.1.28 (24)` |
+| TestFlight availability | Processed build can be assigned to a TestFlight group | pending | Assign build `24` after App Store Connect finishes processing |
 | External testing metadata | Beta description, privacy URL, feedback channel, review contact, and review notes are configured | passed | Filled in App Store Connect TestFlight test information; personal contact details stay out of the repository |
-| External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | After processing, assigning build `23` to the external group and submitting Beta App Review remain explicit App Store Connect actions |
+| External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | After processing, assigning build `24` to the external group and submitting Beta App Review remain explicit App Store Connect actions |
 
 ## Stage 17 External Testing Follow-up
 
@@ -124,5 +124,13 @@ bash scripts/package_ios_app_store.sh
   `f1fd7ee0-9b84-4963-9f8d-d8f166fe780a`. The 6,608,723-byte IPA completed
   transport with an empty Apple error and warning set and entered App Store
   Connect processing.
+- Build `0.1.28 (24)` adds bounded local pinyin correction for full-key and
+  nine-key input while retaining ordinary candidates, plus the approved iOS
+  host-submission transition smoothing. Its About page contains the matching
+  release summary.
+- Xcode 26.6 archived and uploaded build `24` as delivery
+  `a0389de8-7ca4-4818-92fb-c8994e07245c`. Apple reported `Upload succeeded`
+  and accepted the package into App Store Connect processing without upload
+  errors.
 
 Manual failures should update `docs/OPEN_ITEMS.md` before Stage 17 begins.
