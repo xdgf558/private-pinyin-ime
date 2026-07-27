@@ -116,6 +116,15 @@ grep -q "func enqueueCoreOperation(" platform/ios_keyboard/KeyboardExtension/Key
 grep -q "func scheduleCoreOperation(" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreOperationQueue.async" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreInteractionRevision" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "override func textDidChange" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "override func viewDidAppear" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "override func viewWillDisappear" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "keyboardSurfaceFrozen = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "keyboardSurfaceFrozen = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "resumeKeyboardSurfaceIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "view.setNeedsLayout()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "surfaceRefreshDeferred = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func refreshKeyboardSurface(force: Bool = false)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "idleCorePrewarmDelay: TimeInterval = 0.12" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "candidateCommitInFlight = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "guard !candidateCommitInFlight," platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -213,6 +222,40 @@ if "startCoreLoadIfNeeded()" not in view_did_load:
     raise SystemExit("The iOS keyboard must start background core prewarming after building UI.")
 if "IosPinyinCoreBridge()" in view_did_load:
     raise SystemExit("Lexicon initialization must not run synchronously during presentation.")
+
+text_will_change = source.split("    override func textWillChange", 1)[1].split(
+    "    override func textDidChange", 1
+)[0]
+if "super.textWillChange(textInput)" not in text_will_change:
+    raise SystemExit("The iOS document-change lifecycle must call super.textWillChange.")
+
+view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
+    "    override func viewWillDisappear", 1
+)[0]
+if "resumeKeyboardSurfaceIfNeeded()" not in view_did_appear:
+    raise SystemExit("Warm iOS keyboard reuse must thaw again from viewDidAppear.")
+
+key_handler = source.split("    private func handle(_ key: KeySpec)", 1)[1].split(
+    "    @objc private func handleQuickPunctuationGesture", 1
+)[0]
+if "resumeKeyboardSurfaceIfNeeded()" not in key_handler:
+    raise SystemExit("A delivered iOS key event must recover a frozen warm surface.")
+
+surface_resume = source.split(
+    "    private func resumeKeyboardSurfaceIfNeeded", 1
+)[1].split("    func selectKeyboardLayout", 1)[0]
+for required in (
+    "keyboardSurfaceFrozen = false",
+    "refreshKeyboardSurface(force: true)",
+):
+    if required not in surface_resume:
+        raise SystemExit(f"Missing iOS keyboard thaw contract: {required}")
+
+surface_refresh = source.split("    func refreshKeyboardSurface", 1)[1].split(
+    "    private func resumeKeyboardSurfaceIfNeeded", 1
+)[0]
+if "view.setNeedsLayout()" not in surface_refresh:
+    raise SystemExit("Resuming the iOS keyboard surface must request explicit layout recovery.")
 
 core_loader = source.split("    func startCoreLoadIfNeeded()", 1)[1].split(
     "    func invalidateCore()", 1

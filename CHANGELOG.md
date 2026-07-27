@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Smoothed iOS host submission and keyboard dismissal transitions. External document changes now clear logical composition without rebuilding the visible candidate surface mid-transition; the extension freezes its final frame while leaving and applies any deferred candidate, key-state, height, or layout refresh once on the next presentation. Warm controller reuse now has redundant appearance- and key-event thaw paths, with an explicit layout recovery pass.
 - Bounded TYPO-01 by actual parser attempts rather than accepted suggestions, deduplicated spellings before validation, and kept every original candidate even if future correction sources exceed the current two-candidate invariant. Five-item pages now expose at most one correction while wider pages may expose two.
 - Added macOS, Windows, and iOS settings controls for local pinyin typo correction. The feature remains default-on but can be disabled independently; strict privacy continues to disable learning and Writer while allowing this stateless local correction path.
 - Optimized nine-key typing without relaxing the existing 60 ms Apple latency budget: direct candidates now use the compact exact-key range before prefix expansion, and a session-local bounded lattice reuses unchanged digit prefixes across appended input and Backspace. Candidate ordering remains equivalent to the stateless lookup path.

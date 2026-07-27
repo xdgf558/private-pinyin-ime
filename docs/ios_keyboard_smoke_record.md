@@ -4,6 +4,29 @@ Stage 15 records the automated readiness checks that can run from the repository
 and separates the remaining iOS keyboard behavior that must be verified in
 Simulator or on a device.
 
+## Host Submission Transition Smoothing (2026-07-27)
+
+| Field | Value |
+|---|---|
+| Tester | Codex interactive simulator smoke |
+| Simulator | iPhone 17 Pro, iOS 26.5 |
+| Xcode | 26.6 (`17F109`) |
+| Branch | `codex/ios-dismissal-transition-smoothing` |
+| Build artifact | `build/ios_keyboard/Build/Products/Debug-iphonesimulator/PrivatePinyin.app` |
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Source contract | passed | `scripts/check_ios_keyboard_sources.sh` verified the document-change, disappearance-freeze, redundant thaw, active-key recovery, explicit layout recovery, and coalesced-refresh lifecycle hooks |
+| Simulator build | passed | The container App and Keyboard Extension completed with `BUILD SUCCEEDED` |
+| Nine-key input | passed | The real custom surface entered `64426`, displayed `ni hao`, ranked `你好` first, and one candidate tap inserted exactly one `你好` |
+| Host dismissal | passed (equivalent host transition) | With the custom keyboard visible, navigating from the focused diagnostic field to the About page dismissed the extension and completed the host transition without a second visible pull |
+| Warm reuse thaw | passed | Returned from the About page to the same diagnostic field without recreating the App, entered `64426` again, observed the live `ni hao` / `你好` candidate strip, and committed exactly once; the field changed from `你好` to `你好你好` |
+| Layout/crash scan | passed | The dismissal log contained no Auto Layout conflict, and no new PrivatePinyin crash report was produced |
+| X Publish | pending physical device | X's exact post-publication animation is not available in Simulator; repeat the same check in the next TestFlight build |
+
+This pass validates the lifecycle fix and its host-animation boundary. It does
+not replace the physical-device X Publish check.
+
 ## Environment
 
 | Field | Value |
