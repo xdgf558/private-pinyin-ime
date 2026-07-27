@@ -8,6 +8,13 @@ private struct PendingCoreOperation {
     let completion: (IosPinyinOutput?) -> Void
 }
 
+private enum KeyboardPresentationPhase {
+    case detached
+    case appearing
+    case visible
+    case disappearing
+}
+
 final class KeyboardViewController: UIInputViewController {
     private static let coreOperationQueue = DispatchQueue(
         label: "com.privatepinyin.ios.core-operations",
@@ -34,8 +41,6 @@ final class KeyboardViewController: UIInputViewController {
     private let candidateDivider = UIView()
     private let settingsButton = UIButton(type: .system)
     private let expandCandidateButton = UIButton(type: .system)
-    private let previousCandidatePageButton = UIButton(type: .system)
-    private let nextCandidatePageButton = UIButton(type: .system)
     private let expandedPreviousPageButton = UIButton(type: .system)
     private let expandedNextPageButton = UIButton(type: .system)
     private let layoutSegmentedControl = UISegmentedControl(items: ["全键", "九宫"])
@@ -54,8 +59,8 @@ final class KeyboardViewController: UIInputViewController {
     private var candidatePageReachedEnd = false
     private var candidateCommitInFlight = false
     private var candidatesExpanded = false
-    private let keyFeedbackGenerator = UISelectionFeedbackGenerator()
-    private let typingFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+    private lazy var keyFeedbackGenerator = UISelectionFeedbackGenerator(view: view)
+    private lazy var typingFeedbackGenerator = UIImpactFeedbackGenerator(style: .light, view: view)
     private var renderedCandidateSignature: [String] = []
     private var shifted = false
     private var symbolsVisible = false
@@ -79,6 +84,7 @@ final class KeyboardViewController: UIInputViewController {
     private var quickPunctuationGestureStart = CGPoint.zero
     private var preferencesViewPrepared = false
     private var keyboardSurfaceFrozen = false
+    private var keyboardPresentationPhase = KeyboardPresentationPhase.detached
     private var surfaceRefreshDeferred = false
     private var keyboardRebuildDeferred = false
     private var pendingDocumentSurfaceRevision: Int?
@@ -96,9 +102,9 @@ final class KeyboardViewController: UIInputViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
+        setupView()
         keyFeedbackGenerator.prepare()
         typingFeedbackGenerator.prepare()
-        setupView()
         rebuildKeyboard()
         updateCandidateBar()
         // Let the keyboard's first frame appear before parsing the bundled lexicon.
@@ -119,6 +125,11 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
 
+        // Some hosts change the document before beginning their keyboard-dismiss
+        // transition. Freeze here so a fast reset result cannot relayout the
+        // input view in the gap before viewWillDisappear.
+        keyboardSurfaceFrozen = true
+        surfaceRefreshDeferred = true
         coreInteractionRevision &+= 1
         pendingDocumentSurfaceRevision = coreInteractionRevision
         pendingCoreOperations.removeAll(keepingCapacity: true)
@@ -155,20 +166,33 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        keyboardPresentationPhase = .appearing
         pendingDocumentSurfaceRevision = nil
         resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        keyboardPresentationPhase = .visible
         resumeKeyboardSurfaceIfNeeded()
+        keyFeedbackGenerator.prepare()
+        typingFeedbackGenerator.prepare()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
+        keyboardPresentationPhase = .disappearing
         keyboardSurfaceFrozen = true
         surfaceRefreshDeferred = true
         dismissQuickPunctuationPopup()
         super.viewWillDisappear(animated)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        keyboardPresentationPhase = .detached
+        keyboardSurfaceFrozen = true
+        surfaceRefreshDeferred = true
+        pendingDocumentSurfaceRevision = nil
     }
 
     override func viewWillLayoutSubviews() {
@@ -286,14 +310,6 @@ final class KeyboardViewController: UIInputViewController {
         candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         candidateScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        configureCandidatePageButton(
-            previousCandidatePageButton,
-            systemImageName: "chevron.left",
-            accessibilityLabel: "上一组候选"
-        ) { [weak self] in
-            self?.turnCandidatePage(-1)
-        }
-        candidateBar.addArrangedSubview(previousCandidatePageButton)
         candidateBar.addArrangedSubview(candidateScrollView)
 
         candidateStack.axis = .horizontal
@@ -317,15 +333,6 @@ final class KeyboardViewController: UIInputViewController {
             candidateButtons.append(button)
             candidateStack.addArrangedSubview(button)
         }
-
-        configureCandidatePageButton(
-            nextCandidatePageButton,
-            systemImageName: "chevron.right",
-            accessibilityLabel: "下一组候选"
-        ) { [weak self] in
-            self?.turnCandidatePage(1)
-        }
-        candidateBar.addArrangedSubview(nextCandidatePageButton)
 
         configureCandidateToolButton(
             expandCandidateButton,
@@ -474,25 +481,6 @@ final class KeyboardViewController: UIInputViewController {
         }, for: .touchUpInside)
         button.widthAnchor.constraint(equalToConstant: 34).isActive = true
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
-    }
-
-    private func configureCandidatePageButton(
-        _ button: UIButton,
-        systemImageName: String,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) {
-        button.setImage(UIImage(systemName: systemImageName), for: .normal)
-        button.tintColor = StationKeyboardTheme.secondaryText
-        button.backgroundColor = .clear
-        button.accessibilityLabel = accessibilityLabel
-        button.addAction(UIAction { [weak self] _ in
-            self?.provideSelectionFeedback()
-            action()
-        }, for: .touchUpInside)
-        button.widthAnchor.constraint(equalToConstant: 22).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 34).isActive = true
-        button.isHidden = true
     }
 
     private func configurePreeditLabel() {
@@ -1127,8 +1115,6 @@ final class KeyboardViewController: UIInputViewController {
             settingsButton.isEnabled = true
             candidateScrollView.isHidden = true
             candidateDivider.isHidden = true
-            previousCandidatePageButton.isHidden = true
-            nextCandidatePageButton.isHidden = true
             expandCandidateButton.isHidden = true
             return
         }
@@ -1147,10 +1133,6 @@ final class KeyboardViewController: UIInputViewController {
         let candidateSignature = currentCandidates.map { "\($0.text)\u{1f}\($0.pinyin)" }
         let candidatesChanged = candidateSignature != renderedCandidateSignature
         renderedCandidateSignature = candidateSignature
-        previousCandidatePageButton.isHidden = candidatesExpanded || !hasCandidates || candidatePage == 0
-        nextCandidatePageButton.isHidden = candidatesExpanded || !hasCandidates
-            || currentCandidates.count < sessionCandidatePageSize
-            || candidatePageReachedEnd
         expandCandidateButton.isHidden = !hasCandidates
         expandCandidateButton.setImage(
             UIImage(systemName: candidatesExpanded ? "chevron.up" : "chevron.down"),
@@ -1224,9 +1206,9 @@ final class KeyboardViewController: UIInputViewController {
 
     private func handle(_ key: KeySpec) {
         // A delivered key event proves that this warm controller is active again.
-        // This is the last-resort thaw if the host reused the extension without
-        // delivering the normal appearance callback pair.
-        resumeKeyboardSurfaceIfNeeded()
+        // It may thaw a document-change freeze only while the keyboard is
+        // presented. Late events during host dismissal must not relayout it.
+        resumeKeyboardSurfaceForDeliveredKeyIfPresented()
         switch key.kind {
         case .character, .text, .nineKeyDigit, .space, .nineKeySpace, .enter, .backspace:
             provideTypingFeedback()
@@ -1889,6 +1871,16 @@ private extension KeyboardViewController {
         }
         keyboardSurfaceFrozen = false
         refreshKeyboardSurface(force: true)
+    }
+
+    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented() {
+        guard keyboardPresentationPhase == .appearing
+            || keyboardPresentationPhase == .visible,
+            viewIfLoaded?.window != nil
+        else {
+            return
+        }
+        resumeKeyboardSurfaceIfNeeded()
     }
 
     func selectKeyboardLayout(_ layout: IosKeyboardLayout) {

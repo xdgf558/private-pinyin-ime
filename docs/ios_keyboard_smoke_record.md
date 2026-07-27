@@ -27,6 +27,17 @@ Simulator or on a device.
 This pass validates the lifecycle fix and its host-animation boundary. It does
 not replace the physical-device X Publish check.
 
+## Physical X Submission Follow-up (2026-07-27)
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Physical-device report | reproduced | TestFlight `0.1.28 (24)` still showed about one second of host-view pulling after tapping Publish in X; the supplied capture shows the keyboard dismissed while X remains in its `正在发送帖子...` transition |
+| Earlier freeze boundary | insufficient | `viewWillDisappear` can arrive after X's external document-change callbacks, leaving a gap where a fast queued reset may still request height and root-stack layout |
+| Revised source contract | passed | External `textWillChange` now freezes the visible surface immediately; key-event recovery is presentation-gated, compact paging arrows are removed, and feedback generators are attached to the keyboard view. `scripts/check_ios_keyboard_sources.sh` passed |
+| Xcode 26.6 simulator build | passed | Clean arm64 iOS 26.5 simulator build produced `PrivatePinyin.app` and `PrivatePinyinKeyboard.appex` with the view-attached feedback APIs |
+| Simulator candidate and warm-reuse smoke | passed | Typed `hai`: the compact strip showed only the downward expansion entry, the expanded 3-by-3 grid retained later-page navigation, and dismissing/reopening the warm keyboard allowed a fresh `ni` composition and candidates |
+| Physical-device retest | pending | Repeat X Publish/Send with `0.1.29` or the next TestFlight candidate, then return to the same input field and verify live candidates plus physical haptic feedback |
+
 ## Environment
 
 | Field | Value |

@@ -121,7 +121,7 @@ grep -q "override func viewDidAppear" platform/ios_keyboard/KeyboardExtension/Ke
 grep -q "override func viewWillDisappear" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "keyboardSurfaceFrozen = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "keyboardSurfaceFrozen = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "resumeKeyboardSurfaceIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "view.setNeedsLayout()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "surfaceRefreshDeferred = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func refreshKeyboardSurface(force: Bool = false)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -156,8 +156,8 @@ grep -q 'systemImageName: "ellipsis"' platform/ios_keyboard/KeyboardExtension/Ke
 grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'CandidateScrollView' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'touchesShouldCancel' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'UISelectionFeedbackGenerator' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'UIImpactFeedbackGenerator(style: .light)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'UISelectionFeedbackGenerator(view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'UIImpactFeedbackGenerator(style: .light, view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'impactOccurred(intensity: 0.62)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'hitTestOutsets.left = 10' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -228,6 +228,8 @@ text_will_change = source.split("    override func textWillChange", 1)[1].split(
 )[0]
 if "super.textWillChange(textInput)" not in text_will_change:
     raise SystemExit("The iOS document-change lifecycle must call super.textWillChange.")
+if "keyboardSurfaceFrozen = true" not in text_will_change:
+    raise SystemExit("External iOS document changes must freeze the surface before queued reset work.")
 
 view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
     "    override func viewWillDisappear", 1
@@ -238,8 +240,23 @@ if "resumeKeyboardSurfaceIfNeeded()" not in view_did_appear:
 key_handler = source.split("    private func handle(_ key: KeySpec)", 1)[1].split(
     "    @objc private func handleQuickPunctuationGesture", 1
 )[0]
-if "resumeKeyboardSurfaceIfNeeded()" not in key_handler:
-    raise SystemExit("A delivered iOS key event must recover a frozen warm surface.")
+if "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" not in key_handler:
+    raise SystemExit("A delivered iOS key event must use the presentation-gated thaw path.")
+
+key_surface_resume = source.split(
+    "    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1
+)[1].split("    func selectKeyboardLayout", 1)[0]
+for required in (
+    "keyboardPresentationPhase == .appearing",
+    "keyboardPresentationPhase == .visible",
+    "viewIfLoaded?.window != nil",
+    "resumeKeyboardSurfaceIfNeeded()",
+):
+    if required not in key_surface_resume:
+        raise SystemExit(f"Missing presentation-gated iOS key thaw contract: {required}")
+
+if "previousCandidatePageButton" in source or "nextCandidatePageButton" in source:
+    raise SystemExit("The compact iOS candidate bar must use only the downward expansion entry.")
 
 surface_resume = source.split(
     "    private func resumeKeyboardSurfaceIfNeeded", 1
