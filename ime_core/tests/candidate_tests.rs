@@ -150,12 +150,74 @@ fn valid_full_pinyin_and_nine_key_results_are_unchanged_when_correction_is_enabl
         );
     }
     for digits in ["64426", "94564", "426", "968"] {
+        let enabled_candidates = enabled.candidates_for_nine_key(digits);
+        let ordinary_candidates = enabled_candidates
+            .iter()
+            .filter(|candidate| candidate.correction.is_none())
+            .cloned()
+            .collect::<Vec<_>>();
         assert_eq!(
-            enabled.candidates_for_nine_key(digits),
+            ordinary_candidates,
             disabled.candidates_for_nine_key(digits),
-            "nine-key results changed for {digits}"
+            "ordinary nine-key results changed for {digits}"
         );
     }
+}
+
+#[test]
+fn nine_key_typo_correction_handles_missing_extra_adjacent_and_transposed_digits() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
+
+    for (digits, expected) in [("6426", "你好"), ("644426", "你好"), ("64246", "你好")] {
+        let candidates = engine.candidates_for_nine_key(digits);
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| { candidate.text == expected && candidate.correction.is_some() }),
+            "expected {expected} correction for {digits}, got {candidates:?}"
+        );
+        assert!(
+            candidates
+                .iter()
+                .filter(|candidate| candidate.correction.is_some())
+                .count()
+                <= 2,
+            "nine-key correction count exceeded two for {digits}"
+        );
+        assert!(
+            disabled
+                .candidates_for_nine_key(digits)
+                .iter()
+                .all(|candidate| candidate.correction.is_none()),
+            "disabled nine-key correction leaked metadata for {digits}"
+        );
+    }
+}
+
+#[test]
+fn nine_key_typo_correction_commits_once_without_mutating_digit_preedit() {
+    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    let mut session = engine.create_session();
+    let mut output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(6)));
+    for digit in [4, 2, 6] {
+        output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+    }
+
+    assert_eq!(output.preedit, "6426");
+    let correction_index = output
+        .candidates
+        .iter()
+        .position(|candidate| candidate.correction.is_some())
+        .expect("a bounded correction is visible");
+    let expected_commit = output.candidates[correction_index].text.clone();
+    let commit = session.commit_candidate(correction_index);
+    assert_eq!(commit.commit_text, expected_commit);
+    assert!(session.nine_key_input.is_empty());
+    assert!(commit.preedit.is_empty());
 }
 
 #[cfg(target_vendor = "apple")]
@@ -416,33 +478,50 @@ fn nine_key_decoder_stays_within_interactive_lookup_budget() {
 #[test]
 fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
     const BATCH_COUNT: usize = 5;
-    let engine = ImeEngine::new().expect("engine loads production lexicon");
+    const CORRECTION_INPUT_LIMIT: usize = 24;
+    let enabled = ImeEngine::new().expect("engine loads production lexicon");
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
     let sentence_digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut correction_maximum_digits = sentence_digits.repeat(2);
+    correction_maximum_digits.truncate(CORRECTION_INPUT_LIMIT);
     let mut maximum_digits = sentence_digits.repeat(4);
     maximum_digits.truncate(MAX_RAW_INPUT_CHARS);
 
     for (label, digits) in [
         ("21-key sentence", sentence_digits.as_str()),
+        (
+            "24-key correction ceiling",
+            correction_maximum_digits.as_str(),
+        ),
         ("64-key maximum", maximum_digits.as_str()),
     ] {
-        let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
-        for _ in 0..BATCH_COUNT {
-            let mut session = engine.create_session();
-            for digit in digits.chars() {
-                let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
-                let started = Instant::now();
-                session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
-                samples.push(started.elapsed());
+        for (correction_label, engine) in
+            [("correction-on", &enabled), ("correction-off", &disabled)]
+        {
+            let mut samples = Vec::with_capacity(BATCH_COUNT * digits.len());
+            for _ in 0..BATCH_COUNT {
+                let mut session = engine.create_session();
+                for digit in digits.chars() {
+                    let digit = digit.to_digit(10).expect("nine-key input is numeric") as u8;
+                    let started = Instant::now();
+                    session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+                    samples.push(started.elapsed());
+                }
             }
-        }
-        samples.sort_unstable();
-        let median = samples[samples.len() / 2];
-        eprintln!("nine-key incremental {label} median per-key lookup: {median:?}");
+            samples.sort_unstable();
+            let median = samples[samples.len() / 2];
+            eprintln!(
+                "nine-key incremental {label} {correction_label} median per-key lookup: {median:?}"
+            );
 
-        assert!(
-            median < Duration::from_millis(60),
-            "median incremental nine-key {label} keypress took {median:?}"
-        );
+            assert!(
+                median < Duration::from_millis(60),
+                "median incremental nine-key {label} {correction_label} keypress took {median:?}"
+            );
+        }
     }
 }
 

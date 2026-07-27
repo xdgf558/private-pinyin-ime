@@ -48,6 +48,10 @@ pub enum CandidateCorrectionKind {
     MissingMedial,
     AdjacentKey,
     TransposedLetters,
+    NineKeyAdjacentDigit,
+    NineKeyExtraDigit,
+    NineKeyMissingDigit,
+    NineKeyTransposedDigits,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,4 +119,47 @@ impl Candidate {
         self.correction = Some(correction);
         self
     }
+}
+
+pub(crate) fn promote_correction_candidates(
+    mut candidates: Vec<Candidate>,
+    candidate_page_size: usize,
+    maximum_visible_corrections: usize,
+) -> Vec<Candidate> {
+    let correction_count = candidates
+        .iter()
+        .filter(|candidate| candidate.correction.is_some())
+        .count();
+    if correction_count == 0 {
+        return candidates;
+    }
+
+    let already_visible = candidates
+        .iter()
+        .take(candidate_page_size)
+        .filter(|candidate| candidate.correction.is_some())
+        .count();
+    let promote_count = maximum_visible_corrections.saturating_sub(already_visible);
+    if promote_count == 0 {
+        return candidates;
+    }
+
+    let correction_indices = candidates
+        .iter()
+        .enumerate()
+        .skip(candidate_page_size)
+        .filter_map(|(index, candidate)| candidate.correction.is_some().then_some(index))
+        .take(promote_count)
+        .collect::<Vec<_>>();
+    let mut promoted = Vec::with_capacity(correction_indices.len());
+    for index in correction_indices.into_iter().rev() {
+        promoted.push(candidates.remove(index));
+    }
+    promoted.reverse();
+
+    let insertion_index = candidate_page_size
+        .saturating_sub(promoted.len())
+        .min(candidates.len());
+    candidates.splice(insertion_index..insertion_index, promoted);
+    candidates
 }

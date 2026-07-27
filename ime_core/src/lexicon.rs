@@ -4,12 +4,17 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-use crate::candidate::{Candidate, CandidateSegment, CandidateSource};
+use crate::candidate::{
+    promote_correction_candidates, Candidate, CandidateSegment, CandidateSource,
+};
 use crate::error::{ImeError, ImeResult};
 use crate::imported_lexicon::{
     read_utf8_file_bounded, validate_imported_entries, MAX_IMPORTED_FILE_BYTES,
 };
 use crate::nine_key::{is_valid_nine_key_input, pinyin_to_nine_key};
+use crate::nine_key_correction::{
+    suggest_nine_key_corrections, NineKeyCorrectionBudget, MAX_NINE_KEY_CORRECTIONS,
+};
 use crate::pinyin_parser::{compact_pinyin, compact_prefix_upper_bound, PinyinParse, PinyinParser};
 use crate::ranker::{CandidateMatchKind, Ranker};
 use crate::syllable::is_legal_syllable;
@@ -19,6 +24,7 @@ pub const MAX_LOOKUP_CANDIDATES: usize = 50;
 const CONTINUOUS_BEAM_WIDTH: usize = 32;
 const MAX_CONTINUOUS_CANDIDATES: usize = 12;
 const MAX_CONTINUOUS_OPTIONS_PER_EDGE: usize = 6;
+const MAX_NINE_KEY_OPTIONS_PER_CORRECTION: usize = 6;
 const MAX_MIXED_INPUT_PARSES: usize = 16;
 const MAX_MIXED_INPUT_CHARS: usize = 16;
 const MAX_PINYIN_SYLLABLE_CHARS: usize = 6;
@@ -505,11 +511,59 @@ impl Lexicon {
         )
     }
 
+    pub(crate) fn lookup_nine_key_with_context_corrected(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+    ) -> Vec<Candidate> {
+        let mut cache = NineKeyDecodeCache::default();
+        self.lookup_nine_key_with_context_corrected_cached(
+            digits,
+            previous_context,
+            transition_score,
+            &mut cache,
+        )
+    }
+
     pub(crate) fn lookup_nine_key_with_context_cached(
         &self,
         digits: &str,
         previous_context: Option<&str>,
         transition_score: impl Fn(&str, &str) -> f64,
+        nine_key_cache: &mut NineKeyDecodeCache,
+    ) -> Vec<Candidate> {
+        self.lookup_nine_key_with_context_internal(
+            digits,
+            previous_context,
+            transition_score,
+            false,
+            nine_key_cache,
+        )
+    }
+
+    pub(crate) fn lookup_nine_key_with_context_corrected_cached(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+        nine_key_cache: &mut NineKeyDecodeCache,
+    ) -> Vec<Candidate> {
+        self.lookup_nine_key_with_context_internal(
+            digits,
+            previous_context,
+            transition_score,
+            true,
+            nine_key_cache,
+        )
+    }
+
+    fn lookup_nine_key_with_context_internal(
+        &self,
+        digits: &str,
+        previous_context: Option<&str>,
+        transition_score: impl Fn(&str, &str) -> f64,
+        corrections_enabled: bool,
         nine_key_cache: &mut NineKeyDecodeCache,
     ) -> Vec<Candidate> {
         if !is_valid_nine_key_input(digits) {
@@ -518,6 +572,7 @@ impl Lexicon {
 
         let mut exact_candidates = Vec::new();
         let mut continuous_candidates = Vec::new();
+        let mut correction_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
         let mut seen = HashSet::<String>::new();
 
@@ -564,13 +619,26 @@ impl Lexicon {
             &mut seen,
             nine_key_cache,
         ));
+        if corrections_enabled {
+            correction_candidates.extend(self.nine_key_correction_candidates(
+                digits,
+                !exact_range.is_empty(),
+                &mut seen,
+            ));
+        }
         Ranker::sort_candidates(&mut exact_candidates);
         Ranker::sort_candidates(&mut continuous_candidates);
+        Ranker::sort_candidates(&mut correction_candidates);
         Ranker::sort_candidates(&mut prefix_candidates);
 
         exact_candidates.extend(continuous_candidates);
         exact_candidates.extend(prefix_candidates);
         exact_candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        if !corrections_enabled {
+            return exact_candidates;
+        }
+
+        exact_candidates.extend(correction_candidates);
         exact_candidates
     }
 
@@ -888,6 +956,52 @@ impl Lexicon {
         candidates
     }
 
+    fn nine_key_correction_candidates(
+        &self,
+        digits: &str,
+        require_multi_syllable: bool,
+        seen: &mut HashSet<String>,
+    ) -> Vec<Candidate> {
+        if digits.len() < 2 {
+            return Vec::new();
+        }
+
+        let mut budget = NineKeyCorrectionBudget::default();
+        let suggestions = suggest_nine_key_corrections(digits, &mut budget, |corrected_digits| {
+            !self.nine_key_index.exact_range(corrected_digits).is_empty()
+        });
+        let mut candidates = Vec::new();
+        for suggestion in suggestions {
+            for entry in self.exact_entries_for_nine_key(
+                suggestion.corrected_digits(),
+                MAX_NINE_KEY_OPTIONS_PER_CORRECTION,
+            ) {
+                if (require_multi_syllable
+                    && (entry.phrase.chars().count() < 2
+                        || entry.pinyin.split_whitespace().count() < 2))
+                    || !seen.insert(entry.phrase.clone())
+                {
+                    continue;
+                }
+                candidates.push(
+                    Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                        .with_score(Ranker::score(entry.frequency))
+                        .with_rank_score(
+                            Ranker::score_match(
+                                entry.frequency,
+                                CandidateMatchKind::Segmented,
+                                CandidateSource::Base,
+                            ) + f64::from(suggestion.priority()) / 1_000.0,
+                        )
+                        .with_correction(suggestion.correction()),
+                );
+            }
+        }
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_NINE_KEY_CORRECTIONS);
+        candidates
+    }
+
     fn exact_edges_for_mixed_input(
         &self,
         compact: &str,
@@ -1046,6 +1160,32 @@ pub fn merge_user_and_base_candidates(
 
     merged.truncate(MAX_LOOKUP_CANDIDATES);
     merged
+}
+
+pub fn merge_user_and_base_candidates_with_corrections(
+    user_candidates: Vec<Candidate>,
+    base_candidates: Vec<Candidate>,
+    candidate_page_size: usize,
+) -> Vec<Candidate> {
+    let (correction_candidates, ordinary_candidates): (Vec<_>, Vec<_>) = base_candidates
+        .into_iter()
+        .partition(|candidate| candidate.correction.is_some());
+    let mut candidates = merge_user_and_base_candidates(user_candidates, ordinary_candidates);
+
+    for correction in correction_candidates
+        .into_iter()
+        .take(MAX_NINE_KEY_CORRECTIONS)
+    {
+        if !candidates
+            .iter()
+            .any(|candidate| candidate.text == correction.text)
+        {
+            candidates.push(correction);
+        }
+    }
+
+    let visible_correction_limit = if candidate_page_size <= 5 { 1 } else { 2 };
+    promote_correction_candidates(candidates, candidate_page_size, visible_correction_limit)
 }
 
 fn is_header_line(line: &str) -> bool {
@@ -1315,6 +1455,7 @@ fn sort_continuous_paths(paths: &mut Vec<ContinuousPath>, limit: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::candidate::CandidateCorrectionKind;
 
     #[test]
     fn packed_indexes_keep_embedded_index_memory_bounded() {
@@ -1500,5 +1641,124 @@ mod tests {
 
         lexicon.lookup_nine_key_with_context_cached("96548", Some("前文"), |_, _| 0.0, &mut cache);
         assert_eq!(cache.last_reused_chars, 0);
+    }
+
+    #[test]
+    fn nine_key_correction_handles_each_bounded_edit_without_reordering_raw_candidates() {
+        let lexicon =
+            Lexicon::from_tsv("面\tmian\t120000\n你好\tni hao\t110000\n猫\tmao\t100000\n")
+                .expect("test lexicon loads");
+
+        let cases = [
+            ("6426", "你好", CandidateCorrectionKind::NineKeyMissingDigit),
+            ("644426", "你好", CandidateCorrectionKind::NineKeyExtraDigit),
+            ("636", "猫", CandidateCorrectionKind::NineKeyAdjacentDigit),
+            (
+                "64246",
+                "你好",
+                CandidateCorrectionKind::NineKeyTransposedDigits,
+            ),
+        ];
+
+        for (digits, expected, expected_kind) in cases {
+            let ordinary = lexicon.lookup_nine_key_with_context(digits, None, |_, _| 0.0);
+            let corrected =
+                lexicon.lookup_nine_key_with_context_corrected(digits, None, |_, _| 0.0);
+            let corrected_ordinary = corrected
+                .iter()
+                .filter(|candidate| candidate.correction.is_none())
+                .cloned()
+                .collect::<Vec<_>>();
+
+            assert_eq!(
+                corrected_ordinary, ordinary,
+                "ordinary candidate order changed for {digits}"
+            );
+            assert!(
+                corrected.iter().any(|candidate| {
+                    candidate.text == expected
+                        && candidate
+                            .correction
+                            .is_some_and(|correction| correction.kind == expected_kind)
+                }),
+                "expected {expected_kind:?} correction for {digits}: {corrected:?}"
+            );
+            assert!(
+                corrected
+                    .iter()
+                    .filter(|candidate| candidate.correction.is_some())
+                    .count()
+                    <= MAX_NINE_KEY_CORRECTIONS
+            );
+        }
+    }
+
+    #[test]
+    fn compact_nine_key_page_keeps_four_ordinary_candidates_before_a_correction() {
+        let lexicon = Lexicon::from_tsv(
+            "面\tmian\t140000\n年\tnian\t130000\n秒\tmiao\t120000\n鸟\tniao\t110000\n你好\tni hao\t100000\n",
+        )
+        .expect("test lexicon loads");
+        let ordinary = lexicon.lookup_nine_key_with_context("6426", None, |_, _| 0.0);
+        let corrected = lexicon.lookup_nine_key_with_context_corrected("6426", None, |_, _| 0.0);
+        let promoted = merge_user_and_base_candidates_with_corrections(Vec::new(), corrected, 5);
+
+        assert_eq!(ordinary.len(), 4);
+        assert_eq!(&promoted[..4], ordinary.as_slice());
+        assert_eq!(
+            promoted.get(4).map(|candidate| candidate.text.as_str()),
+            Some("你好")
+        );
+        assert!(promoted[4].correction.is_some());
+    }
+
+    #[test]
+    fn nine_key_correction_cache_matches_stateless_lookup_after_backspace_and_retype() {
+        let lexicon =
+            Lexicon::from_tsv("面\tmian\t120000\n你好\tni hao\t110000\n猫\tmao\t100000\n")
+                .expect("test lexicon loads");
+        let mut cache = NineKeyDecodeCache::default();
+
+        for digits in ["64", "642", "6426"] {
+            let cached = lexicon.lookup_nine_key_with_context_corrected_cached(
+                digits,
+                None,
+                |_, _| 0.0,
+                &mut cache,
+            );
+            assert_eq!(
+                cached,
+                lexicon.lookup_nine_key_with_context_corrected(digits, None, |_, _| 0.0),
+                "cached correction lookup diverged for {digits}"
+            );
+        }
+
+        let backspaced = lexicon.lookup_nine_key_with_context_corrected_cached(
+            "642",
+            None,
+            |_, _| 0.0,
+            &mut cache,
+        );
+        assert_eq!(
+            backspaced,
+            lexicon.lookup_nine_key_with_context_corrected("642", None, |_, _| 0.0)
+        );
+
+        let retyped = lexicon.lookup_nine_key_with_context_corrected_cached(
+            "6426",
+            None,
+            |_, _| 0.0,
+            &mut cache,
+        );
+        assert_eq!(
+            retyped,
+            lexicon.lookup_nine_key_with_context_corrected("6426", None, |_, _| 0.0)
+        );
+        assert!(retyped.iter().any(|candidate| {
+            candidate.text == "你好"
+                && candidate.correction.is_some_and(|correction| {
+                    correction.kind == CandidateCorrectionKind::NineKeyMissingDigit
+                })
+        }));
     }
 }
