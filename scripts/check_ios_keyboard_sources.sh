@@ -235,7 +235,13 @@ text_did_change = source.split("    override func textDidChange", 1)[1].split(
     "    override func viewWillAppear", 1
 )[0]
 if "resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()" not in text_did_change:
-    raise SystemExit("A completed iOS document change must resolve the frozen surface on the next main-loop turn.")
+    raise SystemExit("A completed iOS document change must resolve the frozen surface after the presentation settles.")
+if "DispatchQueue.main.asyncAfter" not in text_did_change:
+    raise SystemExit("Visible document-change thaw must wait for the host presentation state to settle.")
+if "Self.visibleDocumentChangeThawDelay" not in text_did_change:
+    raise SystemExit("Visible document-change thaw must use the bounded named delay.")
+if "visibleDocumentChangeThawDelay: TimeInterval = 0.05" not in source:
+    raise SystemExit("The iOS field-switch thaw delay must remain the reviewed 50 ms window.")
 
 view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
     "    override func viewWillDisappear", 1

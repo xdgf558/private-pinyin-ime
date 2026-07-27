@@ -21,6 +21,7 @@ final class KeyboardViewController: UIInputViewController {
         qos: .userInteractive
     )
     private static let idleCorePrewarmDelay: TimeInterval = 0.12
+    private static let visibleDocumentChangeThawDelay: TimeInterval = 0.05
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
@@ -156,7 +157,11 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         pendingDocumentSurfaceRevision = nil
-        DispatchQueue.main.async { [weak self] in
+        // Give a host dismissal enough time to advance to `disappearing`
+        // before treating this as an in-place field switch.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.visibleDocumentChangeThawDelay
+        ) { [weak self] in
             guard let self, revision == self.coreInteractionRevision else {
                 return
             }

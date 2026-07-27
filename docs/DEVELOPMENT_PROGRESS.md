@@ -18,10 +18,17 @@ Current status: The shared Rust nine-key path now adds at most two validated low
   presentation phases, and permits delivered-key recovery only while the
   keyboard is actually presented. Queued core work may update logical state
   while frozen but cannot change the host's dismissal geometry.
-- Closed the same-App field-switch side effect found in review. On the main-loop
-  turn after `textDidChange`, the extension thaws and clears the old candidate
-  surface only if its presentation phase is still `visible`; a phase that has
-  advanced to `disappearing` or `detached` remains frozen.
+- Closed the same-App field-switch side effect found in review. After
+  `textDidChange`, the extension waits for a bounded 50 ms presentation-state
+  settling window, then thaws and clears the old candidate surface only if its
+  presentation phase is still `visible`; a phase that has advanced to
+  `disappearing` or `detached` remains frozen. The revision guard also prevents
+  a delayed thaw from applying after newer input work.
+- The 50 ms window is a reviewed host-lifecycle heuristic, not proof of X's
+  callback timing. If the physical-device pull remains, record timestamps for
+  `textDidChange`, `viewWillDisappear`, and the queued core-reset completion;
+  a disappearance arriving after this window is the first residual race to
+  investigate.
 - Replaced unassociated feedback-generator construction with the iOS 17.5+
   view-attached UIKit APIs and re-prepares them after presentation. Physical
   feedback remains subject to the device's system haptic settings and needs a
