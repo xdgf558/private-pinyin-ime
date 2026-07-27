@@ -18,13 +18,19 @@ Current status: The shared Rust nine-key path now adds at most two validated low
   presentation phases, and permits delivered-key recovery only while the
   keyboard is actually presented. Queued core work may update logical state
   while frozen but cannot change the host's dismissal geometry.
+- Closed the same-App field-switch side effect found in review. On the main-loop
+  turn after `textDidChange`, the extension thaws and clears the old candidate
+  surface only if its presentation phase is still `visible`; a phase that has
+  advanced to `disappearing` or `detached` remains frozen.
 - Replaced unassociated feedback-generator construction with the iOS 17.5+
   view-attached UIKit APIs and re-prepares them after presentation. Physical
   feedback remains subject to the device's system haptic settings and needs a
-  real-device check.
+  real-device check. The project already has an iOS 18 minimum deployment
+  target, so this API does not raise the supported system version.
 - Removed the compact candidate strip's previous/next arrows. The downward
   entry remains the single route to the expanded 3-by-3 candidate grid, whose
-  own page controls continue to expose later groups.
+  own page controls continue to expose later groups. Its VoiceOver hint now
+  explicitly identifies those previous/next controls.
 - A clean Xcode 26.6 arm64 iOS 26.5 simulator build passed. Simulator smoke
   confirmed compact `hai` candidates expose only the downward entry, the
   expanded grid retains later-page navigation, and a warm keyboard can dismiss,

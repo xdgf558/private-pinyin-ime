@@ -22,6 +22,13 @@ private enum SettingsDestination: Hashable {
     case about
 }
 
+#if DEBUG
+private enum KeyboardSmokeField: Hashable {
+    case primary
+    case secondary
+}
+#endif
+
 struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
@@ -33,7 +40,8 @@ struct ContentView: View {
     @State private var isImportingRimeIce = false
 #if DEBUG
     @State private var keyboardSmokeText = ""
-    @FocusState private var keyboardSmokeFocused: Bool
+    @State private var keyboardSmokeSecondaryText = ""
+    @FocusState private var keyboardSmokeFocusedField: KeyboardSmokeField?
 #endif
 
     var body: some View {
@@ -77,7 +85,7 @@ struct ContentView: View {
 #if DEBUG
             if isKeyboardSmokeHarnessEnabled {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    keyboardSmokeFocused = true
+                    keyboardSmokeFocusedField = .primary
                 }
             }
 #endif
@@ -389,7 +397,20 @@ struct ContentView: View {
             TextField("在这里测试猫栈拼音", text: $keyboardSmokeText)
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier("keyboard-smoke-field")
-                .focused($keyboardSmokeFocused)
+                .focused($keyboardSmokeFocusedField, equals: .primary)
+                .foregroundStyle(StationTheme.textPrimary)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .background(StationTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(StationTheme.border, lineWidth: 1)
+                }
+            TextField("切换到第二个输入框", text: $keyboardSmokeSecondaryText)
+                .textFieldStyle(.plain)
+                .accessibilityIdentifier("keyboard-smoke-secondary-field")
+                .focused($keyboardSmokeFocusedField, equals: .secondary)
                 .foregroundStyle(StationTheme.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 48)

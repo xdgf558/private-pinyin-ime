@@ -231,6 +231,12 @@ if "super.textWillChange(textInput)" not in text_will_change:
 if "keyboardSurfaceFrozen = true" not in text_will_change:
     raise SystemExit("External iOS document changes must freeze the surface before queued reset work.")
 
+text_did_change = source.split("    override func textDidChange", 1)[1].split(
+    "    override func viewWillAppear", 1
+)[0]
+if "resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()" not in text_did_change:
+    raise SystemExit("A completed iOS document change must resolve the frozen surface on the next main-loop turn.")
+
 view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
     "    override func viewWillDisappear", 1
 )[0]
@@ -242,6 +248,19 @@ key_handler = source.split("    private func handle(_ key: KeySpec)", 1)[1].spli
 )[0]
 if "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" not in key_handler:
     raise SystemExit("A delivered iOS key event must use the presentation-gated thaw path.")
+
+document_change_resume = source.split(
+    "    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible", 1
+)[1].split("    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1)[0]
+for required in (
+    "keyboardPresentationPhase == .visible",
+    "viewIfLoaded?.window != nil",
+    "resumeKeyboardSurfaceIfNeeded(forceRefresh: true)",
+):
+    if required not in document_change_resume:
+        raise SystemExit(f"Missing visible-document-change thaw contract: {required}")
+if ".disappearing" in document_change_resume or ".detached" in document_change_resume:
+    raise SystemExit("A disappearing or detached iOS keyboard must not thaw after a document change.")
 
 key_surface_resume = source.split(
     "    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1
@@ -257,6 +276,8 @@ for required in (
 
 if "previousCandidatePageButton" in source or "nextCandidatePageButton" in source:
     raise SystemExit("The compact iOS candidate bar must use only the downward expansion entry.")
+if "打开候选网格，可使用上一组和下一组按钮浏览" not in source:
+    raise SystemExit("The compact iOS expansion control must expose accessible candidate paging guidance.")
 
 surface_resume = source.split(
     "    private func resumeKeyboardSurfaceIfNeeded", 1
@@ -346,7 +367,7 @@ if "needsInputModeSwitchKey ? .globe : .qwertyLayout" not in number_grid:
 if "accessibilityCustomActions" not in source:
     raise SystemExit("Quick punctuation alternatives must be exposed to VoiceOver.")
 PY
-grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '轻点候选，或展开全部候选查看更多' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq '"【", "】", "{", "}", "#", "%", "^", "*", "+", "="' \

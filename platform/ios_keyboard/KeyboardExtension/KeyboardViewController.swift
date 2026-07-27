@@ -160,7 +160,7 @@ final class KeyboardViewController: UIInputViewController {
             guard let self, revision == self.coreInteractionRevision else {
                 return
             }
-            self.refreshKeyboardSurface()
+            self.resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()
         }
     }
 
@@ -306,7 +306,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateScrollView.isDirectionalLockEnabled = true
         candidateScrollView.decelerationRate = .fast
         candidateScrollView.accessibilityLabel = "候选词"
-        candidateScrollView.accessibilityHint = "左右滑动查看更多候选"
+        candidateScrollView.accessibilityHint = "轻点候选，或展开全部候选查看更多"
         candidateScrollView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         candidateScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -342,6 +342,7 @@ final class KeyboardViewController: UIInputViewController {
             self?.toggleExpandedCandidates()
         }
         expandCandidateButton.accessibilityIdentifier = "private-pinyin-expand-candidates"
+        expandCandidateButton.accessibilityHint = "打开候选网格，可使用上一组和下一组按钮浏览"
         expandCandidateButton.isHidden = true
         candidateBar.addArrangedSubview(expandCandidateButton)
 
@@ -1871,6 +1872,14 @@ private extension KeyboardViewController {
         }
         keyboardSurfaceFrozen = false
         refreshKeyboardSurface(force: true)
+    }
+
+    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible() {
+        guard keyboardPresentationPhase == .visible,
+              viewIfLoaded?.window != nil else {
+            return
+        }
+        resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
     }
 
     private func resumeKeyboardSurfaceForDeliveredKeyIfPresented() {
