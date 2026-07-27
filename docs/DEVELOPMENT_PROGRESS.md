@@ -1,8 +1,35 @@
 # Development Progress
 
 Last updated: 2026-07-27
-Current stage: NINEKEY-TYPO-01 bounded nine-key correction
-Current status: The shared Rust nine-key path now adds at most two validated low-priority missing, extra, adjacent, or transposed-digit candidates after ordinary decoding. Raw digit composition and complete ordinary-candidate order remain unchanged, while the existing three-platform correction switch controls both QWERTY and nine-key behavior.
+Current stage: ABC-01 candidate stability
+Current status: The shared Rust core now treats the first visible base candidate as the stable Space-key default. Optional AI Lite reranking may reorder only the remaining page entries, while malformed permutations fail closed and identical input/context/learning snapshots reproduce identical candidate identities after Backspace, retype, and paging.
+
+## ABC-01 Candidate Stability (2026-07-27)
+
+- Added one shared candidate-page stability policy rather than duplicating
+  host-specific rules. The policy validates an exact permutation, pins original
+  index zero as the Space-key default, and permits optional ranking changes only
+  among lower candidates.
+- Applied the policy after AI response identity/text validation and also inside
+  the public Rust session reorder API. AI Lite canonicalizes its proposal before
+  updating both the session and host output, while any future direct caller that
+  tries to move index zero is rejected without mutation. A delayed or reversed
+  AI Lite result therefore cannot change what Space commits, while AI Lite can
+  still improve candidates two through nine before first display.
+- Kept ordinary base ranking semantics intact. New input, changed context, or a
+  changed learning snapshot still receives a complete fresh ranking; ABC-01
+  promises repeatability only when those inputs are the same.
+- Added fail-closed unit coverage for incomplete, duplicate, out-of-range, and
+  default-moving permutations; a reversed-AI regression that commits the
+  original default; full candidate-`id` equality after Backspace/retype and a
+  separately initialized engine replay; and paging coverage proving the full
+  list is unchanged while the displayed selection commits exactly once.
+- Passed all 44 production candidate tests, `cargo test --workspace`, desktop
+  AI and iOS AI FFI feature suites, workspace plus feature-specific Clippy with
+  warnings denied, formatting, the new ABC-01 source gate, the existing AI-07
+  and AI-08 integration gates, and `git diff --check`. The unsigned macOS IMK
+  App and Xcode 26.6 iOS 26.5 simulator App/Keyboard Extension also built
+  successfully against the updated shared core.
 
 ## iOS Physical Host-Submission Follow-up (2026-07-27)
 

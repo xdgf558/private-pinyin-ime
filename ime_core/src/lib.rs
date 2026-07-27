@@ -4,6 +4,7 @@ mod atomic_file;
 
 pub mod api;
 pub mod candidate;
+pub mod candidate_stability;
 pub mod error;
 pub mod imported_lexicon;
 pub mod key_event;
@@ -28,6 +29,7 @@ pub use candidate::{
     Candidate, CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind,
     CandidateSource,
 };
+pub use candidate_stability::{stabilize_candidate_page_order, STABLE_DEFAULT_CANDIDATE_COUNT};
 pub use error::{ImeError, ImeResult};
 pub use imported_lexicon::ImportedLexiconReport;
 pub use key_event::{KeyCode, KeyEvent, Modifiers};

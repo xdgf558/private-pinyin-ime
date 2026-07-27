@@ -1,7 +1,10 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use ime_core::{Candidate, CandidateCorrection, CandidateSource, ImeOutput, InputSession};
+use ime_core::{
+    stabilize_candidate_page_order, Candidate, CandidateCorrection, CandidateSource, ImeOutput,
+    InputSession,
+};
 use private_pinyin_local_ai_core::{
     AiBudget, AiCandidateInput, AiCandidateSetHash, AiCompositionRevision, AiDeadline, AiFeature,
     AiFeaturePolicy, AiLiteCandidateFeatures, AiLiteRanker, AiPrivacyMode, AiRawInputKind,
@@ -382,7 +385,7 @@ fn complete_candidate_order(
             .enumerate()
             .filter_map(|(index, was_seen)| (!was_seen).then_some(index)),
     );
-    Some(order)
+    stabilize_candidate_page_order(candidate_texts.len(), &order)
 }
 
 #[cfg(test)]
@@ -416,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn partial_ai_order_keeps_every_unranked_candidate_stable() {
+    fn partial_ai_order_keeps_the_default_and_every_unranked_candidate_stable() {
         let texts = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         let ranked = vec![
             AiCandidateOutput::new("c", Some(2), 5, AiReasonCode::LiteTrigram),
@@ -424,7 +427,50 @@ mod tests {
         ];
         assert_eq!(
             complete_candidate_order(&texts, &ranked),
-            Some(vec![2, 0, 1])
+            Some(vec![0, 2, 1])
+        );
+    }
+
+    #[test]
+    fn reversed_ai_order_cannot_change_the_default_candidate_commit() {
+        let engine = ImeEngine::new().expect("engine");
+        let mut session = engine.create_session();
+        let _ = session.feed_key(KeyEvent::from_char('n'));
+        let output = session.feed_key(KeyEvent::from_char('i'));
+        assert!(output.candidates.len() >= 3);
+
+        let default_candidate = output.candidates[0].clone();
+        let candidate_texts = output
+            .candidates
+            .iter()
+            .map(|candidate| candidate.text.clone())
+            .collect::<Vec<_>>();
+        let ranked = output
+            .candidates
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(index, candidate)| {
+                AiCandidateOutput::new(
+                    candidate.text.clone(),
+                    Some(index),
+                    index as i32,
+                    AiReasonCode::LiteFrequency,
+                )
+            })
+            .collect::<Vec<_>>();
+        let order =
+            complete_candidate_order(&candidate_texts, &ranked).expect("stable exact permutation");
+
+        assert_eq!(order[0], 0);
+        assert!(session.reorder_current_candidate_page(&order));
+        assert_eq!(
+            session.current_page_candidates_snapshot()[0].id,
+            default_candidate.id
+        );
+        assert_eq!(
+            session.commit_candidate(0).commit_text,
+            default_candidate.text
         );
     }
 

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::api::ImeOutput;
 use crate::candidate::Candidate;
+use crate::candidate_stability::stabilize_candidate_page_order;
 use crate::key_event::{KeyCode, KeyEvent};
 use crate::lexicon::{
     merge_user_and_base_candidates, ContinuousDecodeCache, Lexicon, NineKeyDecodeCache,
@@ -94,24 +95,23 @@ impl InputSession {
         true
     }
 
+    /// Reorders lower candidates while preserving the current Space-key default.
+    ///
+    /// The operation fails without mutation unless `order` is an exact page
+    /// permutation whose first source index remains zero.
     pub fn reorder_current_candidate_page(&mut self, order: &[usize]) -> bool {
         let start = self.page_start().min(self.candidates.len());
         let end = (start + self.page_size()).min(self.candidates.len());
         let page_len = end.saturating_sub(start);
-        if order.len() != page_len {
+        let Some(stable_order) = stabilize_candidate_page_order(page_len, order) else {
+            return false;
+        };
+        if stable_order != order {
             return false;
         }
 
-        let mut seen = vec![false; page_len];
-        for &index in order {
-            if index >= page_len || seen[index] {
-                return false;
-            }
-            seen[index] = true;
-        }
-
         let original = self.candidates[start..end].to_vec();
-        for (target_index, &source_index) in order.iter().enumerate() {
+        for (target_index, &source_index) in stable_order.iter().enumerate() {
             self.candidates[start + target_index] = original[source_index].clone();
         }
         true
