@@ -16,10 +16,11 @@ Simulator or on a device.
 
 | Check | Result | Evidence / notes |
 |---|---|---|
-| Source contract | passed | `scripts/check_ios_keyboard_sources.sh` verified the document-change, disappearance-freeze, and coalesced-refresh lifecycle hooks |
+| Source contract | passed | `scripts/check_ios_keyboard_sources.sh` verified the document-change, disappearance-freeze, redundant thaw, active-key recovery, explicit layout recovery, and coalesced-refresh lifecycle hooks |
 | Simulator build | passed | The container App and Keyboard Extension completed with `BUILD SUCCEEDED` |
 | Nine-key input | passed | The real custom surface entered `64426`, displayed `ni hao`, ranked `你好` first, and one candidate tap inserted exactly one `你好` |
 | Host dismissal | passed (equivalent host transition) | With the custom keyboard visible, navigating from the focused diagnostic field to the About page dismissed the extension and completed the host transition without a second visible pull |
+| Warm reuse thaw | passed | Returned from the About page to the same diagnostic field without recreating the App, entered `64426` again, observed the live `ni hao` / `你好` candidate strip, and committed exactly once; the field changed from `你好` to `你好你好` |
 | Layout/crash scan | passed | The dismissal log contained no Auto Layout conflict, and no new PrivatePinyin crash report was produced |
 | X Publish | pending physical device | X's exact post-publication animation is not available in Simulator; repeat the same check in the next TestFlight build |
 

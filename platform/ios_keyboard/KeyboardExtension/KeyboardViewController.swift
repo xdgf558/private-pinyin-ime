@@ -114,6 +114,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     override func textWillChange(_ textInput: UITextInput?) {
+        super.textWillChange(textInput)
         if consumePendingSelfTextChangeCallback() {
             return
         }
@@ -154,9 +155,13 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        keyboardSurfaceFrozen = false
         pendingDocumentSurfaceRevision = nil
-        refreshKeyboardSurface(force: true)
+        resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        resumeKeyboardSurfaceIfNeeded()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -1218,6 +1223,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func handle(_ key: KeySpec) {
+        // A delivered key event proves that this warm controller is active again.
+        // This is the last-resort thaw if the host reused the extension without
+        // delivering the normal appearance callback pair.
+        resumeKeyboardSurfaceIfNeeded()
         switch key.kind {
         case .character, .text, .nineKeyDigit, .space, .nineKeySpace, .enter, .backspace:
             provideTypingFeedback()
@@ -1869,7 +1878,17 @@ private extension KeyboardViewController {
             updateCandidateBar()
             rootStack.layoutIfNeeded()
         }
+        view.setNeedsLayout()
         surfaceRefreshDeferred = false
+    }
+
+    private func resumeKeyboardSurfaceIfNeeded(forceRefresh: Bool = false) {
+        let wasFrozen = keyboardSurfaceFrozen
+        guard wasFrozen || forceRefresh else {
+            return
+        }
+        keyboardSurfaceFrozen = false
+        refreshKeyboardSurface(force: true)
     }
 
     func selectKeyboardLayout(_ layout: IosKeyboardLayout) {

@@ -19,6 +19,14 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
   Deferred work is coalesced into one animation-free refresh when the keyboard
   next appears, preserving the final dismissal frame without retaining stale
   composition in the next field.
+- Closed the warm-reuse thaw gap identified in review. Both appearance
+  callbacks now resume the surface idempotently, while a delivered key event
+  provides a final recovery path if a host reuses the controller without the
+  normal callback pair. Resuming explicitly requests a layout pass so a bounds
+  change made while frozen cannot leave the tray gradient stale.
+- Restored the symmetric `super.textWillChange` lifecycle call and extended
+  the source gate to require freeze, thaw, active-key recovery, and layout
+  recovery contracts.
 - Added iOS source gates for the dismissal lifecycle contract and a dedicated
   host-submit smoke row covering X-style compose screens.
 - Xcode 26.6 (`17F109`) rebuilt the App and extension successfully. On an
@@ -26,6 +34,9 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
   `64426`, ranked and committed exactly one `你好`, then dismissed while the
   host navigated away from the focused field. The destination page completed
   the transition without a second visible pull, Auto Layout warning, or crash.
+  Returning from that page reused the same warm keyboard surface; a second
+  `64426` immediately restored the live `ni hao` / `你好` strip and committed
+  once, leaving the diagnostic field at `你好你好`.
   Physical-device X Publish confirmation remains required because simulator
   host Apps cannot reproduce X's exact publishing transition.
 
