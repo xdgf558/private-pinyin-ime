@@ -1,8 +1,45 @@
 # Development Progress
 
 Last updated: 2026-07-27
-Current stage: ABC-01 candidate stability
-Current status: The shared Rust core now treats the first visible base candidate as the stable Space-key default. Optional AI Lite reranking may reorder only the remaining page entries, while malformed permutations fail closed and identical input/context/learning snapshots reproduce identical candidate identities after Backspace, retype, and paging.
+Current stage: ABC-02 tolerant input
+Current status: The shared Rust core now provides a default-off, bounded syllable-level tolerant-pinyin postpass for seven reviewed regional fuzzy pairs. It preserves raw composition and every ordinary candidate, adds no more than two exact-lexicon alternatives, and is exposed consistently on macOS, Windows, and iOS without changing nine-key behavior.
+
+## ABC-02 Tolerant Input (2026-07-27)
+
+- Activated the existing `fuzzy_pinyin` schema as a default-off production
+  feature for the bidirectional `zh/z`, `ch/c`, `sh/s`, `n/l`, `an/ang`,
+  `en/eng`, and `in/ing` pairs. Each generated path changes one complete legal
+  syllable only; combinations of multiple fuzzy edits are deliberately
+  excluded.
+- Kept the ordinary parser, continuous lattice, candidate ordering, and
+  ABC-01 Space-key default authoritative. The postpass examines at most 16
+  alternate spellings, appends at most two exact base/user-lexicon matches, and
+  shares the existing one-correction compact-page/two-correction wide-page
+  visibility policy with TYPO-01.
+- Added an exact-only packed-index lookup for base candidates and an exact
+  SQLite `pinyin` query for learned candidates. This avoids rerunning the
+  continuous decoder for every fuzzy variant and keeps user-selected local
+  phrases eligible without introducing a second store.
+- Added one master `宽容拼音` control to macOS, Windows, and the iOS container
+  App. The control defaults off. Existing hand-edited individual fuzzy-pair
+  values are preserved until the user explicitly changes the master control,
+  at which point all seven reviewed pairs are changed together.
+- Added deterministic generation, bidirectional-pair, single-edit, bounds,
+  redacted-debug, ordinary-order preservation, stable-default, exact commit,
+  disabled-mode, and Apple latency regressions. The raw preedit remains exactly
+  what the user typed.
+- On the development Apple host for the 21-key input
+  `zongguozongguozongguo`, the unoptimized Rust test-profile median was
+  `1.213189 ms/key` enabled versus `1.113205 ms/key` disabled. The optimized
+  release-profile median was `0.356251 ms/key` enabled versus
+  `0.328545 ms/key` disabled. These local references are not device claims; the
+  existing Apple-only `60 ms/key` ceiling remains unchanged.
+- Passed `cargo test --workspace`, the desktop-AI and iOS-AI FFI feature
+  suites, workspace plus feature-specific Clippy with warnings denied,
+  formatting, installer/macOS/iOS source gates, the ABC-02 source contract,
+  and `git diff --check`. The unsigned macOS IMK App and Xcode 26.6 iOS 26.5
+  simulator App/Keyboard Extension also built successfully with the new shared
+  core and platform controls.
 
 ## ABC-01 Candidate Stability (2026-07-27)
 

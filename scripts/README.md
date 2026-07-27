@@ -43,6 +43,8 @@ Current scripts:
 - `check_ai04_rules_sources.sh`: validates bounded pinyin correction, canonical English-term preservation, read-only lexicon cleanup suggestions, and the rules-first quality gate.
 - `check_typo01_sources.sh`: validates production full-keyboard typo correction bounds, original-candidate preservation, AI Lite metadata wiring, documentation, and regression coverage.
 - `check_ninekey_typo01_sources.sh`: validates bounded nine-key edit families, exact-index viability, original-candidate preservation, shared settings, privacy, documentation, cache equivalence, and the Apple 60-ms regression.
+- `check_abc01_candidate_stability.sh`: validates the stable Space-key default, fail-closed page permutations, deterministic replay, paging identity, and documentation contract.
+- `check_abc02_tolerant_input.sh`: validates the default-off bounded fuzzy-pinyin path, exact-only lookup, three-platform controls, original-candidate preservation, privacy, documentation, and Apple 60-ms regression.
 - `check_ai05_model_gate_sources.sh`: validates strict model manifests, every external Owner approval, SHA-256/size/path/symlink/platform/hardware/privacy gate, and the model packager.
 - `check_ai06_lite_ranker_sources.sh`: validates the approved fixed-point ranker package, bounded runtime, first-party dataset declarations, and the 8-improvement/zero-regression quality gate.
 - `check_ai09_desktop_helper_sources.sh`: validates the AI-09 bounded local protocol, authenticated desktop Helper boundary, no-network contract, and platform packaging hooks.

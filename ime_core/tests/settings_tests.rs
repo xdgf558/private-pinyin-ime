@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use ime_core::{ImeMode, ImeSettings};
+use ime_core::{settings::FuzzyPinyinSettings, ImeMode, ImeSettings};
 
 #[test]
 fn packaged_default_settings_json_matches_rust_default() {
@@ -41,6 +41,22 @@ fn settings_loads_json_snapshot() {
     assert!(settings.fuzzy_pinyin.in_ing);
     assert_eq!(settings.theme, "dark");
     assert_eq!(settings.candidate_font_size, 18);
+}
+
+#[test]
+fn tolerant_pinyin_defaults_off_and_master_profiles_cover_every_reviewed_pair() {
+    let defaults = FuzzyPinyinSettings::default();
+    assert!(!defaults.any_enabled());
+
+    let enabled = FuzzyPinyinSettings::all_enabled();
+    assert!(enabled.any_enabled());
+    assert!(enabled.zh_z);
+    assert!(enabled.ch_c);
+    assert!(enabled.sh_s);
+    assert!(enabled.n_l);
+    assert!(enabled.an_ang);
+    assert!(enabled.en_eng);
+    assert!(enabled.in_ing);
 }
 
 #[test]

@@ -33,6 +33,7 @@ struct ContentView: View {
     @State private var statusText = ""
     @State private var learningEnabled = false
     @State private var pinyinCorrectionEnabled = true
+    @State private var tolerantPinyinEnabled = false
     @State private var lexiconStatusText = ""
     @State private var lexiconOperationText = ""
     @State private var showingRimeImporter = false
@@ -80,6 +81,7 @@ struct ContentView: View {
             _ = IosSettingsStore.ensureSettingsFile()
             learningEnabled = IosSettingsStore.isLearningEnabled()
             pinyinCorrectionEnabled = IosSettingsStore.isPinyinCorrectionEnabled()
+            tolerantPinyinEnabled = IosSettingsStore.isTolerantPinyinEnabled()
             lexiconStatusText = IosSettingsStore.importedLexiconSummaryText()
             lexiconOperationText = IosSettingsStore.rimeImportStatusText() ?? ""
 #if DEBUG
@@ -352,6 +354,24 @@ struct ContentView: View {
                 .padding(16)
 
                 Text("仅在本机补充少量低优先级候选，原始输入候选始终保留。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(StationTheme.textSecondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, -8)
+                    .padding(.bottom, 16)
+
+                divider
+
+                Toggle("宽容拼音", isOn: Binding(
+                    get: { tolerantPinyinEnabled },
+                    set: { setTolerantPinyinEnabled($0) }
+                ))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(StationTheme.textPrimary)
+                .tint(StationTheme.lamp)
+                .padding(16)
+
+                Text("兼容 zh/z、ch/c、sh/s、n/l 和三组前后鼻音；原候选与空格首选保持不变。")
                     .font(.system(size: 12))
                     .foregroundStyle(StationTheme.textSecondary)
                     .padding(.horizontal, 16)
@@ -682,6 +702,16 @@ struct ContentView: View {
         } else {
             pinyinCorrectionEnabled = IosSettingsStore.isPinyinCorrectionEnabled()
             statusText = "无法更新拼音智能纠错设置。"
+        }
+    }
+
+    private func setTolerantPinyinEnabled(_ enabled: Bool) {
+        if IosSettingsStore.setTolerantPinyinEnabled(enabled) {
+            tolerantPinyinEnabled = enabled
+            statusText = enabled ? "宽容拼音已开启。" : "宽容拼音已关闭。"
+        } else {
+            tolerantPinyinEnabled = IosSettingsStore.isTolerantPinyinEnabled()
+            statusText = "无法更新宽容拼音设置。"
         }
     }
 

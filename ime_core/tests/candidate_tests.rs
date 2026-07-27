@@ -115,6 +115,137 @@ fn compact_candidate_pages_keep_four_original_paths_before_one_correction() {
 }
 
 #[test]
+fn tolerant_pinyin_preserves_original_order_and_exposes_bounded_low_priority_candidates() {
+    let mut tolerant_settings = ImeSettings::default();
+    tolerant_settings.ai.enable_pinyin_correction = false;
+    tolerant_settings.fuzzy_pinyin.zh_z = true;
+    let tolerant =
+        ImeEngine::with_settings(tolerant_settings).expect("engine loads with tolerant pinyin");
+
+    let mut ordinary_settings = ImeSettings::default();
+    ordinary_settings.ai.enable_pinyin_correction = false;
+    let ordinary =
+        ImeEngine::with_settings(ordinary_settings).expect("engine loads without tolerant pinyin");
+
+    let tolerant_candidates = tolerant.candidates_for_raw("zongguo");
+    let ordinary_candidates = ordinary.candidates_for_raw("zongguo");
+    let retained_originals = tolerant_candidates
+        .iter()
+        .filter(|candidate| {
+            !candidate
+                .correction
+                .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        retained_originals,
+        ordinary_candidates.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        tolerant_candidates
+            .first()
+            .map(|candidate| candidate.id.as_str()),
+        ordinary_candidates
+            .first()
+            .map(|candidate| candidate.id.as_str()),
+        "tolerant input must not move the Space/default candidate"
+    );
+
+    let tolerant_paths = tolerant_candidates
+        .iter()
+        .filter(|candidate| {
+            candidate
+                .correction
+                .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .collect::<Vec<_>>();
+    assert!(tolerant_paths
+        .iter()
+        .any(|candidate| candidate.text == "中国" && candidate.pinyin == "zhong guo"));
+    assert!(tolerant_paths.len() <= 2);
+    assert!(
+        tolerant_candidates
+            .iter()
+            .take(5)
+            .filter(|candidate| {
+                candidate
+                    .correction
+                    .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+            })
+            .count()
+            <= 1
+    );
+}
+
+#[test]
+fn tolerant_pinyin_session_commits_without_mutating_the_typed_preedit() {
+    let mut settings = ImeSettings::default();
+    settings.ai.enable_pinyin_correction = false;
+    settings.fuzzy_pinyin.zh_z = true;
+    let engine = ImeEngine::with_settings(settings).expect("engine loads with tolerant pinyin");
+    let mut session = engine.create_session();
+    let mut output = session.feed_key(KeyEvent::from_char('z'));
+    for character in "ongguo".chars() {
+        output = session.feed_key(KeyEvent::from_char(character));
+    }
+
+    assert_eq!(output.preedit, "zongguo");
+    let candidate_index = output
+        .candidates
+        .iter()
+        .position(|candidate| {
+            candidate.text == "中国"
+                && candidate
+                    .correction
+                    .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .expect("fuzzy zh/z candidate is visible");
+    let commit = session.commit_candidate(candidate_index);
+    assert_eq!(commit.commit_text, "中国");
+    assert!(session.raw_input.is_empty());
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn tolerant_pinyin_stays_within_interactive_lookup_budget() {
+    const INPUT: &str = "zongguozongguozongguo";
+
+    let mut enabled_settings = ImeSettings::default();
+    enabled_settings.ai.enable_pinyin_correction = false;
+    enabled_settings.fuzzy_pinyin = ime_core::settings::FuzzyPinyinSettings::all_enabled();
+    let enabled =
+        ImeEngine::with_settings(enabled_settings).expect("engine loads with tolerant pinyin");
+
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without tolerant pinyin");
+
+    let enabled_median = median_lookup_duration(|| {
+        let mut session = enabled.create_session();
+        INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == INPUT
+    }) / INPUT.len() as u32;
+    let disabled_median = median_lookup_duration(|| {
+        let mut session = disabled.create_session();
+        INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == INPUT
+    }) / INPUT.len() as u32;
+    eprintln!(
+        "ABC-02 21-key incremental median per key: enabled={enabled_median:?}, disabled={disabled_median:?}"
+    );
+
+    assert!(
+        enabled_median <= Duration::from_millis(60),
+        "tolerant pinyin median {enabled_median:?} exceeded 60 ms per key"
+    );
+}
+
+#[test]
 fn adjacent_key_typo_commits_corrected_candidate_without_mutating_preedit() {
     let engine = ImeEngine::new().expect("engine loads production lexicon");
     let mut session = engine.create_session();

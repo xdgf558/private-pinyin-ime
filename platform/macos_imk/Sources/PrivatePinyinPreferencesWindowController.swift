@@ -405,6 +405,8 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
     private let predictionToggle = StationToggle()
     private let learningToggle = StationToggle()
     private let pinyinCorrectionToggle = StationToggle()
+    private let tolerantPinyinToggle = StationToggle()
+    private var tolerantPinyinToggleDirty = false
     private let learningTitleLabel = NSTextField(labelWithString: "用户学习")
     private let learningDetailLabel = NSTextField(labelWithString: "记住你常选的词，像猫记得饭点一样准。")
     // These views survive page rebuilds and move between page stacks. Page
@@ -530,11 +532,16 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         predictionToggle.onToggle = { [weak self] in self?.commitSettings() }
         learningToggle.onToggle = { [weak self] in self?.commitSettings() }
         pinyinCorrectionToggle.onToggle = { [weak self] in self?.commitSettings() }
+        tolerantPinyinToggle.onToggle = { [weak self] in
+            self?.tolerantPinyinToggleDirty = true
+            self?.commitSettings()
+        }
         automaticUpdateToggle.onToggle = { [weak self] in self?.automaticUpdateSettingChanged() }
         strictPrivacyToggle.setAccessibilityLabel("严格隐私模式")
         predictionToggle.setAccessibilityLabel("显示预测候选")
         learningToggle.setAccessibilityLabel("用户学习")
         pinyinCorrectionToggle.setAccessibilityLabel("拼音智能纠错")
+        tolerantPinyinToggle.setAccessibilityLabel("宽容拼音")
         automaticUpdateToggle.setAccessibilityLabel("自动检查更新")
 
         configurePersistentPageViews()
@@ -858,16 +865,44 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
             toggle: pinyinCorrectionToggle,
             minimumHeight: 142
         )
+        let tolerantCard = makeSettingCard(
+            tag: "FUZZY",
+            titleLabel: label(
+                "宽容拼音",
+                font: .systemFont(ofSize: 17, weight: .semibold),
+                color: StationTheme.textPrimary
+            ),
+            detailLabel: wrappingLabel(
+                "兼容常见模糊音，原候选和空格首选保持不变。",
+                font: .systemFont(ofSize: 13, weight: .regular),
+                color: StationTheme.textSecondary
+            ),
+            toggle: tolerantPinyinToggle,
+            minimumHeight: 142
+        )
 
-        let row = NSStackView(views: [predictionCard, learningCard, correctionCard])
-        row.orientation = .horizontal
-        row.alignment = .top
-        row.distribution = .fillEqually
-        row.spacing = 16
-        row.translatesAutoresizingMaskIntoConstraints = false
+        let firstRow = NSStackView(views: [predictionCard, learningCard])
+        firstRow.orientation = .horizontal
+        firstRow.alignment = .top
+        firstRow.distribution = .fillEqually
+        firstRow.spacing = 16
         predictionCard.heightAnchor.constraint(equalTo: learningCard.heightAnchor).isActive = true
-        learningCard.heightAnchor.constraint(equalTo: correctionCard.heightAnchor).isActive = true
-        return row
+
+        let secondRow = NSStackView(views: [correctionCard, tolerantCard])
+        secondRow.orientation = .horizontal
+        secondRow.alignment = .top
+        secondRow.distribution = .fillEqually
+        secondRow.spacing = 16
+        correctionCard.heightAnchor.constraint(equalTo: tolerantCard.heightAnchor).isActive = true
+
+        let grid = NSStackView(views: [firstRow, secondRow])
+        grid.orientation = .vertical
+        grid.alignment = .leading
+        grid.spacing = 16
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        firstRow.widthAnchor.constraint(equalTo: grid.widthAnchor).isActive = true
+        secondRow.widthAnchor.constraint(equalTo: grid.widthAnchor).isActive = true
+        return grid
     }
 
     private func makeNavigationGrid() -> NSView {
@@ -1493,6 +1528,12 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
         predictionToggle.isOn = settings["enable_prediction"] as? Bool ?? true
         let ai = settings["ai"] as? [String: Any] ?? [:]
         pinyinCorrectionToggle.isOn = ai["enable_pinyin_correction"] as? Bool ?? true
+        let fuzzyPinyin = settings["fuzzy_pinyin"] as? [String: Any] ?? [:]
+        let fuzzyKeys = ["zh_z", "ch_c", "sh_s", "n_l", "an_ang", "en_eng", "in_ing"]
+        tolerantPinyinToggle.isOn = fuzzyKeys.contains {
+            fuzzyPinyin[$0] as? Bool == true
+        }
+        tolerantPinyinToggleDirty = false
         let learning = settings["enable_user_learning"] as? Bool ?? true
         learningToggle.isOn = strictPrivacy ? false : learning
         setLearningEnabled(!strictPrivacy)
@@ -1535,6 +1576,13 @@ final class PrivatePinyinPreferencesWindowController: NSWindowController, NSWind
                 ai["enable_translation"] = false
             }
             settings["ai"] = ai
+            if tolerantPinyinToggleDirty {
+                var fuzzyPinyin = settings["fuzzy_pinyin"] as? [String: Any] ?? [:]
+                for key in ["zh_z", "ch_c", "sh_s", "n_l", "an_ang", "en_eng", "in_ing"] {
+                    fuzzyPinyin[key] = tolerantPinyinToggle.isOn
+                }
+                settings["fuzzy_pinyin"] = fuzzyPinyin
+            }
         }
 
         if ok {
