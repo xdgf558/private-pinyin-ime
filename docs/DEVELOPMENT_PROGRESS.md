@@ -4,6 +4,45 @@ Last updated: 2026-07-27
 Current stage: NINEKEY-TYPO-01 bounded nine-key correction
 Current status: The shared Rust nine-key path now adds at most two validated low-priority missing, extra, adjacent, or transposed-digit candidates after ordinary decoding. Raw digit composition and complete ordinary-candidate order remain unchanged, while the existing three-platform correction switch controls both QWERTY and nine-key behavior.
 
+## iOS Physical Host-Submission Follow-up (2026-07-27)
+
+- The physical-device X retest of TestFlight `0.1.28 (24)` still showed about
+  one second of host-view pulling after Publish. The supplied capture shows
+  that the custom keyboard has disappeared while X remains in its
+  `正在发送帖子...` transition.
+- The remaining race precedes `viewWillDisappear`: X can issue an external
+  document change first, allowing a queued reset completion to touch keyboard
+  height and root-stack layout before the previous freeze boundary activates.
+- The extension now freezes its visible surface at the start of external
+  `textWillChange`, records explicit detached/appearing/visible/disappearing
+  presentation phases, and permits delivered-key recovery only while the
+  keyboard is actually presented. Queued core work may update logical state
+  while frozen but cannot change the host's dismissal geometry.
+- Closed the same-App field-switch side effect found in review. After
+  `textDidChange`, the extension waits for a bounded 50 ms presentation-state
+  settling window, then thaws and clears the old candidate surface only if its
+  presentation phase is still `visible`; a phase that has advanced to
+  `disappearing` or `detached` remains frozen. The revision guard also prevents
+  a delayed thaw from applying after newer input work.
+- The 50 ms window is a reviewed host-lifecycle heuristic, not proof of X's
+  callback timing. If the physical-device pull remains, record timestamps for
+  `textDidChange`, `viewWillDisappear`, and the queued core-reset completion;
+  a disappearance arriving after this window is the first residual race to
+  investigate.
+- Replaced unassociated feedback-generator construction with the iOS 17.5+
+  view-attached UIKit APIs and re-prepares them after presentation. Physical
+  feedback remains subject to the device's system haptic settings and needs a
+  real-device check. The project already has an iOS 18 minimum deployment
+  target, so this API does not raise the supported system version.
+- Removed the compact candidate strip's previous/next arrows. The downward
+  entry remains the single route to the expanded 3-by-3 candidate grid, whose
+  own page controls continue to expose later groups. Its VoiceOver hint now
+  explicitly identifies those previous/next controls.
+- A clean Xcode 26.6 arm64 iOS 26.5 simulator build passed. Simulator smoke
+  confirmed compact `hai` candidates expose only the downward entry, the
+  expanded grid retains later-page navigation, and a warm keyboard can dismiss,
+  return, and produce a fresh `ni` composition and candidates.
+
 ## iOS 0.1.28 (24) TestFlight Upload (2026-07-27)
 
 - Advanced both the container App and Keyboard Extension to `0.1.28 (24)`.

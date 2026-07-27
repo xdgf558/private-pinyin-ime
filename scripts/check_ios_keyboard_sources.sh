@@ -121,7 +121,7 @@ grep -q "override func viewDidAppear" platform/ios_keyboard/KeyboardExtension/Ke
 grep -q "override func viewWillDisappear" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "keyboardSurfaceFrozen = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "keyboardSurfaceFrozen = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q "resumeKeyboardSurfaceIfNeeded()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "view.setNeedsLayout()" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "surfaceRefreshDeferred = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "func refreshKeyboardSurface(force: Bool = false)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -156,8 +156,8 @@ grep -q 'systemImageName: "ellipsis"' platform/ios_keyboard/KeyboardExtension/Ke
 grep -q 'title = englishMode ? "space" : "猫栈拼音"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'CandidateScrollView' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'touchesShouldCancel' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'UISelectionFeedbackGenerator' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'UIImpactFeedbackGenerator(style: .light)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'UISelectionFeedbackGenerator(view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'UIImpactFeedbackGenerator(style: .light, view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'impactOccurred(intensity: 0.62)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'hitTestOutsets.left = 10' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -228,6 +228,20 @@ text_will_change = source.split("    override func textWillChange", 1)[1].split(
 )[0]
 if "super.textWillChange(textInput)" not in text_will_change:
     raise SystemExit("The iOS document-change lifecycle must call super.textWillChange.")
+if "keyboardSurfaceFrozen = true" not in text_will_change:
+    raise SystemExit("External iOS document changes must freeze the surface before queued reset work.")
+
+text_did_change = source.split("    override func textDidChange", 1)[1].split(
+    "    override func viewWillAppear", 1
+)[0]
+if "resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()" not in text_did_change:
+    raise SystemExit("A completed iOS document change must resolve the frozen surface after the presentation settles.")
+if "DispatchQueue.main.asyncAfter" not in text_did_change:
+    raise SystemExit("Visible document-change thaw must wait for the host presentation state to settle.")
+if "Self.visibleDocumentChangeThawDelay" not in text_did_change:
+    raise SystemExit("Visible document-change thaw must use the bounded named delay.")
+if "visibleDocumentChangeThawDelay: TimeInterval = 0.05" not in source:
+    raise SystemExit("The iOS field-switch thaw delay must remain the reviewed 50 ms window.")
 
 view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
     "    override func viewWillDisappear", 1
@@ -238,8 +252,38 @@ if "resumeKeyboardSurfaceIfNeeded()" not in view_did_appear:
 key_handler = source.split("    private func handle(_ key: KeySpec)", 1)[1].split(
     "    @objc private func handleQuickPunctuationGesture", 1
 )[0]
-if "resumeKeyboardSurfaceIfNeeded()" not in key_handler:
-    raise SystemExit("A delivered iOS key event must recover a frozen warm surface.")
+if "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" not in key_handler:
+    raise SystemExit("A delivered iOS key event must use the presentation-gated thaw path.")
+
+document_change_resume = source.split(
+    "    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible", 1
+)[1].split("    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1)[0]
+for required in (
+    "keyboardPresentationPhase == .visible",
+    "viewIfLoaded?.window != nil",
+    "resumeKeyboardSurfaceIfNeeded(forceRefresh: true)",
+):
+    if required not in document_change_resume:
+        raise SystemExit(f"Missing visible-document-change thaw contract: {required}")
+if ".disappearing" in document_change_resume or ".detached" in document_change_resume:
+    raise SystemExit("A disappearing or detached iOS keyboard must not thaw after a document change.")
+
+key_surface_resume = source.split(
+    "    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1
+)[1].split("    func selectKeyboardLayout", 1)[0]
+for required in (
+    "keyboardPresentationPhase == .appearing",
+    "keyboardPresentationPhase == .visible",
+    "viewIfLoaded?.window != nil",
+    "resumeKeyboardSurfaceIfNeeded()",
+):
+    if required not in key_surface_resume:
+        raise SystemExit(f"Missing presentation-gated iOS key thaw contract: {required}")
+
+if "previousCandidatePageButton" in source or "nextCandidatePageButton" in source:
+    raise SystemExit("The compact iOS candidate bar must use only the downward expansion entry.")
+if "打开候选网格，可使用上一组和下一组按钮浏览" not in source:
+    raise SystemExit("The compact iOS expansion control must expose accessible candidate paging guidance.")
 
 surface_resume = source.split(
     "    private func resumeKeyboardSurfaceIfNeeded", 1
@@ -329,7 +373,7 @@ if "needsInputModeSwitchKey ? .globe : .qwertyLayout" not in number_grid:
 if "accessibilityCustomActions" not in source:
     raise SystemExit("Quick punctuation alternatives must be exposed to VoiceOver.")
 PY
-grep -q '左右滑动查看更多候选' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q '轻点候选，或展开全部候选查看更多' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "extendedSymbolsVisible" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "#+="' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq '"【", "】", "{", "}", "#", "%", "^", "*", "+", "="' \

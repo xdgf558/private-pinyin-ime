@@ -82,7 +82,7 @@ break across iOS releases and create App Store review risk.
 6. Confirm Full Access remains off.
 7. In the container app, enable Learn selected candidates, type/select a candidate again, and confirm the keyboard still works with the shared settings path.
 8. Open the keyboard's inline preferences, switch `输出字形` to `繁體`, and confirm `limian` displays and commits `裡面`; switch back to `简体` and confirm `里面` returns.
-9. Enter pinyin with more than three results and swipe the candidate strip to confirm up to nine candidates in the group remain selectable before using the fixed next-group control.
+9. Enter pinyin with more than three results and confirm the compact strip exposes only the downward expansion control. Open it to verify all nine candidates in the group remain selectable and later groups remain reachable from the expanded grid.
 10. Open `123`, then `#+=`, and verify the extended symbol rows match the requested bracket/operator/book-title/punctuation set; tap `123` to return to the original numeric page.
 11. In the container App, choose a small Rime dictionary containing explicit `phrase<TAB>pinyin` rows. Switch to 猫栈拼音, then verify the imported phrase appears; clear the imported layer and verify the bundled base still works. Repeat once with App Group storage unavailable and confirm importing is disabled without breaking typing.
 12. Confirm the UI shows the imported source name. Tap `一键导入雾凇精选`, review the GPL/source confirmation, and verify the pinned 2026.03.26 subset imports only after consent. Confirm cancelling starts no request, a host/hash failure leaves the existing layer usable, clearing removes the displayed source, and the keyboard still works with Full Access off.
