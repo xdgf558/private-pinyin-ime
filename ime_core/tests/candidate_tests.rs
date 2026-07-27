@@ -920,7 +920,8 @@ fn same_full_keyboard_composition_replays_identical_candidate_identities() {
         expected
     );
 
-    let mut replay = engine.create_session();
+    let replay_engine = ImeEngine::new().expect("independent engine loads production lexicon");
+    let mut replay = replay_engine.create_session();
     for character in "zhongguo".chars() {
         let _ = replay.feed_key(KeyEvent::from_char(character));
     }
@@ -963,7 +964,7 @@ fn paging_preserves_candidate_identities_and_commits_the_visible_selection() {
 }
 
 #[test]
-fn candidate_page_reordering_requires_an_exact_permutation() {
+fn candidate_page_reordering_requires_a_stable_default_and_exact_permutation() {
     let mut session = session_with_page_size(
         "phrase\tpinyin\tfrequency\n你\tni\t100\n呢\tni\t90\n泥\tni\t80\n",
         3,
@@ -976,7 +977,17 @@ fn candidate_page_reordering_requires_an_exact_permutation() {
         .into_iter()
         .map(|candidate| candidate.text)
         .collect::<Vec<_>>();
-    assert!(session.reorder_current_candidate_page(&[2, 0, 1]));
+    assert!(!session.reorder_current_candidate_page(&[2, 0, 1]));
+    assert_eq!(
+        session
+            .current_page_candidates_snapshot()
+            .into_iter()
+            .map(|candidate| candidate.text)
+            .collect::<Vec<_>>(),
+        before
+    );
+
+    assert!(session.reorder_current_candidate_page(&[0, 2, 1]));
     let after = session
         .current_page_candidates_snapshot()
         .into_iter()
@@ -984,7 +995,7 @@ fn candidate_page_reordering_requires_an_exact_permutation() {
         .collect::<Vec<_>>();
     assert_eq!(
         after,
-        vec![before[2].clone(), before[0].clone(), before[1].clone()]
+        vec![before[0].clone(), before[2].clone(), before[1].clone()]
     );
 
     assert!(!session.reorder_current_candidate_page(&[0, 0, 1]));

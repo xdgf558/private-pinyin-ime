@@ -10,18 +10,20 @@ Current status: The shared Rust core now treats the first visible base candidate
   host-specific rules. The policy validates an exact permutation, pins original
   index zero as the Space-key default, and permits optional ranking changes only
   among lower candidates.
-- Applied the policy after AI response identity/text validation and before both
-  the Rust session page and host-visible output are reordered. A delayed or
-  reversed AI Lite result therefore cannot change what Space commits, while AI
-  Lite can still improve candidates two through nine.
+- Applied the policy after AI response identity/text validation and also inside
+  the public Rust session reorder API. AI Lite canonicalizes its proposal before
+  updating both the session and host output, while any future direct caller that
+  tries to move index zero is rejected without mutation. A delayed or reversed
+  AI Lite result therefore cannot change what Space commits, while AI Lite can
+  still improve candidates two through nine before first display.
 - Kept ordinary base ranking semantics intact. New input, changed context, or a
   changed learning snapshot still receives a complete fresh ranking; ABC-01
   promises repeatability only when those inputs are the same.
-- Added fail-closed unit coverage for incomplete, duplicate, and out-of-range
-  permutations; a reversed-AI regression that commits the original default;
-  full candidate-`id` equality after Backspace/retype and independent session
-  replay; and paging coverage proving the full list is unchanged while the
-  displayed selection commits exactly once.
+- Added fail-closed unit coverage for incomplete, duplicate, out-of-range, and
+  default-moving permutations; a reversed-AI regression that commits the
+  original default; full candidate-`id` equality after Backspace/retype and a
+  separately initialized engine replay; and paging coverage proving the full
+  list is unchanged while the displayed selection commits exactly once.
 - Passed all 44 production candidate tests, `cargo test --workspace`, desktop
   AI and iOS AI FFI feature suites, workspace plus feature-specific Clippy with
   warnings denied, formatting, the new ABC-01 source gate, the existing AI-07

@@ -10,6 +10,7 @@ fi
 
 required_files=(
   "ime_core/src/candidate_stability.rs"
+  "ime_core/src/session.rs"
   "ime_core/tests/candidate_tests.rs"
   "ffi/ime_ffi/src/local_ai.rs"
   "docs/DECISIONS.md"
@@ -28,11 +29,17 @@ grep -q 'STABLE_DEFAULT_CANDIDATE_COUNT: usize = 1' \
   ime_core/src/candidate_stability.rs
 grep -q 'pub fn stabilize_candidate_page_order' \
   ime_core/src/candidate_stability.rs
+grep -q 'stabilize_candidate_page_order(page_len, order)' \
+  ime_core/src/session.rs
+grep -q 'if stable_order != order' \
+  ime_core/src/session.rs
 grep -q 'stabilize_candidate_page_order(candidate_texts.len(), &order)' \
   ffi/ime_ffi/src/local_ai.rs
 grep -q 'reversed_ai_order_cannot_change_the_default_candidate_commit' \
   ffi/ime_ffi/src/local_ai.rs
 grep -q 'same_full_keyboard_composition_replays_identical_candidate_identities' \
+  ime_core/tests/candidate_tests.rs
+grep -q 'independent engine loads production lexicon' \
   ime_core/tests/candidate_tests.rs
 grep -q 'paging_preserves_candidate_identities_and_commits_the_visible_selection' \
   ime_core/tests/candidate_tests.rs
