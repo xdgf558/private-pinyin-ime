@@ -1103,7 +1103,7 @@ fn user_candidate(
 ) -> Candidate {
     let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, pinyin, CandidateSource::User)
-        .with_score(Ranker::score_weight(weight))
+        .with_score(Ranker::score_user_learning_weight(weight))
         .with_rank_score(Ranker::score_user_match(weight, match_kind))
 }
 
@@ -1113,7 +1113,7 @@ fn user_prediction_candidate(
 ) -> Candidate {
     let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, pinyin, CandidateSource::Prediction)
-        .with_score(Ranker::score_weight(weight))
+        .with_score(Ranker::score_user_learning_weight(weight))
         .with_rank_score(Ranker::score_user_prediction_weight(weight))
 }
 
@@ -1125,7 +1125,7 @@ fn user_short_prediction_candidate(
 ) -> Candidate {
     let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, "", CandidateSource::Prediction)
-        .with_score(Ranker::score_weight(weight))
+        .with_score(Ranker::score_user_learning_weight(weight))
         .with_rank_score(Ranker::score_user_short_prediction_weight(weight))
 }
 
@@ -1135,7 +1135,7 @@ fn user_trigram_prediction_candidate(
 ) -> Candidate {
     let weight = decayed_weight(stored_weight, updated_at_ms, reference_time_ms);
     Candidate::new(phrase, pinyin, CandidateSource::Prediction)
-        .with_score(Ranker::score_weight(weight))
+        .with_score(Ranker::score_user_learning_weight(weight))
         .with_rank_score(Ranker::score_user_trigram_prediction_weight(weight))
 }
 

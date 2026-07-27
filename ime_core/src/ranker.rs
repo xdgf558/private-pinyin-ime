@@ -11,6 +11,9 @@ const CONTINUOUS_INITIAL_PENALTY: f64 = 2.5;
 const BASE_TRANSITION_WEIGHT: f64 = 0.8;
 const USER_TRANSITION_BOOST: f64 = 6.0;
 const USER_TRANSITION_WEIGHT: f64 = 2.0;
+/// Two decayed observations remain warm-up data; the third begins contributing
+/// the same effective weight that one observation contributed before ABC-03.
+pub const USER_LEARNING_CONFIRMATION_WEIGHT: f64 = 3.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateMatchKind {
@@ -32,12 +35,19 @@ impl Ranker {
         weight.max(0.0)
     }
 
+    pub fn score_user_learning_weight(weight: f64) -> f64 {
+        effective_user_learning_weight(weight)
+    }
+
     pub fn score_user_prediction(base_frequency: u32) -> f64 {
         Self::score_user_prediction_weight(f64::from(base_frequency))
     }
 
     pub fn score_user_prediction_weight(weight: f64) -> f64 {
-        learned_score(USER_PREDICTION_BOOST, weight)
+        learned_score(
+            USER_PREDICTION_BOOST,
+            effective_user_learning_weight(weight),
+        )
     }
 
     pub fn score_user_short_prediction(base_frequency: u32) -> f64 {
@@ -45,11 +55,17 @@ impl Ranker {
     }
 
     pub fn score_user_short_prediction_weight(weight: f64) -> f64 {
-        learned_score(USER_SHORT_PREDICTION_BOOST, weight)
+        learned_score(
+            USER_SHORT_PREDICTION_BOOST,
+            effective_user_learning_weight(weight),
+        )
     }
 
     pub fn score_user_trigram_prediction_weight(weight: f64) -> f64 {
-        learned_score(USER_TRIGRAM_PREDICTION_BOOST, weight)
+        learned_score(
+            USER_TRIGRAM_PREDICTION_BOOST,
+            effective_user_learning_weight(weight),
+        )
     }
 
     pub fn score_continuous_token(base_frequency: u32, phrase_chars: usize) -> f64 {
@@ -67,7 +83,7 @@ impl Ranker {
         } else {
             (f64::from(base_frequency) + 1.0).ln() * BASE_TRANSITION_WEIGHT
         };
-        let user_weight = user_weight.max(0.0);
+        let user_weight = effective_user_learning_weight(user_weight);
         let user_score = if user_weight == 0.0 {
             0.0
         } else {
@@ -117,7 +133,10 @@ impl Ranker {
             CandidateMatchKind::Prefix => 1.0,
             CandidateMatchKind::InitialPrefix => 0.8,
         };
-        let weight = weight.max(0.0);
+        let weight = effective_user_learning_weight(weight);
+        if weight == 0.0 {
+            return 0.0;
+        }
         match_tier * MATCH_TIER_WEIGHT
             + USER_SOURCE_BOOST * weight.min(1.0)
             + Self::score_weight(weight)
@@ -137,4 +156,8 @@ impl Ranker {
 fn learned_score(boost: f64, weight: f64) -> f64 {
     let weight = weight.max(0.0);
     boost * weight.min(1.0) + Ranker::score_weight(weight)
+}
+
+fn effective_user_learning_weight(weight: f64) -> f64 {
+    (weight.max(0.0) - (USER_LEARNING_CONFIRMATION_WEIGHT - 1.0)).max(0.0)
 }

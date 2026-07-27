@@ -307,7 +307,13 @@ fn build_candidate_inputs(
         .iter()
         .enumerate()
         .map(|(rank, candidate)| {
-            let frequency = if candidate.source == CandidateSource::User {
+            let mature_user_learning =
+                candidate.source == CandidateSource::User && candidate.score > 0.0;
+            // Base predictions keep their ordinary score, while warm-up user
+            // predictions carry zero effective learning score under ABC-03.
+            let rankable_prediction =
+                candidate.source == CandidateSource::Prediction && candidate.score > 0.0;
+            let frequency = if mature_user_learning {
                 1_000
             } else {
                 normalized_score(candidate.rank_score, minimum_score, maximum_score)
@@ -320,9 +326,10 @@ fn build_candidate_inputs(
             } else {
                 0
             };
-            let prediction = candidate.source == CandidateSource::Prediction;
-            let bigram = u16::from(prediction && !session.context_tokens.is_empty()) * 1_000;
-            let trigram = u16::from(prediction && session.context_tokens.len() >= 2) * 1_000;
+            let bigram =
+                u16::from(rankable_prediction && !session.context_tokens.is_empty()) * 1_000;
+            let trigram =
+                u16::from(rankable_prediction && session.context_tokens.len() >= 2) * 1_000;
             let typo_correction = candidate
                 .correction
                 .map_or(0, CandidateCorrection::ai_lite_score);
@@ -416,6 +423,37 @@ mod tests {
         let inputs = build_candidate_inputs(&session, &[plain, corrected]);
         assert_eq!(inputs[0].lite_features().typo_correction(), 0);
         assert_eq!(inputs[1].lite_features().typo_correction(), 750);
+    }
+
+    #[test]
+    fn warmup_learning_does_not_reach_ai_lite_frequency_or_context_features() {
+        let engine = ImeEngine::new().expect("engine");
+        let mut session = engine.create_session();
+        session.context_tokens = vec!["今天".to_owned(), "天气".to_owned()];
+        let warmup_user = Candidate::new("候选", "hou xuan", CandidateSource::User).with_score(0.0);
+        let mature_user =
+            Candidate::new("常用", "chang yong", CandidateSource::User).with_score(1.0);
+        let warmup_prediction =
+            Candidate::new("不错", "bu cuo", CandidateSource::Prediction).with_score(0.0);
+        let mature_prediction =
+            Candidate::new("很好", "hen hao", CandidateSource::Prediction).with_score(1.0);
+
+        let inputs = build_candidate_inputs(
+            &session,
+            &[
+                warmup_user,
+                mature_user,
+                warmup_prediction,
+                mature_prediction,
+            ],
+        );
+
+        assert_eq!(inputs[0].lite_features().frequency(), 0);
+        assert_eq!(inputs[1].lite_features().frequency(), 1_000);
+        assert_eq!(inputs[2].lite_features().bigram(), 0);
+        assert_eq!(inputs[2].lite_features().trigram(), 0);
+        assert_eq!(inputs[3].lite_features().bigram(), 1_000);
+        assert_eq!(inputs[3].lite_features().trigram(), 1_000);
     }
 
     #[test]
