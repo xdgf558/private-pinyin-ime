@@ -116,6 +116,14 @@ fi
 grep -q '\$currentSettings = Read-Settings' \
   platform/windows_tsf/installer/open-settings.ps1
 grep -q '\$response.Dispose()' platform/windows_tsf/installer/open-settings.ps1
+grep -q '\$output = @(& \$SettingsTool @arguments 2>&1)' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q '\[System.Net.SecurityProtocolType\]::Tls12' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'InvocationSelfTestDirectory' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Validate Windows settings-tool argument boundaries' \
+  .github/workflows/rust.yml
 grep -q 'System.Management.Automation.Language.Parser]::ParseFile' \
   scripts/test_windows_powershell_syntax.ps1
 grep -q 'test_windows_powershell_syntax.ps1' .github/workflows/rust.yml

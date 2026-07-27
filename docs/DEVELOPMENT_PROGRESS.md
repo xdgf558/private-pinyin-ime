@@ -1,8 +1,15 @@
 # Development Progress
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 Current stage: TYPO-01 bounded full-keyboard pinyin correction
 Current status: The shared Rust full-keyboard path now preserves raw input and every original candidate while adding at most two validated low-priority typo candidates. Reviewed rules and constrained physical-key edits feed explicit correction metadata into AI Lite; nine-key behavior remains unchanged and is deferred to its own stage.
+
+## Windows White Frost Import Diagnostics (2026-07-27)
+
+- Reproduced the fixed official White Frost 1.0.4 asset as 44,008,360 bytes with SHA-256 `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`.
+- Re-ran the production importer successfully: 653,308 accepted rows, 653,136 unique phrase/pinyin identities, and an 18,083,664-byte canonical `rime_frost.tsv`.
+- Replaced `Start-Process -ArgumentList` with native array invocation so Windows profile and temporary paths containing spaces remain single arguments.
+- Added explicit TLS 1.2 compatibility, stage-specific sanitized failures, and a Windows CI self-test that invokes the packaged settings tool through a directory containing spaces.
 
 ## iOS Host Submission Transition Smoothing (2026-07-27)
 
