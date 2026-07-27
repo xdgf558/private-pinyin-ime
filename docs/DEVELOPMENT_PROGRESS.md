@@ -4,6 +4,14 @@ Last updated: 2026-07-27
 Current stage: NINEKEY-TYPO-01 bounded nine-key correction
 Current status: The shared Rust nine-key path now adds at most two validated low-priority missing, extra, adjacent, or transposed-digit candidates after ordinary decoding. Raw digit composition and complete ordinary-candidate order remain unchanged, while the existing three-platform correction switch controls both QWERTY and nine-key behavior.
 
+## Windows White Frost Import Diagnostics (2026-07-27)
+
+- Reproduced the fixed official White Frost 1.0.4 asset as 44,008,360 bytes with SHA-256 `4f4998ae83f63d757c0a4ace192f69d48265bddfabe231642b73e3739ed0f2f5`.
+- Re-ran the production importer successfully: 653,308 accepted rows, 653,136 unique phrase/pinyin identities, and an 18,083,664-byte canonical `rime_frost.tsv`.
+- Replaced `Start-Process -ArgumentList` with native array invocation so Windows profile and temporary paths containing spaces remain single arguments, and quoted the remaining Notepad configuration-file path.
+- Added conditional TLS 1.2 compatibility to both White Frost and Writer downloads. Modern `SystemDefault` negotiation remains untouched; only legacy explicit protocol sets missing TLS 1.2 are extended.
+- Added bounded stage-specific failures and a Windows CI self-test that exercises both successful space-containing arguments and a deliberate nonzero settings-tool exit.
+
 ## iOS Host Submission Transition Smoothing (2026-07-27)
 
 - Traced the reported X compose-screen pull after tapping Publish to visible

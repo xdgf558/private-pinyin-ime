@@ -1,7 +1,8 @@
 ﻿param(
     [string]$SettingsTool = (Join-Path $PSScriptRoot "private-pinyin-settings.exe"),
     [string]$PreviewPath = "",
-    [ValidateSet("general", "privacy", "lexicon", "writer", "about")][string]$PreviewTab = "general"
+    [ValidateSet("general", "privacy", "lexicon", "writer", "about")][string]$PreviewTab = "general",
+    [string]$InvocationSelfTestDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,6 +33,7 @@ $rimeFrostArchiveUrl = "https://github.com/gaboolic/rime-frost/releases/download
 $rimeFrostReleaseUrl = "https://github.com/gaboolic/rime-frost/releases/tag/1.0.4"
 $rimeFrostLicenseUrl = "https://github.com/gaboolic/rime-frost/blob/master/LICENSE"
 $rimeFrostLatestReleaseApiUrl = "https://api.github.com/repos/gaboolic/rime-frost/releases/latest"
+$script:lastSettingsToolError = ""
 
 function Get-DefaultSettingsTemplatePath {
     $candidates = @(
@@ -145,8 +147,26 @@ function Write-Settings($settings) {
     Move-Item -Force -Path $tmpPath -Destination $settingsPath
 }
 
+function Get-BoundedErrorDetail {
+    param(
+        [AllowEmptyString()][string]$Message,
+        [string]$Fallback = "未提供详细错误"
+    )
+
+    $detail = $Message.Trim()
+    if (-not $detail) {
+        $detail = $Fallback
+    }
+    if ($detail.Length -gt 400) {
+        $detail = $detail.Substring(0, 400)
+    }
+    return $detail
+}
+
 function Run-SettingsTool($arguments) {
+    $script:lastSettingsToolError = ""
     if (-not (Test-Path $SettingsTool)) {
+        $script:lastSettingsToolError = "没有找到词库工具。"
         [System.Windows.Forms.MessageBox]::Show(
             "没有找到词库工具：$SettingsTool",
             "猫栈拼音",
@@ -156,8 +176,57 @@ function Run-SettingsTool($arguments) {
         return $false
     }
 
-    $process = Start-Process -FilePath $SettingsTool -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
-    return $process.ExitCode -eq 0
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Start-Process joins ArgumentList into one command line and can split
+        # profile or temp paths containing spaces. The call operator preserves
+        # each array element as one native argument. Continue keeps native
+        # stderr in the captured output so nonzero exits behave consistently on
+        # Windows PowerShell versions that otherwise raise NativeCommandError.
+        $ErrorActionPreference = "Continue"
+        $output = @(& $SettingsTool @arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    } catch {
+        $script:lastSettingsToolError = Get-BoundedErrorDetail -Message $_.Exception.Message
+        return $false
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($exitCode -eq 0) {
+        return $true
+    }
+
+    $detail = (($output | ForEach-Object { ([string]$_).Trim() }) |
+        Where-Object { $_ }) -join " "
+    $script:lastSettingsToolError = Get-BoundedErrorDetail `
+        -Message $detail `
+        -Fallback "词库工具退出码 $exitCode"
+    return $false
+}
+
+# This production-safe self-test must remain after Run-SettingsTool and before
+# settings initialization because CI launches the shipped script directly.
+if ($InvocationSelfTestDirectory) {
+    New-Item -ItemType Directory -Force -Path $InvocationSelfTestDirectory | Out-Null
+    $testSettingsPath = Join-Path $InvocationSelfTestDirectory "settings with spaces.json"
+    $testFrostPath = Join-Path $InvocationSelfTestDirectory "frost layer with spaces.tsv"
+    $ok = Run-SettingsTool @(
+        "write-default",
+        "--settings", $testSettingsPath,
+        "--rime-frost-lexicon", $testFrostPath
+    )
+    if (-not $ok -or -not (Test-Path $testSettingsPath)) {
+        throw "Settings-tool argument self-test failed: $script:lastSettingsToolError"
+    }
+    $failedAsExpected = -not (Run-SettingsTool @("__invalid_self_test_command__"))
+    if (-not $failedAsExpected -or
+        -not $script:lastSettingsToolError -or
+        $script:lastSettingsToolError -notmatch "usage:") {
+        throw "Settings-tool failure-reporting self-test failed: $script:lastSettingsToolError"
+    }
+    Write-Host "Settings-tool success and failure self-tests passed."
+    exit 0
 }
 
 function Get-RimeFrostManifest {
@@ -201,6 +270,16 @@ function Get-RimeFrostSummary {
 }
 
 function New-OfficialHttpClient {
+    # Windows PowerShell can inherit legacy .NET TLS defaults even when Chrome
+    # reaches GitHub successfully. Preserve modern SystemDefault negotiation;
+    # only legacy explicit protocol sets need TLS 1.2 added.
+    $currentProtocol = [System.Net.ServicePointManager]::SecurityProtocol
+    $tls12 = [System.Net.SecurityProtocolType]::Tls12
+    if ([int]$currentProtocol -ne 0 -and
+        (([int]$currentProtocol -band [int]$tls12) -eq 0)) {
+        [System.Net.ServicePointManager]::SecurityProtocol =
+            [System.Net.SecurityProtocolType]([int]$currentProtocol -bor [int]$tls12)
+    }
     $handler = New-Object System.Net.Http.HttpClientHandler
     $handler.AllowAutoRedirect = $true
     $handler.MaxAutomaticRedirections = 5
@@ -639,17 +718,25 @@ $rimeFrostImport.Add_Click({
     $rimeFrostStatus.Text = "正在从白霜拼音官方 GitHub Release 下载..."
     [System.Windows.Forms.Application]::DoEvents()
     $archive = $null
+    $failureStage = "下载"
     try {
         $archive = Download-ApprovedRimeFrostArchive
+        $failureStage = "文件校验与词库解析"
         $ok = Run-SettingsTool @(
             "import-rime-frost",
             "--settings", $settingsPath,
             "--input", $archive
         )
         if (-not $ok) {
-            throw "归档校验或词库解析失败"
+            $toolDetail = if ($script:lastSettingsToolError) {
+                $script:lastSettingsToolError
+            } else {
+                "词库工具未返回详细错误"
+            }
+            throw "归档校验或词库解析失败：$toolDetail"
         }
 
+        $failureStage = "启用与来源记录"
         $metadataProblems = New-Object System.Collections.Generic.List[string]
         $enabled = Run-SettingsTool @(
             "set-rime-frost-enabled",
@@ -680,10 +767,16 @@ $rimeFrostImport.Add_Click({
             ) | Out-Null
         }
     } catch {
+        $detail = Get-BoundedErrorDetail -Message $_.Exception.Message
         $statusLabel.Text = "白霜拼音导入失败，旧词库已保留"
         $statusLabel.ForeColor = $colors.Danger
+        $networkHint = if ($failureStage -eq "下载") {
+            "`r`n`r`n提示：浏览器和 PowerShell 可能使用不同代理，请确认 Windows 系统代理也能访问 GitHub Release。"
+        } else {
+            ""
+        }
         [System.Windows.Forms.MessageBox]::Show(
-            "无法导入白霜拼音。下载、文件校验或词库解析未通过；已有白霜词库未被覆盖。",
+            "无法导入白霜拼音。`r`n`r`n失败阶段：$failureStage`r`n原因：$detail$networkHint`r`n`r`n已有白霜词库未被覆盖。",
             "猫栈拼音",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Warning
@@ -954,7 +1047,9 @@ $clearImported.Add_Click({
     $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
 })
 
-$openJson.Add_Click({ Start-Process notepad.exe $settingsPath })
+$openJson.Add_Click({
+    Start-Process -FilePath "notepad.exe" -ArgumentList "`"$settingsPath`""
+})
 
 if ($PreviewPath) {
     $tabs.SelectedIndex = switch ($PreviewTab) {

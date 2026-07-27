@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed Windows White Frost imports and configuration-file opening when user paths contain spaces, added TLS 1.2 only to legacy explicit protocol sets while preserving modern system negotiation for White Frost and Writer downloads, and surfaced bounded stage-specific failures instead of a generic combined error.
 - Kept every nine-key typo edit family reachable under the shared 64-attempt ceiling, including missing-digit correction on longer compositions, and completed the keypad adjacency map with the `2`/`6` diagonal.
 - Smoothed iOS host submission and keyboard dismissal transitions. External document changes now clear logical composition without rebuilding the visible candidate surface mid-transition; the extension freezes its final frame while leaving and applies any deferred candidate, key-state, height, or layout refresh once on the next presentation. Warm controller reuse now has redundant appearance- and key-event thaw paths, with an explicit layout recovery pass.
 - Bounded TYPO-01 by actual parser attempts rather than accepted suggestions, deduplicated spellings before validation, and kept every original candidate even if future correction sources exceed the current two-candidate invariant. Five-item pages now expose at most one correction while wider pages may expose two.
