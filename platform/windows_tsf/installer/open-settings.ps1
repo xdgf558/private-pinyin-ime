@@ -147,6 +147,22 @@ function Write-Settings($settings) {
     Move-Item -Force -Path $tmpPath -Destination $settingsPath
 }
 
+function Get-BoundedErrorDetail {
+    param(
+        [AllowEmptyString()][string]$Message,
+        [string]$Fallback = "未提供详细错误"
+    )
+
+    $detail = $Message.Trim()
+    if (-not $detail) {
+        $detail = $Fallback
+    }
+    if ($detail.Length -gt 400) {
+        $detail = $detail.Substring(0, 400)
+    }
+    return $detail
+}
+
 function Run-SettingsTool($arguments) {
     $script:lastSettingsToolError = ""
     if (-not (Test-Path $SettingsTool)) {
@@ -160,15 +176,21 @@ function Run-SettingsTool($arguments) {
         return $false
     }
 
+    $previousErrorActionPreference = $ErrorActionPreference
     try {
         # Start-Process joins ArgumentList into one command line and can split
         # profile or temp paths containing spaces. The call operator preserves
-        # each array element as one native argument and retains safe errors.
+        # each array element as one native argument. Continue keeps native
+        # stderr in the captured output so nonzero exits behave consistently on
+        # Windows PowerShell versions that otherwise raise NativeCommandError.
+        $ErrorActionPreference = "Continue"
         $output = @(& $SettingsTool @arguments 2>&1)
         $exitCode = $LASTEXITCODE
     } catch {
-        $script:lastSettingsToolError = $_.Exception.Message
+        $script:lastSettingsToolError = Get-BoundedErrorDetail -Message $_.Exception.Message
         return $false
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
     }
 
     if ($exitCode -eq 0) {
@@ -177,16 +199,14 @@ function Run-SettingsTool($arguments) {
 
     $detail = (($output | ForEach-Object { ([string]$_).Trim() }) |
         Where-Object { $_ }) -join " "
-    if (-not $detail) {
-        $detail = "词库工具退出码 $exitCode"
-    }
-    if ($detail.Length -gt 400) {
-        $detail = $detail.Substring(0, 400)
-    }
-    $script:lastSettingsToolError = $detail
+    $script:lastSettingsToolError = Get-BoundedErrorDetail `
+        -Message $detail `
+        -Fallback "词库工具退出码 $exitCode"
     return $false
 }
 
+# This production-safe self-test must remain after Run-SettingsTool and before
+# settings initialization because CI launches the shipped script directly.
 if ($InvocationSelfTestDirectory) {
     New-Item -ItemType Directory -Force -Path $InvocationSelfTestDirectory | Out-Null
     $testSettingsPath = Join-Path $InvocationSelfTestDirectory "settings with spaces.json"
@@ -199,7 +219,13 @@ if ($InvocationSelfTestDirectory) {
     if (-not $ok -or -not (Test-Path $testSettingsPath)) {
         throw "Settings-tool argument self-test failed: $script:lastSettingsToolError"
     }
-    Write-Host "Settings-tool argument self-test passed."
+    $failedAsExpected = -not (Run-SettingsTool @("__invalid_self_test_command__"))
+    if (-not $failedAsExpected -or
+        -not $script:lastSettingsToolError -or
+        $script:lastSettingsToolError -notmatch "usage:") {
+        throw "Settings-tool failure-reporting self-test failed: $script:lastSettingsToolError"
+    }
+    Write-Host "Settings-tool success and failure self-tests passed."
     exit 0
 }
 
@@ -245,10 +271,15 @@ function Get-RimeFrostSummary {
 
 function New-OfficialHttpClient {
     # Windows PowerShell can inherit legacy .NET TLS defaults even when Chrome
-    # reaches GitHub successfully. GitHub Release assets require TLS 1.2+.
-    [System.Net.ServicePointManager]::SecurityProtocol =
-        [System.Net.ServicePointManager]::SecurityProtocol -bor
-        [System.Net.SecurityProtocolType]::Tls12
+    # reaches GitHub successfully. Preserve modern SystemDefault negotiation;
+    # only legacy explicit protocol sets need TLS 1.2 added.
+    $currentProtocol = [System.Net.ServicePointManager]::SecurityProtocol
+    $tls12 = [System.Net.SecurityProtocolType]::Tls12
+    if ([int]$currentProtocol -ne 0 -and
+        (([int]$currentProtocol -band [int]$tls12) -eq 0)) {
+        [System.Net.ServicePointManager]::SecurityProtocol =
+            [System.Net.SecurityProtocolType]([int]$currentProtocol -bor [int]$tls12)
+    }
     $handler = New-Object System.Net.Http.HttpClientHandler
     $handler.AllowAutoRedirect = $true
     $handler.MaxAutomaticRedirections = 5
@@ -736,10 +767,7 @@ $rimeFrostImport.Add_Click({
             ) | Out-Null
         }
     } catch {
-        $detail = $_.Exception.Message
-        if (-not $detail) {
-            $detail = "未提供详细错误"
-        }
+        $detail = Get-BoundedErrorDetail -Message $_.Exception.Message
         $statusLabel.Text = "白霜拼音导入失败，旧词库已保留"
         $statusLabel.ForeColor = $colors.Danger
         $networkHint = if ($failureStage -eq "下载") {
@@ -1019,7 +1047,9 @@ $clearImported.Add_Click({
     $statusLabel.ForeColor = if ($ok) { $colors.Success } else { $colors.Danger }
 })
 
-$openJson.Add_Click({ Start-Process notepad.exe $settingsPath })
+$openJson.Add_Click({
+    Start-Process -FilePath "notepad.exe" -ArgumentList "`"$settingsPath`""
+})
 
 if ($PreviewPath) {
     $tabs.SelectedIndex = switch ($PreviewTab) {

@@ -34,6 +34,18 @@ function Write-Settings($settings) {
     Move-Item -Force -Path $temporaryPath -Destination $settingsPath
 }
 
+function Enable-Tls12Compatibility {
+    # Keep modern SystemDefault negotiation (numeric zero) intact. Older
+    # Windows PowerShell/.NET protocol sets may need TLS 1.2 added explicitly.
+    $currentProtocol = [System.Net.ServicePointManager]::SecurityProtocol
+    $tls12 = [System.Net.SecurityProtocolType]::Tls12
+    if ([int]$currentProtocol -ne 0 -and
+        (([int]$currentProtocol -band [int]$tls12) -eq 0)) {
+        [System.Net.ServicePointManager]::SecurityProtocol =
+            [System.Net.SecurityProtocolType]([int]$currentProtocol -bor [int]$tls12)
+    }
+}
+
 function Ensure-AiSettings($settings) {
     if ($null -eq $settings.PSObject.Properties["ai"]) {
         $settings | Add-Member -NotePropertyName "ai" -NotePropertyValue ([PSCustomObject]@{})
@@ -498,6 +510,7 @@ $downloadWorker.Add_DoWork({
     if (Test-Path $modelStagingPath) {
         Remove-Item -Force $modelStagingPath
     }
+    Enable-Tls12Compatibility
     $client = New-Object System.Net.WebClient
     try {
         $client.Headers["User-Agent"] = "PrivatePinyin-Writer/1"

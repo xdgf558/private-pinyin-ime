@@ -228,7 +228,7 @@ jobs:
         shell: pwsh
         run: .\scripts\test_windows_powershell_syntax.ps1
 
-      - name: Validate Windows settings-tool argument boundaries
+      - name: Validate Windows settings-tool invocation boundaries
         shell: pwsh
         run: |
           cargo build -p private_pinyin_settings
@@ -238,7 +238,7 @@ jobs:
             -SettingsTool .\target\debug\private-pinyin-settings.exe `
             -InvocationSelfTestDirectory $testDirectory
           if ($LASTEXITCODE -ne 0) {
-            throw "Windows settings-tool argument-boundary test failed."
+            throw "Windows settings-tool invocation-boundary test failed."
           }
 
       - name: Validate Windows onboarding compatibility

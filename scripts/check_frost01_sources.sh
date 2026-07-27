@@ -118,11 +118,25 @@ grep -q '\$currentSettings = Read-Settings' \
 grep -q '\$response.Dispose()' platform/windows_tsf/installer/open-settings.ps1
 grep -q '\$output = @(& \$SettingsTool @arguments 2>&1)' \
   platform/windows_tsf/installer/open-settings.ps1
+grep -q '\$ErrorActionPreference = "Continue"' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q '__invalid_self_test_command__' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Get-BoundedErrorDetail' \
+  platform/windows_tsf/installer/open-settings.ps1
 grep -q '\[System.Net.SecurityProtocolType\]::Tls12' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q '\[int\]\$currentProtocol -ne 0' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Enable-Tls12Compatibility' \
+  platform/windows_tsf/installer/open-writer.ps1
+grep -q '\[int\]\$currentProtocol -ne 0' \
+  platform/windows_tsf/installer/open-writer.ps1
+grep -q 'Start-Process -FilePath "notepad.exe" -ArgumentList' \
   platform/windows_tsf/installer/open-settings.ps1
 grep -q 'InvocationSelfTestDirectory' \
   platform/windows_tsf/installer/open-settings.ps1
-grep -q 'Validate Windows settings-tool argument boundaries' \
+grep -q 'Validate Windows settings-tool invocation boundaries' \
   .github/workflows/rust.yml
 grep -q 'System.Management.Automation.Language.Parser]::ParseFile' \
   scripts/test_windows_powershell_syntax.ps1
