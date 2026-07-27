@@ -256,12 +256,16 @@ mod tests {
 
     #[test]
     fn generation_is_bounded_and_debug_output_is_redacted() {
-        let input = "zhan'zhan'zhan'zhan";
+        let input = "sansansansansansansansan";
         let variants =
             tolerant_pinyin_variants(input, &parse(input), FuzzyPinyinSettings::all_enabled());
-        assert!(variants.len() <= MAX_TOLERANT_VARIANTS);
+        assert_eq!(
+            variants.len(),
+            MAX_TOLERANT_VARIANTS,
+            "the performance fixture must exercise the full variant allowance"
+        );
         let debug = format!("{variants:?}");
-        assert!(!debug.contains("zhan"));
+        assert!(!debug.contains("san"));
         assert!(debug.contains("<redacted>"));
     }
 

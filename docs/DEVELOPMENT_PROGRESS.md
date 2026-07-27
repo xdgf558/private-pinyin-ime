@@ -27,13 +27,19 @@ Current status: The shared Rust core now provides a default-off, bounded syllabl
 - Added deterministic generation, bidirectional-pair, single-edit, bounds,
   redacted-debug, ordinary-order preservation, stable-default, exact commit,
   disabled-mode, and Apple latency regressions. The raw preedit remains exactly
-  what the user typed.
-- On the development Apple host for the 21-key input
-  `zongguozongguozongguo`, the unoptimized Rust test-profile median was
-  `1.213189 ms/key` enabled versus `1.113205 ms/key` disabled. The optimized
-  release-profile median was `0.356251 ms/key` enabled versus
-  `0.328545 ms/key` disabled. These local references are not device claims; the
-  existing Apple-only `60 ms/key` ceiling remains unchanged.
+  what the user typed. Functional and three-platform smoke coverage uses the
+  two-letter `la` -> `那` `n/l` case while TYPO-01 remains enabled, so the
+  older `zongguo` common-confusion rule cannot satisfy ABC-02 validation.
+- Documented the shared visibility priority: TYPO-01 candidates consume
+  correction slots first, and ABC-02 fills only remaining allowance.
+- On the development Apple host, a 24-key input
+  (`sansansansansansansansan`) that exercises the full 16-variant allowance
+  was measured with a real temporary SQLite user lexicon enabled for both
+  sides. The unoptimized Rust test-profile median was `2.519441 ms/key`
+  enabled versus `1.296113 ms/key` disabled. The optimized release-profile
+  median was `0.616428 ms/key` enabled versus `0.402756 ms/key` disabled. These
+  local references are not device claims; the existing Apple-only `60 ms/key`
+  ceiling remains unchanged.
 - Passed `cargo test --workspace`, the desktop-AI and iOS-AI FFI feature
   suites, workspace plus feature-specific Clippy with warnings denied,
   formatting, installer/macOS/iOS source gates, the ABC-02 source contract,
