@@ -10,6 +10,7 @@ pub mod key_event;
 pub mod lexicon;
 pub mod logger;
 pub mod nine_key;
+mod nine_key_correction;
 pub mod pinyin_correction;
 pub mod pinyin_parser;
 pub mod predictor;

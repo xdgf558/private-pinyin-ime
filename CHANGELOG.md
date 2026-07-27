@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Kept every nine-key typo edit family reachable under the shared 64-attempt ceiling, including missing-digit correction on longer compositions, and completed the keypad adjacency map with the `2`/`6` diagonal.
 - Smoothed iOS host submission and keyboard dismissal transitions. External document changes now clear logical composition without rebuilding the visible candidate surface mid-transition; the extension freezes its final frame while leaving and applies any deferred candidate, key-state, height, or layout refresh once on the next presentation. Warm controller reuse now has redundant appearance- and key-event thaw paths, with an explicit layout recovery pass.
 - Bounded TYPO-01 by actual parser attempts rather than accepted suggestions, deduplicated spellings before validation, and kept every original candidate even if future correction sources exceed the current two-candidate invariant. Five-item pages now expose at most one correction while wider pages may expose two.
 - Added macOS, Windows, and iOS settings controls for local pinyin typo correction. The feature remains default-on but can be disabled independently; strict privacy continues to disable learning and Writer while allowing this stateless local correction path.
@@ -33,6 +34,7 @@
 
 ### Added
 
+- Added NINEKEY-TYPO-01 bounded nine-key correction across macOS, Windows, and iOS through the shared Rust core. Missing, extra, adjacent, or transposed digits may add at most two low-priority candidates while preserving the raw digit composition and every ordinary candidate in its original order; the existing local typo-correction switch controls both QWERTY and nine-key input.
 - Added TYPO-01 bounded full-keyboard pinyin correction across macOS, Windows, and iOS through the shared Rust core. Reviewed first-party confusion rules plus constrained duplicate-key, adjacent-key, and transposed-letter paths may add at most two low-priority candidates; the raw composition and every original candidate remain available, and AI Lite receives explicit exact/probable/weak correction metadata for optional reranking.
 - Added FROST-01 reviewed White Frost import on macOS and Windows: users explicitly accept GPL-3.0 before downloading the pinned official `rime-frost` 1.0.4 Release, and exact size/SHA-256 plus bounded ZIP validation protect an independent atomic `rime_frost.tsv` layer. The UI reports its version and supports update checks, disable/enable, and clear without touching built-in, manual, Rime Ice, or learned data.
 - Raised only the macOS and Windows local Rime import policy to 64 MiB per source, 128 MiB for canonical imported layers, and 750,000 retained entries. iOS keeps its existing 16 MiB, 32 MiB, and 200,000-entry limits.

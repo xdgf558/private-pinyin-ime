@@ -256,14 +256,16 @@ impl ImeEngine {
     }
 
     pub fn candidates_for_nine_key(&self, digits: &str) -> Vec<Candidate> {
-        let base_candidates =
+        let transition_score = |left: &str, right: &str| {
+            Ranker::score_continuous_transition(self.predictor.transition_frequency(left, right), 0)
+        };
+        let base_candidates = if self.settings.ai.enable_pinyin_correction {
             self.lexicon
-                .lookup_nine_key_with_context(digits, None, |left, right| {
-                    Ranker::score_continuous_transition(
-                        self.predictor.transition_frequency(left, right),
-                        0,
-                    )
-                });
+                .lookup_nine_key_with_context_corrected(digits, None, transition_score)
+        } else {
+            self.lexicon
+                .lookup_nine_key_with_context(digits, None, transition_score)
+        };
         let user_candidates = self
             .user_lexicon
             .as_ref()
@@ -275,7 +277,15 @@ impl ImeEngine {
                 }
             })
             .unwrap_or_default();
-        crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates)
+        if self.settings.ai.enable_pinyin_correction {
+            crate::lexicon::merge_user_and_base_candidates_with_corrections(
+                user_candidates,
+                base_candidates,
+                self.settings.candidate_page_size,
+            )
+        } else {
+            crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates)
+        }
     }
 
     pub fn feed_text(&self, text: &str) -> ImeOutput {
