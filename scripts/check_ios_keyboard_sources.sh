@@ -116,6 +116,11 @@ grep -q "func enqueueCoreOperation(" platform/ios_keyboard/KeyboardExtension/Key
 grep -q "func scheduleCoreOperation(" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreOperationQueue.async" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "coreInteractionRevision" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "override func textDidChange" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "override func viewWillDisappear" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "keyboardSurfaceFrozen = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "surfaceRefreshDeferred = true" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q "func refreshKeyboardSurface(force: Bool = false)" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "idleCorePrewarmDelay: TimeInterval = 0.12" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "candidateCommitInFlight = false" platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q "guard !candidateCommitInFlight," platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

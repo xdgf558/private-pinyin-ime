@@ -78,6 +78,10 @@ final class KeyboardViewController: UIInputViewController {
     private var quickPunctuationPopup: NineKeyPunctuationPopupView?
     private var quickPunctuationGestureStart = CGPoint.zero
     private var preferencesViewPrepared = false
+    private var keyboardSurfaceFrozen = false
+    private var surfaceRefreshDeferred = false
+    private var keyboardRebuildDeferred = false
+    private var pendingDocumentSurfaceRevision: Int?
 
     deinit {
         let coreToRelease = core
@@ -115,13 +119,13 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         coreInteractionRevision &+= 1
+        pendingDocumentSurfaceRevision = coreInteractionRevision
         pendingCoreOperations.removeAll(keepingCapacity: true)
         candidateCommitInFlight = false
         currentPreedit = ""
         currentCandidates = []
         candidatesExpanded = false
-        refreshKeyStates()
-        updateCandidateBar()
+        surfaceRefreshDeferred = true
         enqueueCoreOperation(
             operation: { core in core.reset() },
             completion: { [weak self] output in
@@ -129,9 +133,37 @@ final class KeyboardViewController: UIInputViewController {
                     return
                 }
                 self.englishMode = output.isEnglishMode
-                self.refreshKeyStates()
+                self.refreshKeyboardSurface(force: true)
             }
         )
+    }
+
+    override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput)
+        guard let revision = pendingDocumentSurfaceRevision else {
+            return
+        }
+        pendingDocumentSurfaceRevision = nil
+        DispatchQueue.main.async { [weak self] in
+            guard let self, revision == self.coreInteractionRevision else {
+                return
+            }
+            self.refreshKeyboardSurface()
+        }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        keyboardSurfaceFrozen = false
+        pendingDocumentSurfaceRevision = nil
+        refreshKeyboardSurface(force: true)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        keyboardSurfaceFrozen = true
+        surfaceRefreshDeferred = true
+        dismissQuickPunctuationPopup()
+        super.viewWillDisappear(animated)
     }
 
     override func viewWillLayoutSubviews() {
@@ -145,6 +177,9 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        guard !keyboardSurfaceFrozen else {
+            return
+        }
         trayGradient.frame = view.bounds
     }
 
@@ -672,6 +707,11 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func rebuildKeyboard() {
+        guard !keyboardSurfaceFrozen else {
+            keyboardRebuildDeferred = true
+            return
+        }
+        keyboardRebuildDeferred = false
         UIView.performWithoutAnimation {
             rebuildKeyboardContents()
             rootStack.layoutIfNeeded()
@@ -1054,12 +1094,20 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func refreshKeyStates() {
+        guard !keyboardSurfaceFrozen else {
+            surfaceRefreshDeferred = true
+            return
+        }
         (shiftButton as? StationKeyButton)?.isLatched = shifted
         modeButton?.setTitle(englishMode ? "英" : "中", for: .normal)
         spaceButton?.setTitle(englishMode ? "space" : "猫栈拼音", for: .normal)
     }
 
     private func updateCandidateBar() {
+        guard !keyboardSurfaceFrozen else {
+            surfaceRefreshDeferred = true
+            return
+        }
         if preferencesVisible {
             candidatesExpanded = false
             keyRowsStack.isHidden = true
@@ -1788,6 +1836,10 @@ private extension KeyboardViewController {
     }
 
     func refreshMinimumHeight() {
+        guard !keyboardSurfaceFrozen else {
+            surfaceRefreshDeferred = true
+            return
+        }
         if preferencesVisible {
             minimumHeightConstraint?.constant = 368
         } else if traitCollection.verticalSizeClass == .compact {
@@ -1795,6 +1847,29 @@ private extension KeyboardViewController {
         } else {
             minimumHeightConstraint?.constant = candidatesExpanded || usesNineKeyLayout ? 310 : 278
         }
+    }
+
+    func refreshKeyboardSurface(force: Bool = false) {
+        guard !keyboardSurfaceFrozen else {
+            surfaceRefreshDeferred = true
+            return
+        }
+        guard force || surfaceRefreshDeferred || keyboardRebuildDeferred else {
+            return
+        }
+
+        UIView.performWithoutAnimation {
+            if keyboardRebuildDeferred {
+                keyboardRebuildDeferred = false
+                rebuildKeyboardContents()
+            } else {
+                refreshMinimumHeight()
+            }
+            refreshKeyStates()
+            updateCandidateBar()
+            rootStack.layoutIfNeeded()
+        }
+        surfaceRefreshDeferred = false
     }
 
     func selectKeyboardLayout(_ layout: IosKeyboardLayout) {
