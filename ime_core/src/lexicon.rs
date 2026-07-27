@@ -24,6 +24,7 @@ pub const MAX_LOOKUP_CANDIDATES: usize = 50;
 const CONTINUOUS_BEAM_WIDTH: usize = 32;
 const MAX_CONTINUOUS_CANDIDATES: usize = 12;
 const MAX_CONTINUOUS_OPTIONS_PER_EDGE: usize = 6;
+const MAX_NINE_KEY_OPTIONS_PER_CORRECTION: usize = 6;
 const MAX_MIXED_INPUT_PARSES: usize = 16;
 const MAX_MIXED_INPUT_CHARS: usize = 16;
 const MAX_PINYIN_SYLLABLE_CHARS: usize = 6;
@@ -973,7 +974,7 @@ impl Lexicon {
         for suggestion in suggestions {
             for entry in self.exact_entries_for_nine_key(
                 suggestion.corrected_digits(),
-                MAX_CONTINUOUS_OPTIONS_PER_EDGE,
+                MAX_NINE_KEY_OPTIONS_PER_CORRECTION,
             ) {
                 if (require_multi_syllable
                     && (entry.phrase.chars().count() < 2
@@ -1690,6 +1691,25 @@ mod tests {
                     <= MAX_NINE_KEY_CORRECTIONS
             );
         }
+    }
+
+    #[test]
+    fn compact_nine_key_page_keeps_four_ordinary_candidates_before_a_correction() {
+        let lexicon = Lexicon::from_tsv(
+            "面\tmian\t140000\n年\tnian\t130000\n秒\tmiao\t120000\n鸟\tniao\t110000\n你好\tni hao\t100000\n",
+        )
+        .expect("test lexicon loads");
+        let ordinary = lexicon.lookup_nine_key_with_context("6426", None, |_, _| 0.0);
+        let corrected = lexicon.lookup_nine_key_with_context_corrected("6426", None, |_, _| 0.0);
+        let promoted = merge_user_and_base_candidates_with_corrections(Vec::new(), corrected, 5);
+
+        assert_eq!(ordinary.len(), 4);
+        assert_eq!(&promoted[..4], ordinary.as_slice());
+        assert_eq!(
+            promoted.get(4).map(|candidate| candidate.text.as_str()),
+            Some("你好")
+        );
+        assert!(promoted[4].correction.is_some());
     }
 
     #[test]

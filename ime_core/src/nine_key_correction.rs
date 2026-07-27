@@ -9,6 +9,9 @@ use crate::nine_key::is_valid_nine_key_input;
 pub const MAX_NINE_KEY_CORRECTIONS: usize = 2;
 pub const MAX_NINE_KEY_TYPO_INPUT_DIGITS: usize = 24;
 pub const MAX_NINE_KEY_CORRECTION_ATTEMPTS: usize = 64;
+const NINE_KEY_CORRECTION_FAMILY_COUNT: usize = 5;
+const MIN_NINE_KEY_ATTEMPTS_PER_FAMILY: usize =
+    MAX_NINE_KEY_CORRECTION_ATTEMPTS / NINE_KEY_CORRECTION_FAMILY_COUNT;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct NineKeyCorrectionBudget {
@@ -91,13 +94,19 @@ pub(crate) fn suggest_nine_key_corrections(
         suggestions: Vec::new(),
         seen: HashSet::new(),
         budget,
+        family_remaining_attempts: 0,
         is_viable: &mut is_viable,
     };
 
+    collector.begin_family(4);
     generate_duplicate_digit_removals(digits, &mut collector);
+    collector.begin_family(3);
     generate_adjacent_digit_substitutions(digits, &mut collector);
+    collector.begin_family(2);
     generate_adjacent_transpositions(digits, &mut collector);
+    collector.begin_family(1);
     generate_extra_digit_removals(digits, &mut collector);
+    collector.begin_family(0);
     generate_missing_digit_insertions(digits, &mut collector);
 
     let mut suggestions = collector.suggestions;
@@ -121,6 +130,7 @@ struct SuggestionCollector<'a, F> {
     suggestions: Vec<NineKeyCorrectionSuggestion>,
     seen: HashSet<String>,
     budget: &'a mut NineKeyCorrectionBudget,
+    family_remaining_attempts: usize,
     is_viable: &'a mut F,
 }
 
@@ -128,6 +138,14 @@ impl<F> SuggestionCollector<'_, F>
 where
     F: FnMut(&str) -> bool,
 {
+    fn begin_family(&mut self, remaining_families: usize) {
+        let reserved_attempts = remaining_families.saturating_mul(MIN_NINE_KEY_ATTEMPTS_PER_FAMILY);
+        self.family_remaining_attempts = self
+            .budget
+            .remaining_attempts
+            .saturating_sub(reserved_attempts);
+    }
+
     fn push(
         &mut self,
         corrected_digits: String,
@@ -137,11 +155,13 @@ where
         priority: u16,
     ) {
         if corrected_digits == self.raw_digits
+            || self.family_remaining_attempts == 0
             || !self.seen.insert(corrected_digits.clone())
             || !self.budget.consume()
         {
             return;
         }
+        self.family_remaining_attempts -= 1;
         if !(self.is_viable)(&corrected_digits) {
             return;
         }
@@ -156,8 +176,8 @@ where
         });
     }
 
-    fn exhausted(&self) -> bool {
-        self.budget.exhausted()
+    fn family_exhausted(&self) -> bool {
+        self.family_remaining_attempts == 0 || self.budget.exhausted()
     }
 }
 
@@ -179,7 +199,7 @@ where
             1,
             900,
         );
-        if collector.exhausted() {
+        if collector.family_exhausted() {
             return;
         }
     }
@@ -203,7 +223,7 @@ fn generate_adjacent_digit_substitutions<F>(
                 1,
                 800,
             );
-            if collector.exhausted() {
+            if collector.family_exhausted() {
                 return;
             }
         }
@@ -228,7 +248,7 @@ where
             2,
             700,
         );
-        if collector.exhausted() {
+        if collector.family_exhausted() {
             return;
         }
     }
@@ -251,7 +271,7 @@ where
             1,
             600,
         );
-        if collector.exhausted() {
+        if collector.family_exhausted() {
             return;
         }
     }
@@ -275,7 +295,7 @@ where
                 1,
                 500,
             );
-            if collector.exhausted() {
+            if collector.family_exhausted() {
                 return;
             }
         }
@@ -299,11 +319,11 @@ fn missing_digit_options(digits: &[u8], index: usize) -> Vec<u8> {
 
 fn nine_key_neighbors(digit: u8) -> &'static str {
     match digit {
-        b'2' => "345",
+        b'2' => "3456",
         b'3' => "256",
         b'4' => "2578",
         b'5' => "2346789",
-        b'6' => "3589",
+        b'6' => "23589",
         b'7' => "458",
         b'8' => "45679",
         b'9' => "568",
@@ -341,6 +361,41 @@ mod tests {
         assert!(suggestions.is_empty());
         assert_eq!(attempts, MAX_NINE_KEY_CORRECTION_ATTEMPTS);
         assert_eq!(budget.attempts_used(), MAX_NINE_KEY_CORRECTION_ATTEMPTS);
+    }
+
+    #[test]
+    fn long_input_keeps_every_edit_family_reachable() {
+        let typed = "234567892345678923456789";
+        let adjacent = format!("3{}", &typed[1..]);
+        let transposed = format!("{}{}{}", &typed[1..2], &typed[..1], &typed[2..]);
+        let extra = typed[1..].to_owned();
+        let missing = format!("2{typed}");
+        let viable = [
+            adjacent.as_str(),
+            transposed.as_str(),
+            extra.as_str(),
+            missing.as_str(),
+        ];
+        let mut budget = NineKeyCorrectionBudget::default();
+        let suggestions = suggest_nine_key_corrections(typed, &mut budget, |candidate| {
+            viable.contains(&candidate)
+        });
+        let kinds = suggestions
+            .iter()
+            .map(|suggestion| suggestion.correction.kind)
+            .collect::<Vec<_>>();
+
+        assert!(kinds.contains(&CandidateCorrectionKind::NineKeyAdjacentDigit));
+        assert!(kinds.contains(&CandidateCorrectionKind::NineKeyTransposedDigits));
+        assert!(kinds.contains(&CandidateCorrectionKind::NineKeyExtraDigit));
+        assert!(kinds.contains(&CandidateCorrectionKind::NineKeyMissingDigit));
+        assert_eq!(budget.attempts_used(), MAX_NINE_KEY_CORRECTION_ATTEMPTS);
+    }
+
+    #[test]
+    fn keypad_diagonal_neighbors_are_bidirectional() {
+        assert!(nine_key_neighbors(b'2').contains('6'));
+        assert!(nine_key_neighbors(b'6').contains('2'));
     }
 
     #[test]

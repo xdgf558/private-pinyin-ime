@@ -478,17 +478,24 @@ fn nine_key_decoder_stays_within_interactive_lookup_budget() {
 #[test]
 fn nine_key_incremental_session_stays_within_interactive_lookup_budget() {
     const BATCH_COUNT: usize = 5;
+    const CORRECTION_INPUT_LIMIT: usize = 24;
     let enabled = ImeEngine::new().expect("engine loads production lexicon");
     let mut disabled_settings = ImeSettings::default();
     disabled_settings.ai.enable_pinyin_correction = false;
     let disabled =
         ImeEngine::with_settings(disabled_settings).expect("engine loads without correction");
     let sentence_digits = pinyin_to_nine_key("wo jin tian xiang qu chi fan");
+    let mut correction_maximum_digits = sentence_digits.repeat(2);
+    correction_maximum_digits.truncate(CORRECTION_INPUT_LIMIT);
     let mut maximum_digits = sentence_digits.repeat(4);
     maximum_digits.truncate(MAX_RAW_INPUT_CHARS);
 
     for (label, digits) in [
         ("21-key sentence", sentence_digits.as_str()),
+        (
+            "24-key correction ceiling",
+            correction_maximum_digits.as_str(),
+        ),
         ("64-key maximum", maximum_digits.as_str()),
     ] {
         for (correction_label, engine) in

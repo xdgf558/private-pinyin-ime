@@ -64,15 +64,21 @@ Current status: The shared Rust nine-key path now adds at most two validated low
   fixtures, disabled-setting coverage, exact single-commit behavior, redacted
   debug output, the exact 64-attempt ceiling, and cached/stateless equality
   across append, Backspace, and retype.
+- Reserved twelve viability attempts for every edit family before allowing
+  earlier generators to consume unused capacity. Missing-digit insertion,
+  extra-digit removal, transposition, and substitution therefore remain
+  reachable at the 24-digit limit while the global 64-attempt ceiling stays
+  unchanged. Completed the keypad adjacency map with bidirectional `2`/`6`.
 - On the development Apple host in the unoptimized Rust test profile, median
-  incremental cost with correction enabled was `0.868167 ms/key` for the
-  21-key sentence and `0.862708 ms/key` at the 64-key maximum, versus
-  `0.738084` and `0.787167 ms/key` with correction disabled.
+  incremental cost with correction enabled was `0.851750 ms/key` for the
+  21-key sentence, `0.819333 ms/key` at the 24-key correction ceiling, and
+  `0.842667 ms/key` at the 64-key maximum, versus `0.724916`, `0.659917`,
+  and `0.785791 ms/key` with correction disabled.
 - On the same host in the optimized release profile, medians were
-  `0.247291 ms/key` and `0.286959 ms/key` with correction enabled, versus
-  `0.223083` and `0.289916 ms/key` disabled. These are local Rust references,
-  not real-device claims; both Apple-only regressions retain the unchanged
-  `60 ms` per-key budget.
+  `0.243625`, `0.236208`, and `0.278958 ms/key` with correction enabled,
+  versus `0.228125`, `0.211083`, and `0.272542 ms/key` disabled. These are
+  local Rust references, not real-device claims; the Apple-only regression
+  retains the unchanged `60 ms` per-key budget.
 - Passed `cargo test --workspace`, workspace Clippy with warnings denied,
   formatting, desktop-AI and iOS-AI FFI feature tests, TYPO-01 and
   NINEKEY-TYPO-01 source gates, and the iOS keyboard source contract. Xcode

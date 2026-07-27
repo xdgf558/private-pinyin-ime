@@ -28,6 +28,11 @@ done
 grep -q 'MAX_NINE_KEY_CORRECTIONS: usize = 2' ime_core/src/nine_key_correction.rs
 grep -q 'MAX_NINE_KEY_TYPO_INPUT_DIGITS: usize = 24' ime_core/src/nine_key_correction.rs
 grep -q 'MAX_NINE_KEY_CORRECTION_ATTEMPTS: usize = 64' ime_core/src/nine_key_correction.rs
+grep -q 'MIN_NINE_KEY_ATTEMPTS_PER_FAMILY' ime_core/src/nine_key_correction.rs
+grep -q 'long_input_keeps_every_edit_family_reachable' ime_core/src/nine_key_correction.rs
+grep -q 'candidates.truncate(MAX_NINE_KEY_CORRECTIONS)' ime_core/src/lexicon.rs
+grep -q 'take(MAX_NINE_KEY_CORRECTIONS)' ime_core/src/lexicon.rs
+grep -q 'MAX_NINE_KEY_OPTIONS_PER_CORRECTION' ime_core/src/lexicon.rs
 grep -q 'NineKeyAdjacentDigit' ime_core/src/candidate.rs
 grep -q 'NineKeyExtraDigit' ime_core/src/candidate.rs
 grep -q 'NineKeyMissingDigit' ime_core/src/candidate.rs
@@ -37,12 +42,15 @@ grep -q 'merge_user_and_base_candidates_with_corrections' ime_core/src/api.rs
 grep -q 'lookup_nine_key_with_context_corrected_cached' ime_core/src/session.rs
 grep -q 'nine_key_correction_handles_each_bounded_edit_without_reordering_raw_candidates' \
   ime_core/src/lexicon.rs
+grep -q 'compact_nine_key_page_keeps_four_ordinary_candidates_before_a_correction' \
+  ime_core/src/lexicon.rs
 grep -q 'nine_key_correction_cache_matches_stateless_lookup_after_backspace_and_retype' \
   ime_core/src/lexicon.rs
 grep -q 'nine_key_typo_correction_commits_once_without_mutating_digit_preedit' \
   ime_core/tests/candidate_tests.rs
 grep -q 'nine_key_incremental_session_stays_within_interactive_lookup_budget' \
   ime_core/tests/candidate_tests.rs
+grep -q '24-key correction ceiling' ime_core/tests/candidate_tests.rs
 grep -q '拼音智能纠错' \
   platform/macos_imk/Sources/PrivatePinyinPreferencesWindowController.swift
 grep -q '拼音智能纠错' platform/windows_tsf/installer/open-settings.ps1
