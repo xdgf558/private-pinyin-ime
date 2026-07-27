@@ -3,7 +3,8 @@ use std::fmt;
 use std::sync::OnceLock;
 
 use crate::candidate::{
-    Candidate, CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind,
+    promote_correction_candidates, Candidate, CandidateCorrection, CandidateCorrectionConfidence,
+    CandidateCorrectionKind,
 };
 use crate::error::{ImeError, ImeResult};
 use crate::pinyin_parser::{compact_pinyin, PinyinParse, PinyinParser};
@@ -311,35 +312,8 @@ where
     }
     debug_assert!(correction_count <= MAX_PINYIN_CORRECTIONS);
 
-    let visible_correction_limit: usize = if candidate_page_size <= 5 { 1 } else { 2 };
-    let already_visible = candidates
-        .iter()
-        .take(candidate_page_size)
-        .filter(|candidate| candidate.correction.is_some())
-        .count();
-    let promote_count = visible_correction_limit.saturating_sub(already_visible);
-    if promote_count == 0 {
-        return candidates;
-    }
-
-    let correction_indices = candidates
-        .iter()
-        .enumerate()
-        .skip(candidate_page_size)
-        .filter_map(|(index, candidate)| candidate.correction.is_some().then_some(index))
-        .take(promote_count)
-        .collect::<Vec<_>>();
-    let mut promoted = Vec::with_capacity(correction_indices.len());
-    for index in correction_indices.into_iter().rev() {
-        promoted.push(candidates.remove(index));
-    }
-    promoted.reverse();
-
-    let insertion_index = candidate_page_size
-        .saturating_sub(promoted.len())
-        .min(candidates.len());
-    candidates.splice(insertion_index..insertion_index, promoted);
-    candidates
+    let visible_correction_limit = if candidate_page_size <= 5 { 1 } else { 2 };
+    promote_correction_candidates(candidates, candidate_page_size, visible_correction_limit)
 }
 
 fn generate_duplicate_letter_corrections<F>(

@@ -113,6 +113,9 @@ jobs:
       - name: Check TYPO-01 full-keyboard correction
         run: bash scripts/check_typo01_sources.sh
 
+      - name: Check NINEKEY-TYPO-01 correction
+        run: bash scripts/check_ninekey_typo01_sources.sh
+
       - name: Check AI-05 model supply-chain gates
         run: bash scripts/check_ai05_model_gate_sources.sh
 

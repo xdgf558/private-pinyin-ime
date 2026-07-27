@@ -493,17 +493,27 @@ impl InputSession {
 
         self.parsed_syllables.clear();
         let previous_context = self.context_tokens.last().map(String::as_str);
-        let base_candidates = self.lexicon.lookup_nine_key_with_context_cached(
-            &self.nine_key_input,
-            previous_context,
-            |left, right| {
-                Ranker::score_continuous_transition_weight(
-                    self.predictor.transition_frequency(left, right),
-                    user_transition_frequency(&self.user_transitions, left, right),
-                )
-            },
-            &mut self.nine_key_decode_cache,
-        );
+        let transition_score = |left: &str, right: &str| {
+            Ranker::score_continuous_transition_weight(
+                self.predictor.transition_frequency(left, right),
+                user_transition_frequency(&self.user_transitions, left, right),
+            )
+        };
+        let base_candidates = if self.settings_snapshot.ai.enable_pinyin_correction {
+            self.lexicon.lookup_nine_key_with_context_corrected_cached(
+                &self.nine_key_input,
+                previous_context,
+                transition_score,
+                &mut self.nine_key_decode_cache,
+            )
+        } else {
+            self.lexicon.lookup_nine_key_with_context_cached(
+                &self.nine_key_input,
+                previous_context,
+                transition_score,
+                &mut self.nine_key_decode_cache,
+            )
+        };
         let user_candidates = self
             .user_lexicon
             .as_ref()
@@ -517,7 +527,15 @@ impl InputSession {
                 },
             )
             .unwrap_or_default();
-        self.candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        self.candidates = if self.settings_snapshot.ai.enable_pinyin_correction {
+            crate::lexicon::merge_user_and_base_candidates_with_corrections(
+                user_candidates,
+                base_candidates,
+                self.settings_snapshot.candidate_page_size,
+            )
+        } else {
+            merge_user_and_base_candidates(user_candidates, base_candidates)
+        };
         self.candidate_page = 0;
         self.preedit_text = self.nine_key_input.clone();
         self.current_output(true, false, String::new())

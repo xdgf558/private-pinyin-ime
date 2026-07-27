@@ -1,8 +1,8 @@
 # Development Progress
 
-Last updated: 2026-07-26
-Current stage: TYPO-01 bounded full-keyboard pinyin correction
-Current status: The shared Rust full-keyboard path now preserves raw input and every original candidate while adding at most two validated low-priority typo candidates. Reviewed rules and constrained physical-key edits feed explicit correction metadata into AI Lite; nine-key behavior remains unchanged and is deferred to its own stage.
+Last updated: 2026-07-27
+Current stage: NINEKEY-TYPO-01 bounded nine-key correction
+Current status: The shared Rust nine-key path now adds at most two validated low-priority missing, extra, adjacent, or transposed-digit candidates after ordinary decoding. Raw digit composition and complete ordinary-candidate order remain unchanged, while the existing three-platform correction switch controls both QWERTY and nine-key behavior.
 
 ## iOS Host Submission Transition Smoothing (2026-07-27)
 
@@ -39,6 +39,45 @@ Current status: The shared Rust full-keyboard path now preserves raw input and e
   once, leaving the diagnostic field at `你好你好`.
   Physical-device X Publish confirmation remains required because simulator
   host Apps cannot reproduce X's exact publishing transition.
+
+## NINEKEY-TYPO-01 Bounded Nine-Key Correction (2026-07-27)
+
+- Added a shared Rust correction postpass for one missing digit, one extra
+  digit, an adjacent keypad substitution, or an adjacent digit transposition.
+  Only `2` through `9` are accepted; work stops after 24 digits, 64 exact-index
+  viability attempts, and two accepted correction candidates.
+- Kept corrections outside the incremental nine-key lattice. Ordinary exact,
+  continuous, and prefix candidates are decoded and capped first, then
+  corrections are appended and optionally promoted into one compact-page slot
+  or two wide-page slots without changing the relative order or reachability of
+  any ordinary candidate.
+- Added a conservative ambiguity rule: when the typed signature already has an
+  exact reading, correction must produce a multi-character, multi-syllable
+  entry. This lets `6426` expose `你好` through missing-digit `64426` without
+  turning valid ambiguous signatures such as `636` into an automatic
+  single-character `猫` correction.
+- Reused the existing default-on `拼音智能纠错` setting on macOS, Windows, and
+  iOS. Turning it off restores the exact pre-stage output. Strict privacy keeps
+  the stateless local path available; digit signatures and candidate content
+  are neither logged nor persisted.
+- Added full ordinary-candidate equivalence checks, all four edit-family
+  fixtures, disabled-setting coverage, exact single-commit behavior, redacted
+  debug output, the exact 64-attempt ceiling, and cached/stateless equality
+  across append, Backspace, and retype.
+- On the development Apple host in the unoptimized Rust test profile, median
+  incremental cost with correction enabled was `0.868167 ms/key` for the
+  21-key sentence and `0.862708 ms/key` at the 64-key maximum, versus
+  `0.738084` and `0.787167 ms/key` with correction disabled.
+- On the same host in the optimized release profile, medians were
+  `0.247291 ms/key` and `0.286959 ms/key` with correction enabled, versus
+  `0.223083` and `0.289916 ms/key` disabled. These are local Rust references,
+  not real-device claims; both Apple-only regressions retain the unchanged
+  `60 ms` per-key budget.
+- Passed `cargo test --workspace`, workspace Clippy with warnings denied,
+  formatting, desktop-AI and iOS-AI FFI feature tests, TYPO-01 and
+  NINEKEY-TYPO-01 source gates, and the iOS keyboard source contract. Xcode
+  26.6 also built the iOS simulator container App and keyboard extension
+  successfully against the shared Rust release library.
 
 ## TYPO-01 Bounded Full-Keyboard Correction (2026-07-26)
 

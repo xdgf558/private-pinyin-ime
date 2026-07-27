@@ -33,6 +33,7 @@
 
 ### Added
 
+- Added NINEKEY-TYPO-01 bounded nine-key correction across macOS, Windows, and iOS through the shared Rust core. Missing, extra, adjacent, or transposed digits may add at most two low-priority candidates while preserving the raw digit composition and every ordinary candidate in its original order; the existing local typo-correction switch controls both QWERTY and nine-key input.
 - Added TYPO-01 bounded full-keyboard pinyin correction across macOS, Windows, and iOS through the shared Rust core. Reviewed first-party confusion rules plus constrained duplicate-key, adjacent-key, and transposed-letter paths may add at most two low-priority candidates; the raw composition and every original candidate remain available, and AI Lite receives explicit exact/probable/weak correction metadata for optional reranking.
 - Added FROST-01 reviewed White Frost import on macOS and Windows: users explicitly accept GPL-3.0 before downloading the pinned official `rime-frost` 1.0.4 Release, and exact size/SHA-256 plus bounded ZIP validation protect an independent atomic `rime_frost.tsv` layer. The UI reports its version and supports update checks, disable/enable, and clear without touching built-in, manual, Rime Ice, or learned data.
 - Raised only the macOS and Windows local Rime import policy to 64 MiB per source, 128 MiB for canonical imported layers, and 750,000 retained entries. iOS keeps its existing 16 MiB, 32 MiB, and 200,000-entry limits.
