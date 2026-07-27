@@ -119,6 +119,9 @@ jobs:
       - name: Check ABC-01 candidate stability
         run: bash scripts/check_abc01_candidate_stability.sh
 
+      - name: Check ABC-02 tolerant input
+        run: bash scripts/check_abc02_tolerant_input.sh
+
       - name: Check AI-05 model supply-chain gates
         run: bash scripts/check_ai05_model_gate_sources.sh
 

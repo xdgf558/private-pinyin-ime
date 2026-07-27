@@ -192,6 +192,67 @@ impl UserLexicon {
         Ok(exact_candidates)
     }
 
+    pub(crate) fn lookup_exact(
+        &self,
+        raw_input: &str,
+        parses: &[PinyinParse],
+    ) -> ImeResult<Vec<Candidate>> {
+        if raw_input.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let exact_pinyins = parses
+            .iter()
+            .filter(|parse| parse.is_complete())
+            .map(PinyinParse::pinyin_string)
+            .collect::<std::collections::HashSet<_>>();
+        if exact_pinyins.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let reference_time_ms = now_ms();
+        let connection = self.connection()?;
+        let mut candidates = Vec::new();
+        let mut seen_phrases = std::collections::HashSet::new();
+        for exact_pinyin in exact_pinyins {
+            let rows = {
+                let mut statement = connection
+                    .prepare(
+                        "SELECT phrase, pinyin, weight, updated_at_ms
+                         FROM user_phrases
+                         WHERE pinyin = ?1
+                         ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
+                    )
+                    .map_err(|_| ImeError::UserLexiconDatabase)?;
+                let mapped_rows = statement
+                    .query_map(params![exact_pinyin], |row| {
+                        let phrase: String = row.get(0)?;
+                        let pinyin: String = row.get(1)?;
+                        let weight: f64 = row.get(2)?;
+                        let updated_at_ms: i64 = row.get(3)?;
+                        Ok((phrase, pinyin, weight, updated_at_ms))
+                    })
+                    .map_err(|_| ImeError::UserLexiconDatabase)?;
+                collect_user_lookup_rows(mapped_rows)?
+            };
+            for (phrase, pinyin, weight, updated_at_ms) in rows {
+                if seen_phrases.insert(phrase.clone()) {
+                    candidates.push(user_candidate(
+                        phrase,
+                        pinyin,
+                        weight,
+                        updated_at_ms,
+                        reference_time_ms,
+                        CandidateMatchKind::Exact,
+                    ));
+                }
+            }
+        }
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        Ok(candidates)
+    }
+
     pub fn lookup_nine_key(&self, digits: &str) -> ImeResult<Vec<Candidate>> {
         if !is_valid_nine_key_input(digits) {
             return Ok(Vec::new());

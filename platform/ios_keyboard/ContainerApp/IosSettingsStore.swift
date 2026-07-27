@@ -183,6 +183,21 @@ enum IosSettingsStore {
         }
     }
 
+    static func isTolerantPinyinEnabled() -> Bool {
+        let fuzzyPinyin = readSettings()["fuzzy_pinyin"] as? [String: Any] ?? [:]
+        return fuzzyPinyinKeys.contains { fuzzyPinyin[$0] as? Bool == true }
+    }
+
+    static func setTolerantPinyinEnabled(_ enabled: Bool) -> Bool {
+        updateSettings { settings in
+            var fuzzyPinyin = settings["fuzzy_pinyin"] as? [String: Any] ?? [:]
+            for key in fuzzyPinyinKeys {
+                fuzzyPinyin[key] = enabled
+            }
+            settings["fuzzy_pinyin"] = fuzzyPinyin
+        }
+    }
+
     static func keyboardLayout() -> IosKeyboardLayout {
         let storedSettings = readStoredSettings()
         let storedLayout = (storedSettings?["ios_keyboard_layout"] as? String)
@@ -423,6 +438,16 @@ enum IosSettingsStore {
         settings["ios_chinese_script"] = IosChineseScript.simplified.rawValue
         return settings
     }
+
+    private static let fuzzyPinyinKeys = [
+        "zh_z",
+        "ch_c",
+        "sh_s",
+        "n_l",
+        "an_ang",
+        "en_eng",
+        "in_ing",
+    ]
 
     private static func readSettings() -> [String: Any] {
         readStoredSettings() ?? defaultSettings()

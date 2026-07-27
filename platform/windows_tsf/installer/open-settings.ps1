@@ -527,27 +527,48 @@ $pinyinCorrection.Font = New-UiFont -Size 9
 $pinyinCorrection.Checked = $correctionEnabled
 $generalPage.Controls.Add($pinyinCorrection)
 
-[void](New-UiLabel -Parent $generalPage -Text "每页候选数量" -X 24 -Y 286 -Width 170 -Height 26 -Size 9)
+$fuzzyPinyinKeys = @("zh_z", "ch_c", "sh_s", "n_l", "an_ang", "en_eng", "in_ing")
+$tolerantPinyinEnabled = $false
+if ($null -ne $settings.PSObject.Properties["fuzzy_pinyin"] -and
+    $null -ne $settings.fuzzy_pinyin) {
+    foreach ($key in $fuzzyPinyinKeys) {
+        if ($null -ne $settings.fuzzy_pinyin.PSObject.Properties[$key] -and
+            [bool]$settings.fuzzy_pinyin.$key) {
+            $tolerantPinyinEnabled = $true
+            break
+        }
+    }
+}
+$initialTolerantPinyinEnabled = $tolerantPinyinEnabled
+$tolerantPinyin = New-Object System.Windows.Forms.CheckBox
+$tolerantPinyin.Text = "宽容拼音（常见模糊音）"
+$tolerantPinyin.Location = New-Object System.Drawing.Point(385, 270)
+$tolerantPinyin.Size = New-Object System.Drawing.Size(220, 28)
+$tolerantPinyin.Font = New-UiFont -Size 9
+$tolerantPinyin.Checked = $tolerantPinyinEnabled
+$generalPage.Controls.Add($tolerantPinyin)
+
+[void](New-UiLabel -Parent $generalPage -Text "每页候选数量" -X 24 -Y 318 -Width 170 -Height 26 -Size 9)
 $candidatePageSize = New-Object System.Windows.Forms.NumericUpDown
-$candidatePageSize.Location = New-Object System.Drawing.Point(235, 281)
+$candidatePageSize.Location = New-Object System.Drawing.Point(235, 313)
 $candidatePageSize.Size = New-Object System.Drawing.Size(90, 28)
 $candidatePageSize.Minimum = 3
 $candidatePageSize.Maximum = 9
 $candidatePageSize.Value = [decimal][int]$settings.candidate_page_size
 $generalPage.Controls.Add($candidatePageSize)
 
-[void](New-UiLabel -Parent $generalPage -Text "候选字号" -X 24 -Y 334 -Width 170 -Height 26 -Size 9)
+[void](New-UiLabel -Parent $generalPage -Text "候选字号" -X 24 -Y 366 -Width 170 -Height 26 -Size 9)
 $candidateFontSize = New-Object System.Windows.Forms.NumericUpDown
-$candidateFontSize.Location = New-Object System.Drawing.Point(235, 329)
+$candidateFontSize.Location = New-Object System.Drawing.Point(235, 361)
 $candidateFontSize.Size = New-Object System.Drawing.Size(90, 28)
 $candidateFontSize.Minimum = 10
 $candidateFontSize.Maximum = 24
 $candidateFontSize.Value = [decimal][int]$settings.candidate_font_size
 $generalPage.Controls.Add($candidateFontSize)
 
-[void](New-UiLabel -Parent $generalPage -Text "界面主题" -X 385 -Y 286 -Width 120 -Height 26 -Size 9)
+[void](New-UiLabel -Parent $generalPage -Text "界面主题" -X 385 -Y 318 -Width 120 -Height 26 -Size 9)
 $theme = New-Object System.Windows.Forms.ComboBox
-$theme.Location = New-Object System.Drawing.Point(505, 281)
+$theme.Location = New-Object System.Drawing.Point(505, 313)
 $theme.Size = New-Object System.Drawing.Size(160, 30)
 $theme.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
 $theme.Font = New-UiFont -Size 9
@@ -978,8 +999,18 @@ $save.Add_Click({
         Set-JsonProperty $currentSettings "ai" ([pscustomobject]@{})
     }
     Set-JsonProperty $currentSettings.ai "enable_pinyin_correction" ([bool]$pinyinCorrection.Checked)
+    if ([bool]$tolerantPinyin.Checked -ne [bool]$initialTolerantPinyinEnabled) {
+        if ($null -eq $currentSettings.PSObject.Properties["fuzzy_pinyin"] -or
+            $null -eq $currentSettings.fuzzy_pinyin) {
+            Set-JsonProperty $currentSettings "fuzzy_pinyin" ([pscustomobject]@{})
+        }
+        foreach ($key in $fuzzyPinyinKeys) {
+            Set-JsonProperty $currentSettings.fuzzy_pinyin $key ([bool]$tolerantPinyin.Checked)
+        }
+    }
     Write-Settings $currentSettings
     $script:settings = $currentSettings
+    $script:initialTolerantPinyinEnabled = [bool]$tolerantPinyin.Checked
     $statusLabel.Text = "设置已保存，重新切换一次输入法后生效"
     $statusLabel.ForeColor = $colors.Success
 })

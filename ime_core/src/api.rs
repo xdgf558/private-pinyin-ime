@@ -8,13 +8,14 @@ use crate::key_event::KeyEvent;
 use crate::lexicon::Lexicon;
 use crate::logger;
 use crate::pinyin_correction::add_correction_candidates;
-use crate::pinyin_parser::PinyinParser;
+use crate::pinyin_parser::{PinyinParse, PinyinParser};
 use crate::predictor::Predictor;
 use crate::ranker::Ranker;
 #[cfg(feature = "reviewed-rime-frost")]
 use crate::reviewed_rime_frost;
 use crate::session::InputSession;
 use crate::settings::{ImeMode, ImeSettings};
+use crate::tolerant_input::add_tolerant_candidates;
 use crate::user_lexicon::UserLexicon;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -214,34 +215,57 @@ impl ImeEngine {
                 },
             )
             .unwrap_or_default();
-        let candidates =
+        let mut candidates =
             crate::lexicon::merge_user_and_base_candidates(user_candidates, base_candidates);
-        if !self.settings.ai.enable_pinyin_correction {
-            return candidates;
+        let mut lookup = |corrected_input: &str, corrected_parses: &[PinyinParse]| {
+            let corrected_base = self.lexicon.lookup_with_context(
+                corrected_input,
+                corrected_parses,
+                None,
+                |left, right| {
+                    Ranker::score_continuous_transition(
+                        self.predictor.transition_frequency(left, right),
+                        0,
+                    )
+                },
+            );
+            let corrected_user = self
+                .user_lexicon
+                .as_ref()
+                .map(
+                    |user_lexicon| match user_lexicon.lookup(corrected_input, corrected_parses) {
+                        Ok(candidates) => candidates,
+                        Err(error) => {
+                            logger::emit_error(error);
+                            Vec::new()
+                        }
+                    },
+                )
+                .unwrap_or_default();
+            crate::lexicon::merge_user_and_base_candidates(corrected_user, corrected_base)
+        };
+        if self.settings.ai.enable_pinyin_correction {
+            candidates = add_correction_candidates(
+                raw_input,
+                &parses,
+                candidates,
+                self.settings.candidate_page_size,
+                &mut lookup,
+            );
         }
-
-        add_correction_candidates(
+        add_tolerant_candidates(
             raw_input,
             &parses,
+            self.settings.fuzzy_pinyin,
             candidates,
             self.settings.candidate_page_size,
-            |corrected_input, corrected_parses| {
-                let corrected_base = self.lexicon.lookup_with_context(
-                    corrected_input,
-                    corrected_parses,
-                    None,
-                    |left, right| {
-                        Ranker::score_continuous_transition(
-                            self.predictor.transition_frequency(left, right),
-                            0,
-                        )
-                    },
-                );
-                let corrected_user = self
+            |tolerant_input, tolerant_parses| {
+                let tolerant_base = self.lexicon.lookup_exact(tolerant_input, tolerant_parses);
+                let tolerant_user = self
                     .user_lexicon
                     .as_ref()
                     .map(|user_lexicon| {
-                        match user_lexicon.lookup(corrected_input, corrected_parses) {
+                        match user_lexicon.lookup_exact(tolerant_input, tolerant_parses) {
                             Ok(candidates) => candidates,
                             Err(error) => {
                                 logger::emit_error(error);
@@ -250,7 +274,7 @@ impl ImeEngine {
                         }
                     })
                     .unwrap_or_default();
-                crate::lexicon::merge_user_and_base_candidates(corrected_user, corrected_base)
+                crate::lexicon::merge_user_and_base_candidates(tolerant_user, tolerant_base)
             },
         )
     }

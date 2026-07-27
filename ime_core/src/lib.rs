@@ -22,6 +22,7 @@ pub mod reviewed_rime_frost;
 pub mod session;
 pub mod settings;
 pub mod syllable;
+pub mod tolerant_input;
 pub mod user_lexicon;
 
 pub use api::{ImeEngine, ImeOutput};
@@ -38,3 +39,4 @@ pub use pinyin_correction::{PinyinCorrectionSuggestion, PinyinCorrector};
 pub use pinyin_parser::{PinyinParse, PinyinParser};
 pub use session::InputSession;
 pub use settings::{AiSettings, ImeMode, ImeSettings};
+pub use tolerant_input::TolerantPinyinVariant;

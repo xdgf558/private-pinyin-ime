@@ -398,6 +398,46 @@ impl Lexicon {
         )
     }
 
+    pub(crate) fn lookup_exact(&self, raw_input: &str, parses: &[PinyinParse]) -> Vec<Candidate> {
+        if raw_input.trim().is_empty() {
+            return Vec::new();
+        }
+
+        let normalized_input = PinyinParser::normalize_raw(raw_input).replace('\'', "");
+        let exact_pinyins = parses
+            .iter()
+            .filter(|parse| parse.is_complete())
+            .map(PinyinParse::pinyin_string)
+            .collect::<HashSet<_>>();
+        if exact_pinyins.is_empty() {
+            return Vec::new();
+        }
+
+        let mut candidates = Vec::new();
+        let mut seen = HashSet::new();
+        for indexed_entry in self
+            .compact_index
+            .range(self.compact_index.exact_range(&normalized_input))
+        {
+            let entry = &self.entries[indexed_entry.entry_index as usize];
+            if !exact_pinyins.contains(&entry.pinyin) || !seen.insert(entry.phrase.clone()) {
+                continue;
+            }
+            candidates.push(
+                Candidate::new(&entry.phrase, &entry.pinyin, CandidateSource::Base)
+                    .with_score(Ranker::score(entry.frequency))
+                    .with_rank_score(Ranker::score_match(
+                        entry.frequency,
+                        CandidateMatchKind::Exact,
+                        CandidateSource::Base,
+                    )),
+            );
+        }
+        Ranker::sort_candidates(&mut candidates);
+        candidates.truncate(MAX_LOOKUP_CANDIDATES);
+        candidates
+    }
+
     // Path scores are reusable only while the session context and transition snapshot stay stable.
     pub(crate) fn lookup_with_context_cached(
         &self,

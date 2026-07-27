@@ -42,6 +42,24 @@ pub struct FuzzyPinyinSettings {
     pub in_ing: bool,
 }
 
+impl FuzzyPinyinSettings {
+    pub const fn any_enabled(self) -> bool {
+        self.zh_z || self.ch_c || self.sh_s || self.n_l || self.an_ang || self.en_eng || self.in_ing
+    }
+
+    pub const fn all_enabled() -> Self {
+        Self {
+            zh_z: true,
+            ch_c: true,
+            sh_s: true,
+            n_l: true,
+            an_ang: true,
+            en_eng: true,
+            in_ing: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AiSettings {

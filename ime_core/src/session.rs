@@ -14,6 +14,7 @@ use crate::pinyin_parser::PinyinParser;
 use crate::predictor::{merge_prediction_candidates, Predictor};
 use crate::ranker::Ranker;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
+use crate::tolerant_input::add_tolerant_candidates;
 use crate::user_lexicon::{UserLexicon, UserTransitionSnapshot};
 
 pub const MAX_RAW_INPUT_CHARS: usize = 64;
@@ -442,9 +443,9 @@ impl InputSession {
                 },
             )
             .unwrap_or_default();
-        let candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
-        self.candidates = if self.settings_snapshot.ai.enable_pinyin_correction {
-            add_correction_candidates(
+        let mut candidates = merge_user_and_base_candidates(user_candidates, base_candidates);
+        if self.settings_snapshot.ai.enable_pinyin_correction {
+            candidates = add_correction_candidates(
                 &self.raw_input,
                 &parses,
                 candidates,
@@ -476,10 +477,32 @@ impl InputSession {
                         .unwrap_or_default();
                     merge_user_and_base_candidates(corrected_user, corrected_base)
                 },
-            )
-        } else {
-            candidates
-        };
+            );
+        }
+        self.candidates = add_tolerant_candidates(
+            &self.raw_input,
+            &parses,
+            self.settings_snapshot.fuzzy_pinyin,
+            candidates,
+            self.settings_snapshot.candidate_page_size,
+            |tolerant_input, tolerant_parses| {
+                let tolerant_base = self.lexicon.lookup_exact(tolerant_input, tolerant_parses);
+                let tolerant_user = self
+                    .user_lexicon
+                    .as_ref()
+                    .map(|user_lexicon| {
+                        match user_lexicon.lookup_exact(tolerant_input, tolerant_parses) {
+                            Ok(candidates) => candidates,
+                            Err(error) => {
+                                logger::emit_error(error);
+                                Vec::new()
+                            }
+                        }
+                    })
+                    .unwrap_or_default();
+                merge_user_and_base_candidates(tolerant_user, tolerant_base)
+            },
+        );
         self.candidate_page = 0;
         self.preedit_text = self.raw_input.clone();
         self.current_output(true, false, String::new())

@@ -1,6 +1,11 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+#[cfg(target_vendor = "apple")]
+use std::path::PathBuf;
+#[cfg(target_vendor = "apple")]
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use ime_core::lexicon::Lexicon;
 use ime_core::predictor::Predictor;
 use ime_core::ranker::Ranker;
@@ -25,6 +30,35 @@ fn median_lookup_duration(mut lookup: impl FnMut() -> bool) -> Duration {
     }
     samples.sort_unstable();
     samples[BATCH_COUNT / 2]
+}
+
+#[cfg(target_vendor = "apple")]
+struct TempUserLexicon {
+    path: PathBuf,
+}
+
+#[cfg(target_vendor = "apple")]
+impl TempUserLexicon {
+    fn new(name: &str) -> Self {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let path = std::env::temp_dir().join(format!(
+            "private_pinyin_{name}_{}_{}.sqlite",
+            std::process::id(),
+            unique
+        ));
+        let _ = std::fs::remove_file(&path);
+        Self { path }
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+impl Drop for TempUserLexicon {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
 }
 
 #[test]
@@ -112,6 +146,141 @@ fn compact_candidate_pages_keep_four_original_paths_before_one_correction() {
         .iter()
         .take(4)
         .all(|candidate| candidate.correction.is_none()));
+}
+
+#[test]
+fn tolerant_pinyin_preserves_original_order_and_exposes_bounded_low_priority_candidates() {
+    let mut tolerant_settings = ImeSettings::default();
+    tolerant_settings.fuzzy_pinyin.n_l = true;
+    let tolerant =
+        ImeEngine::with_settings(tolerant_settings).expect("engine loads with tolerant pinyin");
+
+    let ordinary_settings = ImeSettings::default();
+    let ordinary =
+        ImeEngine::with_settings(ordinary_settings).expect("engine loads without tolerant pinyin");
+
+    let tolerant_candidates = tolerant.candidates_for_raw("la");
+    let ordinary_candidates = ordinary.candidates_for_raw("la");
+    let retained_originals = tolerant_candidates
+        .iter()
+        .filter(|candidate| {
+            !candidate
+                .correction
+                .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        retained_originals,
+        ordinary_candidates.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        tolerant_candidates
+            .first()
+            .map(|candidate| candidate.id.as_str()),
+        ordinary_candidates
+            .first()
+            .map(|candidate| candidate.id.as_str()),
+        "tolerant input must not move the Space/default candidate"
+    );
+
+    let tolerant_paths = tolerant_candidates
+        .iter()
+        .filter(|candidate| {
+            candidate
+                .correction
+                .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .collect::<Vec<_>>();
+    assert!(tolerant_paths
+        .iter()
+        .any(|candidate| candidate.text == "那" && candidate.pinyin == "na"));
+    assert!(
+        ordinary_candidates
+            .iter()
+            .all(|candidate| candidate.text != "那"),
+        "the smoke case must not be satisfied by the ordinary or TYPO-01 path"
+    );
+    assert!(tolerant_paths.len() <= 2);
+    assert!(
+        tolerant_candidates
+            .iter()
+            .take(5)
+            .filter(|candidate| {
+                candidate
+                    .correction
+                    .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+            })
+            .count()
+            <= 1
+    );
+}
+
+#[test]
+fn tolerant_pinyin_session_commits_without_mutating_the_typed_preedit() {
+    let mut settings = ImeSettings::default();
+    settings.fuzzy_pinyin.n_l = true;
+    let engine = ImeEngine::with_settings(settings).expect("engine loads with tolerant pinyin");
+    let mut session = engine.create_session();
+    session.feed_key(KeyEvent::from_char('l'));
+    let output = session.feed_key(KeyEvent::from_char('a'));
+
+    assert_eq!(output.preedit, "la");
+    let candidate_index = output
+        .candidates
+        .iter()
+        .position(|candidate| {
+            candidate.text == "那"
+                && candidate
+                    .correction
+                    .is_some_and(|correction| correction.kind.is_fuzzy_pinyin())
+        })
+        .expect("fuzzy n/l candidate is visible");
+    let commit = session.commit_candidate(candidate_index);
+    assert_eq!(commit.commit_text, "那");
+    assert!(session.raw_input.is_empty());
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn tolerant_pinyin_stays_within_interactive_lookup_budget() {
+    const INPUT: &str = "sansansansansansansansan";
+    let user_lexicon = TempUserLexicon::new("abc02_performance");
+
+    let mut enabled_settings = ImeSettings::default();
+    enabled_settings.ai.enable_pinyin_correction = false;
+    enabled_settings.fuzzy_pinyin = ime_core::settings::FuzzyPinyinSettings::all_enabled();
+    enabled_settings.user_lexicon_path = Some(user_lexicon.path.clone());
+    let enabled =
+        ImeEngine::with_settings(enabled_settings).expect("engine loads with tolerant pinyin");
+
+    let mut disabled_settings = ImeSettings::default();
+    disabled_settings.ai.enable_pinyin_correction = false;
+    disabled_settings.user_lexicon_path = Some(user_lexicon.path.clone());
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("engine loads without tolerant pinyin");
+
+    let enabled_median = median_lookup_duration(|| {
+        let mut session = enabled.create_session();
+        INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == INPUT
+    }) / INPUT.len() as u32;
+    let disabled_median = median_lookup_duration(|| {
+        let mut session = disabled.create_session();
+        INPUT.chars().for_each(|character| {
+            session.feed_key(KeyEvent::from_char(character));
+        });
+        session.raw_input == INPUT
+    }) / INPUT.len() as u32;
+    eprintln!(
+        "ABC-02 24-key/16-variant SQLite median per key: enabled={enabled_median:?}, disabled={disabled_median:?}"
+    );
+
+    assert!(
+        enabled_median <= Duration::from_millis(60),
+        "tolerant pinyin median {enabled_median:?} exceeded 60 ms per key"
+    );
 }
 
 #[test]

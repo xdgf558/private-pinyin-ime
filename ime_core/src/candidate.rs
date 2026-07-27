@@ -52,6 +52,7 @@ pub enum CandidateCorrectionKind {
     NineKeyExtraDigit,
     NineKeyMissingDigit,
     NineKeyTransposedDigits,
+    FuzzyPinyin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +76,12 @@ impl CandidateCorrection {
             CandidateCorrectionConfidence::Probable => 750,
             CandidateCorrectionConfidence::Weak => 450,
         }
+    }
+}
+
+impl CandidateCorrectionKind {
+    pub const fn is_fuzzy_pinyin(self) -> bool {
+        matches!(self, Self::FuzzyPinyin)
     }
 }
 
