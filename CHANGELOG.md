@@ -164,6 +164,7 @@
 
 ### Changed
 
+- Bumped the iOS container app and Keyboard Extension to `0.1.29 (25)` with smoother host dismissal and field switching, a stable Space-key default, opt-in tolerant pinyin, confirmation-based learning hysteresis, and one blind-typing contract across the shared core and all three hosts. Prediction-only numbered input now remains literal on desktop and the iOS number page.
 - Bumped the iOS container app and Keyboard Extension to `0.1.27 (23)` with NINEKEY-PERF-01 exact-key lookup, full candidate-equivalence regressions, and a bounded incremental nine-key lattice cache that preserves the existing Apple 60 ms latency budget. The marketing version advances because `0.1.26 (22)` is already in Beta App Review; App Store exports now preserve the repository build number instead of letting Xcode rewrite it during upload.
 - Bumped the macOS app and installer package to `0.1.27` for the compact tiered Station Board preferences navigation while retaining the Writer V1 and installed-source reliability fixes from `0.1.26`.
 - Reorganized the macOS Station Board preferences into a compact overview plus focused second-level pages for lexicon management, local Writer, and version/update controls. Existing settings behavior, dark brand styling, and proportional window resizing are preserved while future features no longer lengthen the main page.

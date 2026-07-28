@@ -600,9 +600,10 @@ struct ContentView: View {
                     Text("本次更新")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(StationTheme.textPrimary)
-                    Label("全键盘新增本地拼音智能纠错，并保留全部原始候选", systemImage: "character.cursor.ibeam")
-                    Label("九宫格支持漏输、多输、邻键和数字顺序纠错", systemImage: "square.grid.3x3.fill")
-                    Label("优化键盘提交与切换动画，减少宿主界面拖拽感", systemImage: "sparkles")
+                    Label("稳定首选候选与盲打提交，异步排序不再改变空格默认项", systemImage: "hand.tap.fill")
+                    Label("新增可选宽容拼音，支持常见平翘舌、鼻音和前后鼻音混淆", systemImage: "character.cursor.ibeam")
+                    Label("用户学习采用确认门槛与滞回，减少候选随时间反复跳动", systemImage: "brain.head.profile")
+                    Label("优化键盘收起和字段切换；预测状态下数字键按字面输入", systemImage: "sparkles")
                 }
                 .font(.system(size: 13))
                 .foregroundStyle(StationTheme.textSecondary)

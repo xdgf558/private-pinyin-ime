@@ -1,8 +1,31 @@
 # Development Progress
 
-Last updated: 2026-07-28
-Current stage: ABC-04 blind-typing interaction and acceptance
-Current status: Space, composition-only number selection, prediction-state digit passthrough, page-relative identity, raw commit, cancellation, recovery, punctuation, and exactly-once selection now share one Rust/C ABI contract with three-platform release-smoke requirements.
+Last updated: 2026-07-29
+Current stage: iOS 0.1.29 TestFlight release candidate
+Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) archive passed simulator readiness and upload transport; App Store Connect processing and physical-device acceptance remain pending.
+
+## iOS 0.1.29 (25) TestFlight Upload (2026-07-29)
+
+- Advanced both the container App and Keyboard Extension from `0.1.28 (24)` to
+  `0.1.29 (25)`. The in-App About page now summarizes candidate stability,
+  opt-in tolerant pinyin, gentle learning hysteresis, blind-typing digit
+  behavior, and the latest host-transition fixes.
+- Passed `scripts/run_ios_smoke_readiness.sh` with Xcode 26.6 (`17F109`) and
+  the iPhoneSimulator 26.5 SDK. The Rust simulator core, container App, and
+  Keyboard Extension built successfully; bundle IDs, App Group entitlement,
+  and `RequestsOpenAccess=false` remained intact.
+- Rebuilt the device Rust FFI for `aarch64-apple-ios` with iOS 18 minimum and
+  `ios-ai`, then created the signed arm64 archive at
+  `dist/ios/PrivatePinyin-0.1.29-build25-xcode26.xcarchive`.
+- Uploaded through `xcodebuild -exportArchive` with
+  `manageAppVersionAndBuildNumber=false`. Xcode reported `Upload succeeded`
+  and delivery UUID `441154bb-bb6f-401b-911c-fad50df37261`; no upload error was
+  returned.
+- App Store Connect processing, TestFlight group assignment, and external Beta
+  App Review remain separate pending steps. Physical-device acceptance still
+  covers X Publish/Send dismissal timing, field switching, haptic feedback,
+  tolerant-input settings, learning hysteresis, and prediction-only number-page
+  entry.
 
 ## ABC-04 Blind-Typing Interaction and Acceptance (2026-07-28)
 
