@@ -90,6 +90,20 @@ fn commit_first_candidate_in_session(session: &mut InputSession, raw_input: &str
     session.feed_key(KeyEvent::from_char(' '))
 }
 
+fn commit_candidate_by_text(engine: &ImeEngine, raw_input: &str, target: &str) -> ImeOutput {
+    let mut session = engine.create_session();
+    let mut output = ImeOutput::idle(session.mode());
+    for ch in raw_input.chars() {
+        output = session.feed_key(KeyEvent::from_char(ch));
+    }
+    let index = output
+        .candidates
+        .iter()
+        .position(|candidate| candidate.text == target)
+        .expect("target candidate is visible");
+    session.commit_candidate(index)
+}
+
 #[test]
 fn committing_candidate_updates_user_lexicon() {
     let temp_db = TempDb::new("learn_enabled");
@@ -108,7 +122,9 @@ fn learned_candidate_is_read_from_user_lexicon() {
     let settings = settings_with_user_lexicon(temp_db.path.clone());
     let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens user lexicon");
 
-    commit_first_candidate(&engine, "nihao");
+    for _ in 0..3 {
+        commit_first_candidate(&engine, "nihao");
+    }
 
     let next_engine = ImeEngine::with_settings(settings).expect("engine reopens user lexicon");
     let candidates = next_engine.candidates_for_raw("nihao");
@@ -116,6 +132,183 @@ fn learned_candidate_is_read_from_user_lexicon() {
     assert_eq!(
         candidates.first().map(|candidate| candidate.source),
         Some(CandidateSource::User)
+    );
+}
+
+#[test]
+fn gentle_learning_keeps_default_stable_until_third_confirmation() {
+    let temp_db = TempDb::new("gentle_default");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let baseline_engine =
+        ImeEngine::with_settings(settings.clone()).expect("baseline engine opens");
+    let baseline = baseline_engine.candidates_for_raw("shi");
+    let baseline_ids = baseline
+        .iter()
+        .map(|candidate| candidate.id.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        baseline.first().map(|candidate| candidate.text.as_str()),
+        Some("是")
+    );
+
+    for confirmation in 1..=2 {
+        let commit = commit_candidate_by_text(&baseline_engine, "shi", "时");
+        assert_eq!(commit.commit_text, "时");
+        let reloaded = ImeEngine::with_settings(settings.clone()).expect("warmup engine reopens");
+        let candidates = reloaded.candidates_for_raw("shi");
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.id.clone())
+                .collect::<Vec<_>>(),
+            baseline_ids,
+            "confirmation {confirmation} must not change candidate order"
+        );
+        assert_eq!(
+            candidates.first().map(|candidate| candidate.text.as_str()),
+            Some("是")
+        );
+    }
+
+    assert_eq!(
+        commit_candidate_by_text(&baseline_engine, "shi", "时").commit_text,
+        "时"
+    );
+    let mature_engine = ImeEngine::with_settings(settings).expect("mature engine reopens");
+    let candidates = mature_engine.candidates_for_raw("shi");
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("时")
+    );
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.source),
+        Some(CandidateSource::User)
+    );
+}
+
+#[test]
+fn immediate_third_confirmation_tolerates_interaction_time_decay() {
+    let temp_db = TempDb::new("gentle_interaction_decay");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens");
+    for _ in 0..2 {
+        assert_eq!(
+            commit_candidate_by_text(&engine, "shi", "时").commit_text,
+            "时"
+        );
+    }
+
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute(
+            "UPDATE user_phrases
+             SET weight = 1.9995, is_mature = 0, updated_at_ms = ?1
+             WHERE phrase = '时' AND pinyin = 'shi'",
+            [current_time_ms()],
+        )
+        .expect("simulate interaction-time decay after two confirmations");
+    drop(connection);
+
+    let third_engine =
+        ImeEngine::with_settings(settings.clone()).expect("third-confirmation engine opens");
+    assert_eq!(
+        commit_candidate_by_text(&third_engine, "shi", "时").commit_text,
+        "时"
+    );
+    let mature_engine = ImeEngine::with_settings(settings).expect("mature engine reopens");
+    assert_eq!(
+        mature_engine
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("时"),
+        "normal interaction latency must not require a fourth confirmation"
+    );
+}
+
+#[test]
+fn mature_learning_uses_three_to_activate_and_two_to_deactivate() {
+    let temp_db = TempDb::new("gentle_hysteresis");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens");
+    for _ in 0..3 {
+        assert_eq!(
+            commit_candidate_by_text(&engine, "shi", "时").commit_text,
+            "时"
+        );
+    }
+
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute(
+            "UPDATE user_phrases
+             SET weight = 2.5, is_mature = 1, updated_at_ms = ?1
+             WHERE phrase = '时' AND pinyin = 'shi'",
+            [current_time_ms()],
+        )
+        .expect("place mature learning inside hysteresis band");
+
+    let retained = ImeEngine::with_settings(settings.clone()).expect("retained engine reopens");
+    let candidates = retained.candidates_for_raw("shi");
+    assert_eq!(
+        candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("时"),
+        "mature learning must remain active between weights two and three"
+    );
+
+    connection
+        .execute(
+            "UPDATE user_phrases
+             SET weight = 1.99, is_mature = 1, updated_at_ms = ?1
+             WHERE phrase = '时' AND pinyin = 'shi'",
+            [current_time_ms()],
+        )
+        .expect("move mature learning below deactivation boundary");
+    let deactivated =
+        ImeEngine::with_settings(settings.clone()).expect("deactivated engine reopens");
+    assert_eq!(
+        deactivated
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("是")
+    );
+
+    assert_eq!(
+        commit_candidate_by_text(&deactivated, "shi", "时").commit_text,
+        "时"
+    );
+    let still_warming = ImeEngine::with_settings(settings.clone()).expect("warmup engine reopens");
+    assert_eq!(
+        still_warming
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("是"),
+        "a deactivated preference must reach three again before reactivation"
+    );
+
+    assert_eq!(
+        commit_candidate_by_text(&still_warming, "shi", "时").commit_text,
+        "时"
+    );
+    let reactivated = ImeEngine::with_settings(settings).expect("reactivated engine reopens");
+    assert_eq!(
+        reactivated
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("时")
+    );
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT frequency FROM user_phrases WHERE phrase = '时' AND pinyin = 'shi'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .expect("history remains"),
+        5
     );
 }
 
@@ -146,13 +339,27 @@ fn sequential_candidate_commits_learn_user_bigram_prediction() {
     let temp_db = TempDb::new("learn_bigram");
     let settings = settings_with_user_lexicon(temp_db.path.clone());
     let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens user lexicon");
-    let mut session = engine.create_session();
+    for confirmation in 1..=3 {
+        let mut session = engine.create_session();
+        let first = commit_first_candidate_in_session(&mut session, "nihao");
+        let second = commit_first_candidate_in_session(&mut session, "ganma");
+        assert_eq!(first.commit_text, "你好");
+        assert_eq!(second.commit_text, "干嘛");
 
-    let first = commit_first_candidate_in_session(&mut session, "nihao");
-    let second = commit_first_candidate_in_session(&mut session, "ganma");
-
-    assert_eq!(first.commit_text, "你好");
-    assert_eq!(second.commit_text, "干嘛");
+        let check_engine =
+            ImeEngine::with_settings(settings.clone()).expect("prediction engine reopens");
+        let mut check_session = check_engine.create_session();
+        check_session.context_tokens = vec!["你好".to_owned()];
+        let expected = if confirmation < 3 { "世界" } else { "干嘛" };
+        assert_eq!(
+            check_session
+                .predict_next()
+                .first()
+                .map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "confirmation {confirmation} has the wrong bigram default"
+        );
+    }
 
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 1);
@@ -179,9 +386,42 @@ fn sequential_candidate_commits_learn_user_bigram_prediction() {
 fn learned_bigram_reranks_ambiguous_continuous_sentence() {
     let temp_db = TempDb::new("continuous_bigram_rerank");
     let user_lexicon = Arc::new(UserLexicon::open(&temp_db.path).expect("user lexicon opens"));
-    user_lexicon
-        .record_transition("今天", "天气", "tian qi")
-        .expect("transition records");
+    for confirmation in 1..=3 {
+        user_lexicon
+            .record_transition("今天", "天气", "tian qi")
+            .expect("transition records");
+        let mut session = InputSession::new(
+            Arc::new(
+                Lexicon::from_tsv(
+                    "今天\tjin tian\t1000\n天气\ttian qi\t1000\n今\tjin\t100000\n天天\ttian tian\t100000\n期\tqi\t100000\n",
+                )
+                .expect("test lexicon loads"),
+            ),
+            Arc::new(
+                Predictor::from_tsv("left\tright\tfrequency\n")
+                    .expect("empty predictor loads"),
+            ),
+            Some(user_lexicon.clone()),
+            ImeSettings::default(),
+        );
+        let mut output = ImeOutput::idle(session.mode());
+        for ch in "jintiantianqi".chars() {
+            output = session.feed_key(KeyEvent::from_char(ch));
+        }
+        let expected = if confirmation < 3 {
+            "今天天期"
+        } else {
+            "今天天气"
+        };
+        assert_eq!(
+            output
+                .candidates
+                .first()
+                .map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "confirmation {confirmation} has the wrong continuous default"
+        );
+    }
     let lexicon = Arc::new(
         Lexicon::from_tsv(
             "今天\tjin tian\t1000\n天气\ttian qi\t1000\n今\tjin\t100000\n天天\ttian tian\t100000\n期\tqi\t100000\n",
@@ -246,7 +486,7 @@ fn selecting_continuous_sentence_learns_internal_word_transitions() {
         .and_then(|entries| entries.get("天气"))
         .copied()
         .expect("learned transition exists");
-    assert!((first_weight - 1.0).abs() < 0.001);
+    assert!((first_weight.current_weight() - 1.0).abs() < 0.001);
 
     let second_commit = commit_first_candidate_in_session(&mut session, "jintiantianqi");
     assert_eq!(second_commit.commit_text, "今天天气");
@@ -257,7 +497,7 @@ fn selecting_continuous_sentence_learns_internal_word_transitions() {
         .and_then(|entries| entries.get("天气"))
         .copied()
         .expect("updated transition exists");
-    assert!((second_weight - 2.0).abs() < 0.001);
+    assert!((second_weight.current_weight() - 2.0).abs() < 0.001);
 }
 
 #[test]
@@ -265,15 +505,33 @@ fn sequential_candidate_commits_learn_short_phrase_prediction() {
     let temp_db = TempDb::new("learn_short_phrase");
     let settings = settings_with_user_lexicon(temp_db.path.clone());
     let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens user lexicon");
-    let mut session = engine.create_session();
+    for confirmation in 1..=3 {
+        let mut session = engine.create_session();
+        let first = commit_first_candidate_in_session(&mut session, "jintian");
+        let second = commit_first_candidate_in_session(&mut session, "tianqi");
+        let third = commit_first_candidate_in_session(&mut session, "bucuo");
+        assert_eq!(first.commit_text, "今天");
+        assert_eq!(second.commit_text, "天气");
+        assert_eq!(third.commit_text, "不错");
 
-    let first = commit_first_candidate_in_session(&mut session, "jintian");
-    let second = commit_first_candidate_in_session(&mut session, "tianqi");
-    let third = commit_first_candidate_in_session(&mut session, "bucuo");
-
-    assert_eq!(first.commit_text, "今天");
-    assert_eq!(second.commit_text, "天气");
-    assert_eq!(third.commit_text, "不错");
+        let check_engine =
+            ImeEngine::with_settings(settings.clone()).expect("prediction engine reopens");
+        let mut check_session = check_engine.create_session();
+        check_session.context_tokens = vec!["今天".to_owned()];
+        let expected = if confirmation < 3 {
+            "天气"
+        } else {
+            "天气不错"
+        };
+        assert_eq!(
+            check_session
+                .predict_next()
+                .first()
+                .map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "confirmation {confirmation} has the wrong short-phrase default"
+        );
+    }
 
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.bigram_count().expect("bigram count"), 2);
@@ -347,6 +605,36 @@ fn trigram_prediction_uses_two_token_context_before_bigram_fallback() {
             .map(|candidate| candidate.text.as_str()),
         Some("很冷")
     );
+}
+
+#[test]
+fn gentle_learning_delays_trigram_prediction_until_third_confirmation() {
+    let temp_db = TempDb::new("gentle_trigram");
+    let user_lexicon = Arc::new(UserLexicon::open(&temp_db.path).expect("user lexicon opens"));
+    let lexicon = Arc::new(Lexicon::from_tsv("你好\tni hao\t1\n").expect("lexicon loads"));
+    let predictor = Arc::new(Predictor::from_tsv("天气\t很好\t100\n").expect("predictor loads"));
+
+    for confirmation in 1..=3 {
+        user_lexicon
+            .record_trigram("今天", "天气", "不错", "bu cuo")
+            .expect("trigram records");
+        let mut session = InputSession::new(
+            lexicon.clone(),
+            predictor.clone(),
+            Some(user_lexicon.clone()),
+            ImeSettings::default(),
+        );
+        session.context_tokens = vec!["今天".to_owned(), "天气".to_owned()];
+        let expected = if confirmation < 3 { "很好" } else { "不错" };
+        assert_eq!(
+            session
+                .predict_next()
+                .first()
+                .map(|candidate| candidate.text.as_str()),
+            Some(expected),
+            "confirmation {confirmation} has the wrong trigram default"
+        );
+    }
 }
 
 #[test]
@@ -864,6 +1152,77 @@ fn existing_user_learning_tables_migrate_frequency_into_decay_weight() {
         .expect("query migrated weight");
 
     assert_eq!(weight, 7.0);
+}
+
+#[test]
+fn existing_learning_upgrade_migrates_current_repeats_without_promoting_long_tail() {
+    let temp_db = TempDb::new("gentle_upgrade");
+    let now = current_time_ms();
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute_batch(
+            "CREATE TABLE user_phrases (
+               phrase TEXT NOT NULL,
+               pinyin TEXT NOT NULL,
+               compact_pinyin TEXT NOT NULL,
+               nine_key TEXT NOT NULL DEFAULT '',
+               frequency INTEGER NOT NULL,
+               weight REAL NOT NULL DEFAULT 1.0,
+               updated_at_ms INTEGER NOT NULL,
+               PRIMARY KEY (phrase, pinyin)
+             );",
+        )
+        .expect("create pre-ABC-03 phrase schema");
+    connection
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, updated_at_ms)
+             VALUES
+               ('时', 'shi', 'shi', '744', 2, 2.0, ?1),
+               ('事', 'shi', 'shi', '744', 4, 4.0, ?1)",
+            [now],
+        )
+        .expect("insert existing learning rows");
+    drop(connection);
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("upgrade existing user lexicon");
+    let parses = PinyinParser.parse("shi");
+    let candidates = user_lexicon
+        .lookup("shi", &parses)
+        .expect("lookup upgraded learning");
+    let long_tail = candidates
+        .iter()
+        .find(|candidate| candidate.text == "时")
+        .expect("long-tail row remains available");
+    let repeated = candidates
+        .iter()
+        .find(|candidate| candidate.text == "事")
+        .expect("repeated row remains available");
+    assert_eq!(long_tail.score, 0.0);
+    assert_eq!(long_tail.rank_score, 0.0);
+    assert!(repeated.score > 0.0);
+    assert!(repeated.rank_score > 0.0);
+
+    drop(user_lexicon);
+    let connection = Connection::open(&temp_db.path).expect("inspect migrated schema");
+    let maturity = connection
+        .prepare(
+            "SELECT phrase, is_mature
+             FROM user_phrases
+             WHERE pinyin = 'shi'
+             ORDER BY phrase",
+        )
+        .expect("prepare maturity query")
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
+        })
+        .expect("query maturity")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("collect maturity rows");
+    assert_eq!(
+        maturity,
+        vec![("事".to_owned(), true), ("时".to_owned(), false)]
+    );
 }
 
 #[test]

@@ -47,3 +47,29 @@ fn merged_ranking_keeps_exact_base_match_before_high_frequency_user_prefix() {
         Some("base exact")
     );
 }
+
+#[test]
+fn ranker_applies_only_weight_above_the_two_point_warmup_allowance() {
+    for weight in [0.0, 1.0, 1.999, 2.0] {
+        assert_eq!(Ranker::score_user_learning_weight(weight), 0.0);
+        assert_eq!(
+            Ranker::score_user_match(weight, CandidateMatchKind::Exact),
+            0.0
+        );
+        assert_eq!(Ranker::score_user_prediction_weight(weight), 0.0);
+        assert_eq!(Ranker::score_continuous_transition_weight(0, weight), 0.0);
+    }
+
+    assert!(Ranker::score_user_learning_weight(2.001) > 0.0);
+    assert!(Ranker::score_user_match(2.001, CandidateMatchKind::Exact) > 0.0);
+    assert!(Ranker::score_user_prediction_weight(2.001) > 0.0);
+    assert!(Ranker::score_continuous_transition_weight(0, 2.001) > 0.0);
+}
+
+#[test]
+fn ranker_keeps_zero_weight_rows_from_leaking_match_tier_boosts() {
+    assert!(Ranker::score_user_learning_weight(3.0) > 0.0);
+    assert_eq!(Ranker::score_user_learning_weight(1.5), 0.0);
+    assert_eq!(Ranker::score_user_trigram_prediction_weight(1.5), 0.0);
+    assert_eq!(Ranker::score_user_short_prediction_weight(1.5), 0.0);
+}

@@ -15,7 +15,7 @@ use crate::predictor::{merge_prediction_candidates, Predictor};
 use crate::ranker::Ranker;
 use crate::settings::{ImeMode, ImeSettings, ToggleKey};
 use crate::tolerant_input::add_tolerant_candidates;
-use crate::user_lexicon::{UserLexicon, UserTransitionSnapshot};
+use crate::user_lexicon::{UserLearningState, UserLexicon, UserTransitionSnapshot};
 
 pub const MAX_RAW_INPUT_CHARS: usize = 64;
 pub const MAX_CONTEXT_TOKENS: usize = 8;
@@ -725,13 +725,13 @@ impl InputSession {
         };
         match user_lexicon.record_transition(left, &right.text, &right.pinyin) {
             Ok(()) => {
-                let frequency = self
+                let state = self
                     .user_transitions
                     .entry(left.to_owned())
                     .or_default()
                     .entry(right.text.clone())
                     .or_default();
-                *frequency += 1.0;
+                state.record_confirmation();
             }
             Err(error) => logger::emit_error(error),
         }
@@ -754,6 +754,7 @@ fn user_transition_frequency(transitions: &UserTransitionSnapshot, left: &str, r
         .get(left)
         .and_then(|right_entries| right_entries.get(right))
         .copied()
+        .map(UserLearningState::rankable_weight)
         .unwrap_or_default()
 }
 
