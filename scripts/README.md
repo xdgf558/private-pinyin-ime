@@ -46,6 +46,7 @@ Current scripts:
 - `check_abc01_candidate_stability.sh`: validates the stable Space-key default, fail-closed page permutations, deterministic replay, paging identity, and documentation contract.
 - `check_abc02_tolerant_input.sh`: validates the default-off bounded fuzzy-pinyin path, exact-only lookup, three-platform controls, original-candidate preservation, privacy, documentation, and Apple 60-ms regression.
 - `check_abc03_gentle_learning.sh`: validates the shared 3.0 activation / 2.0 deactivation hysteresis, old-database maturity migration, direct/context/AI Lite coverage, privacy documentation, and three-platform upgrade smoke contract.
+- `check_abc04_blind_typing.sh`: validates the shared Space/default and visible-page number mapping, complete Rust/C ABI recovery traces, platform host key boundaries, exactly-once iOS selection guard, privacy documentation, and three-platform blind-typing smoke contract.
 - `check_ai05_model_gate_sources.sh`: validates strict model manifests, every external Owner approval, SHA-256/size/path/symlink/platform/hardware/privacy gate, and the model packager.
 - `check_ai06_lite_ranker_sources.sh`: validates the approved fixed-point ranker package, bounded runtime, first-party dataset declarations, and the 8-improvement/zero-regression quality gate.
 - `check_ai09_desktop_helper_sources.sh`: validates the AI-09 bounded local protocol, authenticated desktop Helper boundary, no-network contract, and platform packaging hooks.

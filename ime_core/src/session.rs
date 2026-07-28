@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::api::ImeOutput;
+use crate::blind_typing::{numbered_candidate_index, BLIND_DEFAULT_CANDIDATE_INDEX};
 use crate::candidate::Candidate;
 use crate::candidate_stability::stabilize_candidate_page_order;
 use crate::key_event::{KeyCode, KeyEvent};
@@ -161,18 +162,19 @@ impl InputSession {
                 } else if self.candidates.is_empty() {
                     self.commit_raw_input()
                 } else {
-                    self.commit_candidate(0)
+                    self.commit_candidate(BLIND_DEFAULT_CANDIDATE_INDEX)
                 }
             }
             KeyCode::Digit(index @ 1..=9) => {
-                if !self.has_composition_input() {
-                    if self.candidates.is_empty() {
-                        ImeOutput::idle(self.mode)
-                    } else {
-                        self.commit_candidate(usize::from(index - 1))
-                    }
+                let visible_candidate_count = self.current_page_candidate_count();
+                if let Some(candidate_index) =
+                    numbered_candidate_index(index, visible_candidate_count)
+                {
+                    self.commit_candidate(candidate_index)
+                } else if self.has_active_input() {
+                    self.current_output(false, false, String::new())
                 } else {
-                    self.commit_candidate(usize::from(index - 1))
+                    ImeOutput::idle(self.mode)
                 }
             }
             KeyCode::NineKeyDigit(digit @ 2..=9) => {
@@ -690,6 +692,11 @@ impl InputSession {
         let start = self.page_start().min(self.candidates.len());
         let end = (start + page_size).min(self.candidates.len());
         self.candidates[start..end].to_vec()
+    }
+
+    fn current_page_candidate_count(&self) -> usize {
+        let start = self.page_start().min(self.candidates.len());
+        (self.candidates.len() - start).min(self.page_size())
     }
 
     fn learn_candidate(&mut self, candidate: &Candidate) {
