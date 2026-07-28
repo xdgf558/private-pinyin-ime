@@ -166,15 +166,16 @@ impl InputSession {
                 }
             }
             KeyCode::Digit(index @ 1..=9) => {
+                if !self.has_composition_input() {
+                    return ImeOutput::idle(self.mode);
+                }
                 let visible_candidate_count = self.current_page_candidate_count();
                 if let Some(candidate_index) =
                     numbered_candidate_index(index, visible_candidate_count)
                 {
                     self.commit_candidate(candidate_index)
-                } else if self.has_active_input() {
-                    self.current_output(false, false, String::new())
                 } else {
-                    ImeOutput::idle(self.mode)
+                    self.current_output(false, false, String::new())
                 }
             }
             KeyCode::NineKeyDigit(digit @ 2..=9) => {
@@ -255,7 +256,9 @@ impl InputSession {
     fn commit_punctuation(&mut self, punctuation: &str) -> ImeOutput {
         if !self.has_composition_input() {
             self.commit_text(punctuation)
-        } else if let Some(actual_index) = self.actual_candidate_index(0) {
+        } else if let Some(actual_index) =
+            self.actual_candidate_index(BLIND_DEFAULT_CANDIDATE_INDEX)
+        {
             if let Some(candidate) = self.candidates.get(actual_index).cloned() {
                 self.learn_candidate(&candidate);
                 self.append_candidate_context(&candidate);

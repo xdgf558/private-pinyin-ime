@@ -10,8 +10,8 @@ second candidate-selection policy.
 | Action | Active composition | No active composition |
 |---|---|---|
 | `Space` | Commit visible candidate 1, or raw input when no candidate exists | Insert one literal space, even when prediction candidates are visible |
-| `1` through `9` | Commit the matching candidate on the current visible page | Commit an explicitly visible prediction candidate; otherwise pass through at the host |
-| Unavailable number slot | Preserve composition, page, and candidate identities | No commit |
+| `1` through `9` | Commit the matching candidate on the current visible page | Pass through at the desktop host, even when prediction candidates are visible |
+| Unavailable number slot | Preserve composition, page, and candidate identities | Pass through at the desktop host |
 | `Enter` | Commit the raw full-key or nine-key composition | Let the host perform its normal Return behavior |
 | `Escape` | Clear composition and candidates without committing | Let the host handle the key |
 | `Backspace` | Remove one composition unit and recompute deterministically | Let the host delete document text |
@@ -21,6 +21,10 @@ second candidate-selection policy.
 One accepted action produces at most one commit. An unavailable numbered slot,
 stale optional-AI result, rapid duplicate candidate tap, or page boundary must
 never commit hidden text or clear a recoverable composition.
+
+Prediction candidates are advisory rather than physical-number targets. A user
+who commits `你好` and immediately types `2` must get `你好2`; selecting a
+prediction requires an explicit candidate click or tap.
 
 Candidate 1 is the stable Space-key identity for a fixed input, context,
 settings, and learning snapshot. Candidates 2 through 9 may be improved before

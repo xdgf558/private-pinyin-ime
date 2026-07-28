@@ -264,14 +264,15 @@ final class PrivatePinyinInputController: IMKInputController {
         }
 
         switch key.keyCode {
+        case ImeKeyCodeValue.digit:
+            return !currentPreedit.isEmpty
         case ImeKeyCodeValue.enter,
              ImeKeyCodeValue.backspace,
              ImeKeyCodeValue.escape,
              ImeKeyCodeValue.pageUp,
              ImeKeyCodeValue.pageDown,
              ImeKeyCodeValue.arrowUp,
-             ImeKeyCodeValue.arrowDown,
-             ImeKeyCodeValue.digit:
+             ImeKeyCodeValue.arrowDown:
             return hasActiveInput
         default:
             return true

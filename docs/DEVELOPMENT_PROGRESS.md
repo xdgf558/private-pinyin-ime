@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-28
 Current stage: ABC-04 blind-typing interaction and acceptance
-Current status: Space, visible number selection, page-relative identity, raw commit, cancellation, recovery, punctuation, prediction-state behavior, and exactly-once selection now share one Rust/C ABI contract with three-platform release-smoke requirements.
+Current status: Space, composition-only number selection, prediction-state digit passthrough, page-relative identity, raw commit, cancellation, recovery, punctuation, and exactly-once selection now share one Rust/C ABI contract with three-platform release-smoke requirements.
 
 ## ABC-04 Blind-Typing Interaction and Acceptance (2026-07-28)
 
@@ -11,14 +11,20 @@ Current status: Space, visible number selection, page-relative identity, raw com
   unavailable slot preserves the active composition, page, and candidate
   identities.
 - Replaced implicit candidate-zero literals in the Space path with the named
-  blind-default index. Space commits candidate one for an active composition,
-  commits raw input when no candidate exists, and remains a literal space when
-  only idle prediction candidates are visible.
+  blind-default index, and reused that same identity for punctuation commit.
+  Space commits candidate one for an active composition, commits raw input when
+  no candidate exists, and remains a literal space when only idle prediction
+  candidates are visible.
+- Separated desktop composition state from prediction-only state. Physical
+  digits select current-page candidates only while pinyin is being composed;
+  after a commit, macOS and Windows pass the digit to the host even if next-word
+  predictions remain visible. The shared core also leaves those predictions
+  untouched if a stale or direct C ABI caller submits an idle digit.
 - Added a dedicated integration suite covering Space exactly once, every
   visible numbered slot, out-of-range fail-closed behavior, page-relative
   selection, Enter raw commit, Escape cancellation, Backspace/retype identity,
-  punctuation default alignment, nine-key Space, and explicit number selection
-  from prediction state.
+  punctuation default alignment, nine-key Space, prediction-state digit
+  passthrough, and explicit prediction selection through the candidate API.
 - Repeated Space, number, Enter, and Escape traces through the C ABI used by
   macOS, Windows, and iOS so host bindings cannot appear correct while the
   exported behavior differs.

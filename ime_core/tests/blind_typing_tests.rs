@@ -156,7 +156,7 @@ fn nine_key_space_commits_the_visible_default() {
 }
 
 #[test]
-fn prediction_state_keeps_space_literal_and_number_selection_explicit() {
+fn prediction_state_keeps_space_and_physical_digits_literal_at_the_host_boundary() {
     let lexicon = Arc::new(
         Lexicon::from_tsv("今天\tjin tian\t100\n").expect("prediction fixture lexicon loads"),
     );
@@ -181,8 +181,22 @@ fn prediction_state_keeps_space_literal_and_number_selection_explicit() {
     let mut numbered_session = InputSession::new(lexicon, predictor, None, settings);
     type_text(&mut numbered_session, "jintian");
     let committed = numbered_session.feed_key(KeyEvent::new(KeyCode::Space));
-    let predicted = committed.candidates[0].text.clone();
-    let prediction_commit = numbered_session.feed_key(KeyEvent::new(KeyCode::Digit(1)));
-    assert_eq!(prediction_commit.commit_text, predicted);
+    let prediction_ids = committed
+        .candidates
+        .iter()
+        .map(|candidate| candidate.id.clone())
+        .collect::<Vec<_>>();
+    let digit_passthrough = numbered_session.feed_key(KeyEvent::new(KeyCode::Digit(1)));
+    assert!(!digit_passthrough.should_commit);
+    assert!(digit_passthrough.commit_text.is_empty());
+    assert!(digit_passthrough.candidates.is_empty());
+    assert_eq!(
+        numbered_session
+            .current_page_candidates_snapshot()
+            .into_iter()
+            .map(|candidate| candidate.id)
+            .collect::<Vec<_>>(),
+        prediction_ids
+    );
     assert_eq!(numbered_session.mode(), ImeMode::Chinese);
 }

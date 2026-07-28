@@ -556,10 +556,7 @@ fn sequential_candidate_commits_learn_short_phrase_prediction() {
         Some("天气不错")
     );
     assert_eq!(
-        next_session
-            .feed_key(KeyEvent::from_char('1'))
-            .commit_text
-            .as_str(),
+        next_session.commit_candidate(0).commit_text.as_str(),
         "天气不错"
     );
 }

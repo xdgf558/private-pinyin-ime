@@ -43,7 +43,7 @@ fn prediction_candidates_do_not_hijack_idle_space() {
 }
 
 #[test]
-fn prediction_candidates_can_be_selected_with_digit() {
+fn prediction_candidates_do_not_hijack_idle_digits() {
     let engine = ImeEngine::new().expect("engine loads sample lexicon");
     let mut session = engine.create_session();
 
@@ -51,7 +51,22 @@ fn prediction_candidates_can_be_selected_with_digit() {
         session.feed_key(KeyEvent::from_char(ch));
     }
     session.feed_key(KeyEvent::from_char(' '));
+    let expected = session
+        .current_page_candidates_snapshot()
+        .into_iter()
+        .map(|candidate| candidate.id)
+        .collect::<Vec<_>>();
     let output = session.feed_key(KeyEvent::from_char('1'));
 
-    assert_eq!(output.commit_text, "天气");
+    assert!(!output.should_commit);
+    assert!(output.commit_text.is_empty());
+    assert!(output.candidates.is_empty());
+    assert_eq!(
+        session
+            .current_page_candidates_snapshot()
+            .into_iter()
+            .map(|candidate| candidate.id)
+            .collect::<Vec<_>>(),
+        expected
+    );
 }

@@ -122,6 +122,38 @@ fn c_api_preserves_blind_typing_space_number_enter_and_escape_semantics() {
         ime_output_free(commit);
         ime_session_free(number_session);
 
+        let prediction_session = ime_session_new(engine);
+        assert!(!prediction_session.is_null());
+        for ch in ["j", "i", "n", "t", "i", "a", "n"] {
+            let text = CString::new(ch).unwrap();
+            let output = ime_session_feed_key(prediction_session, key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            ime_output_free(output);
+        }
+        let predicted = ime_session_feed_key(prediction_session, command_event(1));
+        assert!(!predicted.is_null());
+        assert_eq!((*predicted).should_commit, 1);
+        assert!((*predicted).candidate_count > 0);
+        let expected_prediction = CStr::from_ptr((*(*predicted).candidates).text)
+            .to_string_lossy()
+            .into_owned();
+        ime_output_free(predicted);
+        let digit = CString::new("1").unwrap();
+        let passthrough = ime_session_feed_key(prediction_session, digit_event(digit.as_ptr()));
+        assert!(!passthrough.is_null());
+        assert_eq!((*passthrough).should_commit, 0);
+        assert_eq!((*passthrough).should_update_preedit, 0);
+        assert_eq!((*passthrough).candidate_count, 0);
+        ime_output_free(passthrough);
+        let explicit_prediction = ime_session_commit_candidate(prediction_session, 0);
+        assert!(!explicit_prediction.is_null());
+        assert_eq!(
+            CStr::from_ptr((*explicit_prediction).commit_text).to_string_lossy(),
+            expected_prediction
+        );
+        ime_output_free(explicit_prediction);
+        ime_session_free(prediction_session);
+
         let enter_session = ime_session_new(engine);
         assert!(!enter_session.is_null());
         for ch in ["a", "b", "c"] {
