@@ -30,7 +30,7 @@ done
 grep -q 'USER_LEARNING_CONFIRMATION_WEIGHT: f64 = 3.0' ime_core/src/ranker.rs
 grep -q 'USER_LEARNING_DEACTIVATION_WEIGHT: f64 = 2.0' ime_core/src/ranker.rs
 grep -q 'effective_user_learning_weight(user_weight)' ime_core/src/ranker.rs
-test "$(grep -c 'is_mature INTEGER NOT NULL DEFAULT 0' \
+test "$(grep -c '^                   is_mature INTEGER NOT NULL DEFAULT 0,$' \
   ime_core/src/user_lexicon.rs)" -eq 4
 grep -q 'score_user_learning_weight(weight)' ime_core/src/user_lexicon.rs
 grep -q 'gentle_learning_keeps_default_stable_until_third_confirmation' \
