@@ -690,16 +690,19 @@ impl InputSession {
         (actual_index < self.candidates.len()).then_some(actual_index)
     }
 
-    fn current_page_candidates(&self) -> Vec<Candidate> {
+    fn current_page_candidate_range(&self) -> std::ops::Range<usize> {
         let page_size = self.page_size();
         let start = self.page_start().min(self.candidates.len());
         let end = (start + page_size).min(self.candidates.len());
-        self.candidates[start..end].to_vec()
+        start..end
+    }
+
+    fn current_page_candidates(&self) -> Vec<Candidate> {
+        self.candidates[self.current_page_candidate_range()].to_vec()
     }
 
     fn current_page_candidate_count(&self) -> usize {
-        let start = self.page_start().min(self.candidates.len());
-        (self.candidates.len() - start).min(self.page_size())
+        self.current_page_candidate_range().len()
     }
 
     fn learn_candidate(&mut self, candidate: &Candidate) {

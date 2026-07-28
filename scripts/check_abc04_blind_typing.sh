@@ -53,6 +53,7 @@ rg -q 'c_api_preserves_blind_typing_space_number_enter_and_escape_semantics' \
 
 python3 - <<'PY'
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 def function_body(path: str, marker: str) -> str:
@@ -63,14 +64,75 @@ def function_body(path: str, marker: str) -> str:
     opening = source.find("{", start)
     if opening < 0:
         raise SystemExit(f"ABC-04 missing opening brace for {marker!r} in {path}")
+
+    def skip_quoted(index: int, delimiter: str) -> int:
+        index += len(delimiter)
+        while index < len(source):
+            if source.startswith(delimiter, index):
+                return index + len(delimiter)
+            if source[index] == "\\" and len(delimiter) == 1:
+                index += 2
+            else:
+                index += 1
+        raise SystemExit(f"ABC-04 unterminated string in {path}")
+
+    def skip_block_comment(index: int) -> int:
+        index += 2
+        comment_depth = 1
+        while index < len(source):
+            if source.startswith("/*", index):
+                comment_depth += 1
+                index += 2
+            elif source.startswith("*/", index):
+                comment_depth -= 1
+                index += 2
+                if comment_depth == 0:
+                    return index
+            else:
+                index += 1
+        raise SystemExit(f"ABC-04 unterminated block comment in {path}")
+
+    def skip_rust_raw_string(index: int):
+        if source[index] != "r":
+            return None
+        cursor = index + 1
+        while cursor < len(source) and source[cursor] == "#":
+            cursor += 1
+        if cursor >= len(source) or source[cursor] != '"':
+            return None
+        terminator = '"' + source[index + 1:cursor]
+        ending = source.find(terminator, cursor + 1)
+        if ending < 0:
+            raise SystemExit(f"ABC-04 unterminated Rust raw string in {path}")
+        return ending + len(terminator)
+
     depth = 0
-    for index in range(opening, len(source)):
+    index = opening
+    while index < len(source):
+        if source.startswith("//", index):
+            newline = source.find("\n", index + 2)
+            index = len(source) if newline < 0 else newline + 1
+            continue
+        if source.startswith("/*", index):
+            index = skip_block_comment(index)
+            continue
+        if source.startswith('"""', index):
+            index = skip_quoted(index, '"""')
+            continue
+        raw_ending = skip_rust_raw_string(index)
+        if raw_ending is not None:
+            index = raw_ending
+            continue
+        if source[index] in {'"', "'"}:
+            index = skip_quoted(index, source[index])
+            continue
         if source[index] == "{":
             depth += 1
         elif source[index] == "}":
             depth -= 1
             if depth == 0:
                 return source[start:index + 1]
+        index += 1
     raise SystemExit(f"ABC-04 missing closing brace for {marker!r} in {path}")
 
 
@@ -82,6 +144,27 @@ def require(body: str, token: str, label: str) -> None:
 def forbid(body: str, token: str, label: str) -> None:
     if token in body:
         raise SystemExit(f"ABC-04 forbids {label}: {token!r}")
+
+
+with TemporaryDirectory() as directory:
+    parser_probe = Path(directory) / "parser_probe.rs"
+    parser_probe.write_text(
+        '''
+fn parser_probe() {
+    let quoted = "}";
+    let raw = r#"}"#;
+    // }
+    /* } /* { */ } */
+    parser_reached_real_end();
+}
+''',
+        encoding="utf-8",
+    )
+    require(
+        function_body(str(parser_probe), "fn parser_probe"),
+        "parser_reached_real_end();",
+        "string/comment-aware function-body parsing",
+    )
 
 
 session = function_body("ime_core/src/session.rs", "fn commit_punctuation")
@@ -144,6 +227,39 @@ ios_handle = function_body(
     "private func handle(_ key: KeySpec)",
 )
 require(ios_handle, "case .space, .nineKeySpace:", "iOS Space handling")
+
+ios_text = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func handleTextKey",
+)
+require(ios_text, "performCoreOutput(fallback: value)", "iOS literal text fallback")
+
+ios_key_code = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func coreKeyCode",
+)
+require(ios_key_code, 'case "1", "2", "3", "4", "5", "6", "7", "8", "9":', "iOS digit mapping")
+require(ios_key_code, "return IosKeyCodeValue.digit", "iOS shared digit key code")
+
+ios_apply_or_insert = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func applyOrInsert",
+)
+require(
+    ios_apply_or_insert,
+    "let previousCompositionInput = !currentPreedit.isEmpty",
+    "iOS composition-only fallback boundary",
+)
+require(
+    ios_apply_or_insert,
+    "if !previousCompositionInput && output?.shouldCommit != true",
+    "iOS prediction-state literal insertion",
+)
+forbid(
+    ios_apply_or_insert,
+    "previousActiveInput = hasActiveInput",
+    "iOS prediction candidates consuming literal digits",
+)
 
 ios_commit = function_body(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",

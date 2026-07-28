@@ -20,6 +20,10 @@ Current status: Space, composition-only number selection, prediction-state digit
   after a commit, macOS and Windows pass the digit to the host even if next-word
   predictions remain visible. The shared core also leaves those predictions
   untouched if a stale or direct C ABI caller submits an idle digit.
+- Applied the same boundary to the iOS on-screen number page. A digit may select
+  a numbered candidate only while `currentPreedit` contains a real composition;
+  prediction-only state inserts the literal digit instead of consuming it or
+  committing an advisory prediction.
 - Added a dedicated integration suite covering Space exactly once, every
   visible numbered slot, out-of-range fail-closed behavior, page-relative
   selection, Enter raw commit, Escape cancellation, Backspace/retype identity,
@@ -41,7 +45,9 @@ Current status: Space, composition-only number selection, prediction-state digit
   ABC-01 through ABC-04 source gates, and the existing macOS, Windows, and iOS
   host source contracts. The macOS host app built successfully, and the iOS
   simulator app plus keyboard extension built successfully with Xcode 26.6 and
-  the iPhoneSimulator 26.5 SDK.
+  the iPhoneSimulator 26.5 SDK. The ABC-04 gate now parses scoped function
+  bodies while ignoring braces inside strings and comments, and explicitly
+  checks the iOS digit mapping, fallback boundary, and candidate-tap guard.
 
 ## ABC-03 Gentle Learning (2026-07-28)
 

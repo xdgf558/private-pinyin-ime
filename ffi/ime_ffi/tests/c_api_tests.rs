@@ -78,6 +78,8 @@ fn c_api_preserves_blind_typing_space_number_enter_and_escape_semantics() {
                 ime_output_free(final_output);
             }
         }
+        assert!((*final_output).candidate_count > 0);
+        assert!(!(*final_output).candidates.is_null());
         let expected_default = CStr::from_ptr((*(*final_output).candidates).text)
             .to_string_lossy()
             .into_owned();
@@ -104,6 +106,7 @@ fn c_api_preserves_blind_typing_space_number_enter_and_escape_semantics() {
             }
         }
         assert!((*final_output).candidate_count >= 2);
+        assert!(!(*final_output).candidates.is_null());
         let candidates = std::slice::from_raw_parts(
             (*final_output).candidates,
             (*final_output).candidate_count as usize,
@@ -134,6 +137,7 @@ fn c_api_preserves_blind_typing_space_number_enter_and_escape_semantics() {
         assert!(!predicted.is_null());
         assert_eq!((*predicted).should_commit, 1);
         assert!((*predicted).candidate_count > 0);
+        assert!(!(*predicted).candidates.is_null());
         let expected_prediction = CStr::from_ptr((*(*predicted).candidates).text)
             .to_string_lossy()
             .into_owned();
