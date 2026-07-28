@@ -187,8 +187,8 @@ fn gentle_learning_keeps_default_stable_until_third_confirmation() {
 }
 
 #[test]
-fn decayed_learning_returns_to_warmup_without_deleting_history() {
-    let temp_db = TempDb::new("gentle_decay");
+fn mature_learning_uses_three_to_activate_and_two_to_deactivate() {
+    let temp_db = TempDb::new("gentle_hysteresis");
     let settings = settings_with_user_lexicon(temp_db.path.clone());
     let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens");
     for _ in 0..3 {
@@ -199,21 +199,66 @@ fn decayed_learning_returns_to_warmup_without_deleting_history() {
     }
 
     let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
-    let half_life_ms = 30_i64 * 24 * 60 * 60 * 1_000;
     connection
         .execute(
             "UPDATE user_phrases
-             SET updated_at_ms = ?1
+             SET weight = 2.5, is_mature = 1, updated_at_ms = ?1
              WHERE phrase = '时' AND pinyin = 'shi'",
-            [current_time_ms().saturating_sub(half_life_ms)],
+            [current_time_ms()],
         )
-        .expect("age learned phrase");
+        .expect("place mature learning inside hysteresis band");
 
-    let reloaded = ImeEngine::with_settings(settings).expect("decayed engine reopens");
-    let candidates = reloaded.candidates_for_raw("shi");
+    let retained = ImeEngine::with_settings(settings.clone()).expect("retained engine reopens");
+    let candidates = retained.candidates_for_raw("shi");
     assert_eq!(
         candidates.first().map(|candidate| candidate.text.as_str()),
+        Some("时"),
+        "mature learning must remain active between weights two and three"
+    );
+
+    connection
+        .execute(
+            "UPDATE user_phrases
+             SET weight = 1.99, is_mature = 1, updated_at_ms = ?1
+             WHERE phrase = '时' AND pinyin = 'shi'",
+            [current_time_ms()],
+        )
+        .expect("move mature learning below deactivation boundary");
+    let deactivated =
+        ImeEngine::with_settings(settings.clone()).expect("deactivated engine reopens");
+    assert_eq!(
+        deactivated
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
         Some("是")
+    );
+
+    assert_eq!(
+        commit_candidate_by_text(&deactivated, "shi", "时").commit_text,
+        "时"
+    );
+    let still_warming = ImeEngine::with_settings(settings.clone()).expect("warmup engine reopens");
+    assert_eq!(
+        still_warming
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("是"),
+        "a deactivated preference must reach three again before reactivation"
+    );
+
+    assert_eq!(
+        commit_candidate_by_text(&still_warming, "shi", "时").commit_text,
+        "时"
+    );
+    let reactivated = ImeEngine::with_settings(settings).expect("reactivated engine reopens");
+    assert_eq!(
+        reactivated
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("时")
     );
     assert_eq!(
         connection
@@ -223,7 +268,7 @@ fn decayed_learning_returns_to_warmup_without_deleting_history() {
                 |row| row.get::<_, i64>(0),
             )
             .expect("history remains"),
-        3
+        5
     );
 }
 
@@ -401,7 +446,7 @@ fn selecting_continuous_sentence_learns_internal_word_transitions() {
         .and_then(|entries| entries.get("天气"))
         .copied()
         .expect("learned transition exists");
-    assert!((first_weight - 1.0).abs() < 0.001);
+    assert!((first_weight.current_weight() - 1.0).abs() < 0.001);
 
     let second_commit = commit_first_candidate_in_session(&mut session, "jintiantianqi");
     assert_eq!(second_commit.commit_text, "今天天气");
@@ -412,7 +457,7 @@ fn selecting_continuous_sentence_learns_internal_word_transitions() {
         .and_then(|entries| entries.get("天气"))
         .copied()
         .expect("updated transition exists");
-    assert!((second_weight - 2.0).abs() < 0.001);
+    assert!((second_weight.current_weight() - 2.0).abs() < 0.001);
 }
 
 #[test]
@@ -1067,6 +1112,77 @@ fn existing_user_learning_tables_migrate_frequency_into_decay_weight() {
         .expect("query migrated weight");
 
     assert_eq!(weight, 7.0);
+}
+
+#[test]
+fn existing_learning_upgrade_migrates_current_repeats_without_promoting_long_tail() {
+    let temp_db = TempDb::new("gentle_upgrade");
+    let now = current_time_ms();
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute_batch(
+            "CREATE TABLE user_phrases (
+               phrase TEXT NOT NULL,
+               pinyin TEXT NOT NULL,
+               compact_pinyin TEXT NOT NULL,
+               nine_key TEXT NOT NULL DEFAULT '',
+               frequency INTEGER NOT NULL,
+               weight REAL NOT NULL DEFAULT 1.0,
+               updated_at_ms INTEGER NOT NULL,
+               PRIMARY KEY (phrase, pinyin)
+             );",
+        )
+        .expect("create pre-ABC-03 phrase schema");
+    connection
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, updated_at_ms)
+             VALUES
+               ('时', 'shi', 'shi', '744', 2, 2.0, ?1),
+               ('事', 'shi', 'shi', '744', 4, 4.0, ?1)",
+            [now],
+        )
+        .expect("insert existing learning rows");
+    drop(connection);
+
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("upgrade existing user lexicon");
+    let parses = PinyinParser.parse("shi");
+    let candidates = user_lexicon
+        .lookup("shi", &parses)
+        .expect("lookup upgraded learning");
+    let long_tail = candidates
+        .iter()
+        .find(|candidate| candidate.text == "时")
+        .expect("long-tail row remains available");
+    let repeated = candidates
+        .iter()
+        .find(|candidate| candidate.text == "事")
+        .expect("repeated row remains available");
+    assert_eq!(long_tail.score, 0.0);
+    assert_eq!(long_tail.rank_score, 0.0);
+    assert!(repeated.score > 0.0);
+    assert!(repeated.rank_score > 0.0);
+
+    drop(user_lexicon);
+    let connection = Connection::open(&temp_db.path).expect("inspect migrated schema");
+    let maturity = connection
+        .prepare(
+            "SELECT phrase, is_mature
+             FROM user_phrases
+             WHERE pinyin = 'shi'
+             ORDER BY phrase",
+        )
+        .expect("prepare maturity query")
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
+        })
+        .expect("query maturity")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("collect maturity rows");
+    assert_eq!(
+        maturity,
+        vec![("事".to_owned(), true), ("时".to_owned(), false)]
+    );
 }
 
 #[test]

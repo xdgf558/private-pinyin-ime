@@ -11,9 +11,10 @@ const CONTINUOUS_INITIAL_PENALTY: f64 = 2.5;
 const BASE_TRANSITION_WEIGHT: f64 = 0.8;
 const USER_TRANSITION_BOOST: f64 = 6.0;
 const USER_TRANSITION_WEIGHT: f64 = 2.0;
-/// Two decayed observations remain warm-up data; the third begins contributing
-/// the same effective weight that one observation contributed before ABC-03.
+/// Inactive learning reaches maturity at this decayed weight.
 pub const USER_LEARNING_CONFIRMATION_WEIGHT: f64 = 3.0;
+/// Mature learning remains active through this lower hysteresis boundary.
+pub const USER_LEARNING_DEACTIVATION_WEIGHT: f64 = 2.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateMatchKind {

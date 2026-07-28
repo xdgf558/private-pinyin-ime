@@ -49,7 +49,7 @@ fn merged_ranking_keeps_exact_base_match_before_high_frequency_user_prefix() {
 }
 
 #[test]
-fn gentle_learning_requires_three_confirmations_before_ranking_changes() {
+fn ranker_applies_only_weight_above_the_two_point_warmup_allowance() {
     for weight in [0.0, 1.0, 1.999, 2.0] {
         assert_eq!(Ranker::score_user_learning_weight(weight), 0.0);
         assert_eq!(
@@ -60,14 +60,14 @@ fn gentle_learning_requires_three_confirmations_before_ranking_changes() {
         assert_eq!(Ranker::score_continuous_transition_weight(0, weight), 0.0);
     }
 
-    assert!(Ranker::score_user_learning_weight(2.999) > 0.0);
-    assert!(Ranker::score_user_match(2.999, CandidateMatchKind::Exact) > 0.0);
-    assert!(Ranker::score_user_prediction_weight(2.999) > 0.0);
-    assert!(Ranker::score_continuous_transition_weight(0, 2.999) > 0.0);
+    assert!(Ranker::score_user_learning_weight(2.001) > 0.0);
+    assert!(Ranker::score_user_match(2.001, CandidateMatchKind::Exact) > 0.0);
+    assert!(Ranker::score_user_prediction_weight(2.001) > 0.0);
+    assert!(Ranker::score_continuous_transition_weight(0, 2.001) > 0.0);
 }
 
 #[test]
-fn decayed_mature_learning_can_return_to_warmup_state() {
+fn ranker_keeps_zero_weight_rows_from_leaking_match_tier_boosts() {
     assert!(Ranker::score_user_learning_weight(3.0) > 0.0);
     assert_eq!(Ranker::score_user_learning_weight(1.5), 0.0);
     assert_eq!(Ranker::score_user_trigram_prediction_weight(1.5), 0.0);

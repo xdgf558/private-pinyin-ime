@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-28
 Current stage: ABC-03 gentle learning
-Current status: The existing local user lexicon now requires three decayed confirmations before a learned word or context path can influence ranking. The first two observations remain stored warm-up data; default candidates, predictions, continuous decoding, and AI Lite learning features stay unchanged until the third confirmation.
+Current status: The existing local user lexicon now requires decayed weight 3.0 before a learned word or context path can influence ranking. A persisted maturity state keeps an active habit stable until it decays below 2.0; default candidates, predictions, continuous decoding, and AI Lite learning features remain unchanged during warm-up.
 
 ## ABC-03 Gentle Learning (2026-07-28)
 
@@ -11,14 +11,23 @@ Current status: The existing local user lexicon now requires three decayed confi
   the first two decayed observations contribute zero ranking weight. The third
   confirmation begins with the same effective weight that one observation
   contributed before ABC-03.
+- Added a persisted maturity bit to direct phrase, bigram, trigram, and
+  short-phrase learning rows. New or inactive identities activate at weight
+  3.0, remain active while decaying through the 2.0-3.0 hysteresis band, and
+  deactivate only below 2.0. A deactivated identity must reach 3.0 again, so a
+  moderate habit cannot repeatedly flip the Space-key default near one hard
+  boundary.
 - Applied the policy to exact and prefix user candidates, bigram predictions,
   short-phrase predictions, trigram predictions, and continuous sentence
   transitions. A single accidental choice can therefore be remembered without
   taking over the Space-key default or the next-word default.
 - Kept one learning store and the existing three-platform `用户学习` control.
-  No schema migration or platform-specific implementation was added. Strict
-  privacy and disabled learning still prevent all writes, while export and
-  capacity eviction continue to use raw local history.
+  The idempotent schema migration marks only old rows with current decayed
+  weight at least 3.0 as mature. Lower-weight long-tail rows remain stored but
+  can stop affecting ordering immediately after upgrade; stronger recent
+  habits stay active. Strict privacy and disabled learning still prevent all
+  writes, while export and capacity eviction continue to use raw local
+  history.
 - Prevented optional AI Lite from bypassing the warm-up period. User and
   learned-prediction candidates expose only effective learning weight to the
   feature adapter; warm-up rows do not receive the user-frequency, bigram, or
@@ -28,10 +37,12 @@ Current status: The existing local user lexicon now requires three decayed confi
   after confirmation three. Bigram, trigram, short-phrase, and ambiguous
   continuous-transition tests exercise the same `1/2 unchanged, 3 active`
   boundary.
-- Added a decay regression that ages a three-confirmation preference by one
-  30-day half-life, verifies the ordinary `是` default returns, and confirms
-  the raw three-selection history remains present. Existing disabled-learning
-  and strict-privacy no-write tests remain part of the suite.
+- Added a migration regression starting from a pre-ABC-03 database. It proves
+  a two-use long-tail identity remains present but inactive while a stronger
+  current identity is migrated as mature. A separate hysteresis regression
+  proves an active weight of 2.5 remains stable, a weight below 2.0
+  deactivates, one later confirmation is insufficient, and reaching 3.0 again
+  reactivates without deleting lifetime history.
 - Validation passed with `cargo test --workspace`, the desktop-AI and iOS-AI
   FFI feature suites, workspace and feature-specific Clippy with warnings
   denied, the ABC-03/macOS/iOS/Windows source gates, a complete macOS app
