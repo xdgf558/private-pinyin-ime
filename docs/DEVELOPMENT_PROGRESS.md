@@ -1,8 +1,53 @@
 # Development Progress
 
 Last updated: 2026-07-28
-Current stage: ABC-03 gentle learning
-Current status: The existing local user lexicon now requires decayed weight 3.0 before a learned word or context path can influence ranking. A persisted maturity state keeps an active habit stable until it decays below 2.0; default candidates, predictions, continuous decoding, and AI Lite learning features remain unchanged during warm-up.
+Current stage: ABC-04 blind-typing interaction and acceptance
+Current status: Space, composition-only number selection, prediction-state digit passthrough, page-relative identity, raw commit, cancellation, recovery, punctuation, and exactly-once selection now share one Rust/C ABI contract with three-platform release-smoke requirements.
+
+## ABC-04 Blind-Typing Interaction and Acceptance (2026-07-28)
+
+- Added a shared numbered-candidate mapping policy. Physical keys `1` through
+  `9` can select only a slot that exists on the current visible page; an
+  unavailable slot preserves the active composition, page, and candidate
+  identities.
+- Replaced implicit candidate-zero literals in the Space path with the named
+  blind-default index, and reused that same identity for punctuation commit.
+  Space commits candidate one for an active composition, commits raw input when
+  no candidate exists, and remains a literal space when only idle prediction
+  candidates are visible.
+- Separated desktop composition state from prediction-only state. Physical
+  digits select current-page candidates only while pinyin is being composed;
+  after a commit, macOS and Windows pass the digit to the host even if next-word
+  predictions remain visible. The shared core also leaves those predictions
+  untouched if a stale or direct C ABI caller submits an idle digit.
+- Applied the same boundary to the iOS on-screen number page. A digit may select
+  a numbered candidate only while `currentPreedit` contains a real composition;
+  prediction-only state inserts the literal digit instead of consuming it or
+  committing an advisory prediction.
+- Added a dedicated integration suite covering Space exactly once, every
+  visible numbered slot, out-of-range fail-closed behavior, page-relative
+  selection, Enter raw commit, Escape cancellation, Backspace/retype identity,
+  punctuation default alignment, nine-key Space, prediction-state digit
+  passthrough, and explicit prediction selection through the candidate API.
+- Repeated Space, number, Enter, and Escape traces through the C ABI used by
+  macOS, Windows, and iOS so host bindings cannot appear correct while the
+  exported behavior differs.
+- Documented the deliberate lower-candidate boundary: candidate one is stable
+  for a fixed snapshot, while candidates two through nine are guaranteed not
+  to move after display but may change before display or after context,
+  settings, or learning changes.
+- Added one release-smoke row per platform and a standalone acceptance record
+  covering desktop native/Chromium hosts plus iOS QWERTY, nine-key, compact,
+  expanded, warm-reuse, and process-recreation paths. Evidence remains
+  content-free.
+- Validation passed with `cargo test --workspace`, desktop-AI and iOS-AI C ABI
+  feature suites, workspace and feature-specific Clippy under `-D warnings`,
+  ABC-01 through ABC-04 source gates, and the existing macOS, Windows, and iOS
+  host source contracts. The macOS host app built successfully, and the iOS
+  simulator app plus keyboard extension built successfully with Xcode 26.6 and
+  the iPhoneSimulator 26.5 SDK. The ABC-04 gate now parses scoped function
+  bodies while ignoring braces inside strings and comments, and explicitly
+  checks the iOS digit mapping, fallback boundary, and candidate-tap guard.
 
 ## ABC-03 Gentle Learning (2026-07-28)
 

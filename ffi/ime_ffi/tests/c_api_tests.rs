@@ -62,6 +62,138 @@ fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
 }
 
 #[test]
+fn c_api_preserves_blind_typing_space_number_enter_and_escape_semantics() {
+    unsafe {
+        let engine = ime_engine_new(ptr::null());
+        assert!(!engine.is_null());
+
+        let space_session = ime_session_new(engine);
+        assert!(!space_session.is_null());
+        let mut final_output = ptr::null_mut();
+        for (index, ch) in ["n", "i", "h", "a", "o"].into_iter().enumerate() {
+            let text = CString::new(ch).unwrap();
+            final_output = ime_session_feed_key(space_session, key_event(text.as_ptr()));
+            assert!(!final_output.is_null());
+            if index < 4 {
+                ime_output_free(final_output);
+            }
+        }
+        assert!((*final_output).candidate_count > 0);
+        assert!(!(*final_output).candidates.is_null());
+        let expected_default = CStr::from_ptr((*(*final_output).candidates).text)
+            .to_string_lossy()
+            .into_owned();
+        ime_output_free(final_output);
+        let commit = ime_session_feed_key(space_session, command_event(1));
+        assert!(!commit.is_null());
+        assert_eq!(
+            CStr::from_ptr((*commit).commit_text).to_string_lossy(),
+            expected_default
+        );
+        assert_eq!((*commit).should_commit, 1);
+        ime_output_free(commit);
+        ime_session_free(space_session);
+
+        let number_session = ime_session_new(engine);
+        assert!(!number_session.is_null());
+        let mut final_output = ptr::null_mut();
+        for (index, ch) in ["n", "i"].into_iter().enumerate() {
+            let text = CString::new(ch).unwrap();
+            final_output = ime_session_feed_key(number_session, key_event(text.as_ptr()));
+            assert!(!final_output.is_null());
+            if index == 0 {
+                ime_output_free(final_output);
+            }
+        }
+        assert!((*final_output).candidate_count >= 2);
+        assert!(!(*final_output).candidates.is_null());
+        let candidates = std::slice::from_raw_parts(
+            (*final_output).candidates,
+            (*final_output).candidate_count as usize,
+        );
+        let expected_second = CStr::from_ptr(candidates[1].text)
+            .to_string_lossy()
+            .into_owned();
+        ime_output_free(final_output);
+        let digit = CString::new("2").unwrap();
+        let commit = ime_session_feed_key(number_session, digit_event(digit.as_ptr()));
+        assert!(!commit.is_null());
+        assert_eq!(
+            CStr::from_ptr((*commit).commit_text).to_string_lossy(),
+            expected_second
+        );
+        ime_output_free(commit);
+        ime_session_free(number_session);
+
+        let prediction_session = ime_session_new(engine);
+        assert!(!prediction_session.is_null());
+        for ch in ["j", "i", "n", "t", "i", "a", "n"] {
+            let text = CString::new(ch).unwrap();
+            let output = ime_session_feed_key(prediction_session, key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            ime_output_free(output);
+        }
+        let predicted = ime_session_feed_key(prediction_session, command_event(1));
+        assert!(!predicted.is_null());
+        assert_eq!((*predicted).should_commit, 1);
+        assert!((*predicted).candidate_count > 0);
+        assert!(!(*predicted).candidates.is_null());
+        let expected_prediction = CStr::from_ptr((*(*predicted).candidates).text)
+            .to_string_lossy()
+            .into_owned();
+        ime_output_free(predicted);
+        let digit = CString::new("1").unwrap();
+        let passthrough = ime_session_feed_key(prediction_session, digit_event(digit.as_ptr()));
+        assert!(!passthrough.is_null());
+        assert_eq!((*passthrough).should_commit, 0);
+        assert_eq!((*passthrough).should_update_preedit, 0);
+        assert_eq!((*passthrough).candidate_count, 0);
+        ime_output_free(passthrough);
+        let explicit_prediction = ime_session_commit_candidate(prediction_session, 0);
+        assert!(!explicit_prediction.is_null());
+        assert_eq!(
+            CStr::from_ptr((*explicit_prediction).commit_text).to_string_lossy(),
+            expected_prediction
+        );
+        ime_output_free(explicit_prediction);
+        ime_session_free(prediction_session);
+
+        let enter_session = ime_session_new(engine);
+        assert!(!enter_session.is_null());
+        for ch in ["a", "b", "c"] {
+            let text = CString::new(ch).unwrap();
+            let output = ime_session_feed_key(enter_session, key_event(text.as_ptr()));
+            assert!(!output.is_null());
+            ime_output_free(output);
+        }
+        let raw_commit = ime_session_feed_key(enter_session, command_event(2));
+        assert!(!raw_commit.is_null());
+        assert_eq!(
+            CStr::from_ptr((*raw_commit).commit_text).to_string_lossy(),
+            "abc"
+        );
+        ime_output_free(raw_commit);
+        ime_session_free(enter_session);
+
+        let escape_session = ime_session_new(engine);
+        assert!(!escape_session.is_null());
+        let text = CString::new("n").unwrap();
+        let output = ime_session_feed_key(escape_session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        ime_output_free(output);
+        let cancelled = ime_session_feed_key(escape_session, command_event(4));
+        assert!(!cancelled.is_null());
+        assert_eq!((*cancelled).should_commit, 0);
+        assert_eq!(CStr::from_ptr((*cancelled).preedit).to_string_lossy(), "");
+        assert_eq!((*cancelled).candidate_count, 0);
+        ime_output_free(cancelled);
+        ime_session_free(escape_session);
+
+        ime_engine_free(engine);
+    }
+}
+
+#[test]
 fn c_api_can_feed_nine_key_nihao() {
     unsafe {
         let engine = ime_engine_new(ptr::null());
@@ -463,6 +595,19 @@ fn key_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
 fn nine_key_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
     ImeKeyEvent {
         key_code: 102,
+        text,
+        shift: 0,
+        ctrl: 0,
+        alt: 0,
+        meta: 0,
+        is_repeat: 0,
+        timestamp_ms: 0,
+    }
+}
+
+fn digit_event(text: *const std::os::raw::c_char) -> ImeKeyEvent {
+    ImeKeyEvent {
+        key_code: 101,
         text,
         shift: 0,
         ctrl: 0,

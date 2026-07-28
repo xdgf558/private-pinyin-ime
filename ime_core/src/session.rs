@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::api::ImeOutput;
+use crate::blind_typing::{numbered_candidate_index, BLIND_DEFAULT_CANDIDATE_INDEX};
 use crate::candidate::Candidate;
 use crate::candidate_stability::stabilize_candidate_page_order;
 use crate::key_event::{KeyCode, KeyEvent};
@@ -161,18 +162,20 @@ impl InputSession {
                 } else if self.candidates.is_empty() {
                     self.commit_raw_input()
                 } else {
-                    self.commit_candidate(0)
+                    self.commit_candidate(BLIND_DEFAULT_CANDIDATE_INDEX)
                 }
             }
             KeyCode::Digit(index @ 1..=9) => {
                 if !self.has_composition_input() {
-                    if self.candidates.is_empty() {
-                        ImeOutput::idle(self.mode)
-                    } else {
-                        self.commit_candidate(usize::from(index - 1))
-                    }
+                    return ImeOutput::idle(self.mode);
+                }
+                let visible_candidate_count = self.current_page_candidate_count();
+                if let Some(candidate_index) =
+                    numbered_candidate_index(index, visible_candidate_count)
+                {
+                    self.commit_candidate(candidate_index)
                 } else {
-                    self.commit_candidate(usize::from(index - 1))
+                    self.current_output(false, false, String::new())
                 }
             }
             KeyCode::NineKeyDigit(digit @ 2..=9) => {
@@ -253,7 +256,9 @@ impl InputSession {
     fn commit_punctuation(&mut self, punctuation: &str) -> ImeOutput {
         if !self.has_composition_input() {
             self.commit_text(punctuation)
-        } else if let Some(actual_index) = self.actual_candidate_index(0) {
+        } else if let Some(actual_index) =
+            self.actual_candidate_index(BLIND_DEFAULT_CANDIDATE_INDEX)
+        {
             if let Some(candidate) = self.candidates.get(actual_index).cloned() {
                 self.learn_candidate(&candidate);
                 self.append_candidate_context(&candidate);
@@ -685,11 +690,19 @@ impl InputSession {
         (actual_index < self.candidates.len()).then_some(actual_index)
     }
 
-    fn current_page_candidates(&self) -> Vec<Candidate> {
+    fn current_page_candidate_range(&self) -> std::ops::Range<usize> {
         let page_size = self.page_size();
         let start = self.page_start().min(self.candidates.len());
         let end = (start + page_size).min(self.candidates.len());
-        self.candidates[start..end].to_vec()
+        start..end
+    }
+
+    fn current_page_candidates(&self) -> Vec<Candidate> {
+        self.candidates[self.current_page_candidate_range()].to_vec()
+    }
+
+    fn current_page_candidate_count(&self) -> usize {
+        self.current_page_candidate_range().len()
     }
 
     fn learn_candidate(&mut self, candidate: &Candidate) {

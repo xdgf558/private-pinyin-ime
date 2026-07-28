@@ -84,6 +84,7 @@ class TextService final : public ITfTextInputProcessorEx,
   ITfComposition* composition_ = nullptr;
   CoreBridge core_;
   CandidateWindow candidate_window_;
+  bool has_composition_input_ = false;
   bool has_active_input_ = false;
   bool function_provider_advised_ = false;
   bool shift_pressed_ = false;

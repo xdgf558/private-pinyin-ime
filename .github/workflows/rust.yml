@@ -125,6 +125,9 @@ jobs:
       - name: Check ABC-03 gentle learning
         run: bash scripts/check_abc03_gentle_learning.sh
 
+      - name: Check ABC-04 blind typing
+        run: bash scripts/check_abc04_blind_typing.sh
+
       - name: Check AI-05 model supply-chain gates
         run: bash scripts/check_ai05_model_gate_sources.sh
 

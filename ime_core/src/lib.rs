@@ -3,6 +3,7 @@
 mod atomic_file;
 
 pub mod api;
+pub mod blind_typing;
 pub mod candidate;
 pub mod candidate_stability;
 pub mod error;
@@ -26,6 +27,9 @@ pub mod tolerant_input;
 pub mod user_lexicon;
 
 pub use api::{ImeEngine, ImeOutput};
+pub use blind_typing::{
+    numbered_candidate_index, BLIND_DEFAULT_CANDIDATE_INDEX, LAST_NUMBERED_CANDIDATE_KEY,
+};
 pub use candidate::{
     Candidate, CandidateCorrection, CandidateCorrectionConfidence, CandidateCorrectionKind,
     CandidateSource,

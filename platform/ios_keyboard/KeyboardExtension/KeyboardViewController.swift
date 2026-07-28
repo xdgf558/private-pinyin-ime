@@ -1452,9 +1452,11 @@ private extension KeyboardViewController {
     }
 
     func applyOrInsert(_ output: IosPinyinOutput?, fallback: String) {
-        let previousActiveInput = hasActiveInput
+        // Prediction candidates are advisory. Only a real composition may
+        // consume a numbered text key instead of inserting its literal value.
+        let previousCompositionInput = !currentPreedit.isEmpty
         apply(output)
-        if !previousActiveInput && output?.shouldCommit != true {
+        if !previousCompositionInput && output?.shouldCommit != true {
             insertDocumentText(fallback)
         }
     }

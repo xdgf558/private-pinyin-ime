@@ -29,7 +29,6 @@ bool is_composition_scoped_key(int key_code) {
     case IME_KEY_PAGE_DOWN:
     case IME_KEY_ARROW_UP:
     case IME_KEY_ARROW_DOWN:
-    case IME_KEY_DIGIT:
       return true;
     default:
       return false;
@@ -372,6 +371,7 @@ HRESULT TextService::Deactivate() {
   unadvise_key_sink();
   candidate_window_.hide();
   release_composition();
+  has_composition_input_ = false;
   has_active_input_ = false;
   shift_pressed_ = false;
   shift_used_as_modifier_ = false;
@@ -388,6 +388,7 @@ HRESULT TextService::Deactivate() {
 HRESULT TextService::OnSetFocus(BOOL foreground) {
   if (!foreground) {
     candidate_window_.hide();
+    has_composition_input_ = false;
     has_active_input_ = false;
     shift_pressed_ = false;
     shift_used_as_modifier_ = false;
@@ -509,6 +510,7 @@ HRESULT TextService::OnCompositionTerminated(TfEditCookie /*cookie*/,
   if (composition_ == composition) {
     release_composition();
     candidate_window_.hide();
+    has_composition_input_ = false;
     has_active_input_ = false;
     core_.reset_session();
   }
@@ -830,6 +832,10 @@ bool TextService::should_handle_key(const KeyMessage& message) const {
     return false;
   }
 
+  if (message.key_code == IME_KEY_DIGIT) {
+    return has_composition_input_;
+  }
+
   if (is_composition_scoped_key(message.key_code)) {
     return has_active_input_;
   }
@@ -838,8 +844,9 @@ bool TextService::should_handle_key(const KeyMessage& message) const {
 }
 
 void TextService::update_input_state(const OutputSnapshot& output) {
+  has_composition_input_ = !output.preedit.empty();
   has_active_input_ =
-      !output.preedit.empty() || output.should_show_candidates || !output.candidates.empty();
+      has_composition_input_ || output.should_show_candidates || !output.candidates.empty();
 }
 
 }  // namespace private_pinyin
