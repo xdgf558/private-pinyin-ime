@@ -35,6 +35,8 @@ test "$(grep -c 'is_mature INTEGER NOT NULL DEFAULT 0' \
 grep -q 'score_user_learning_weight(weight)' ime_core/src/user_lexicon.rs
 grep -q 'gentle_learning_keeps_default_stable_until_third_confirmation' \
   ime_core/tests/user_lexicon_tests.rs
+grep -q 'immediate_third_confirmation_tolerates_interaction_time_decay' \
+  ime_core/tests/user_lexicon_tests.rs
 grep -q 'gentle_learning_delays_trigram_prediction_until_third_confirmation' \
   ime_core/tests/user_lexicon_tests.rs
 grep -q 'mature_learning_uses_three_to_activate_and_two_to_deactivate' \

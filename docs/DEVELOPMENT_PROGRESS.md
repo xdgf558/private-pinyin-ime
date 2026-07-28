@@ -43,6 +43,10 @@ Current status: The existing local user lexicon now requires decayed weight 3.0 
   proves an active weight of 2.5 remains stable, a weight below 2.0
   deactivates, one later confirmation is insufficient, and reaching 3.0 again
   reactivates without deleting lifetime history.
+- Added a narrow 0.001 threshold tolerance and regression for the decay accrued
+  while three immediate confirmations cross separate SQLite writes. This keeps
+  normal interaction and slower CI scheduling from requiring a fourth
+  confirmation, while two confirmations remain structurally unable to mature.
 - Validation passed with `cargo test --workspace`, the desktop-AI and iOS-AI
   FFI feature suites, workspace and feature-specific Clippy with warnings
   denied, the ABC-03/macOS/iOS/Windows source gates, a complete macOS app

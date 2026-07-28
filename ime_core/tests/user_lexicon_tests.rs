@@ -187,6 +187,46 @@ fn gentle_learning_keeps_default_stable_until_third_confirmation() {
 }
 
 #[test]
+fn immediate_third_confirmation_tolerates_interaction_time_decay() {
+    let temp_db = TempDb::new("gentle_interaction_decay");
+    let settings = settings_with_user_lexicon(temp_db.path.clone());
+    let engine = ImeEngine::with_settings(settings.clone()).expect("engine opens");
+    for _ in 0..2 {
+        assert_eq!(
+            commit_candidate_by_text(&engine, "shi", "时").commit_text,
+            "时"
+        );
+    }
+
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    connection
+        .execute(
+            "UPDATE user_phrases
+             SET weight = 1.9995, is_mature = 0, updated_at_ms = ?1
+             WHERE phrase = '时' AND pinyin = 'shi'",
+            [current_time_ms()],
+        )
+        .expect("simulate interaction-time decay after two confirmations");
+    drop(connection);
+
+    let third_engine =
+        ImeEngine::with_settings(settings.clone()).expect("third-confirmation engine opens");
+    assert_eq!(
+        commit_candidate_by_text(&third_engine, "shi", "时").commit_text,
+        "时"
+    );
+    let mature_engine = ImeEngine::with_settings(settings).expect("mature engine reopens");
+    assert_eq!(
+        mature_engine
+            .candidates_for_raw("shi")
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("时"),
+        "normal interaction latency must not require a fourth confirmation"
+    );
+}
+
+#[test]
 fn mature_learning_uses_three_to_activate_and_two_to_deactivate() {
     let temp_db = TempDb::new("gentle_hysteresis");
     let settings = settings_with_user_lexicon(temp_db.path.clone());

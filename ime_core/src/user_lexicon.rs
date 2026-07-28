@@ -25,7 +25,10 @@ const MAX_USER_BIGRAM_PHRASE_CHARS: usize = 8;
 const MAX_USER_SHORT_PHRASE_CHARS: usize = 12;
 const USER_SHORT_PHRASE_TOKEN_COUNT: i64 = 2;
 const USER_LEARNING_HALF_LIFE_MS: f64 = 30.0 * 24.0 * 60.0 * 60.0 * 1_000.0;
-const USER_LEARNING_THRESHOLD_EPSILON: f64 = 0.000_001;
+// Three immediate confirmations span separate SQLite writes. Absorb only the
+// minute decay accumulated during that interaction; two confirmations remain
+// far below the activation threshold.
+const USER_LEARNING_THRESHOLD_EPSILON: f64 = 0.001;
 const SQLITE_BUSY_RETRY_LIMIT: usize = 4;
 const SQLITE_BUSY_RETRY_DELAY_MS: u64 = 10;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
