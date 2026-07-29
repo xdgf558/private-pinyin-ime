@@ -1443,6 +1443,37 @@ Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) arc
 - MSI SHA-256: `42d46d0f4f3b4733397a511702c8e034b7a8bd96860a4988f32773b27ba85a7f`
 - ZIP SHA-256: `70b8d19b2f130e93bec24343674702049616a0c0f3ee727c2e3d5c5e0ccb0496`
 
+### Windows 0.1.25 Unsigned Feature Package
+
+- Command: GitHub Actions `Windows Unsigned Package`, run `30428421394`,
+  version input `0.1.25`
+- Result: passed in 5 minutes 19 seconds on `windows-2022`
+- Source: `main` commit `9600c5528069d5ccd38221c8c59ee59f24dadbe0`
+- Notes: The NSIS EXE, WiX MSI, and ZIP include x64/x86 TSF components,
+  stable default-candidate identity, opt-in tolerant pinyin,
+  confirmation-based learning hysteresis, prediction-state digit
+  pass-through, and the Windows White Frost/settings path and TLS fixes.
+  The packaged Simplified Chinese release notes and preferences `本版更新`
+  copy describe the same scope.
+- Validation: `cargo test --workspace`, strict workspace and desktop-AI
+  Clippy, desktop-AI FFI tests, reviewed White Frost archive tests, Windows
+  installer/settings source gates, formatting, and `git diff --check` passed.
+  The Apple-only stateless nine-key latency test initially measured
+  `65.341687 ms` under unrelated host load, then passed its unchanged `60 ms`
+  budget on targeted rerun and in the complete workspace rerun.
+- EXE: `dist/windows_tsf/PrivatePinyin-0.1.25-setup.exe`
+  (`13,461,501` bytes), SHA-256
+  `f819de9a17ad319ce3abf5f8551b674278e3e90709167cb457e73932fff41600`
+- MSI: `dist/windows_tsf/PrivatePinyin-0.1.25.msi`
+  (`24,539,136` bytes), SHA-256
+  `36c9c311fd4ee55cb454e02f512e51f2f54f4fa343cc308209aa0ffeb8ba31a3`
+- ZIP: `dist/windows_tsf/PrivatePinyin-0.1.25.zip`
+  (`25,319,305` bytes), SHA-256
+  `de1e6465015b6786083a94b27b82c47854cf8f6498baecc7c37edb58e1de2e4b`
+- Distribution note: these Windows artifacts are unsigned and remain
+  internal-test packages until a Windows code-signing certificate and native
+  Windows 11 install/uninstall smoke are available.
+
 ### Windows 0.1.24 Unsigned Feature Package
 
 - Command: GitHub Actions `Windows Unsigned Package`, run `30224705017`,
