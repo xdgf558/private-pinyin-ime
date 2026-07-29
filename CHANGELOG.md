@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed Windows White Frost import failures caused by the UTF-8 BOM emitted by Windows PowerShell 5 settings writes. Existing BOM-prefixed settings now load normally, future settings and Frost manifests are written as UTF-8 without BOM, malformed CLI settings fail explicitly instead of silently losing the Frost target path, and the settings UI now shows byte/percentage download progress followed by a distinct verification-and-parsing phase.
 - Expanded the tappable area of the first and last key in every visually inset iOS QWERTY row into its unused outer margin. The full-key symbol page's left-edge period and right-edge slash now receive the same non-overlapping edge treatment as `A` and `L`.
 - Removed the remaining iOS X Publish/Send timing guess: an external document change now keeps keyboard geometry frozen until an actual appearance callback or newly delivered key proves the warm extension is active again, so a host that begins dismissal later than 50 ms cannot receive a late height or candidate-layout refresh. Frozen stale candidates are visibly disabled until that recovery event instead of looking actionable.
 - Kept rapid iOS nine-key digit and Backspace operations serial in the shared core while coalescing only non-committing, superseded UIKit output frames. In-flight full-key and nine-key composition operations now protect Backspace from deleting host-document text before the asynchronous UI mirror catches up, and signposts expose core-output apply and candidate-bar rendering costs for device traces.

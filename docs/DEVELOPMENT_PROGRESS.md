@@ -86,6 +86,39 @@ Current status: The signed iOS 0.1.30 (26) archive passed simulator readiness, a
   device check because the host app and its dismissal timing are unavailable
   in Simulator.
 
+## Windows White Frost Import and Progress Follow-up (2026-07-29)
+
+- Reproduced the packaged Windows `REVIEWED_LEXICON_NOT_CONFIGURED` failure
+  from the screenshot. Windows PowerShell 5's `Set-Content -Encoding UTF8`
+  writes a BOM, while the Rust settings parser previously passed that marker
+  directly to `serde_json`. The engine's fail-soft settings path then silently
+  used defaults, losing `rime_frost_lexicon_path` before archive import.
+- The shared Rust settings parser now accepts an optional leading UTF-8 BOM,
+  with a file-level regression proving that the configured White Frost target
+  survives. Settings CLI operations that require an existing configuration
+  now report its real read/parse error instead of silently using defaults.
+- Windows settings and White Frost manifest writes now use atomic UTF-8
+  without BOM. Existing BOM-prefixed settings remain compatible and are not
+  required to be recreated.
+- Added a determinate White Frost download bar with downloaded/total MiB and
+  percentage. After the exact 44,008,360-byte transfer reaches 100%, the
+  control switches to an indeterminate `校验文件并解析词库` phase until the
+  reviewed importer completes; conflicting White Frost controls stay disabled
+  throughout the operation.
+- Local validation passed:
+  `cargo test -p ime_core --test settings_tests` (9 tests),
+  `cargo test -p private_pinyin_settings`,
+  `cargo test --workspace`,
+  `cargo clippy --workspace --all-targets -- -D warnings`,
+  `cargo fmt --all -- --check`, and
+  `bash scripts/check_frost01_sources.sh`.
+- GitHub Actions run
+  [`30432217545`](https://github.com/xdgf558/private-pinyin-ime/actions/runs/30432217545)
+  passed the Rust, macOS lifecycle, and Windows TSF jobs. The Windows job
+  parsed every shipped PowerShell file with the native parser and completed
+  the packaged settings-tool invocation self-test. Packaged UI progress and a
+  real approved 1.0.4 import remain physical Windows smoke requirements.
+
 ## macOS 0.1.29 Public Package (2026-07-29)
 
 - Advanced the macOS App and installer receipt to `0.1.29 (29)`. The

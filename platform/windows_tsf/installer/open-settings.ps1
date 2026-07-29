@@ -88,11 +88,21 @@ function Set-JsonProperty($object, [string]$name, $value) {
     }
 }
 
+function Write-Utf8NoBom {
+    param(
+        [string]$Path,
+        [AllowEmptyString()][string]$Content
+    )
+
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+}
+
 function Ensure-SettingsFile {
     New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
     if (-not (Test-Path $settingsPath)) {
         $settings = Get-DefaultSettings
-        $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
+        Write-Utf8NoBom -Path $settingsPath -Content ($settings | ConvertTo-Json -Depth 4)
         return
     }
 
@@ -132,7 +142,7 @@ function Ensure-SettingsFile {
         $needsWrite = $true
     }
     if ($needsWrite) {
-        $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
+        Write-Utf8NoBom -Path $settingsPath -Content ($settings | ConvertTo-Json -Depth 4)
     }
 }
 
@@ -143,7 +153,7 @@ function Read-Settings {
 
 function Write-Settings($settings) {
     $tmpPath = "$settingsPath.tmp"
-    $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $tmpPath -Encoding UTF8
+    Write-Utf8NoBom -Path $tmpPath -Content ($settings | ConvertTo-Json -Depth 4)
     Move-Item -Force -Path $tmpPath -Destination $settingsPath
 }
 
@@ -250,7 +260,7 @@ function Write-RimeFrostManifest {
         imported_at = [DateTime]::UtcNow.ToString("o")
     }
     $temporary = "$rimeFrostManifestPath.tmp"
-    $manifest | ConvertTo-Json | Set-Content -Path $temporary -Encoding UTF8
+    Write-Utf8NoBom -Path $temporary -Content ($manifest | ConvertTo-Json)
     Move-Item -Force -Path $temporary -Destination $rimeFrostManifestPath
 }
 
@@ -290,6 +300,8 @@ function New-OfficialHttpClient {
 }
 
 function Download-ApprovedRimeFrostArchive {
+    param([scriptblock]$ProgressCallback)
+
     $client = New-OfficialHttpClient
     $response = $null
     $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ("rime-frost-" + [Guid]::NewGuid().ToString("N") + ".zip")
@@ -319,12 +331,25 @@ function Download-ApprovedRimeFrostArchive {
         try {
             $buffer = New-Object byte[] (64 * 1024)
             [int64]$totalBytes = 0
+            $lastReportedPercent = -1
+            if ($null -ne $ProgressCallback) {
+                & $ProgressCallback $totalBytes $rimeFrostArchiveBytes 0
+                $lastReportedPercent = 0
+            }
             while (($read = $source.Read($buffer, 0, $buffer.Length)) -gt 0) {
                 $totalBytes += $read
                 if ($totalBytes -gt $rimeFrostArchiveBytes) {
                     throw "下载文件超过审核清单大小"
                 }
                 $destination.Write($buffer, 0, $read)
+                $percent = [Math]::Min(
+                    100,
+                    [int][Math]::Floor(($totalBytes * 100.0) / $rimeFrostArchiveBytes)
+                )
+                if ($null -ne $ProgressCallback -and $percent -ne $lastReportedPercent) {
+                    & $ProgressCallback $totalBytes $rimeFrostArchiveBytes $percent
+                    $lastReportedPercent = $percent
+                }
             }
         } finally {
             $destination.Dispose()
@@ -663,6 +688,15 @@ $tabs.TabPages.Add($lexiconPage)
 
 $rimeFrostStatus = New-UiLabel -Parent $lexiconPage -Text "" -X 26 -Y 126 -Width 650 -Height 54 -Size 9 -Style ([System.Drawing.FontStyle]::Bold) -Color $colors.Header
 
+$rimeFrostProgress = New-Object System.Windows.Forms.ProgressBar
+$rimeFrostProgress.Location = New-Object System.Drawing.Point(26, 177)
+$rimeFrostProgress.Size = New-Object System.Drawing.Size(650, 10)
+$rimeFrostProgress.Minimum = 0
+$rimeFrostProgress.Maximum = 100
+$rimeFrostProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+$rimeFrostProgress.Visible = $false
+$lexiconPage.Controls.Add($rimeFrostProgress)
+
 $rimeFrostImport = New-Object System.Windows.Forms.Button
 $rimeFrostImport.Text = "导入白霜"
 $rimeFrostImport.Location = New-Object System.Drawing.Point(26, 198)
@@ -736,13 +770,32 @@ $rimeFrostImport.Add_Click({
     }
 
     $rimeFrostImport.Enabled = $false
+    $rimeFrostEnable.Enabled = $false
+    $rimeFrostClear.Enabled = $false
+    $rimeFrostCheck.Enabled = $false
+    $rimeFrostProgress.Value = 0
+    $rimeFrostProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+    $rimeFrostProgress.Visible = $true
     $rimeFrostStatus.Text = "正在从白霜拼音官方 GitHub Release 下载..."
     [System.Windows.Forms.Application]::DoEvents()
     $archive = $null
     $failureStage = "下载"
     try {
-        $archive = Download-ApprovedRimeFrostArchive
+        $archive = Download-ApprovedRimeFrostArchive -ProgressCallback {
+            param($downloadedBytes, $totalBytes, $percent)
+
+            $rimeFrostProgress.Value = $percent
+            $downloadedMiB = $downloadedBytes / 1MB
+            $totalMiB = $totalBytes / 1MB
+            $rimeFrostStatus.Text = "正在下载白霜拼音：{0:N1} / {1:N1} MiB（{2}%）" -f `
+                $downloadedMiB, $totalMiB, $percent
+            [System.Windows.Forms.Application]::DoEvents()
+        }
         $failureStage = "文件校验与词库解析"
+        $rimeFrostProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
+        $rimeFrostProgress.MarqueeAnimationSpeed = 28
+        $rimeFrostStatus.Text = "下载完成，正在校验文件并解析词库..."
+        [System.Windows.Forms.Application]::DoEvents()
         $ok = Run-SettingsTool @(
             "import-rime-frost",
             "--settings", $settingsPath,
@@ -806,7 +859,11 @@ $rimeFrostImport.Add_Click({
         if ($archive) {
             Remove-Item -Force -ErrorAction SilentlyContinue $archive
         }
+        $rimeFrostProgress.MarqueeAnimationSpeed = 0
+        $rimeFrostProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+        $rimeFrostProgress.Visible = $false
         $rimeFrostImport.Enabled = $true
+        $rimeFrostCheck.Enabled = $true
         Refresh-RimeFrostSummary
     }
 })
