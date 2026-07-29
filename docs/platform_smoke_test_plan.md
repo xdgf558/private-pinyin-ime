@@ -216,7 +216,7 @@ Checklist:
 | Globe key | Globe appears only when `needsInputModeSwitchKey` requires it and switches to the next input mode | | |
 | Nine-key compact height | In landscape, the five-column nine-key grid fits without constraint warnings, clipping, or overlapping controls; Globe/layout, `中/英`, `候选`, Delete, and Return remain reachable | | |
 | Nine-key mode control | Tap `中/英` in nine-key mode; English QWERTY appears, and switching back to Chinese restores the saved nine-key layout and active controls | | |
-| Haptic fallback | With Full Access off, ordinary typing produces light best-effort haptic feedback and commands/candidates use selection feedback through generators attached to the visible keyboard view; every key remains responsive if iOS or system settings suppress the haptic | | Verify Settings > Sounds & Haptics permits system haptics |
+| Haptic privacy boundary | With `RequestsOpenAccess=false`, do not require or advertise physical haptic output. Confirm every typing, command, and candidate key remains responsive without tactile feedback; any future Full Access build must use a separately approved privacy decision and device matrix | | Do not direct testers to system haptic settings for the current build |
 | Host App policy | Confirm the keyboard works in Notes and Safari. If one host App such as Marriott never offers third-party keyboards, record it as the App's extension-point policy; the keyboard cannot override a host rejection | | Do not treat secure fields or phone-pad fields as extension activation failures |
 | Password fallback | Password fields force the system keyboard | | |
 | Phone fallback | Phone-number fields force the system keyboard | | |
