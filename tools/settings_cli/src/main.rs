@@ -158,10 +158,8 @@ fn run() -> Result<String, String> {
 }
 
 fn settings_from_path(settings_path: Option<PathBuf>) -> Result<ImeSettings, String> {
-    Ok(ImeSettings::from_json_file_or_default(required_path(
-        settings_path,
-        "--settings",
-    )?))
+    let path = required_path(settings_path, "--settings")?;
+    ImeSettings::from_json_file(&path).map_err(|error| error.code().to_owned())
 }
 
 fn required_path(path: Option<PathBuf>, flag: &str) -> Result<PathBuf, String> {

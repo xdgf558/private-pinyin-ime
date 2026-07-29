@@ -116,6 +116,15 @@ fi
 grep -q '\$currentSettings = Read-Settings' \
   platform/windows_tsf/installer/open-settings.ps1
 grep -q '\$response.Dispose()' platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Write-Utf8NoBom' platform/windows_tsf/installer/open-settings.ps1
+grep -q 'System.Text.UTF8Encoding(\$false)' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'System.Windows.Forms.ProgressBar' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'Download-ApprovedRimeFrostArchive -ProgressCallback' \
+  platform/windows_tsf/installer/open-settings.ps1
+grep -q 'ProgressBarStyle]::Marquee' \
+  platform/windows_tsf/installer/open-settings.ps1
 grep -q '\$output = @(& \$SettingsTool @arguments 2>&1)' \
   platform/windows_tsf/installer/open-settings.ps1
 grep -q '\$ErrorActionPreference = "Continue"' \

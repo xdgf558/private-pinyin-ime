@@ -165,6 +165,7 @@ impl ImeSettings {
     }
 
     pub fn from_json_str(contents: &str) -> ImeResult<Self> {
+        let contents = contents.strip_prefix('\u{feff}').unwrap_or(contents);
         let mut settings: Self =
             serde_json::from_str(contents).map_err(|_| ImeError::SettingsParse)?;
         settings.normalize()?;

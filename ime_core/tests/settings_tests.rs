@@ -70,6 +70,25 @@ fn malformed_settings_file_can_fallback_to_default() {
 }
 
 #[test]
+fn settings_file_accepts_windows_powershell_utf8_bom() {
+    let path = temp_path("settings_windows_bom", "json");
+    std::fs::write(
+        &path,
+        b"\xef\xbb\xbf{\"rime_frost_lexicon_path\":\"C:/Users/Test/AppData/Local/PrivatePinyin/rime_frost.tsv\"}",
+    )
+    .expect("write BOM-prefixed settings");
+
+    let settings = ImeSettings::from_json_file(&path).expect("parse BOM-prefixed settings");
+
+    assert_eq!(
+        settings.rime_frost_lexicon_path,
+        Some(PathBuf::from(
+            "C:/Users/Test/AppData/Local/PrivatePinyin/rime_frost.tsv"
+        ))
+    );
+}
+
+#[test]
 fn invalid_numeric_settings_are_clamped_without_losing_other_fields() {
     let settings = ImeSettings::from_json_str(
         r#"{
