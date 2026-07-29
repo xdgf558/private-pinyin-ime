@@ -15,8 +15,10 @@ Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) arc
   surface geometry frozen through `textDidChange`; only a real
   `viewWillAppear`/`viewDidAppear` transition or the next key delivered while
   the extension is presented can recover the warm surface. Logical reset work
-  still completes off-main, and a same-App field switch becomes visually
-  current on its first key without reusing the old composition.
+  still completes off-main. During a same-App field switch, the prior
+  candidate frame is deliberately retained but immediately dimmed and made
+  noninteractive; the first key restores the surface from cleared logical
+  state instead of presenting a false actionable candidate.
 - The shared Rust release benchmark remains well below the 60 ms budget:
   correction-on medians measured `0.334 ms/key` for 21 digits,
   `0.331 ms/key` at the 24-digit correction ceiling, and `0.420 ms/key` for
@@ -25,12 +27,32 @@ Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) arc
   newly reported touch lag.
 - The iOS host now coalesces superseded nine-key digit and Backspace output
   frames while preserving serial core execution and the final candidate
-  result. This removes redundant main-thread candidate/button updates during
-  rapid entry without dropping or reordering digits.
+  result. A coalesced completion is discarded only when `shouldCommit` is not
+  true; fallback insertion and `afterApply` state-release paths are never
+  eligible. Full-key and nine-key operations that can create composition are
+  tracked by operation identity until their main-thread completion, so
+  Backspace cannot mistake an asynchronous composition for an empty field and
+  delete surrounding host text.
+- Added `ApplyCoreOutput`, `UpdateCandidateBar`, `CoreOutputCoalesced`, and
+  `NineKeyRenderSmoke` signposts plus a DEBUG counter probe. On the same iOS
+  26.5 iPhone 17 Pro Simulator Debug build, an instant synthetic `64426`
+  baseline completed 5 core outputs and performed 5 `apply` plus 5 candidate
+  bar updates. With coalescing enabled, all 5 core outputs still completed,
+  4 superseded frames were discarded, and only 1 `apply` plus 1 candidate bar
+  update ran: an 80% reduction in main-thread output/render passes. These
+  counts establish the host-side work reduction; physical X animation timing
+  still requires a TestFlight trace.
+- A separate DEBUG simulator probe inserted a host-document sentinel, queued
+  rapid tracked/coalescible `644`, and invoked Backspace before those outputs
+  completed. The probe reported
+  `PRIVATE_PINYIN_PENDING_BACKSPACE_SMOKE host_text_preserved=true`, proving
+  that the in-flight operation guard kept Backspace inside the core instead
+  of deleting surrounding host text.
 - Because the shipping extension keeps `RequestsOpenAccess=false`, UIKit
   feedback is unavailable. Selection/impact calls and preparation are now
-  skipped in that state rather than adding ineffective per-key work; ordinary
-  input remains independent of tactile feedback.
+  skipped in that state. This closes the misleading haptic path rather than
+  claiming a material latency gain; ordinary input remains independent of
+  tactile feedback.
 - Validation passed with `cargo test --workspace`,
   `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo fmt --all -- --check`, the iOS source contract, and the full

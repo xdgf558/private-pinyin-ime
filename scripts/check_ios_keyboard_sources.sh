@@ -387,6 +387,23 @@ if "super.textWillChange(textInput)" not in text_will_change:
     raise SystemExit("The iOS document-change lifecycle must call super.textWillChange.")
 if "keyboardSurfaceFrozen = true" not in text_will_change:
     raise SystemExit("External iOS document changes must freeze the surface before queued reset work.")
+if "disableFrozenCandidateControls()" not in text_will_change:
+    raise SystemExit("Frozen iOS document changes must visibly disable stale candidate controls.")
+
+disable_frozen_candidates = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "private func disableFrozenCandidateControls()",
+)
+for required in (
+    "candidateButtons + expandedCandidateButtons",
+    "button.isEnabled = false",
+    "expandCandidateButton.isEnabled = false",
+):
+    require(
+        disable_frozen_candidates,
+        required,
+        "noninteractive frozen iOS candidate controls",
+    )
 
 text_did_change = source.split("    override func textDidChange", 1)[1].split(
     "    override func viewWillAppear", 1
@@ -472,9 +489,26 @@ if "pendingOperation.revision == self.coreInteractionRevision" not in core_opera
 for required in (
     "pendingOperation.coalescesIntermediateOutput",
     "pendingOperation.outputSequence != self.coreOutputSequence",
+    "output?.shouldCommit != true",
+    "finishPendingCompositionTracking(for: pendingOperation)",
+    'name: "CoreOutputCoalesced"',
 ):
     if required not in core_operations:
         raise SystemExit(f"Missing iOS intermediate-output coalescing contract: {required}")
+
+perform_core_output = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func performCoreOutput(",
+)
+for required in (
+    "coalescesIntermediateOutput && fallback == nil && afterApply == nil",
+    "safelyCoalescesIntermediateOutput",
+):
+    require(
+        perform_core_output,
+        required,
+        "fail-safe iOS intermediate-output coalescing eligibility",
+    )
 
 nine_key_feed = function_body(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
@@ -482,8 +516,23 @@ nine_key_feed = function_body(
 )
 require(
     nine_key_feed,
-    "performCoreOutput(coalescesIntermediateOutput: true)",
+    "coalescesIntermediateOutput: true",
     "nine-key digit output coalescing",
+)
+require(
+    nine_key_feed,
+    "tracksPendingComposition: true",
+    "nine-key pending-composition tracking",
+)
+
+full_key_feed = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func feedCharacter(",
+)
+require(
+    full_key_feed,
+    "performCoreOutput(tracksPendingComposition: true)",
+    "full-key pending-composition tracking",
 )
 
 backspace_handler = function_body(
@@ -495,6 +544,31 @@ require(
     "coalescesIntermediateOutput: usesNineKeyLayout",
     "nine-key Backspace output coalescing",
 )
+require(
+    backspace_handler,
+    "hasActiveInput || !pendingCompositionOperationIdentifiers.isEmpty",
+    "in-flight composition protection for host-document Backspace",
+)
+
+candidate_bar = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "private func updateCandidateBar()",
+)
+for required in (
+    'name: "UpdateCandidateBar"',
+    "diagnosticCandidateBarUpdates += 1",
+):
+    require(candidate_bar, required, "iOS candidate-render measurement")
+
+apply_output = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func apply(_ output:",
+)
+for required in (
+    'name: "ApplyCoreOutput"',
+    "diagnosticAppliedCoreOutputs += 1",
+):
+    require(apply_output, required, "iOS core-output apply measurement")
 
 for feedback_marker in ("func provideSelectionFeedback()", "func provideTypingFeedback()"):
     feedback_body = function_body(
