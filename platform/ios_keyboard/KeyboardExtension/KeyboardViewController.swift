@@ -1,8 +1,13 @@
+import os
 import UIKit
 
 private struct PendingCoreOperation {
+    let identifier: Int
     let generation: Int
     let revision: Int
+    let outputSequence: Int
+    let coalescesIntermediateOutput: Bool
+    let tracksPendingComposition: Bool
     let secureInput: Bool
     let operation: (IosPinyinCoreBridge) -> IosPinyinOutput?
     let completion: (IosPinyinOutput?) -> Void
@@ -16,15 +21,21 @@ private enum KeyboardPresentationPhase {
 }
 
 final class KeyboardViewController: UIInputViewController {
+    private static let renderingLog = OSLog(
+        subsystem: "com.privatepinyin.ios.keyboard",
+        category: "KeyboardRendering"
+    )
     private static let coreOperationQueue = DispatchQueue(
         label: "com.privatepinyin.ios.core-operations",
         qos: .userInteractive
     )
     private static let idleCorePrewarmDelay: TimeInterval = 0.12
-    private static let visibleDocumentChangeThawDelay: TimeInterval = 0.05
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
+    private var coreOutputSequence = 0
+    private var nextCoreOperationIdentifier = 0
+    private var pendingCompositionOperationIdentifiers: Set<Int> = []
     private var coreLoadInProgress = false
     private var pendingCoreOperations: [PendingCoreOperation] = []
     private var coreLoadObservers: [(Bool) -> Void] = []
@@ -88,7 +99,12 @@ final class KeyboardViewController: UIInputViewController {
     private var keyboardPresentationPhase = KeyboardPresentationPhase.detached
     private var surfaceRefreshDeferred = false
     private var keyboardRebuildDeferred = false
-    private var pendingDocumentSurfaceRevision: Int?
+#if DEBUG
+    private var diagnosticCompletedCoreOutputs = 0
+    private var diagnosticCoalescedCoreOutputs = 0
+    private var diagnosticAppliedCoreOutputs = 0
+    private var diagnosticCandidateBarUpdates = 0
+#endif
 
     deinit {
         let coreToRelease = core
@@ -104,8 +120,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
         setupView()
-        keyFeedbackGenerator.prepare()
-        typingFeedbackGenerator.prepare()
+        prepareFeedbackGeneratorsIfAvailable()
         rebuildKeyboard()
         updateCandidateBar()
         // Let the keyboard's first frame appear before parsing the bundled lexicon.
@@ -132,12 +147,13 @@ final class KeyboardViewController: UIInputViewController {
         keyboardSurfaceFrozen = true
         surfaceRefreshDeferred = true
         coreInteractionRevision &+= 1
-        pendingDocumentSurfaceRevision = coreInteractionRevision
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        pendingCompositionOperationIdentifiers.removeAll(keepingCapacity: true)
         candidateCommitInFlight = false
         currentPreedit = ""
         currentCandidates = []
         candidatesExpanded = false
+        disableFrozenCandidateControls()
         surfaceRefreshDeferred = true
         enqueueCoreOperation(
             operation: { core in core.reset() },
@@ -153,26 +169,15 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        guard let revision = pendingDocumentSurfaceRevision else {
-            return
-        }
-        pendingDocumentSurfaceRevision = nil
-        // Give a host dismissal enough time to advance to `disappearing`
-        // before treating this as an in-place field switch.
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + Self.visibleDocumentChangeThawDelay
-        ) { [weak self] in
-            guard let self, revision == self.coreInteractionRevision else {
-                return
-            }
-            self.resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()
-        }
+        // Do not guess when a host will start its dismissal animation. Some
+        // hosts remain `visible` well beyond one run-loop turn after changing
+        // the document. Appearance callbacks or the next delivered key are
+        // the only events that may thaw this geometry freeze.
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         keyboardPresentationPhase = .appearing
-        pendingDocumentSurfaceRevision = nil
         resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
     }
 
@@ -180,8 +185,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidAppear(animated)
         keyboardPresentationPhase = .visible
         resumeKeyboardSurfaceIfNeeded()
-        keyFeedbackGenerator.prepare()
-        typingFeedbackGenerator.prepare()
+        prepareFeedbackGeneratorsIfAvailable()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -197,7 +201,6 @@ final class KeyboardViewController: UIInputViewController {
         keyboardPresentationPhase = .detached
         keyboardSurfaceFrozen = true
         surfaceRefreshDeferred = true
-        pendingDocumentSurfaceRevision = nil
     }
 
     override func viewWillLayoutSubviews() {
@@ -1113,6 +1116,24 @@ final class KeyboardViewController: UIInputViewController {
             surfaceRefreshDeferred = true
             return
         }
+        let signpostID = OSSignpostID(log: Self.renderingLog)
+        os_signpost(
+            .begin,
+            log: Self.renderingLog,
+            name: "UpdateCandidateBar",
+            signpostID: signpostID
+        )
+        defer {
+            os_signpost(
+                .end,
+                log: Self.renderingLog,
+                name: "UpdateCandidateBar",
+                signpostID: signpostID
+            )
+        }
+#if DEBUG
+        diagnosticCandidateBarUpdates += 1
+#endif
         if preferencesVisible {
             candidatesExpanded = false
             keyRowsStack.isHidden = true
@@ -1146,6 +1167,8 @@ final class KeyboardViewController: UIInputViewController {
         let candidatesChanged = candidateSignature != renderedCandidateSignature
         renderedCandidateSignature = candidateSignature
         expandCandidateButton.isHidden = !hasCandidates
+        expandCandidateButton.isEnabled = hasCandidates && !candidateCommitInFlight
+        expandCandidateButton.alpha = expandCandidateButton.isEnabled ? 1.0 : 0.45
         expandCandidateButton.setImage(
             UIImage(systemName: candidatesExpanded ? "chevron.up" : "chevron.down"),
             for: .normal
@@ -1179,6 +1202,19 @@ final class KeyboardViewController: UIInputViewController {
             candidateScrollView.setContentOffset(.zero, animated: false)
         }
         updateExpandedCandidates()
+    }
+
+    private func disableFrozenCandidateControls() {
+        for button in candidateButtons + expandedCandidateButtons {
+            button.isEnabled = false
+            button.alpha = 0.45
+        }
+        expandedPreviousPageButton.isEnabled = false
+        expandedPreviousPageButton.alpha = 0.35
+        expandedNextPageButton.isEnabled = false
+        expandedNextPageButton.alpha = 0.35
+        expandCandidateButton.isEnabled = false
+        expandCandidateButton.alpha = 0.45
     }
 
     private func updateExpandedCandidates() {
@@ -1359,7 +1395,7 @@ private extension KeyboardViewController {
         }
 
         let text = wasShifted ? value.uppercased() : value
-        performCoreOutput { core in
+        performCoreOutput(tracksPendingComposition: true) { core in
             core.feed(
                 keyCode: IosKeyCodeValue.character,
                 text: text,
@@ -1404,11 +1440,12 @@ private extension KeyboardViewController {
     }
 
     func handleBackspace() {
-        guard hasActiveInput else {
+        guard hasActiveInput || !pendingCompositionOperationIdentifiers.isEmpty else {
             deleteDocumentBackward()
             return
         }
         enqueueCoreOperation(
+            coalescesIntermediateOutput: usesNineKeyLayout,
             operation: { core in
                 core.feed(keyCode: IosKeyCodeValue.backspace)
             },
@@ -1448,12 +1485,26 @@ private extension KeyboardViewController {
     }
 
     func provideSelectionFeedback() {
+        guard hasFullAccess else {
+            return
+        }
         keyFeedbackGenerator.selectionChanged()
         keyFeedbackGenerator.prepare()
     }
 
     func provideTypingFeedback() {
+        guard hasFullAccess else {
+            return
+        }
         typingFeedbackGenerator.impactOccurred(intensity: 0.62)
+        typingFeedbackGenerator.prepare()
+    }
+
+    func prepareFeedbackGeneratorsIfAvailable() {
+        guard hasFullAccess else {
+            return
+        }
+        keyFeedbackGenerator.prepare()
         typingFeedbackGenerator.prepare()
     }
 
@@ -1484,7 +1535,10 @@ private extension KeyboardViewController {
         guard value.count == 1, let digit = value.first, ("2"..."9").contains(String(digit)) else {
             return
         }
-        performCoreOutput { core in
+        performCoreOutput(
+            coalescesIntermediateOutput: true,
+            tracksPendingComposition: true
+        ) { core in
             core.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value)
         }
     }
@@ -1518,10 +1572,18 @@ private extension KeyboardViewController {
 
     func performCoreOutput(
         fallback: String? = nil,
+        coalescesIntermediateOutput: Bool = false,
+        tracksPendingComposition: Bool = false,
         afterApply: ((IosPinyinOutput?) -> Void)? = nil,
         operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?
     ) {
+        // Literal fallback insertion and after-apply state release must never
+        // depend on a completion that a frame optimization may discard.
+        let safelyCoalescesIntermediateOutput =
+            coalescesIntermediateOutput && fallback == nil && afterApply == nil
         enqueueCoreOperation(
+            coalescesIntermediateOutput: safelyCoalescesIntermediateOutput,
+            tracksPendingComposition: tracksPendingComposition,
             operation: operation,
             completion: { [weak self] output in
                 guard let self else {
@@ -1538,15 +1600,29 @@ private extension KeyboardViewController {
     }
 
     func enqueueCoreOperation(
+        coalescesIntermediateOutput: Bool = false,
+        tracksPendingComposition: Bool = false,
         operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?,
         completion: @escaping (IosPinyinOutput?) -> Void
     ) {
         if core == nil {
             startCoreLoadIfNeeded()
         }
+        // Core work always stays serial. The sequence only lets rapid
+        // nine-key input skip UIKit frames superseded before main-thread apply.
+        coreOutputSequence &+= 1
+        nextCoreOperationIdentifier &+= 1
+        let operationIdentifier = nextCoreOperationIdentifier
+        if tracksPendingComposition {
+            pendingCompositionOperationIdentifiers.insert(operationIdentifier)
+        }
         let pendingOperation = PendingCoreOperation(
+            identifier: operationIdentifier,
             generation: coreLoadGeneration,
             revision: coreInteractionRevision,
+            outputSequence: coreOutputSequence,
+            coalescesIntermediateOutput: coalescesIntermediateOutput,
+            tracksPendingComposition: tracksPendingComposition,
             secureInput: localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext,
             operation: operation,
             completion: completion
@@ -1558,6 +1634,7 @@ private extension KeyboardViewController {
         }
 
         guard pendingCoreOperations.count < maximumPendingCoreOperations else {
+            finishPendingCompositionTracking(for: pendingOperation)
             completion(nil)
             return
         }
@@ -1572,14 +1649,46 @@ private extension KeyboardViewController {
             core.setSecureInput(pendingOperation.secureInput)
             let output = pendingOperation.operation(core)
             DispatchQueue.main.async { [weak self] in
-                guard let self,
-                      pendingOperation.generation == self.coreLoadGeneration,
+                guard let self else {
+                    return
+                }
+                self.finishPendingCompositionTracking(for: pendingOperation)
+#if DEBUG
+                self.diagnosticCompletedCoreOutputs += 1
+#endif
+                guard pendingOperation.generation == self.coreLoadGeneration,
                       pendingOperation.revision == self.coreInteractionRevision else {
+                    return
+                }
+                // A coalesced output may be skipped only when it cannot mutate
+                // the document. If a future caller mislabels a committing
+                // operation, deliver it and accept the extra UIKit frame.
+                if pendingOperation.coalescesIntermediateOutput,
+                   pendingOperation.outputSequence != self.coreOutputSequence,
+                   output?.shouldCommit != true {
+                    os_signpost(
+                        .event,
+                        log: Self.renderingLog,
+                        name: "CoreOutputCoalesced",
+                        "sequence=%{public}d latest=%{public}d",
+                        pendingOperation.outputSequence,
+                        self.coreOutputSequence
+                    )
+#if DEBUG
+                    self.diagnosticCoalescedCoreOutputs += 1
+#endif
                     return
                 }
                 pendingOperation.completion(output)
             }
         }
+    }
+
+    func finishPendingCompositionTracking(for operation: PendingCoreOperation) {
+        guard operation.tracksPendingComposition else {
+            return
+        }
+        pendingCompositionOperationIdentifiers.remove(operation.identifier)
     }
 
     func observeCoreLoad(_ observer: @escaping (Bool) -> Void) {
@@ -1631,7 +1740,10 @@ private extension KeyboardViewController {
                         self.scheduleCoreOperation(operation, on: loadedCore)
                     }
                 } else {
-                    operations.forEach { $0.completion(nil) }
+                    operations.forEach { operation in
+                        self.finishPendingCompositionTracking(for: operation)
+                        operation.completion(nil)
+                    }
                 }
                 observers.forEach { $0(loadedCore != nil) }
                 self.updateCandidateBar()
@@ -1645,6 +1757,7 @@ private extension KeyboardViewController {
         coreLoadInProgress = false
         candidateCommitInFlight = false
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        pendingCompositionOperationIdentifiers.removeAll(keepingCapacity: true)
         let observers = coreLoadObservers
         coreLoadObservers.removeAll(keepingCapacity: true)
         observers.forEach { $0(false) }
@@ -1674,6 +1787,24 @@ private extension KeyboardViewController {
             updateCandidateBar()
             return
         }
+        let signpostID = OSSignpostID(log: Self.renderingLog)
+        os_signpost(
+            .begin,
+            log: Self.renderingLog,
+            name: "ApplyCoreOutput",
+            signpostID: signpostID
+        )
+        defer {
+            os_signpost(
+                .end,
+                log: Self.renderingLog,
+                name: "ApplyCoreOutput",
+                signpostID: signpostID
+            )
+        }
+#if DEBUG
+        diagnosticAppliedCoreOutputs += 1
+#endif
 
         let modeChanged = englishMode != output.isEnglishMode
         englishMode = output.isEnglishMode
@@ -1887,14 +2018,6 @@ private extension KeyboardViewController {
         refreshKeyboardSurface(force: true)
     }
 
-    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible() {
-        guard keyboardPresentationPhase == .visible,
-              viewIfLoaded?.window != nil else {
-            return
-        }
-        resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
-    }
-
     private func resumeKeyboardSurfaceForDeliveredKeyIfPresented() {
         guard keyboardPresentationPhase == .appearing
             || keyboardPresentationPhase == .visible,
@@ -1913,6 +2036,7 @@ private extension KeyboardViewController {
 
         coreInteractionRevision &+= 1
         pendingCoreOperations.removeAll(keepingCapacity: true)
+        pendingCompositionOperationIdentifiers.removeAll(keepingCapacity: true)
         candidateCommitInFlight = false
         clearCompositionState()
         enqueueCoreOperation(
@@ -2045,6 +2169,8 @@ private extension KeyboardViewController {
 #if DEBUG
     func runKeyboardSmokeIfRequested() {
         let defaults = UserDefaults.standard
+        runRapidNineKeyRenderingSmokeIfRequested(defaults: defaults)
+        runPendingBackspaceSmokeIfRequested(defaults: defaults)
         let expandedCandidatesKey = "private_pinyin.debug.expanded_candidates_smoke"
         if defaults.bool(forKey: expandedCandidatesKey) {
             defaults.set(false, forKey: expandedCandidatesKey)
@@ -2105,6 +2231,136 @@ private extension KeyboardViewController {
                 )
             }
         }
+    }
+
+    func runPendingBackspaceSmokeIfRequested(defaults: UserDefaults) {
+        let key = "private_pinyin.debug.pending_backspace_smoke"
+        guard defaults.bool(forKey: key) else {
+            return
+        }
+        defaults.set(false, forKey: key)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else {
+                return
+            }
+            self.insertDocumentText("Z")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.performCoreOutput(
+                    afterApply: { [weak self] _ in
+                        guard let self else {
+                            return
+                        }
+                        for digit in ["6", "4", "4"] {
+                            self.performCoreOutput(
+                                coalescesIntermediateOutput: true,
+                                tracksPendingComposition: true,
+                                operation: { core in
+                                    core.feed(
+                                        keyCode: IosKeyCodeValue.nineKeyDigit,
+                                        text: digit
+                                    )
+                                }
+                            )
+                        }
+                        self.handleBackspace()
+                        self.enqueueCoreOperation(
+                            operation: { _ in nil },
+                            completion: { [weak self] _ in
+                                let hostTextPreserved =
+                                    self?.textDocumentProxy.documentContextBeforeInput?
+                                    .hasSuffix("Z") == true
+                                NSLog(
+                                    "PRIVATE_PINYIN_PENDING_BACKSPACE_SMOKE host_text_preserved=\(hostTextPreserved)"
+                                )
+                            }
+                        )
+                    },
+                    operation: { core in core.reset() }
+                )
+            }
+        }
+    }
+
+    func runRapidNineKeyRenderingSmokeIfRequested(defaults: UserDefaults) {
+        let baselineKey = "private_pinyin.debug.nine_key_render_baseline_smoke"
+        let coalescedKey = "private_pinyin.debug.nine_key_render_coalesced_smoke"
+        let mode: (name: String, coalesces: Bool)?
+        if defaults.bool(forKey: baselineKey) {
+            defaults.set(false, forKey: baselineKey)
+            mode = ("baseline", false)
+        } else if defaults.bool(forKey: coalescedKey) {
+            defaults.set(false, forKey: coalescedKey)
+            mode = ("coalesced", true)
+        } else {
+            mode = nil
+        }
+        guard let mode else {
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else {
+                return
+            }
+            self.performCoreOutput(
+                afterApply: { [weak self] _ in
+                    guard let self else {
+                        return
+                    }
+                    self.diagnosticCompletedCoreOutputs = 0
+                    self.diagnosticCoalescedCoreOutputs = 0
+                    self.diagnosticAppliedCoreOutputs = 0
+                    self.diagnosticCandidateBarUpdates = 0
+                    let digits = ["6", "4", "4", "2", "6"]
+                    for (index, digit) in digits.enumerated() {
+                        let isFinalDigit = index == digits.count - 1
+                        let afterApply: ((IosPinyinOutput?) -> Void)? = isFinalDigit
+                            ? { [weak self] _ in
+                                self?.reportRapidNineKeyRenderingSmoke(mode: mode.name)
+                            }
+                            : nil
+                        self.performCoreOutput(
+                            coalescesIntermediateOutput: mode.coalesces,
+                            tracksPendingComposition: true,
+                            afterApply: afterApply,
+                            operation: { core in
+                                core.feed(
+                                    keyCode: IosKeyCodeValue.nineKeyDigit,
+                                    text: digit
+                                )
+                            }
+                        )
+                    }
+                },
+                operation: { core in core.reset() }
+            )
+        }
+    }
+
+    func reportRapidNineKeyRenderingSmoke(mode: String) {
+        os_signpost(
+            .event,
+            log: Self.renderingLog,
+            name: "NineKeyRenderSmoke",
+            "mode=%{public}s completed=%{public}d coalesced=%{public}d applied=%{public}d updates=%{public}d",
+            mode,
+            diagnosticCompletedCoreOutputs,
+            diagnosticCoalescedCoreOutputs,
+            diagnosticAppliedCoreOutputs,
+            diagnosticCandidateBarUpdates
+        )
+        NSLog(
+            "PRIVATE_PINYIN_RENDER_SMOKE mode=%@ completed=%ld coalesced=%ld applied=%ld candidate_updates=%ld",
+            mode,
+            diagnosticCompletedCoreOutputs,
+            diagnosticCoalescedCoreOutputs,
+            diagnosticAppliedCoreOutputs,
+            diagnosticCandidateBarUpdates
+        )
     }
 
     func runCoreSmokeSequence(

@@ -4,6 +4,21 @@ Stage 15 records the automated readiness checks that can run from the repository
 and separates the remaining iOS keyboard behavior that must be verified in
 Simulator or on a device.
 
+## Deterministic Dismissal and Output Coalescing (2026-07-29)
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Physical-device report | reproduced | TestFlight `0.1.29 (25)` still exhibited about one second of host pulling after X Publish/Send, and nine-key response again felt delayed |
+| Rust release baseline | passed | Correction-on medians were 0.334, 0.331, and 0.420 ms/key for the 21-, 24-, and 64-digit cases; correction-off medians were 0.315, 0.298, and 0.423 ms/key. The 60 ms budget remains unchanged |
+| Dismissal source contract | passed | `scripts/check_ios_keyboard_sources.sh` rejects timer-based or document-callback thaw, direct document-callback surface refresh, and missing appearance/key recovery paths |
+| Rapid-output source contract | passed | Every digit and nine-key Backspace stays on the serial core queue. Sequence-based rejection applies only to superseded non-committing outputs; fallback and after-apply paths are structurally ineligible |
+| In-flight Backspace safety | passed | Full-key and nine-key composition-producing operations are tracked by operation ID until main-thread completion. A DEBUG iOS 26.5 simulator probe inserted a host sentinel, queued rapid `644`, and invoked Backspace before completion; it reported `host_text_preserved=true`, confirming Backspace stayed in the core instead of deleting surrounding host text from a stale empty UI mirror |
+| Host render count | passed | Same-build Debug probe for instant `64426`: baseline completed/applied/rendered `5/5/5`; coalesced mode completed all 5 operations, rejected 4 superseded frames, and applied/rendered `1/1`, reducing main-thread output passes by 80% |
+| Frozen stale candidates | passed | An external field change clears logical candidates and immediately disables/dims compact, expanded, expansion, and paging controls without changing geometry. The first presented key restores a current interactive surface |
+| Full Access boundary | passed | With `RequestsOpenAccess=false`, source and product checks confirm unavailable haptic preparation and emission are skipped |
+| Simulator build and smoke | passed | Xcode 26.6 / iOS 26.5 simulator build and readiness passed. Rapid `64426` produced `你好`; Backspace/retype preserved it; candidate commit inserted once; switching directly to the second field cleared the old prediction on the first `6`, and completing `4426` restored `你好` |
+| X Publish | pending physical device | Repeat Publish/Send with the next TestFlight candidate. The host should move only with its own dismissal animation; returning and typing the first digit must immediately recover the warm keyboard |
+
 ## Host Submission Transition Smoothing (2026-07-27)
 
 | Field | Value |

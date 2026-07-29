@@ -4,6 +4,64 @@ Last updated: 2026-07-29
 Current stage: iOS 0.1.29 TestFlight release candidate
 Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) archive passed simulator readiness and upload transport; App Store Connect processing and physical-device acceptance remain pending.
 
+## iOS Nine-Key and X Dismissal Follow-up (2026-07-29)
+
+- A physical-device retest still reproduced visible host pulling in X after
+  Publish/Send. The previous 50 ms document-change thaw remained a timing
+  heuristic: X can stay in the visible presentation phase beyond that window,
+  allowing a deferred candidate, key-state, height, and root-layout refresh
+  before its later disappearance callback.
+- Removed timer-based document thaw entirely. External `textWillChange` keeps
+  surface geometry frozen through `textDidChange`; only a real
+  `viewWillAppear`/`viewDidAppear` transition or the next key delivered while
+  the extension is presented can recover the warm surface. Logical reset work
+  still completes off-main. During a same-App field switch, the prior
+  candidate frame is deliberately retained but immediately dimmed and made
+  noninteractive; the first key restores the surface from cleared logical
+  state instead of presenting a false actionable candidate.
+- The shared Rust release benchmark remains well below the 60 ms budget:
+  correction-on medians measured `0.334 ms/key` for 21 digits,
+  `0.331 ms/key` at the 24-digit correction ceiling, and `0.420 ms/key` for
+  64 digits; correction-off measured `0.315`, `0.298`, and `0.423 ms/key`
+  respectively. This rules out the incremental lattice as the source of the
+  newly reported touch lag.
+- The iOS host now coalesces superseded nine-key digit and Backspace output
+  frames while preserving serial core execution and the final candidate
+  result. A coalesced completion is discarded only when `shouldCommit` is not
+  true; fallback insertion and `afterApply` state-release paths are never
+  eligible. Full-key and nine-key operations that can create composition are
+  tracked by operation identity until their main-thread completion, so
+  Backspace cannot mistake an asynchronous composition for an empty field and
+  delete surrounding host text.
+- Added `ApplyCoreOutput`, `UpdateCandidateBar`, `CoreOutputCoalesced`, and
+  `NineKeyRenderSmoke` signposts plus a DEBUG counter probe. On the same iOS
+  26.5 iPhone 17 Pro Simulator Debug build, an instant synthetic `64426`
+  baseline completed 5 core outputs and performed 5 `apply` plus 5 candidate
+  bar updates. With coalescing enabled, all 5 core outputs still completed,
+  4 superseded frames were discarded, and only 1 `apply` plus 1 candidate bar
+  update ran: an 80% reduction in main-thread output/render passes. These
+  counts establish the host-side work reduction; physical X animation timing
+  still requires a TestFlight trace.
+- A separate DEBUG simulator probe inserted a host-document sentinel, queued
+  rapid tracked/coalescible `644`, and invoked Backspace before those outputs
+  completed. The probe reported
+  `PRIVATE_PINYIN_PENDING_BACKSPACE_SMOKE host_text_preserved=true`, proving
+  that the in-flight operation guard kept Backspace inside the core instead
+  of deleting surrounding host text.
+- Because the shipping extension keeps `RequestsOpenAccess=false`, UIKit
+  feedback is unavailable. Selection/impact calls and preparation are now
+  skipped in that state. This closes the misleading haptic path rather than
+  claiming a material latency gain; ordinary input remains independent of
+  tactile feedback.
+- Validation passed with `cargo test --workspace`,
+  `cargo clippy --workspace --all-targets -- -D warnings`,
+  `cargo fmt --all -- --check`, the iOS source contract, and the full
+  simulator smoke-readiness script. On an iOS 26.5 iPhone 17 Pro simulator,
+  rapid `64426`, Backspace/retype, exactly-once `你好` commit, and direct
+  two-field warm reuse all passed. X Publish/Send remains a required physical
+  device check because the host app and its dismissal timing are unavailable
+  in Simulator.
+
 ## macOS 0.1.29 Public Package (2026-07-29)
 
 - Advanced the macOS App and installer receipt to `0.1.29 (29)`. The
