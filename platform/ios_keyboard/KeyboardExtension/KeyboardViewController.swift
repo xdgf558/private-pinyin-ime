@@ -3,6 +3,8 @@ import UIKit
 private struct PendingCoreOperation {
     let generation: Int
     let revision: Int
+    let outputSequence: Int
+    let coalescesIntermediateOutput: Bool
     let secureInput: Bool
     let operation: (IosPinyinCoreBridge) -> IosPinyinOutput?
     let completion: (IosPinyinOutput?) -> Void
@@ -21,10 +23,10 @@ final class KeyboardViewController: UIInputViewController {
         qos: .userInteractive
     )
     private static let idleCorePrewarmDelay: TimeInterval = 0.12
-    private static let visibleDocumentChangeThawDelay: TimeInterval = 0.05
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
+    private var coreOutputSequence = 0
     private var coreLoadInProgress = false
     private var pendingCoreOperations: [PendingCoreOperation] = []
     private var coreLoadObservers: [(Bool) -> Void] = []
@@ -88,7 +90,6 @@ final class KeyboardViewController: UIInputViewController {
     private var keyboardPresentationPhase = KeyboardPresentationPhase.detached
     private var surfaceRefreshDeferred = false
     private var keyboardRebuildDeferred = false
-    private var pendingDocumentSurfaceRevision: Int?
 
     deinit {
         let coreToRelease = core
@@ -104,8 +105,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         lastNeedsInputModeSwitchKey = needsInputModeSwitchKey
         setupView()
-        keyFeedbackGenerator.prepare()
-        typingFeedbackGenerator.prepare()
+        prepareFeedbackGeneratorsIfAvailable()
         rebuildKeyboard()
         updateCandidateBar()
         // Let the keyboard's first frame appear before parsing the bundled lexicon.
@@ -132,7 +132,6 @@ final class KeyboardViewController: UIInputViewController {
         keyboardSurfaceFrozen = true
         surfaceRefreshDeferred = true
         coreInteractionRevision &+= 1
-        pendingDocumentSurfaceRevision = coreInteractionRevision
         pendingCoreOperations.removeAll(keepingCapacity: true)
         candidateCommitInFlight = false
         currentPreedit = ""
@@ -153,26 +152,15 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        guard let revision = pendingDocumentSurfaceRevision else {
-            return
-        }
-        pendingDocumentSurfaceRevision = nil
-        // Give a host dismissal enough time to advance to `disappearing`
-        // before treating this as an in-place field switch.
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + Self.visibleDocumentChangeThawDelay
-        ) { [weak self] in
-            guard let self, revision == self.coreInteractionRevision else {
-                return
-            }
-            self.resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()
-        }
+        // Do not guess when a host will start its dismissal animation. Some
+        // hosts remain `visible` well beyond one run-loop turn after changing
+        // the document. Appearance callbacks or the next delivered key are
+        // the only events that may thaw this geometry freeze.
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         keyboardPresentationPhase = .appearing
-        pendingDocumentSurfaceRevision = nil
         resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
     }
 
@@ -180,8 +168,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidAppear(animated)
         keyboardPresentationPhase = .visible
         resumeKeyboardSurfaceIfNeeded()
-        keyFeedbackGenerator.prepare()
-        typingFeedbackGenerator.prepare()
+        prepareFeedbackGeneratorsIfAvailable()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -197,7 +184,6 @@ final class KeyboardViewController: UIInputViewController {
         keyboardPresentationPhase = .detached
         keyboardSurfaceFrozen = true
         surfaceRefreshDeferred = true
-        pendingDocumentSurfaceRevision = nil
     }
 
     override func viewWillLayoutSubviews() {
@@ -1409,6 +1395,7 @@ private extension KeyboardViewController {
             return
         }
         enqueueCoreOperation(
+            coalescesIntermediateOutput: usesNineKeyLayout,
             operation: { core in
                 core.feed(keyCode: IosKeyCodeValue.backspace)
             },
@@ -1448,12 +1435,26 @@ private extension KeyboardViewController {
     }
 
     func provideSelectionFeedback() {
+        guard hasFullAccess else {
+            return
+        }
         keyFeedbackGenerator.selectionChanged()
         keyFeedbackGenerator.prepare()
     }
 
     func provideTypingFeedback() {
+        guard hasFullAccess else {
+            return
+        }
         typingFeedbackGenerator.impactOccurred(intensity: 0.62)
+        typingFeedbackGenerator.prepare()
+    }
+
+    func prepareFeedbackGeneratorsIfAvailable() {
+        guard hasFullAccess else {
+            return
+        }
+        keyFeedbackGenerator.prepare()
         typingFeedbackGenerator.prepare()
     }
 
@@ -1484,7 +1485,7 @@ private extension KeyboardViewController {
         guard value.count == 1, let digit = value.first, ("2"..."9").contains(String(digit)) else {
             return
         }
-        performCoreOutput { core in
+        performCoreOutput(coalescesIntermediateOutput: true) { core in
             core.feed(keyCode: IosKeyCodeValue.nineKeyDigit, text: value)
         }
     }
@@ -1518,10 +1519,12 @@ private extension KeyboardViewController {
 
     func performCoreOutput(
         fallback: String? = nil,
+        coalescesIntermediateOutput: Bool = false,
         afterApply: ((IosPinyinOutput?) -> Void)? = nil,
         operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?
     ) {
         enqueueCoreOperation(
+            coalescesIntermediateOutput: coalescesIntermediateOutput,
             operation: operation,
             completion: { [weak self] output in
                 guard let self else {
@@ -1538,15 +1541,21 @@ private extension KeyboardViewController {
     }
 
     func enqueueCoreOperation(
+        coalescesIntermediateOutput: Bool = false,
         operation: @escaping (IosPinyinCoreBridge) -> IosPinyinOutput?,
         completion: @escaping (IosPinyinOutput?) -> Void
     ) {
         if core == nil {
             startCoreLoadIfNeeded()
         }
+        // Core work always stays serial. The sequence only lets rapid
+        // nine-key input skip UIKit frames superseded before main-thread apply.
+        coreOutputSequence &+= 1
         let pendingOperation = PendingCoreOperation(
             generation: coreLoadGeneration,
             revision: coreInteractionRevision,
+            outputSequence: coreOutputSequence,
+            coalescesIntermediateOutput: coalescesIntermediateOutput,
             secureInput: localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext,
             operation: operation,
             completion: completion
@@ -1575,6 +1584,10 @@ private extension KeyboardViewController {
                 guard let self,
                       pendingOperation.generation == self.coreLoadGeneration,
                       pendingOperation.revision == self.coreInteractionRevision else {
+                    return
+                }
+                if pendingOperation.coalescesIntermediateOutput,
+                   pendingOperation.outputSequence != self.coreOutputSequence {
                     return
                 }
                 pendingOperation.completion(output)
@@ -1885,14 +1898,6 @@ private extension KeyboardViewController {
         }
         keyboardSurfaceFrozen = false
         refreshKeyboardSurface(force: true)
-    }
-
-    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible() {
-        guard keyboardPresentationPhase == .visible,
-              viewIfLoaded?.window != nil else {
-            return
-        }
-        resumeKeyboardSurfaceIfNeeded(forceRefresh: true)
     }
 
     private func resumeKeyboardSurfaceForDeliveredKeyIfPresented() {

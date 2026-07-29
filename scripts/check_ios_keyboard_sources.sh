@@ -391,14 +391,18 @@ if "keyboardSurfaceFrozen = true" not in text_will_change:
 text_did_change = source.split("    override func textDidChange", 1)[1].split(
     "    override func viewWillAppear", 1
 )[0]
-if "resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible()" not in text_did_change:
-    raise SystemExit("A completed iOS document change must resolve the frozen surface after the presentation settles.")
-if "DispatchQueue.main.asyncAfter" not in text_did_change:
-    raise SystemExit("Visible document-change thaw must wait for the host presentation state to settle.")
-if "Self.visibleDocumentChangeThawDelay" not in text_did_change:
-    raise SystemExit("Visible document-change thaw must use the bounded named delay.")
-if "visibleDocumentChangeThawDelay: TimeInterval = 0.05" not in source:
-    raise SystemExit("The iOS field-switch thaw delay must remain the reviewed 50 ms window.")
+for forbidden in (
+    "resumeKeyboardSurface",
+    "DispatchQueue.main.asyncAfter",
+    "refreshKeyboardSurface",
+):
+    if forbidden in text_did_change:
+        raise SystemExit(
+            "Document completion must not guess at host dismissal timing or thaw geometry: "
+            f"{forbidden}"
+        )
+if "visibleDocumentChangeThawDelay" in source:
+    raise SystemExit("The iOS host-dismissal boundary must not use a timed thaw heuristic.")
 
 view_did_appear = source.split("    override func viewDidAppear", 1)[1].split(
     "    override func viewWillDisappear", 1
@@ -412,18 +416,8 @@ key_handler = source.split("    private func handle(_ key: KeySpec)", 1)[1].spli
 if "resumeKeyboardSurfaceForDeliveredKeyIfPresented()" not in key_handler:
     raise SystemExit("A delivered iOS key event must use the presentation-gated thaw path.")
 
-document_change_resume = source.split(
-    "    private func resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible", 1
-)[1].split("    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1)[0]
-for required in (
-    "keyboardPresentationPhase == .visible",
-    "viewIfLoaded?.window != nil",
-    "resumeKeyboardSurfaceIfNeeded(forceRefresh: true)",
-):
-    if required not in document_change_resume:
-        raise SystemExit(f"Missing visible-document-change thaw contract: {required}")
-if ".disappearing" in document_change_resume or ".detached" in document_change_resume:
-    raise SystemExit("A disappearing or detached iOS keyboard must not thaw after a document change.")
+if "resumeKeyboardSurfaceAfterDocumentChangeIfStillVisible" in source:
+    raise SystemExit("Document callbacks must not reintroduce an automatic surface thaw.")
 
 key_surface_resume = source.split(
     "    private func resumeKeyboardSurfaceForDeliveredKeyIfPresented", 1
@@ -475,6 +469,43 @@ if "core.setSecureInput" not in core_operations:
     raise SystemExit("Every queued iOS core operation must refresh secure-input state.")
 if "pendingOperation.revision == self.coreInteractionRevision" not in core_operations:
     raise SystemExit("Stale iOS core results must be rejected after context changes.")
+for required in (
+    "pendingOperation.coalescesIntermediateOutput",
+    "pendingOperation.outputSequence != self.coreOutputSequence",
+):
+    if required not in core_operations:
+        raise SystemExit(f"Missing iOS intermediate-output coalescing contract: {required}")
+
+nine_key_feed = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func feedNineKeyDigit(",
+)
+require(
+    nine_key_feed,
+    "performCoreOutput(coalescesIntermediateOutput: true)",
+    "nine-key digit output coalescing",
+)
+
+backspace_handler = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func handleBackspace()",
+)
+require(
+    backspace_handler,
+    "coalescesIntermediateOutput: usesNineKeyLayout",
+    "nine-key Backspace output coalescing",
+)
+
+for feedback_marker in ("func provideSelectionFeedback()", "func provideTypingFeedback()"):
+    feedback_body = function_body(
+        "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+        feedback_marker,
+    )
+    require(
+        feedback_body,
+        "guard hasFullAccess",
+        "Full-Access gating for optional UIKit feedback",
+    )
 
 if "configuredCore()" in source:
     raise SystemExit("The iOS keyboard must not expose a synchronous main-thread core accessor.")

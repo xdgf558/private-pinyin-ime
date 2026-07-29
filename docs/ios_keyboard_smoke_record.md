@@ -4,6 +4,18 @@ Stage 15 records the automated readiness checks that can run from the repository
 and separates the remaining iOS keyboard behavior that must be verified in
 Simulator or on a device.
 
+## Deterministic Dismissal and Output Coalescing (2026-07-29)
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Physical-device report | reproduced | TestFlight `0.1.29 (25)` still exhibited about one second of host pulling after X Publish/Send, and nine-key response again felt delayed |
+| Rust release baseline | passed | Correction-on medians were 0.334, 0.331, and 0.420 ms/key for the 21-, 24-, and 64-digit cases; correction-off medians were 0.315, 0.298, and 0.423 ms/key. The 60 ms budget remains unchanged |
+| Dismissal source contract | passed | `scripts/check_ios_keyboard_sources.sh` rejects timer-based or document-callback thaw, direct document-callback surface refresh, and missing appearance/key recovery paths |
+| Rapid-output source contract | passed | Every digit and nine-key Backspace stays on the serial core queue; the source gate requires sequence-based rejection only for superseded intermediate UIKit outputs |
+| Full Access boundary | passed | With `RequestsOpenAccess=false`, source and product checks confirm unavailable haptic preparation and emission are skipped |
+| Simulator build and smoke | passed | Xcode 26.6 / iOS 26.5 simulator build and readiness passed. Rapid `64426` produced `你好`; Backspace/retype preserved it; candidate commit inserted once; switching directly to the second field cleared the old prediction on the first `6`, and completing `4426` restored `你好` |
+| X Publish | pending physical device | Repeat Publish/Send with the next TestFlight candidate. The host should move only with its own dismissal animation; returning and typing the first digit must immediately recover the warm keyboard |
+
 ## Host Submission Transition Smoothing (2026-07-27)
 
 | Field | Value |
