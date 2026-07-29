@@ -29,9 +29,13 @@ Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) arc
   `cargo test --workspace`,
   `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo fmt --all -- --check`, and
-  `bash scripts/check_frost01_sources.sh`. Native Windows PowerShell parsing,
-  packaged UI progress, and a real approved 1.0.4 import remain the PR CI and
-  Windows smoke requirements.
+  `bash scripts/check_frost01_sources.sh`.
+- GitHub Actions run
+  [`30432217545`](https://github.com/xdgf558/private-pinyin-ime/actions/runs/30432217545)
+  passed the Rust, macOS lifecycle, and Windows TSF jobs. The Windows job
+  parsed every shipped PowerShell file with the native parser and completed
+  the packaged settings-tool invocation self-test. Packaged UI progress and a
+  real approved 1.0.4 import remain physical Windows smoke requirements.
 
 ## macOS 0.1.29 Public Package (2026-07-29)
 
