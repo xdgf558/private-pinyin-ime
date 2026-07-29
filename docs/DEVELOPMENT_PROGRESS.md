@@ -4,6 +4,29 @@ Last updated: 2026-07-29
 Current stage: iOS 0.1.29 TestFlight release candidate
 Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) archive passed simulator readiness and upload transport; App Store Connect processing and physical-device acceptance remain pending.
 
+## macOS 0.1.29 Public Package (2026-07-29)
+
+- Advanced the macOS App and installer receipt to `0.1.29 (29)`. The
+  preferences release notes now cover bounded full-key typo correction,
+  opt-in tolerant pinyin, a stable Space-key default, gentle-learning
+  hysteresis, and prediction-safe blind-typing digits while retaining the
+  reviewed White Frost, Writer V1, AI Lite, and tiered-preferences features
+  from `0.1.28`.
+- Passed the macOS host source contract, TYPO-01 and ABC-01 through ABC-04
+  source gates, `cargo test --workspace`, `cargo fmt --all -- --check`,
+  `git diff --check`, and a complete macOS host build.
+- Signed the App and nested Writer runtime with Developer ID Application and
+  the installer with Developer ID Installer. Apple notarization submission
+  `4177a643-7161-4994-b3a0-9973865d766f` completed with `Accepted`, and the
+  ticket was stapled successfully.
+- Final release validation passed: the installer certificate is trusted,
+  expanded-payload signatures satisfy their designated requirements,
+  Gatekeeper reports `Notarized Developer ID`, and `stapler validate`
+  succeeds.
+- Artifact: `dist/macos_imk/PrivatePinyin-0.1.29.pkg` (`14,470,598` bytes);
+  SHA-256
+  `a2e036f668dec4e15058db51f3caeacd3722a2131462752a7cbc5d15bef60832`.
+
 ## iOS Inset-Row Hit Target Follow-up (2026-07-29)
 
 - Traced an untappable full-key symbol-page period to the same visual inset

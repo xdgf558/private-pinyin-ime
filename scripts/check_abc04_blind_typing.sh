@@ -273,7 +273,7 @@ PY
 rg -q 'Decision 050: Shared Blind-Typing Key Contract' docs/DECISIONS.md
 rg -q '\| OI-053 \| ABC-04 .*\| closed \|' docs/OPEN_ITEMS.md
 test "$(grep -c '| ABC-04 blind typing |' docs/platform_smoke_test_plan.md)" -eq 3
-rg -q 'Current stage: ABC-04 blind-typing interaction and acceptance' \
+rg -q '^## ABC-04 Blind-Typing Interaction and Acceptance' \
   docs/DEVELOPMENT_PROGRESS.md
 
 if rg -n '(println!|eprintln!|dbg!|log::|tracing::)' ime_core/src/blind_typing.rs; then
