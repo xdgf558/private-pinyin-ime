@@ -159,7 +159,7 @@ grep -q 'touchesShouldCancel' platform/ios_keyboard/KeyboardExtension/KeyboardVi
 grep -q 'UISelectionFeedbackGenerator(view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'UIImpactFeedbackGenerator(style: .light, view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'impactOccurred(intensity: 0.62)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'hitTestOutsets.left = 10' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'expandOuterHitTargets' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq 'currentCandidates.first?.pinyin' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq '"2": "ABC"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -212,6 +212,26 @@ feed_character = source.split("    func feedCharacter", 1)[1].split(
 )[0]
 if "rebuildKeyboard" in feed_character:
     raise SystemExit("Character input must not rebuild the complete iOS keyboard.")
+
+keyboard_rebuild = source.split("    private func rebuildKeyboardContents()", 1)[1].split(
+    "    private func rowHorizontalInset", 1
+)[0]
+if "expandOuterHitTargets(" not in keyboard_rebuild:
+    raise SystemExit("Inset keyboard rows must expand their outer key hit targets.")
+
+edge_hit_targets = source.split("    private func expandOuterHitTargets(", 1)[1].split(
+    "    private func letterRows", 1
+)[0]
+for contract in (
+    "hitTestOutsets.left = horizontalInset",
+    "hitTestOutsets.right = horizontalInset",
+):
+    if contract not in edge_hit_targets:
+        raise SystemExit(
+            "Inset keyboard rows must make both outer margins tappable."
+        )
+if 'if value == "a"' in source or 'value == "l"' in source:
+    raise SystemExit("QWERTY edge hit testing must use the shared inset-row policy.")
 
 view_did_load = source.split("    override func viewDidLoad()", 1)[1].split(
     "    override func textWillChange", 1

@@ -767,6 +767,10 @@ final class KeyboardViewController: UIInputViewController {
                 rowStack.addArrangedSubview(button)
                 weightedButtons.append((button, key.widthWeight))
             }
+            expandOuterHitTargets(
+                weightedButtons.map(\.button),
+                intoHorizontalMargin: horizontalInset
+            )
 
             if let reference = weightedButtons.first {
                 for item in weightedButtons.dropFirst() {
@@ -786,6 +790,17 @@ final class KeyboardViewController: UIInputViewController {
             return 0
         }
         return symbolsVisible ? 14 : 10
+    }
+
+    private func expandOuterHitTargets(
+        _ buttons: [UIButton],
+        intoHorizontalMargin horizontalInset: CGFloat
+    ) {
+        guard horizontalInset > 0 else {
+            return
+        }
+        (buttons.first as? StationKeyButton)?.hitTestOutsets.left = horizontalInset
+        (buttons.last as? StationKeyButton)?.hitTestOutsets.right = horizontalInset
     }
 
     private func letterRows() -> [[KeySpec]] {
@@ -1042,15 +1057,6 @@ final class KeyboardViewController: UIInputViewController {
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.75
         button.cornerRadius = usesNineKeyLayout ? 7 : 6
-        if case .character(let value) = key.kind {
-            // The middle QWERTY row leaves a 10-point outer margin for these
-            // edge expansions, so neither hit region overlaps S or K.
-            if value == "a" {
-                button.hitTestOutsets.left = 10
-            } else if value == "l" {
-                button.hitTestOutsets.right = 10
-            }
-        }
         button.isEnabled = key.kind.isInteractive
         button.alpha = key.kind.isInteractive ? 1 : 0
         button.addAction(UIAction { [weak self] _ in

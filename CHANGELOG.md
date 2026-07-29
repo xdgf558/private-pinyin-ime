@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Expanded the tappable area of the first and last key in every visually inset iOS QWERTY row into its unused outer margin. The full-key symbol page's left-edge period and right-edge slash now receive the same non-overlapping edge treatment as `A` and `L`.
 - Closed the remaining physical-device X submission race by freezing the iOS keyboard surface at the first external document-change callback, before host dismissal begins, and by allowing key-event thaw only while the extension is presented. Same-App field changes wait for a bounded 50 ms presentation-settling window and thaw only when the keyboard remains visible, so stale candidates clear without reopening the dismissal race. UIKit feedback generators are now attached to the keyboard view, and the compact candidate strip keeps only the downward expanded-candidate entry instead of separate previous/next arrows while its accessible hint points to paging in the expanded grid.
 - Fixed Windows White Frost imports and configuration-file opening when user paths contain spaces, added TLS 1.2 only to legacy explicit protocol sets while preserving modern system negotiation for White Frost and Writer downloads, and surfaced bounded stage-specific failures instead of a generic combined error.
 - Kept every nine-key typo edit family reachable under the shared 64-attempt ceiling, including missing-digit correction on longer compositions, and completed the keypad adjacency map with the `2`/`6` diagonal.
