@@ -1,8 +1,32 @@
 # Development Progress
 
 Last updated: 2026-07-29
-Current stage: iOS 0.1.29 TestFlight release candidate
-Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) archive passed simulator readiness and upload transport; App Store Connect processing and physical-device acceptance remain pending.
+Current stage: iOS 0.1.30 TestFlight release candidate
+Current status: The signed iOS 0.1.30 (26) archive passed simulator readiness, archive validation, and App Store Connect upload transport. Apple processing, TestFlight group assignment, and physical-device acceptance remain pending.
+
+## iOS 0.1.30 (26) TestFlight Upload (2026-07-29)
+
+- Advanced both the container App and Keyboard Extension from `0.1.29 (25)` to
+  `0.1.30 (26)`. The in-App About page now records the final X Publish/Send
+  lifecycle guard, bounded rapid-input frame coalescing, pending-composition
+  Backspace protection, and larger outer hit regions for punctuation keys.
+- Passed `scripts/run_ios_smoke_readiness.sh` with Xcode 26.6 (`17F109`) and
+  the iPhoneSimulator 26.5 SDK. The source contract, Rust simulator core,
+  container App, and Keyboard Extension all passed; bundle IDs, App Group
+  entitlement, and `RequestsOpenAccess=false` remained intact.
+- Rebuilt the device Rust FFI for `aarch64-apple-ios` with iOS 18 minimum and
+  `ios-ai`, then created the signed arm64 archive at
+  `dist/ios/PrivatePinyin-0.1.30-build26-xcode26.xcarchive`. Archive metadata
+  for both the App and extension reports `0.1.30 (26)`.
+- Uploaded through `xcodebuild -exportArchive` with
+  `manageAppVersionAndBuildNumber=false`. Xcode reported `Upload succeeded`
+  and delivery UUID `08a2fbb8-ff3c-4b06-94ae-0814dcbf492c`; App Store Connect
+  accepted the package into processing without upload errors.
+- Apple processing, TestFlight group assignment, external Beta App Review, and
+  physical-device acceptance remain separate pending steps. The device matrix
+  still covers X Publish/Send dismissal timing, warm field switching, rapid
+  full-key and nine-key input, punctuation hit regions, and the intentional
+  absence of haptics while Full Access remains disabled.
 
 ## iOS Nine-Key and X Dismissal Follow-up (2026-07-29)
 
