@@ -4,6 +4,30 @@ Last updated: 2026-07-29
 Current stage: iOS 0.1.29 TestFlight release candidate
 Current status: ABC-01 through ABC-04 are merged. The signed iOS 0.1.29 (25) archive passed simulator readiness and upload transport; App Store Connect processing and physical-device acceptance remain pending.
 
+## iOS Inset-Row Hit Target Follow-up (2026-07-29)
+
+- Traced an untappable full-key symbol-page period to the same visual inset
+  boundary that previously affected `A`. Only the letter keys `A` and `L` had
+  hard-coded edge expansion, so taps in the symbol row's empty left margin
+  never reached `.`.
+- Replaced the letter-specific workaround with one row-level rule. Whenever a
+  QWERTY row has a visual horizontal inset, its first and last key extend only
+  into the corresponding unused outer margin. This covers `A`, `L`, `.`, and
+  `/` without overlapping adjacent keys.
+- The existing iOS 17.5+ view-attached UIKit feedback calls remain fail-soft,
+  but the shipping extension deliberately keeps `RequestsOpenAccess=false`.
+  Physical haptic output is therefore not a release promise in the current
+  privacy configuration, and testers should not troubleshoot its absence
+  through system haptic settings. Requesting Full Access solely for tactile
+  feedback is deferred to a separate Owner-approved privacy decision.
+- Strengthened `scripts/check_ios_keyboard_sources.sh` by reusing the
+  string/comment-aware brace parser from ABC-04. The source contract now
+  verifies that row layout margins and both outer hit-test expansions consume
+  the same `horizontalInset`, and scopes the legacy `A`/`L` prohibition to
+  `makeKeyButton`.
+- Re-ran `scripts/check_ios_keyboard_sources.sh`, the Xcode 26.5 iOS Simulator
+  build, and `git diff --check`; all passed after the review closure.
+
 ## iOS 0.1.29 (25) TestFlight Upload (2026-07-29)
 
 - Advanced both the container App and Keyboard Extension from `0.1.28 (24)` to

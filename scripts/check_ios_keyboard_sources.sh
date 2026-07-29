@@ -159,7 +159,7 @@ grep -q 'touchesShouldCancel' platform/ios_keyboard/KeyboardExtension/KeyboardVi
 grep -q 'UISelectionFeedbackGenerator(view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'UIImpactFeedbackGenerator(style: .light, view: view)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'impactOccurred(intensity: 0.62)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'hitTestOutsets.left = 10' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'expandOuterHitTargets' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'var displayedPreedit: String' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq 'currentCandidates.first?.pinyin' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -Fq '"2": "ABC"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
@@ -194,6 +194,120 @@ if grep -q "visibleCandidateCount = 9" platform/ios_keyboard/KeyboardExtension/K
 fi
 python3 - <<'PY'
 from pathlib import Path
+from tempfile import TemporaryDirectory
+
+
+def function_body(path: str, marker: str) -> str:
+    source = Path(path).read_text(encoding="utf-8")
+    start = source.find(marker)
+    if start < 0:
+        raise SystemExit(f"iOS source contract missing function marker {marker!r} in {path}")
+    opening = source.find("{", start)
+    if opening < 0:
+        raise SystemExit(f"iOS source contract missing opening brace for {marker!r} in {path}")
+
+    def skip_quoted(index: int, delimiter: str) -> int:
+        index += len(delimiter)
+        while index < len(source):
+            if source.startswith(delimiter, index):
+                return index + len(delimiter)
+            if source[index] == "\\" and len(delimiter) == 1:
+                index += 2
+            else:
+                index += 1
+        raise SystemExit(f"iOS source contract found an unterminated string in {path}")
+
+    def skip_block_comment(index: int) -> int:
+        index += 2
+        comment_depth = 1
+        while index < len(source):
+            if source.startswith("/*", index):
+                comment_depth += 1
+                index += 2
+            elif source.startswith("*/", index):
+                comment_depth -= 1
+                index += 2
+                if comment_depth == 0:
+                    return index
+            else:
+                index += 1
+        raise SystemExit(f"iOS source contract found an unterminated block comment in {path}")
+
+    def skip_rust_raw_string(index: int):
+        if source[index] != "r":
+            return None
+        cursor = index + 1
+        while cursor < len(source) and source[cursor] == "#":
+            cursor += 1
+        if cursor >= len(source) or source[cursor] != '"':
+            return None
+        terminator = '"' + source[index + 1:cursor]
+        ending = source.find(terminator, cursor + 1)
+        if ending < 0:
+            raise SystemExit(f"iOS source contract found an unterminated raw string in {path}")
+        return ending + len(terminator)
+
+    depth = 0
+    index = opening
+    while index < len(source):
+        if source.startswith("//", index):
+            newline = source.find("\n", index + 2)
+            index = len(source) if newline < 0 else newline + 1
+            continue
+        if source.startswith("/*", index):
+            index = skip_block_comment(index)
+            continue
+        if source.startswith('"""', index):
+            index = skip_quoted(index, '"""')
+            continue
+        raw_ending = skip_rust_raw_string(index)
+        if raw_ending is not None:
+            index = raw_ending
+            continue
+        if source[index] in {'"', "'"}:
+            index = skip_quoted(index, source[index])
+            continue
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start:index + 1]
+        index += 1
+    raise SystemExit(f"iOS source contract missing closing brace for {marker!r} in {path}")
+
+
+def require(body: str, token: str, label: str) -> None:
+    if token not in body:
+        raise SystemExit(f"iOS source contract missing {label}: {token!r}")
+
+
+def forbid(body: str, token: str, label: str) -> None:
+    if token in body:
+        raise SystemExit(f"iOS source contract forbids {label}: {token!r}")
+
+
+with TemporaryDirectory() as directory:
+    parser_probe = Path(directory) / "parser_probe.swift"
+    parser_probe.write_text(
+        '''
+func parserProbe() {
+    let quoted = "}"
+    let multiline = """
+    }
+    """
+    // }
+    /* } /* { */ } */
+    parserReachedRealEnd()
+}
+''',
+        encoding="utf-8",
+    )
+    require(
+        function_body(str(parser_probe), "func parserProbe"),
+        "parserReachedRealEnd()",
+        "string/comment-aware function-body parsing",
+    )
 
 source = Path(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
@@ -212,6 +326,49 @@ feed_character = source.split("    func feedCharacter", 1)[1].split(
 )[0]
 if "rebuildKeyboard" in feed_character:
     raise SystemExit("Character input must not rebuild the complete iOS keyboard.")
+
+keyboard_rebuild = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "private func rebuildKeyboardContents()",
+)
+for contract in (
+    "let horizontalInset = rowHorizontalInset(at: rowIndex)",
+    "left: horizontalInset",
+    "right: horizontalInset",
+    "expandOuterHitTargets(",
+    "intoHorizontalMargin: horizontalInset",
+):
+    require(
+        keyboard_rebuild,
+        contract,
+        "one shared horizontal inset for layout and outer hit targets",
+    )
+
+edge_hit_targets = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "private func expandOuterHitTargets(",
+)
+for contract in (
+    "hitTestOutsets.left = horizontalInset",
+    "hitTestOutsets.right = horizontalInset",
+):
+    require(edge_hit_targets, contract, "both inset-row outer margins remaining tappable")
+
+make_key_button = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "private func makeKeyButton(",
+)
+for legacy_contract in (
+    "hitTestOutsets.left = 10",
+    "hitTestOutsets.right = 10",
+    'value == "a"',
+    'value == "l"',
+):
+    forbid(
+        make_key_button,
+        legacy_contract,
+        "letter-specific edge-hit behavior in makeKeyButton",
+    )
 
 view_did_load = source.split("    override func viewDidLoad()", 1)[1].split(
     "    override func textWillChange", 1
