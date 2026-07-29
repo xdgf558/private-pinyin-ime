@@ -935,9 +935,11 @@ if (Test-Path $logoPath) {
 
 Add-Separator -Parent $aboutPage -Y 136
 [void](New-UiLabel -Parent $aboutPage -Text "本版更新" -X 24 -Y 158 -Width 180 -Height 28 -Size 11 -Style ([System.Drawing.FontStyle]::Bold))
-[void](New-UiLabel -Parent $aboutPage -Text "1. 修复 QQ 等 Chromium 文本框中预编辑和提交文字逆序插入的问题。" -X 28 -Y 202 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "2. composition 更新后会明确将光标恢复到文字末尾。" -X 28 -Y 244 -Width 650 -Height 28 -Size 9)
-[void](New-UiLabel -Parent $aboutPage -Text "3. 继续提供 x64/x86 双架构与本机 trigram 联想。" -X 28 -Y 286 -Width 650 -Height 28 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "1. 稳定空格默认候选：AI Lite 只调整后续候选，不再移动首选词。" -X 28 -Y 194 -Width 650 -Height 30 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "2. 新增可选宽容拼音，支持 zh/z、ch/c、sh/s、n/l 和前后鼻音等常见模糊音。" -X 28 -Y 232 -Width 650 -Height 30 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "3. 用户学习改为第三次确认后生效，并加入滞回边界，减少候选随衰减来回跳动。" -X 28 -Y 270 -Width 650 -Height 30 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "4. 统一盲打交互；仅显示预测词时数字会直接输入，例如「你好2」不会被吞掉。" -X 28 -Y 308 -Width 650 -Height 30 -Size 9)
+[void](New-UiLabel -Parent $aboutPage -Text "5. 修复含空格用户路径下的白霜导入与设置文件打开，并改善下载兼容性和错误提示。" -X 28 -Y 346 -Width 650 -Height 30 -Size 9)
 
 $footerLine = New-Object System.Windows.Forms.Panel
 $footerLine.Location = New-Object System.Drawing.Point(0, 558)

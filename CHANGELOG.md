@@ -165,6 +165,7 @@
 
 ### Changed
 
+- Bumped the Windows package and shared Rust workspace defaults to `0.1.25` with stable default-candidate identity, opt-in tolerant pinyin, confirmation-based learning hysteresis, blind-typing digit pass-through, and robust White Frost/settings handling for user paths containing spaces.
 - Bumped the macOS app and installer package to `0.1.29` with bounded full-key pinyin typo correction, opt-in tolerant pinyin, a stable Space-key default, confirmation-based learning hysteresis, and one blind-typing contract across the shared core and desktop host.
 - Bumped the iOS container app and Keyboard Extension to `0.1.29 (25)` with smoother host dismissal and field switching, a stable Space-key default, opt-in tolerant pinyin, confirmation-based learning hysteresis, and one blind-typing contract across the shared core and all three hosts. Prediction-only numbered input now remains literal on desktop and the iOS number page.
 - Bumped the iOS container app and Keyboard Extension to `0.1.27 (23)` with NINEKEY-PERF-01 exact-key lookup, full candidate-equivalence regressions, and a bounded incremental nine-key lattice cache that preserves the existing Apple 60 ms latency budget. The marketing version advances because `0.1.26 (22)` is already in Beta App Review; App Store exports now preserve the repository build number instead of letting Xcode rewrite it during upload.
