@@ -4,6 +4,28 @@ Stage 15 records the automated readiness checks that can run from the repository
 and separates the remaining iOS keyboard behavior that must be verified in
 Simulator or on a device.
 
+## Stable Height and Safe Document Callback Tracking (2026-07-30)
+
+| Field | Value |
+|---|---|
+| Tester | Codex interactive Simulator smoke with frame recording |
+| Simulator | iPhone 17 Pro, iOS 26.5 |
+| Xcode | 26.6 (`17F109`) |
+| Branch | `codex/ios-transition-height-stability` |
+| Build artifact | `build/ios_keyboard/Build/Products/Debug-iphonesimulator/PrivatePinyin.app` |
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| First activation | failed, root cause fixed | The actual custom extension trapped in `UUID._unconditionallyBridgeFromObjectiveC` while `consumePendingSelfTextChangeCallback()` read a host-provided nil `documentIdentifier`. The controller no longer reads that unsafe bridge and the rebuilt custom keyboard activates normally |
+| Callback regression | passed | Synchronous self callbacks and matching delayed callbacks are consumed; external clear/send, nil/old contexts, expiry, and replaced proxy identities fail closed |
+| Stable portrait geometry | passed | QWERTY, nine-key, symbols, and expanded candidates now share a 278-point portrait contract. Refreshing the same surface does not rewrite the height constraint |
+| Custom keyboard input | passed | On the real custom simulator surface, `nihao` displayed `ni hao` with `你好` first and committed exactly one `你好` |
+| Same-App field switch | passed | Focus moved directly to the second field without dismissing; old logical candidates reset and a fresh `nihao` produced the expected candidates |
+| X-like send/dismiss | passed (equivalent host transition) | `模拟发送并收起` cleared both host fields and dismissed on the next main-loop turn. A 100-ms frame sample showed one monotonic dismissal with no reverse movement or second geometry pull |
+| Refocus and warm reuse | passed | Refocusing restored the custom surface and accepted input after the simulated send |
+| System/custom switching | passed | Custom -> system English -> custom returned a complete responsive surface. Recorded frames showed a single replacement transition without host-content displacement |
+| X Publish | pending physical device | Simulator validates the extension-side geometry and lifecycle equivalent, but cannot reproduce X's private post-publication animation. Repeat with the next TestFlight candidate |
+
 ## Deterministic Dismissal and Output Coalescing (2026-07-29)
 
 | Check | Result | Evidence / notes |

@@ -1,8 +1,46 @@
 # Development Progress
 
-Last updated: 2026-07-29
-Current stage: iOS 0.1.30 TestFlight release candidate
-Current status: The signed iOS 0.1.30 (26) archive passed simulator readiness, archive validation, and App Store Connect upload transport. Apple processing, TestFlight group assignment, and physical-device acceptance remain pending.
+Last updated: 2026-07-30
+Current stage: iOS host-transition follow-up after 0.1.30
+Current status: A rebuilt Simulator app and the real custom Keyboard Extension passed an X-like clear/dismiss/refocus cycle and system/custom keyboard switching without a second geometry pull. Exact X Publish/Send timing remains a physical-device TestFlight gate.
+
+## iOS Stable-Height Transition and Callback Regression (2026-07-30)
+
+- Traced one remaining source of host movement to the extension's own portrait
+  height contract: QWERTY requested `278` points while nine-key and expanded
+  candidates requested `310`. QWERTY, nine-key, symbols, and expanded
+  candidates now share one `278`-point portrait height; compact landscape
+  remains `216` and inline preferences remain `368`. Repeated refreshes leave
+  an unchanged height constraint untouched.
+- Replaced the controller's ad hoc self-text callback counters with a focused
+  `SelfTextChangeTracker`. Delayed callbacks are suppressed only when they
+  match the latest non-nil post-operation context inside the bounded callback
+  window. Host clear/send transitions, expired evidence, old contexts, and
+  replaced document proxies fail closed as external changes.
+- The first interactive Simulator run exposed a real activation crash rather
+  than a source-only concern. During document attachment/reset, the simulator
+  host exposed a nil Objective-C `documentIdentifier` even though Swift imports
+  it as non-optional `UUID`; reading it trapped in
+  `UUID._unconditionallyBridgeFromObjectiveC`. The extension now uses the
+  safely inspectable proxy object identity plus context matching and never
+  reads that nullable bridge.
+- Added a DEBUG `模拟发送并收起` host action that clears both diagnostic fields
+  and drops focus on the following main-loop turn. This reproduces the
+  observable X-style sequence without claiming to reproduce X internals.
+- Actual iPhone 17 Pro / iOS 26.5 Simulator verification used the rebuilt
+  custom Keyboard Extension. QWERTY `nihao` displayed `ni hao` / `你好` and
+  committed once; direct field switching reset the old composition and
+  accepted a fresh `nihao`; the simulated Send action cleared the document
+  and dismissed the keyboard; refocus restored the custom surface; and
+  custom -> system English -> custom switching returned a complete responsive
+  keyboard. A 100-ms frame sample of the recorded run showed one monotonic
+  dismissal and one monotonic presentation, with no reverse movement or
+  second height pull.
+- `scripts/check_ios_keyboard_sources.sh`, the standalone
+  `SelfTextChangeTracker` regression, and the Xcode 26.6 iOS 26.5 Simulator
+  App/Keyboard Extension build passed. The exact X App Publish/Send animation
+  and physical display timing are not available in Simulator and remain the
+  final device check.
 
 ## iOS 0.1.30 (26) TestFlight Upload (2026-07-29)
 

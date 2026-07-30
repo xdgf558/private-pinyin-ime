@@ -214,6 +214,11 @@ jobs:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
         run: bash scripts/test_ios_chinese_transform.sh
 
+      - name: Run iOS self-text-change regression
+        env:
+          PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"
+        run: bash scripts/test_ios_self_text_change_tracker.sh
+
       - name: Run macOS AI Helper deadlines and lifecycle tests
         env:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"

@@ -16,12 +16,15 @@ required_files=(
   "platform/ios_keyboard/ContainerApp/Info.plist"
   "platform/ios_keyboard/ContainerApp/PrivatePinyin.entitlements"
   "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
+  "platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift"
   "platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift"
   "platform/ios_keyboard/Tests/ChineseTextConverterRegression.swift"
+  "platform/ios_keyboard/Tests/SelfTextChangeTrackerRegression.swift"
   "platform/ios_keyboard/KeyboardExtension/Info.plist"
   "platform/ios_keyboard/KeyboardExtension/PrivatePinyinKeyboard.entitlements"
   "scripts/build_ios_keyboard.sh"
   "scripts/test_ios_chinese_transform.sh"
+  "scripts/test_ios_self_text_change_tracker.sh"
 )
 
 for file in "${required_files[@]}"; do
@@ -145,9 +148,18 @@ grep -q 'static let nineKeyExtendedSymbols' platform/ios_keyboard/KeyboardExtens
 grep -q 'static let candidateNextPage' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "候选"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'selfTextChangeCallbackWindow: TimeInterval = 0.25' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'pendingSelfTextChangeDocumentIdentifier' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'textDocumentProxy.documentIdentifier' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'SelfTextChangeTracker<ObjectIdentifier>' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'ObjectIdentifier(textDocumentProxy as AnyObject)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+if grep -q 'textDocumentProxy.documentIdentifier' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
+  echo "iOS keyboard must not bridge nullable documentIdentifier as UUID." >&2
+  exit 1
+fi
+grep -q 'currentContext != nil' platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift
+grep -q 'currentContext == latestPostOperationContext' platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift
+grep -q 'portraitKeyboardHeight: CGFloat = 278' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'minimumHeightConstraint?.priority = UILayoutPriority(999)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'keyboard-smoke-send' platform/ios_keyboard/ContainerApp/ContentView.swift
 grep -q 'layoutSegmentedControl = UISegmentedControl(items: \["全键", "九宫"\])' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyboardTheme' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'StationKeyButton' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift

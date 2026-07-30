@@ -42,6 +42,7 @@ struct ContentView: View {
 #if DEBUG
     @State private var keyboardSmokeText = ""
     @State private var keyboardSmokeSecondaryText = ""
+    @State private var keyboardSmokeSendCount = 0
     @FocusState private var keyboardSmokeFocusedField: KeyboardSmokeField?
 #endif
 
@@ -440,6 +441,27 @@ struct ContentView: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(StationTheme.border, lineWidth: 1)
                 }
+            HStack(spacing: 10) {
+                Button("模拟发送并收起") {
+                    keyboardSmokeText = ""
+                    keyboardSmokeSecondaryText = ""
+                    keyboardSmokeSendCount += 1
+                    // Match hosts that clear the document immediately and
+                    // begin dismissal on the following main-loop turn.
+                    DispatchQueue.main.async {
+                        keyboardSmokeFocusedField = nil
+                    }
+                }
+                .accessibilityIdentifier("keyboard-smoke-send")
+                .buttonStyle(.borderedProminent)
+
+                if keyboardSmokeSendCount > 0 {
+                    Text("已模拟发送 \(keyboardSmokeSendCount) 次")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(StationTheme.textSecondary)
+                        .accessibilityIdentifier("keyboard-smoke-send-result")
+                }
+            }
         }
     }
 #endif

@@ -30,6 +30,9 @@ final class KeyboardViewController: UIInputViewController {
         qos: .userInteractive
     )
     private static let idleCorePrewarmDelay: TimeInterval = 0.12
+    private static let portraitKeyboardHeight: CGFloat = 278
+    private static let compactKeyboardHeight: CGFloat = 216
+    private static let preferencesKeyboardHeight: CGFloat = 368
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
@@ -82,11 +85,9 @@ final class KeyboardViewController: UIInputViewController {
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
     private var preferencesVisible = false
-    private var pendingSelfTextChangeCallbacks = 0
-    private var pendingSelfTextChangeDocumentIdentifier: UUID?
-    private var pendingSelfTextChangeContexts: [String?] = []
-    private var selfTextChangeCallbackDeadline: TimeInterval = 0
-    private let selfTextChangeCallbackWindow: TimeInterval = 0.25
+    private var selfTextChangeTracker = SelfTextChangeTracker<ObjectIdentifier>(
+        callbackWindow: 0.25
+    )
     private var lastNeedsInputModeSwitchKey = true
     private var coreUnavailable = false
     private var localAiSuspendedForMemoryPressure = false
@@ -274,7 +275,10 @@ final class KeyboardViewController: UIInputViewController {
         preferencesView.isHidden = true
         rootStack.addArrangedSubview(preferencesView)
 
-        minimumHeightConstraint = view.heightAnchor.constraint(greaterThanOrEqualToConstant: 278)
+        minimumHeightConstraint = view.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: Self.portraitKeyboardHeight
+        )
+        minimumHeightConstraint?.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             topBorder.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topBorder.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -1856,63 +1860,34 @@ private extension KeyboardViewController {
 
     func performTextOperation(_ operation: () -> Void) {
         let now = ProcessInfo.processInfo.systemUptime
-        let documentIdentifier = textDocumentProxy.documentIdentifier
-        if pendingSelfTextChangeDocumentIdentifier != documentIdentifier
-            || now > selfTextChangeCallbackDeadline {
-            resetPendingSelfTextChangeCallbacks()
-        }
-
-        pendingSelfTextChangeDocumentIdentifier = documentIdentifier
-        pendingSelfTextChangeCallbacks += 1
-        appendPendingSelfTextChangeContext(textDocumentProxy.documentContextBeforeInput)
-        selfTextChangeCallbackDeadline = now + selfTextChangeCallbackWindow
+        let documentIdentifier = currentTextDocumentIdentity
+        selfTextChangeTracker.beginOperation(
+            documentIdentifier: documentIdentifier,
+            now: now
+        )
         operation()
-
-        if pendingSelfTextChangeCallbacks > 0,
-           pendingSelfTextChangeDocumentIdentifier == documentIdentifier {
-            appendPendingSelfTextChangeContext(textDocumentProxy.documentContextBeforeInput)
-        }
+        selfTextChangeTracker.finishOperation(
+            documentIdentifier: documentIdentifier,
+            postOperationContext: textDocumentProxy.documentContextBeforeInput,
+            now: ProcessInfo.processInfo.systemUptime
+        )
     }
 
     func consumePendingSelfTextChangeCallback() -> Bool {
-        let now = ProcessInfo.processInfo.systemUptime
-        guard pendingSelfTextChangeCallbacks > 0, now <= selfTextChangeCallbackDeadline else {
-            resetPendingSelfTextChangeCallbacks()
-            return false
-        }
-
-        let documentIdentifier = textDocumentProxy.documentIdentifier
-        let context = textDocumentProxy.documentContextBeforeInput
-        guard pendingSelfTextChangeDocumentIdentifier == documentIdentifier,
-              pendingSelfTextChangeContexts.contains(where: { $0 == context }) else {
-            resetPendingSelfTextChangeCallbacks()
-            return false
-        }
-
-        pendingSelfTextChangeCallbacks -= 1
-        if pendingSelfTextChangeCallbacks == 0 {
-            resetPendingSelfTextChangeCallbacks()
-        }
-        return true
+        selfTextChangeTracker.consumeCallback(
+            documentIdentifier: currentTextDocumentIdentity,
+            currentContext: textDocumentProxy.documentContextBeforeInput,
+            now: ProcessInfo.processInfo.systemUptime
+        )
     }
 
-    func appendPendingSelfTextChangeContext(_ context: String?) {
-        guard !pendingSelfTextChangeContexts.contains(where: { $0 == context }) else {
-            return
-        }
-        pendingSelfTextChangeContexts.append(context)
-        if pendingSelfTextChangeContexts.count > 16 {
-            pendingSelfTextChangeContexts.removeFirst(
-                pendingSelfTextChangeContexts.count - 16
-            )
-        }
-    }
-
-    func resetPendingSelfTextChangeCallbacks() {
-        pendingSelfTextChangeCallbacks = 0
-        pendingSelfTextChangeDocumentIdentifier = nil
-        pendingSelfTextChangeContexts.removeAll(keepingCapacity: true)
-        selfTextChangeCallbackDeadline = 0
+    var currentTextDocumentIdentity: ObjectIdentifier {
+        // `documentIdentifier` is imported as a non-optional UUID, but some
+        // iOS hosts expose nil while attaching or resetting a text document.
+        // Reading it then traps in Swift's Objective-C bridge. The proxy
+        // object's identity is safe to inspect and still separates replaced
+        // document interfaces; context matching remains the fail-closed check.
+        ObjectIdentifier(textDocumentProxy as AnyObject)
     }
 
     func coreKeyCode(for value: String) -> Int32? {
@@ -1976,13 +1951,21 @@ private extension KeyboardViewController {
             surfaceRefreshDeferred = true
             return
         }
+        let targetHeight: CGFloat
         if preferencesVisible {
-            minimumHeightConstraint?.constant = 368
+            targetHeight = Self.preferencesKeyboardHeight
         } else if traitCollection.verticalSizeClass == .compact {
-            minimumHeightConstraint?.constant = 216
+            targetHeight = Self.compactKeyboardHeight
         } else {
-            minimumHeightConstraint?.constant = candidatesExpanded || usesNineKeyLayout ? 310 : 278
+            // QWERTY, nine-key, symbols, and expanded candidates share one
+            // portrait height. Switching input modes must not pull the host
+            // view merely because a different key surface is now visible.
+            targetHeight = Self.portraitKeyboardHeight
         }
+        guard minimumHeightConstraint?.constant != targetHeight else {
+            return
+        }
+        minimumHeightConstraint?.constant = targetHeight
     }
 
     func refreshKeyboardSurface(force: Bool = false) {
