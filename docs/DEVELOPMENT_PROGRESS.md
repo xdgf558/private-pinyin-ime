@@ -1,8 +1,19 @@
 # Development Progress
 
-Last updated: 2026-07-30
-Current stage: iOS host-transition follow-up after 0.1.30
-Current status: A rebuilt Simulator app and the real custom Keyboard Extension passed an X-like clear/dismiss/refocus cycle and system/custom keyboard switching without a second geometry pull. Exact X Publish/Send timing remains a physical-device TestFlight gate.
+Last updated: 2026-07-31
+Current stage: iOS 0.1.31 (27) TestFlight release preparation
+Current status: Release metadata now includes the stable-height and safe-document-identity work from PR #64. Archive, upload, processing, and exact physical-device X Publish/Send verification remain in progress.
+
+## iOS 0.1.31 (27) TestFlight Release Preparation (2026-07-31)
+
+- Advanced both the container App and Keyboard Extension from `0.1.30 (26)` to
+  `0.1.31 (27)`.
+- Updated the in-App About page to describe safe nullable document identity,
+  non-empty delayed-callback matching, one stable portrait height across the
+  four primary keyboard surfaces, and the retained 44-point minimum touch
+  target.
+- Exact X Publish/Send behavior remains a physical-device TestFlight gate and
+  is not inferred from the equivalent Simulator diagnostic flow.
 
 ## iOS Stable-Height Transition and Callback Regression (2026-07-30)
 
