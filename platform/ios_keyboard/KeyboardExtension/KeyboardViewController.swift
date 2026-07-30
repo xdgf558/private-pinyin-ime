@@ -1,4 +1,5 @@
 import os
+import PrivatePinyinC
 import UIKit
 
 private struct PendingCoreOperation {
@@ -18,6 +19,15 @@ private enum KeyboardPresentationPhase {
     case appearing
     case visible
     case disappearing
+}
+
+private struct SafeTextDocumentIdentity: Equatable {
+    let proxyObjectIdentifier: ObjectIdentifier
+    let documentIdentifier: UUID?
+
+    var supportsDelayedCallbackSuppression: Bool {
+        documentIdentifier != nil
+    }
 }
 
 final class KeyboardViewController: UIInputViewController {
@@ -85,7 +95,7 @@ final class KeyboardViewController: UIInputViewController {
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
     private var preferencesVisible = false
-    private var selfTextChangeTracker = SelfTextChangeTracker<ObjectIdentifier>(
+    private var selfTextChangeTracker = SelfTextChangeTracker<SafeTextDocumentIdentity>(
         callbackWindow: 0.25
     )
     private var lastNeedsInputModeSwitchKey = true
@@ -138,6 +148,9 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textWillChange(_ textInput: UITextInput?) {
         super.textWillChange(textInput)
+#if DEBUG
+        logDocumentIdentityIfRequested(event: "will-change")
+#endif
         if consumePendingSelfTextChangeCallback() {
             return
         }
@@ -170,6 +183,9 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+#if DEBUG
+        logDocumentIdentityIfRequested(event: "did-change")
+#endif
         // Do not guess when a host will start its dismissal animation. Some
         // hosts remain `visible` well beyond one run-loop turn after changing
         // the document. Appearance callbacks or the next delivered key are
@@ -187,6 +203,11 @@ final class KeyboardViewController: UIInputViewController {
         keyboardPresentationPhase = .visible
         resumeKeyboardSurfaceIfNeeded()
         prepareFeedbackGeneratorsIfAvailable()
+#if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.runSurfaceGeometrySmokeIfRequested(defaults: .standard)
+        }
+#endif
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -1874,20 +1895,26 @@ private extension KeyboardViewController {
     }
 
     func consumePendingSelfTextChangeCallback() -> Bool {
-        selfTextChangeTracker.consumeCallback(
-            documentIdentifier: currentTextDocumentIdentity,
+        let documentIdentity = currentTextDocumentIdentity
+        return selfTextChangeTracker.consumeCallback(
+            documentIdentifier: documentIdentity,
             currentContext: textDocumentProxy.documentContextBeforeInput,
+            allowsDelayedCallbackSuppression:
+                documentIdentity.supportsDelayedCallbackSuppression,
             now: ProcessInfo.processInfo.systemUptime
         )
     }
 
-    var currentTextDocumentIdentity: ObjectIdentifier {
-        // `documentIdentifier` is imported as a non-optional UUID, but some
-        // iOS hosts expose nil while attaching or resetting a text document.
-        // Reading it then traps in Swift's Objective-C bridge. The proxy
-        // object's identity is safe to inspect and still separates replaced
-        // document interfaces; context matching remains the fail-closed check.
-        ObjectIdentifier(textDocumentProxy as AnyObject)
+    var currentTextDocumentIdentity: SafeTextDocumentIdentity {
+        // Keep the proxy identity as a cheap first signal, but do not mistake
+        // it for a document identity: UIKit commonly keeps one proxy object
+        // while changing the document behind it. The explicitly nullable C
+        // bridge preserves the public UUID signal without Swift trapping when
+        // a host temporarily returns nil.
+        SafeTextDocumentIdentity(
+            proxyObjectIdentifier: ObjectIdentifier(textDocumentProxy as AnyObject),
+            documentIdentifier: private_pinyin_ios_document_identifier(textDocumentProxy)
+        )
     }
 
     func coreKeyCode(for value: String) -> Int32? {
@@ -2214,6 +2241,151 @@ private extension KeyboardViewController {
                 )
             }
         }
+    }
+
+    func logDocumentIdentityIfRequested(event: String) {
+        guard UserDefaults.standard.bool(
+            forKey: "private_pinyin.debug.document_identity_smoke"
+        ) else {
+            return
+        }
+        let identity = currentTextDocumentIdentity
+        let line = String(
+            format:
+                "PRIVATE_PINYIN_DOCUMENT_IDENTITY event=%@ proxy=%@ document=%@ context_nil=%@",
+            event,
+            String(describing: identity.proxyObjectIdentifier),
+            identity.documentIdentifier?.uuidString ?? "nil",
+            textDocumentProxy.documentContextBeforeInput == nil ? "true" : "false"
+        )
+        NSLog(
+            "%@",
+            line
+        )
+    }
+
+    func runSurfaceGeometrySmokeIfRequested(defaults: UserDefaults) {
+        let key = "private_pinyin.debug.surface_geometry_smoke"
+        guard defaults.bool(forKey: key) else {
+            return
+        }
+        defaults.set(false, forKey: key)
+
+        let originalLayout = preferredLayout
+        let originalSymbolsVisible = symbolsVisible
+        let originalExtendedSymbolsVisible = extendedSymbolsVisible
+        let originalCandidatesExpanded = candidatesExpanded
+        let originalPreferencesVisible = preferencesVisible
+        let originalPreedit = currentPreedit
+        let originalCandidates = currentCandidates
+        let smokeCandidates = (0..<9).map {
+            IosPinyinCandidate(
+                text: "候选\($0 + 1)",
+                pinyin: "hou xuan",
+                score: Double(9 - $0),
+                source: "debug"
+            )
+        }
+
+        var runStep: ((Int) -> Void)?
+        runStep = { [weak self] index in
+            guard let self else {
+                return
+            }
+            guard index < 4 else {
+                self.preferredLayout = originalLayout
+                self.symbolsVisible = originalSymbolsVisible
+                self.extendedSymbolsVisible = originalExtendedSymbolsVisible
+                self.candidatesExpanded = originalCandidatesExpanded
+                self.preferencesVisible = originalPreferencesVisible
+                self.currentPreedit = originalPreedit
+                self.currentCandidates = originalCandidates
+                self.rebuildKeyboardContents()
+                self.updateCandidateBar()
+                self.refreshMinimumHeight()
+                self.view.layoutIfNeeded()
+                runStep = nil
+                return
+            }
+
+            let surface: String
+            self.preferencesVisible = false
+            self.currentPreedit = ""
+            self.currentCandidates = []
+            self.candidatesExpanded = false
+            self.extendedSymbolsVisible = false
+            switch index {
+            case 0:
+                surface = "qwerty"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = false
+            case 1:
+                surface = "nine-key"
+                self.preferredLayout = .nineKey
+                self.symbolsVisible = false
+            case 2:
+                surface = "symbols"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = true
+            default:
+                surface = "expanded-candidates"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = false
+                self.currentCandidates = smokeCandidates
+                self.candidatesExpanded = true
+            }
+
+            self.rebuildKeyboardContents()
+            self.updateCandidateBar()
+            self.refreshMinimumHeight()
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.view.layoutIfNeeded()
+                self.reportSurfaceGeometrySmoke(surface: surface)
+                runStep?(index + 1)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            runStep?(0)
+        }
+    }
+
+    func reportSurfaceGeometrySmoke(surface: String) {
+        let measuredButtons: [UIView]
+        if candidatesExpanded {
+            measuredButtons = expandedCandidateButtons.filter {
+                !$0.isHidden && $0.alpha > 0
+            }
+        } else {
+            measuredButtons = allDescendants(of: keyRowsStack).filter {
+                $0 is StationKeyButton && !$0.isHidden && $0.alpha > 0
+            }
+        }
+        let buttonFrames = measuredButtons.map { $0.convert($0.bounds, to: view) }
+        let minimumButtonHeight = buttonFrames.map(\.height).min() ?? 0
+        let visibleBounds = view.bounds.insetBy(dx: -0.5, dy: -0.5)
+        let clipped = !visibleBounds.contains(rootStack.frame)
+            || buttonFrames.contains(where: { !visibleBounds.contains($0) })
+        let line = String(
+            format:
+                "PRIVATE_PINYIN_SURFACE_GEOMETRY surface=%@ requested=%.1f view=%.1f root=%.1f min_button=%.1f clipped=%@",
+            surface,
+            minimumHeightConstraint?.constant ?? 0,
+            view.frame.height,
+            rootStack.frame.height,
+            minimumButtonHeight,
+            clipped ? "true" : "false"
+        )
+        NSLog("%@", line)
+    }
+
+    func allDescendants(of root: UIView) -> [UIView] {
+        root.subviews.flatMap { [$0] + allDescendants(of: $0) }
     }
 
     func runPendingBackspaceSmokeIfRequested(defaults: UserDefaults) {

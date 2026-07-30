@@ -8,6 +8,7 @@ required_files=(
   "platform/ios_keyboard/PrivatePinyin.xcodeproj/xcshareddata/xcschemes/PrivatePinyin.xcscheme"
   "platform/ios_keyboard/PrivatePinyinC/module.modulemap"
   "platform/ios_keyboard/PrivatePinyinC/IosAiSupport.h"
+  "platform/ios_keyboard/PrivatePinyinC/IosKeyboardSupport.h"
   "platform/ios_keyboard/ContainerApp/PrivatePinyinApp.swift"
   "platform/ios_keyboard/ContainerApp/ContentView.swift"
   "platform/ios_keyboard/ContainerApp/IosSettingsStore.swift"
@@ -148,15 +149,23 @@ grep -q 'static let nineKeyExtendedSymbols' platform/ios_keyboard/KeyboardExtens
 grep -q 'static let candidateNextPage' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'title: "候选"' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'consumePendingSelfTextChangeCallback' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'SelfTextChangeTracker<ObjectIdentifier>' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'SelfTextChangeTracker<SafeTextDocumentIdentity>' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'ObjectIdentifier(textDocumentProxy as AnyObject)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'private_pinyin_ios_document_identifier(textDocumentProxy)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'allowsDelayedCallbackSuppression:' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'private_pinyin_ios_document_identifier' platform/ios_keyboard/PrivatePinyinC/IosKeyboardSupport.h
+grep -q 'header "IosKeyboardSupport.h"' platform/ios_keyboard/PrivatePinyinC/module.modulemap
 if grep -q 'textDocumentProxy.documentIdentifier' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift; then
   echo "iOS keyboard must not bridge nullable documentIdentifier as UUID." >&2
   exit 1
 fi
-grep -q 'currentContext != nil' platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift
+grep -Fq 'currentContext?.isEmpty == false' platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift
 grep -q 'currentContext == latestPostOperationContext' platform/ios_keyboard/KeyboardExtension/SelfTextChangeTracker.swift
+grep -q 'An empty context must fail closed even when a document identity is available' \
+  platform/ios_keyboard/Tests/SelfTextChangeTrackerRegression.swift
+grep -q 'Beginning after expiry must discard callbacks from the previous operation' \
+  platform/ios_keyboard/Tests/SelfTextChangeTrackerRegression.swift
 grep -q 'portraitKeyboardHeight: CGFloat = 278' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'minimumHeightConstraint?.priority = UILayoutPriority(999)' platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'keyboard-smoke-send' platform/ios_keyboard/ContainerApp/ContentView.swift

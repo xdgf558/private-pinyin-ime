@@ -39,9 +39,10 @@ struct SelfTextChangeTracker<DocumentIdentifier: Equatable> {
             return
         }
 
-        // An asynchronous callback is trusted only when the host exposes the
-        // latest post-operation context. Pre-operation and nil contexts can
-        // also describe an external clear/send transition and must fail closed.
+        // An asynchronous callback is trusted only when the host exposes a
+        // non-empty latest post-operation context. Pre-operation, empty, and
+        // nil contexts can also describe an external clear/send or field switch
+        // transition and must fail closed.
         latestPostOperationContext = postOperationContext
         deadline = now + callbackWindow
     }
@@ -49,6 +50,7 @@ struct SelfTextChangeTracker<DocumentIdentifier: Equatable> {
     mutating func consumeCallback(
         documentIdentifier: DocumentIdentifier?,
         currentContext: String?,
+        allowsDelayedCallbackSuppression: Bool,
         now: TimeInterval
     ) -> Bool {
         guard pendingCallbackCount > 0,
@@ -61,7 +63,8 @@ struct SelfTextChangeTracker<DocumentIdentifier: Equatable> {
         let isSynchronousCallback = activeOperationCount > 0
         let matchesLatestPostOperationContext =
             activeOperationCount == 0
-            && currentContext != nil
+            && allowsDelayedCallbackSuppression
+            && currentContext?.isEmpty == false
             && currentContext == latestPostOperationContext
         guard isSynchronousCallback || matchesLatestPostOperationContext else {
             reset()

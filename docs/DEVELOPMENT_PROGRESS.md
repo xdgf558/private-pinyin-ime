@@ -14,16 +14,22 @@ Current status: A rebuilt Simulator app and the real custom Keyboard Extension p
   an unchanged height constraint untouched.
 - Replaced the controller's ad hoc self-text callback counters with a focused
   `SelfTextChangeTracker`. Delayed callbacks are suppressed only when they
-  match the latest non-nil post-operation context inside the bounded callback
-  window. Host clear/send transitions, expired evidence, old contexts, and
-  replaced document proxies fail closed as external changes.
+  match the latest non-empty post-operation context and a safely available
+  public document UUID inside the bounded callback window. Host clear/send
+  transitions, empty or nil contexts, expired evidence, old contexts, and
+  replaced documents fail closed as external changes. The visible cost is
+  intentional: deleting to an empty field or switching between empty fields
+  resets composition and freezes stale controls until the next presented key,
+  which then restores the live surface.
 - The first interactive Simulator run exposed a real activation crash rather
   than a source-only concern. During document attachment/reset, the simulator
   host exposed a nil Objective-C `documentIdentifier` even though Swift imports
   it as non-optional `UUID`; reading it trapped in
-  `UUID._unconditionallyBridgeFromObjectiveC`. The extension now uses the
-  safely inspectable proxy object identity plus context matching and never
-  reads that nullable bridge.
+  `UUID._unconditionallyBridgeFromObjectiveC`. A nullable Objective-C helper
+  now reads that same public API without the unconditional Swift bridge. DEBUG
+  evidence also confirmed that `ObjectIdentifier(textDocumentProxy)` remained
+  unchanged across attachment callbacks, so it is retained only as a cheap
+  proxy-liveness signal and is not treated as the document identity.
 - Added a DEBUG `模拟发送并收起` host action that clears both diagnostic fields
   and drops focus on the following main-loop turn. This reproduces the
   observable X-style sequence without claiming to reproduce X internals.
@@ -36,6 +42,16 @@ Current status: A rebuilt Simulator app and the real custom Keyboard Extension p
   keyboard. A 100-ms frame sample of the recorded run showed one monotonic
   dismissal and one monotonic presentation, with no reverse movement or
   second height pull.
+- A DEBUG geometry probe measured the rendered surfaces rather than only the
+  requested constraint. QWERTY, nine-key, symbols, and expanded candidates
+  each reported `view=278`, `root=258`, and `clipped=false`; minimum visible
+  button heights were `44`, `44`, `44`, and `49` points respectively.
+- A rebuilt custom nine-key surface was then exercised through the container
+  App rather than inferred from source: `64426` displayed `ni hao` and committed
+  exactly one `你好`; a live field switch replaced stale composition on the
+  first delivered key; delete-to-empty followed by `6` resumed candidates
+  without deleting host text; and the simulated send/dismiss could reopen the
+  same custom keyboard and commit another `你好`.
 - `scripts/check_ios_keyboard_sources.sh`, the standalone
   `SelfTextChangeTracker` regression, and the Xcode 26.6 iOS 26.5 Simulator
   App/Keyboard Extension build passed. The exact X App Publish/Send animation
