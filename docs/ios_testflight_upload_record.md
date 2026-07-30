@@ -8,16 +8,16 @@ from owner-side App Store Connect evidence.
 | Field | Value |
 |---|---|
 | Tester | Owner/Codex signed archive run |
-| Date | 2026-07-29 21:16 +08 |
-| Commit | Release metadata commit `1b74a51` based on merged `main` |
-| Archive | `dist/ios/PrivatePinyin-0.1.30-build26-xcode26.xcarchive` |
+| Date | 2026-07-31 07:34 +08 |
+| Commit | Release metadata commit `95e3321` based on merged `main` |
+| Archive | `dist/ios/PrivatePinyin-0.1.31-build27-xcode26.xcarchive` |
 | Export path | Direct App Store Connect upload through `xcodebuild -exportArchive` |
 | Package summary | Xcode distribution logs, altool upload/status output, and App Store Connect TestFlight build table |
 | App bundle ID | `com.privatepinyin.ios` |
 | Keyboard bundle ID | `com.privatepinyin.ios.keyboard` |
 | App Group ID | `group.com.privatepinyin.ios` |
 | Export destination | `upload` |
-| Current candidate | `0.1.30 (26)` final X dismissal lifecycle guard, bounded rapid-input frame coalescing, pending-composition Backspace protection, stale-candidate disable, and larger punctuation hit regions |
+| Current candidate | `0.1.31 (27)` stable four-surface height, safe nullable document identity, bounded callback suppression, and retained 44-point touch targets |
 
 ## Archive And Export
 
@@ -32,19 +32,19 @@ bash scripts/package_ios_app_store.sh
 |---|---|---|---|
 | Owner signing env | Team ID, app bundle ID, keyboard bundle ID, App Group ID, ExportOptions plist, and profiles are configured | passed | Team `Y35K7AQ974`; App Group `group.com.privatepinyin.ios`; automatic signing created App Store profiles |
 | App Store Connect API key | Upload mode has key path, key ID, and issuer ID configured | not used | Upload used the signed-in Xcode account and Cloud Managed Apple Distribution certificate |
-| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.30-build26-xcode26.xcarchive` (21 MB); Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `0.1.30 (26)`, arm64, and iOS 18 minimum |
-| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `08a2fbb8-ff3c-4b06-94ae-0814dcbf492c`; Apple accepted the package into processing with no upload errors; `manageAppVersionAndBuildNumber=false` preserved build `26` |
+| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.31-build27-xcode26.xcarchive` (21 MB); Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `0.1.31 (27)`, arm64, and iOS 18 minimum |
+| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `dbda459c-52fa-466a-be10-9dc1d73b4f3a`; Apple accepted the package with no upload errors; `manageAppVersionAndBuildNumber=false` preserved build `27` |
 | Package summary | `dist/ios/package_summary.txt` records mode, bundle IDs, App Group, and paths | superseded | Manual automatic-signing run recorded here because the scripted manual-profile path was not used |
 
 ## App Store Connect
 
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
-| Uploaded build | Build appears in App Store Connect | uploaded | App Store Connect app ID `6789098978`; version `0.1.30`; build `26`; delivery `08a2fbb8-ff3c-4b06-94ae-0814dcbf492c` |
-| Processing | Build processing completes | pending | Upload transport completed without errors; App Store Connect is processing `0.1.30 (26)` |
-| TestFlight availability | Processed build can be assigned to a TestFlight group | pending | Assign build `26` after App Store Connect finishes processing |
+| Uploaded build | Build appears in App Store Connect | passed | App Store Connect app ID `6789098978`; version `0.1.31`; build `27`; delivery `dbda459c-52fa-466a-be10-9dc1d73b4f3a` |
+| Processing | Build processing completes | passed | App Store Connect reports upload status `完成` and build status `准备提交` |
+| TestFlight availability | Processed build can be assigned to a TestFlight group | passed | Build `27` is present in the existing internal group `猫钱拼音内部测试组` |
 | External testing metadata | Beta description, privacy URL, feedback channel, review contact, and review notes are configured | passed | Filled in App Store Connect TestFlight test information; personal contact details stay out of the repository |
-| External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | After processing, assigning build `26` to the external group and submitting Beta App Review remain explicit App Store Connect actions |
+| External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | Assigning build `27` to the external group and submitting Beta App Review remain explicit App Store Connect actions |
 
 ## Stage 17 External Testing Follow-up
 
@@ -150,5 +150,14 @@ bash scripts/package_ios_app_store.sh
   and App Store Connect accepted the package into processing with no upload
   error. Processing completion and external-group assignment remain pending
   checks rather than inferred results.
+- Build `0.1.31 (27)` adds one stable portrait height across QWERTY, nine-key,
+  symbols, and expanded candidates; safely reads nullable document identity;
+  limits delayed callback suppression to matching non-empty document
+  evidence; and retains a measured 44-point minimum visible key height.
+- Xcode 26.6 archived and uploaded build `27` as delivery
+  `dbda459c-52fa-466a-be10-9dc1d73b4f3a`. App Store Connect completed
+  processing, marked the upload `完成`, exposed the build as `准备提交`, and
+  retained its existing internal-test-group assignment. External-group
+  assignment and Beta App Review submission remain separate Owner actions.
 
 Manual failures should update `docs/OPEN_ITEMS.md` before Stage 17 begins.

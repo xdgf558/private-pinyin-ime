@@ -1,10 +1,10 @@
 # Development Progress
 
 Last updated: 2026-07-31
-Current stage: iOS 0.1.31 (27) TestFlight release preparation
-Current status: Release metadata now includes the stable-height and safe-document-identity work from PR #64. Archive, upload, processing, and exact physical-device X Publish/Send verification remain in progress.
+Current stage: iOS 0.1.31 (27) uploaded to TestFlight
+Current status: Apple processing completed and build 27 is ready to submit. It is available to the existing internal group; external-group submission and exact physical-device X Publish/Send verification remain explicit Owner actions.
 
-## iOS 0.1.31 (27) TestFlight Release Preparation (2026-07-31)
+## iOS 0.1.31 (27) TestFlight Upload (2026-07-31)
 
 - Advanced both the container App and Keyboard Extension from `0.1.30 (26)` to
   `0.1.31 (27)`.
@@ -14,6 +14,19 @@ Current status: Release metadata now includes the stable-height and safe-documen
   target.
 - Exact X Publish/Send behavior remains a physical-device TestFlight gate and
   is not inferred from the equivalent Simulator diagnostic flow.
+- The full iOS readiness run passed with Xcode 26.6 and the iPhoneSimulator
+  26.5 SDK, including source/signing/App Group gates, the standalone
+  `SelfTextChangeTracker` regression, and a Debug App/Keyboard Extension build.
+- Rebuilt the `aarch64-apple-ios` Rust release artifact from a clean target
+  with iPhoneOS 26.5 and iOS 18 minimum, then archived
+  `dist/ios/PrivatePinyin-0.1.31-build27-xcode26.xcarchive`. The 21 MB archive,
+  container App, and Keyboard Extension all report `0.1.31 (27)`, arm64, and
+  iOS 18 minimum.
+- Xcode uploaded delivery `dbda459c-52fa-466a-be10-9dc1d73b4f3a` without
+  transport errors. App Store Connect completed processing and shows build
+  `27` as ready to submit under version `0.1.31`; the existing internal group
+  received it automatically. No external group or Beta App Review state was
+  changed implicitly.
 
 ## iOS Stable-Height Transition and Callback Regression (2026-07-30)
 
