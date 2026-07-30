@@ -48,6 +48,7 @@ require_command /usr/libexec/PlistBuddy
 
 bash scripts/check_ios_keyboard_sources.sh
 bash scripts/check_stage14_ios_signing_sources.sh
+bash scripts/test_ios_self_text_change_tracker.sh
 bash scripts/build_ios_keyboard.sh
 
 assert_exists "$app_path"

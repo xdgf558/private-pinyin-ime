@@ -1,4 +1,5 @@
 import os
+import PrivatePinyinC
 import UIKit
 
 private struct PendingCoreOperation {
@@ -20,6 +21,15 @@ private enum KeyboardPresentationPhase {
     case disappearing
 }
 
+private struct SafeTextDocumentIdentity: Equatable {
+    let proxyObjectIdentifier: ObjectIdentifier
+    let documentIdentifier: UUID?
+
+    var supportsDelayedCallbackSuppression: Bool {
+        documentIdentifier != nil
+    }
+}
+
 final class KeyboardViewController: UIInputViewController {
     private static let renderingLog = OSLog(
         subsystem: "com.privatepinyin.ios.keyboard",
@@ -30,6 +40,9 @@ final class KeyboardViewController: UIInputViewController {
         qos: .userInteractive
     )
     private static let idleCorePrewarmDelay: TimeInterval = 0.12
+    private static let portraitKeyboardHeight: CGFloat = 278
+    private static let compactKeyboardHeight: CGFloat = 216
+    private static let preferencesKeyboardHeight: CGFloat = 368
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
@@ -82,11 +95,9 @@ final class KeyboardViewController: UIInputViewController {
     private var preferredLayout = IosSettingsStore.keyboardLayout()
     private var chineseScript = IosSettingsStore.chineseScript()
     private var preferencesVisible = false
-    private var pendingSelfTextChangeCallbacks = 0
-    private var pendingSelfTextChangeDocumentIdentifier: UUID?
-    private var pendingSelfTextChangeContexts: [String?] = []
-    private var selfTextChangeCallbackDeadline: TimeInterval = 0
-    private let selfTextChangeCallbackWindow: TimeInterval = 0.25
+    private var selfTextChangeTracker = SelfTextChangeTracker<SafeTextDocumentIdentity>(
+        callbackWindow: 0.25
+    )
     private var lastNeedsInputModeSwitchKey = true
     private var coreUnavailable = false
     private var localAiSuspendedForMemoryPressure = false
@@ -137,6 +148,9 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textWillChange(_ textInput: UITextInput?) {
         super.textWillChange(textInput)
+#if DEBUG
+        logDocumentIdentityIfRequested(event: "will-change")
+#endif
         if consumePendingSelfTextChangeCallback() {
             return
         }
@@ -169,6 +183,9 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+#if DEBUG
+        logDocumentIdentityIfRequested(event: "did-change")
+#endif
         // Do not guess when a host will start its dismissal animation. Some
         // hosts remain `visible` well beyond one run-loop turn after changing
         // the document. Appearance callbacks or the next delivered key are
@@ -186,6 +203,11 @@ final class KeyboardViewController: UIInputViewController {
         keyboardPresentationPhase = .visible
         resumeKeyboardSurfaceIfNeeded()
         prepareFeedbackGeneratorsIfAvailable()
+#if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.runSurfaceGeometrySmokeIfRequested(defaults: .standard)
+        }
+#endif
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -274,7 +296,10 @@ final class KeyboardViewController: UIInputViewController {
         preferencesView.isHidden = true
         rootStack.addArrangedSubview(preferencesView)
 
-        minimumHeightConstraint = view.heightAnchor.constraint(greaterThanOrEqualToConstant: 278)
+        minimumHeightConstraint = view.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: Self.portraitKeyboardHeight
+        )
+        minimumHeightConstraint?.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             topBorder.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topBorder.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -1856,63 +1881,40 @@ private extension KeyboardViewController {
 
     func performTextOperation(_ operation: () -> Void) {
         let now = ProcessInfo.processInfo.systemUptime
-        let documentIdentifier = textDocumentProxy.documentIdentifier
-        if pendingSelfTextChangeDocumentIdentifier != documentIdentifier
-            || now > selfTextChangeCallbackDeadline {
-            resetPendingSelfTextChangeCallbacks()
-        }
-
-        pendingSelfTextChangeDocumentIdentifier = documentIdentifier
-        pendingSelfTextChangeCallbacks += 1
-        appendPendingSelfTextChangeContext(textDocumentProxy.documentContextBeforeInput)
-        selfTextChangeCallbackDeadline = now + selfTextChangeCallbackWindow
+        let documentIdentifier = currentTextDocumentIdentity
+        selfTextChangeTracker.beginOperation(
+            documentIdentifier: documentIdentifier,
+            now: now
+        )
         operation()
-
-        if pendingSelfTextChangeCallbacks > 0,
-           pendingSelfTextChangeDocumentIdentifier == documentIdentifier {
-            appendPendingSelfTextChangeContext(textDocumentProxy.documentContextBeforeInput)
-        }
+        selfTextChangeTracker.finishOperation(
+            documentIdentifier: documentIdentifier,
+            postOperationContext: textDocumentProxy.documentContextBeforeInput,
+            now: ProcessInfo.processInfo.systemUptime
+        )
     }
 
     func consumePendingSelfTextChangeCallback() -> Bool {
-        let now = ProcessInfo.processInfo.systemUptime
-        guard pendingSelfTextChangeCallbacks > 0, now <= selfTextChangeCallbackDeadline else {
-            resetPendingSelfTextChangeCallbacks()
-            return false
-        }
-
-        let documentIdentifier = textDocumentProxy.documentIdentifier
-        let context = textDocumentProxy.documentContextBeforeInput
-        guard pendingSelfTextChangeDocumentIdentifier == documentIdentifier,
-              pendingSelfTextChangeContexts.contains(where: { $0 == context }) else {
-            resetPendingSelfTextChangeCallbacks()
-            return false
-        }
-
-        pendingSelfTextChangeCallbacks -= 1
-        if pendingSelfTextChangeCallbacks == 0 {
-            resetPendingSelfTextChangeCallbacks()
-        }
-        return true
+        let documentIdentity = currentTextDocumentIdentity
+        return selfTextChangeTracker.consumeCallback(
+            documentIdentifier: documentIdentity,
+            currentContext: textDocumentProxy.documentContextBeforeInput,
+            allowsDelayedCallbackSuppression:
+                documentIdentity.supportsDelayedCallbackSuppression,
+            now: ProcessInfo.processInfo.systemUptime
+        )
     }
 
-    func appendPendingSelfTextChangeContext(_ context: String?) {
-        guard !pendingSelfTextChangeContexts.contains(where: { $0 == context }) else {
-            return
-        }
-        pendingSelfTextChangeContexts.append(context)
-        if pendingSelfTextChangeContexts.count > 16 {
-            pendingSelfTextChangeContexts.removeFirst(
-                pendingSelfTextChangeContexts.count - 16
-            )
-        }
-    }
-
-    func resetPendingSelfTextChangeCallbacks() {
-        pendingSelfTextChangeCallbacks = 0
-        pendingSelfTextChangeDocumentIdentifier = nil
-        pendingSelfTextChangeContexts.removeAll(keepingCapacity: true)
-        selfTextChangeCallbackDeadline = 0
+    var currentTextDocumentIdentity: SafeTextDocumentIdentity {
+        // Keep the proxy identity as a cheap first signal, but do not mistake
+        // it for a document identity: UIKit commonly keeps one proxy object
+        // while changing the document behind it. The explicitly nullable C
+        // bridge preserves the public UUID signal without Swift trapping when
+        // a host temporarily returns nil.
+        SafeTextDocumentIdentity(
+            proxyObjectIdentifier: ObjectIdentifier(textDocumentProxy as AnyObject),
+            documentIdentifier: private_pinyin_ios_document_identifier(textDocumentProxy)
+        )
     }
 
     func coreKeyCode(for value: String) -> Int32? {
@@ -1976,13 +1978,21 @@ private extension KeyboardViewController {
             surfaceRefreshDeferred = true
             return
         }
+        let targetHeight: CGFloat
         if preferencesVisible {
-            minimumHeightConstraint?.constant = 368
+            targetHeight = Self.preferencesKeyboardHeight
         } else if traitCollection.verticalSizeClass == .compact {
-            minimumHeightConstraint?.constant = 216
+            targetHeight = Self.compactKeyboardHeight
         } else {
-            minimumHeightConstraint?.constant = candidatesExpanded || usesNineKeyLayout ? 310 : 278
+            // QWERTY, nine-key, symbols, and expanded candidates share one
+            // portrait height. Switching input modes must not pull the host
+            // view merely because a different key surface is now visible.
+            targetHeight = Self.portraitKeyboardHeight
         }
+        guard minimumHeightConstraint?.constant != targetHeight else {
+            return
+        }
+        minimumHeightConstraint?.constant = targetHeight
     }
 
     func refreshKeyboardSurface(force: Bool = false) {
@@ -2231,6 +2241,157 @@ private extension KeyboardViewController {
                 )
             }
         }
+    }
+
+    func logDocumentIdentityIfRequested(event: String) {
+        guard UserDefaults.standard.bool(
+            forKey: "private_pinyin.debug.document_identity_smoke"
+        ) else {
+            return
+        }
+        let identity = currentTextDocumentIdentity
+        let line = String(
+            format:
+                "PRIVATE_PINYIN_DOCUMENT_IDENTITY event=%@ proxy=%@ document=%@ context_nil=%@",
+            event,
+            String(describing: identity.proxyObjectIdentifier),
+            identity.documentIdentifier?.uuidString ?? "nil",
+            textDocumentProxy.documentContextBeforeInput == nil ? "true" : "false"
+        )
+        NSLog(
+            "%@",
+            line
+        )
+    }
+
+    func runSurfaceGeometrySmokeIfRequested(defaults: UserDefaults) {
+        let key = "private_pinyin.debug.surface_geometry_smoke"
+        guard defaults.bool(forKey: key) else {
+            return
+        }
+        defaults.set(false, forKey: key)
+
+        let originalLayout = preferredLayout
+        let originalSymbolsVisible = symbolsVisible
+        let originalExtendedSymbolsVisible = extendedSymbolsVisible
+        let originalCandidatesExpanded = candidatesExpanded
+        let originalPreferencesVisible = preferencesVisible
+        let originalPreedit = currentPreedit
+        let originalCandidates = currentCandidates
+        let smokeCandidates = (0..<9).map {
+            IosPinyinCandidate(
+                text: "候选\($0 + 1)",
+                pinyin: "hou xuan",
+                score: Double(9 - $0),
+                source: "debug"
+            )
+        }
+
+        var runStep: ((Int) -> Void)?
+        runStep = { [weak self] index in
+            guard let self else {
+                return
+            }
+            guard index < 4 else {
+                self.preferredLayout = originalLayout
+                self.symbolsVisible = originalSymbolsVisible
+                self.extendedSymbolsVisible = originalExtendedSymbolsVisible
+                self.candidatesExpanded = originalCandidatesExpanded
+                self.preferencesVisible = originalPreferencesVisible
+                self.currentPreedit = originalPreedit
+                self.currentCandidates = originalCandidates
+                self.rebuildKeyboardContents()
+                self.updateCandidateBar()
+                self.refreshMinimumHeight()
+                self.view.layoutIfNeeded()
+                runStep = nil
+                return
+            }
+
+            let surface: String
+            self.preferencesVisible = false
+            self.currentPreedit = ""
+            self.currentCandidates = []
+            self.candidatesExpanded = false
+            self.extendedSymbolsVisible = false
+            switch index {
+            case 0:
+                surface = "qwerty"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = false
+            case 1:
+                surface = "nine-key"
+                self.preferredLayout = .nineKey
+                self.symbolsVisible = false
+            case 2:
+                surface = "symbols"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = true
+            default:
+                surface = "expanded-candidates"
+                self.preferredLayout = .qwerty
+                self.symbolsVisible = false
+                self.currentCandidates = smokeCandidates
+                self.candidatesExpanded = true
+            }
+
+            self.rebuildKeyboardContents()
+            self.updateCandidateBar()
+            self.refreshMinimumHeight()
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.view.layoutIfNeeded()
+                self.reportSurfaceGeometrySmoke(surface: surface)
+                runStep?(index + 1)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            runStep?(0)
+        }
+    }
+
+    func reportSurfaceGeometrySmoke(surface: String) {
+        let measuredButtons: [UIView]
+        if candidatesExpanded {
+            measuredButtons = expandedCandidateButtons.filter {
+                !$0.isHidden && $0.alpha > 0
+            }
+        } else {
+            measuredButtons = allDescendants(of: keyRowsStack).filter {
+                $0 is StationKeyButton && !$0.isHidden && $0.alpha > 0
+            }
+        }
+        let buttonFrames = measuredButtons.map { $0.convert($0.bounds, to: view) }
+        let minimumButtonHeight = buttonFrames.map(\.height).min() ?? 0
+        let visibleBounds = view.bounds.insetBy(dx: -0.5, dy: -0.5)
+        let clipped = !visibleBounds.contains(rootStack.frame)
+            || buttonFrames.contains(where: { !visibleBounds.contains($0) })
+        let line = String(
+            format:
+                "PRIVATE_PINYIN_SURFACE_GEOMETRY surface=%@ requested=%.1f view=%.1f root=%.1f min_button=%.1f clipped=%@",
+            surface,
+            minimumHeightConstraint?.constant ?? 0,
+            view.frame.height,
+            rootStack.frame.height,
+            minimumButtonHeight,
+            clipped ? "true" : "false"
+        )
+        NSLog("%@", line)
+        guard !clipped, minimumButtonHeight >= 44 else {
+            fatalError(
+                "PRIVATE_PINYIN_SURFACE_GEOMETRY_FAILED "
+                    + "surface=\(surface) min_button=\(minimumButtonHeight) clipped=\(clipped)"
+            )
+        }
+    }
+
+    func allDescendants(of root: UIView) -> [UIView] {
+        root.subviews.flatMap { [$0] + allDescendants(of: $0) }
     }
 
     func runPendingBackspaceSmokeIfRequested(defaults: UserDefaults) {
