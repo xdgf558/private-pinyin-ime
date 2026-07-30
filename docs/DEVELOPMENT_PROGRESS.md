@@ -45,7 +45,10 @@ Current status: A rebuilt Simulator app and the real custom Keyboard Extension p
 - A DEBUG geometry probe measured the rendered surfaces rather than only the
   requested constraint. QWERTY, nine-key, symbols, and expanded candidates
   each reported `view=278`, `root=258`, and `clipped=false`; minimum visible
-  button heights were `44`, `44`, `44`, and `49` points respectively.
+  button heights were `44`, `44`, `44`, and `49` points respectively. The
+  probe now fails immediately if any surface clips or any visible button drops
+  below the 44-point minimum, rather than relying on a reviewer to notice a
+  changed log value.
 - A rebuilt custom nine-key surface was then exercised through the container
   App rather than inferred from source: `64426` displayed `ni hao` and committed
   exactly one `你好`; a live field switch replaced stale composition on the

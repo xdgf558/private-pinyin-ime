@@ -334,6 +334,21 @@ source = Path(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift"
 ).read_text(encoding="utf-8")
 
+surface_geometry_probe = function_body(
+    "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",
+    "func reportSurfaceGeometrySmoke(",
+)
+for contract in (
+    "guard !clipped, minimumButtonHeight >= 44 else",
+    "fatalError(",
+    "PRIVATE_PINYIN_SURFACE_GEOMETRY_FAILED",
+):
+    require(
+        surface_geometry_probe,
+        contract,
+        "DEBUG geometry probe failing on clipped or sub-44-point controls",
+    )
+
 nine_key_grid = source.split("    private func makeNineKeyGrid()", 1)[1].split(
     "    private func makeAdaptiveKeyRow", 1
 )[0]

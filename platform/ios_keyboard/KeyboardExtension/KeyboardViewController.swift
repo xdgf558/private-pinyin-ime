@@ -2382,6 +2382,12 @@ private extension KeyboardViewController {
             clipped ? "true" : "false"
         )
         NSLog("%@", line)
+        guard !clipped, minimumButtonHeight >= 44 else {
+            fatalError(
+                "PRIVATE_PINYIN_SURFACE_GEOMETRY_FAILED "
+                    + "surface=\(surface) min_button=\(minimumButtonHeight) clipped=\(clipped)"
+            )
+        }
     }
 
     func allDescendants(of root: UIView) -> [UIView] {
