@@ -4,6 +4,34 @@ Last updated: 2026-07-31
 Current stage: iOS 0.1.31 (27) uploaded to TestFlight
 Current status: Apple processing completed and build 27 is ready to submit. It is available to the existing internal group; external-group submission and exact physical-device X Publish/Send verification remain explicit Owner actions.
 
+## macOS 0.1.30 Public Package (2026-07-31)
+
+- Merged PR #65 into `main`, including the generation-bound candidate-panel
+  selection state and the follow-up protections that ignore unresolved or stale
+  callbacks without committing old text, resetting a newer composition, or
+  clearing a verified current highlight.
+- Advanced the macOS App and installer receipt from `0.1.29 (29)` to
+  `0.1.30 (30)`. The bundled Simplified Chinese release notes describe the
+  candidate-click reliability fix, exact duplicate-text selection, safe stale
+  callback handling, and retained local input/lexicon/Writer behavior.
+- `scripts/test_macos_candidate_selection.sh`,
+  `scripts/check_macos_imk_sources.sh`, `plutil -lint`, and
+  `git diff --check` passed locally. PR #65's rerun also completed all three
+  GitHub Actions jobs successfully; the first Windows performance result was
+  treated as runner variance rather than changing the existing 60 ms budget.
+- Built `dist/macos_imk/PrivatePinyin-0.1.30.pkg` with Developer ID Application
+  and Developer ID Installer identities. Apple notarization submission
+  `7ab58dc4-0f6d-4dbc-a6a1-cf6b53021ff5` was accepted, and the ticket was
+  stapled and validated.
+- `scripts/check_macos_public_release.sh` passed the trusted installer,
+  packaged App and nested-code signatures, Gatekeeper, stapled-ticket, and
+  notary-profile checks. The final artifact is 14,489,209 bytes with SHA-256
+  `d4ef4c8e0122d7a22acd7a0e252a33e48eb18424c92c74a6df73d095cd381142`.
+- Previous `.pkg` artifacts were removed before packaging, leaving only the
+  `0.1.30` installer in `dist/macos_imk`. Signed installed-bundle mouse checks
+  in Safari, Chrome, and VS Code remain an explicit Owner follow-up rather
+  than being inferred from source or the focused TextEdit smoke.
+
 ## macOS Candidate Click Reliability (2026-07-31)
 
 - Traced intermittent native candidate-panel no-ops to the host's text-only
