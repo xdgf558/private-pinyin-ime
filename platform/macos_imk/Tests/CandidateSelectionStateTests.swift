@@ -8,6 +8,7 @@ enum CandidateSelectionStateTests {
         emptyFinalCallbackUsesTheCurrentHighlight()
         staleSelectionCannotCommitAfterCandidateRefresh()
         staleAttributeCannotFallThroughToTheCurrentHighlight()
+        staleHighlightCannotEraseTheCurrentHighlight()
         currentPanelSnapshotCanResolveAnEmptyCallback()
         stalePanelSnapshotCannotBorrowTheCurrentGeneration()
         plainTextCallbackStillResolvesWithoutCustomAttributes()
@@ -135,6 +136,33 @@ enum CandidateSelectionStateTests {
                 attributeToken: staleToken
             ) == nil,
             "a stale strong identity cannot borrow a current matching highlight"
+        )
+    }
+
+    private static func staleHighlightCannotEraseTheCurrentHighlight() {
+        var state = PrivatePinyinCandidateSelectionState()
+        state.replaceDisplayedCandidates(["重新", "打包一个"])
+        let staleToken = PrivatePinyinCandidateSelectionToken(
+            generation: state.generation,
+            index: 1
+        )
+
+        state.replaceDisplayedCandidates(["重新", "打包一个"])
+        let currentToken = PrivatePinyinCandidateSelectionToken(
+            generation: state.generation,
+            index: 1
+        )
+        state.recordHighlight(text: "打包一个", token: currentToken)
+        state.recordHighlight(text: "打包一个", token: staleToken)
+
+        let resolved = state.resolveFinalSelection(text: "", attributeToken: nil)
+        require(
+            resolved?.token == currentToken,
+            "a late stale highlight cannot erase the verified current highlight"
+        )
+        require(
+            resolved?.source == .highlight,
+            "the preserved current highlight remains the final resolution source"
         )
     }
 

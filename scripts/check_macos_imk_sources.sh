@@ -117,6 +117,10 @@ grep -q "strippedAttributesPreferTheExactHighlightedDuplicate" \
   platform/macos_imk/Tests/CandidateSelectionStateTests.swift
 grep -q "stalePanelSnapshotCannotBorrowTheCurrentGeneration" \
   platform/macos_imk/Tests/CandidateSelectionStateTests.swift
+grep -q "staleHighlightCannotEraseTheCurrentHighlight" \
+  platform/macos_imk/Tests/CandidateSelectionStateTests.swift
+grep -q "unresolved candidate callbacks must not mutate composition" \
+  scripts/test_macos_candidate_selection.sh
 grep -q "macOSCandidatePageSize = 9" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "repairRuntimeSettingsIfNeeded" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift

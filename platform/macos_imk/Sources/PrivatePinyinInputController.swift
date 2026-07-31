@@ -204,12 +204,8 @@ final class PrivatePinyinInputController: IMKInputController {
             Self.logger.error(
                 "error code=candidate_selection_unresolved has_text=\(!reportedText.isEmpty)"
             )
-            // Retain IMK's direct-text fallback only when the final callback
-            // supplied text and no stronger identity failed validation.
-            if attributeToken == nil, panelSelection == nil {
-                commitText(reportedText)
-            }
-            resetComposition()
+            // A stale or unverifiable callback must not mutate a newer
+            // composition. The currently displayed page remains authoritative.
             return
         }
         Self.logger.debug(

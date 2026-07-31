@@ -23,13 +23,21 @@ Current status: Apple processing completed and build 27 is ready to submit. It i
   retains the generation captured when its candidate data was installed and
   requires the selected panel text to match the final callback when that
   callback contains text.
+- An unresolved or stale final callback is now a content-free diagnostic no-op:
+  it cannot commit callback text and cannot reset a newer preedit. A late
+  invalid highlight likewise leaves the last verified current-generation
+  highlight intact instead of clearing it.
 - Content-free diagnostics identify successful resolution only as
   `attribute`, `highlight`, `panel`, or `text`, and unresolved selections emit
   only a fixed error code. Repeated unresolved selections block the signed
-  installed-bundle mouse smoke; direct-text compatibility fallback does not
-  update Rust learning or context.
+  installed-bundle mouse smoke. The text compatibility path may resolve only a
+  candidate still present on the current page and commits it through the Rust
+  session; there is no direct document-text fallback for an unresolved callback.
 - `scripts/test_macos_candidate_selection.sh` passes focused native Swift
-  regressions for duplicate labels, empty final callbacks, and stale refreshes.
+  regressions for duplicate labels, empty final callbacks, stale refreshes,
+  and late invalid highlights. Its controller-level source contract also
+  rejects unresolved callback paths that call `commitText(reportedText)` or
+  `resetComposition()`.
   The shared-engine FFI regression additionally loads `打包一个`, feeds
   `dabaoyige`, simulates an empty final callback after highlighting that phrase,
   and confirms the shared Rust session commits the exact phrase once.

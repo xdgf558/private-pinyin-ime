@@ -23,3 +23,25 @@ swiftc \
   -o "$temporary_dir/candidate-selection-tests"
 
 "$temporary_dir/candidate-selection-tests"
+
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("platform/macos_imk/Sources/PrivatePinyinInputController.swift")
+source = path.read_text(encoding="utf-8")
+start_marker = "@objc(candidateSelected:)"
+end_marker = "@objc(candidateSelectionChanged:)"
+start = source.find(start_marker)
+end = source.find(end_marker, start + len(start_marker))
+if start < 0 or end < 0:
+    raise SystemExit("macOS candidate controller callback markers are missing")
+
+body = source[start:end]
+if "candidate_selection_unresolved" not in body:
+    raise SystemExit("unresolved candidate callbacks must remain diagnosable")
+for forbidden in ("commitText(reportedText)", "resetComposition()"):
+    if forbidden in body:
+        raise SystemExit(
+            f"unresolved candidate callbacks must not mutate composition: {forbidden}"
+        )
+PY

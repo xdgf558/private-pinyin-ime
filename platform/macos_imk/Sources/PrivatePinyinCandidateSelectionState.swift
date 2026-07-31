@@ -37,11 +37,14 @@ struct PrivatePinyinCandidateSelectionState {
         text: String,
         token: PrivatePinyinCandidateSelectionToken?
     ) {
-        highlightedSelection = resolve(
+        guard let resolved = resolve(
             text: text,
             token: token,
             source: .highlight
-        )
+        ) else {
+            return
+        }
+        highlightedSelection = resolved
     }
 
     func resolveFinalSelection(
