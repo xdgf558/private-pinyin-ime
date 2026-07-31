@@ -4,6 +4,32 @@ Last updated: 2026-07-31
 Current stage: iOS 0.1.31 (27) uploaded to TestFlight
 Current status: Apple processing completed and build 27 is ready to submit. It is available to the existing internal group; external-group submission and exact physical-device X Publish/Send verification remain explicit Owner actions.
 
+## macOS Candidate Click Reliability (2026-07-31)
+
+- Traced intermittent native candidate-panel no-ops to the host's text-only
+  reverse lookup. InputMethodKit may close the panel before delivering
+  `candidateSelected`, and the final attributed string may be empty or lose
+  custom attributes; duplicate display text also made a first-match lookup
+  ambiguous.
+- Bound every displayed candidate to a monotonically increasing panel
+  generation plus its exact page index. `candidateSelectionChanged` now retains
+  the current highlight, while final selection resolves from the attributed
+  marker, the native panel identifier/line, the current highlight, or a
+  text-only compatibility fallback in that order.
+- A candidate-list refresh invalidates the previous generation. Before
+  committing, the controller verifies that the resolved index and text still
+  match the current Rust candidate page; stale panel selections fail closed
+  and diagnostics record only a content-free error code.
+- `scripts/test_macos_candidate_selection.sh` passes focused native Swift
+  regressions for duplicate labels, empty final callbacks, and stale refreshes.
+  The shared-engine FFI regression additionally loads `打包一个`, feeds
+  `dabaoyige`, simulates an empty final callback after highlighting that phrase,
+  and confirms the shared Rust session commits the exact phrase once.
+- The complete ad-hoc macOS InputMethodKit app build, macOS source gate, shared
+  engine/FFI test, candidate-state test, and `git diff --check` pass locally.
+  Mouse selection in the installed signed bundle remains an explicit native
+  smoke check before release packaging.
+
 ## iOS 0.1.31 (27) TestFlight Upload (2026-07-31)
 
 - Advanced both the container App and Keyboard Extension from `0.1.30 (26)` to

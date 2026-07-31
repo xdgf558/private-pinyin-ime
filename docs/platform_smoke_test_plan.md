@@ -121,6 +121,7 @@ Checklist:
 | Commit | `Space` commits `你好` for `nihao` and `中国` for `zhongguo` | | |
 | Candidate position | Candidate panel follows the insertion point in TextEdit | | |
 | Horizontal candidate layout | A pinyin query with at least nine matches displays candidates `1` through `9` in one horizontal row; number keys select the matching visible entry | | macOS `0.1.17` uses the native 9-column stepping panel and migrates the previous default page size from 5 to 9 |
+| Mouse candidate selection | In TextEdit, Safari, Chrome, and VS Code, type `dabaoyige` with a lexicon containing `打包一个`, click that multi-character candidate, and confirm it commits exactly once. Repeat after rapidly extending and deleting the composition; a candidate from an old panel generation must neither commit nor clear a newer selection | | Also click two candidates with identical visible text when available. Empty or attribute-stripped final IMK callbacks must resolve through the current native panel identity/highlight rather than becoming a no-op |
 | Number-key selection | In TextEdit, Safari, Chrome, and VS Code, each key `1` through `9` selects exactly the matching visible candidate once | | `IMKCandidatesSendServerKeyEventFirst=true` makes the controller/core the first and only handling path for consumed digit keys |
 | Shift behavior | Standalone Shift toggles mode; `Shift+A` inserts uppercase text | | |
 | App switch cleanup | Start partial composition, switch apps, return, and type again; stale preedit/candidates do not reappear | | |

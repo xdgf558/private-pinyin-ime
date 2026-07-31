@@ -17,7 +17,9 @@ required_files=(
   "platform/macos_imk/Sources/PrivatePinyinInputSourceRegistration.swift"
   "platform/macos_imk/Sources/CAbiBridge.swift"
   "platform/macos_imk/Sources/MacKeyMapper.swift"
+  "platform/macos_imk/Sources/PrivatePinyinCandidateSelectionState.swift"
   "platform/macos_imk/Sources/PrivatePinyinInputController.swift"
+  "platform/macos_imk/Tests/CandidateSelectionStateTests.swift"
   "platform/macos_imk/Tests/SharedEnginePoolTests.swift"
   "platform/macos_imk/Tests/LaunchPolicyTests.swift"
   "platform/macos_imk/Tests/InputSourceRegistrationTests.swift"
@@ -32,6 +34,7 @@ required_files=(
   "platform/macos_imk/installer/install-local.sh"
   "platform/macos_imk/installer/uninstall-local.sh"
   "scripts/build_macos_imk.sh"
+  "scripts/test_macos_candidate_selection.sh"
   "scripts/test_macos_shared_engine.sh"
   "scripts/test_macos_launch_policy.sh"
   "scripts/test_macos_input_source_registration.sh"
@@ -94,6 +97,14 @@ grep -q "IMKCandidatesSendServerKeyEventFirst: true" platform/macos_imk/Sources/
 grep -q "PrivatePinyinCandidatePanelStore" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "static var panel: IMKCandidates" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "sharedPanel(for: server)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "candidateSelectionChanged" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "resolveFinalSelection" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "candidate_selection_unresolved" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "PrivatePinyinCandidateSelectionState.swift" scripts/build_macos_imk.sh
+grep -q "emptyFinalCallbackUsesTheCurrentHighlight" \
+  platform/macos_imk/Tests/CandidateSelectionStateTests.swift
+grep -q "staleSelectionCannotCommitAfterCandidateRefresh" \
+  platform/macos_imk/Tests/CandidateSelectionStateTests.swift
 grep -q "macOSCandidatePageSize = 9" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "repairRuntimeSettingsIfNeeded" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "ime_session_feed_key" platform/macos_imk/Sources/CAbiBridge.swift

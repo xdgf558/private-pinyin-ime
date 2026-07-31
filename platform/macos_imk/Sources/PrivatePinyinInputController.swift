@@ -1,5 +1,6 @@
 import Cocoa
 import InputMethodKit
+import OSLog
 import UniformTypeIdentifiers
 
 private enum PrivatePinyinCandidatePanelStore {
@@ -27,12 +28,25 @@ private enum PrivatePinyinCandidatePanelStore {
     }
 }
 
+private let privatePinyinCandidateGenerationAttribute = NSAttributedString.Key(
+    "com.privatepinyin.candidate-generation"
+)
+private let privatePinyinCandidateIndexAttribute = NSAttributedString.Key(
+    "com.privatepinyin.candidate-index"
+)
+
 @objc(PrivatePinyinInputController)
 final class PrivatePinyinInputController: IMKInputController {
+    private static let logger = Logger(
+        subsystem: "com.privatepinyin.inputmethod.PrivatePinyin",
+        category: "candidate-selection"
+    )
+
     private let core = PinyinCoreBridge()
     private var candidatePanel: IMKCandidates?
     private var currentPreedit = ""
     private var currentCandidates: [PinyinCandidate] = []
+    private var candidateSelectionState = PrivatePinyinCandidateSelectionState()
     private var hasActiveInput = false
     private var pendingShiftToggle = false
 
@@ -78,7 +92,7 @@ final class PrivatePinyinInputController: IMKInputController {
 
     @objc(candidates:)
     override func candidates(_ sender: Any!) -> [Any]! {
-        currentCandidates.map(\.text)
+        candidatePanelData()
     }
 
     override func menu() -> NSMenu! {
@@ -173,14 +187,42 @@ final class PrivatePinyinInputController: IMKInputController {
 
     @objc(candidateSelected:)
     override func candidateSelected(_ candidateString: NSAttributedString!) {
-        let selected = candidateString?.string ?? ""
-        guard let index = currentCandidates.firstIndex(where: { $0.text == selected }),
-              let output = core?.commitCandidate(index: index) else {
-            commitText(selected)
+        let reportedText = candidateString?.string ?? ""
+        let selected = reportedText.isEmpty
+            ? candidatePanel?.selectedCandidateString()?.string ?? ""
+            : reportedText
+        let token = selectionToken(from: candidateString)
+            ?? selectedPanelToken(for: candidateString)
+        guard
+            let resolved = candidateSelectionState.resolveFinalSelection(
+                text: selected,
+                token: token
+            ),
+            currentCandidates.indices.contains(resolved.token.index),
+            currentCandidates[resolved.token.index].text == resolved.text,
+            let output = core?.commitCandidate(index: resolved.token.index)
+        else {
+            Self.logger.error(
+                "error code=candidate_selection_unresolved has_text=\(!selected.isEmpty)"
+            )
+            // Retain IMK's direct-text fallback only when the final callback
+            // itself supplied text. A stale panel snapshot must fail closed.
+            commitText(reportedText)
             resetComposition()
             return
         }
         apply(output)
+    }
+
+    @objc(candidateSelectionChanged:)
+    override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
+        let reportedText = candidateString?.string ?? ""
+        let selected = reportedText.isEmpty
+            ? candidatePanel?.selectedCandidateString()?.string ?? ""
+            : reportedText
+        let token = selectionToken(from: candidateString)
+            ?? selectedPanelToken(for: candidateString)
+        candidateSelectionState.recordHighlight(text: selected, token: token)
     }
 
     override func commitComposition(_ sender: Any!) {
@@ -282,6 +324,7 @@ final class PrivatePinyinInputController: IMKInputController {
     private func apply(_ output: PinyinOutput) {
         currentPreedit = output.preedit
         currentCandidates = output.candidates
+        candidateSelectionState.replaceDisplayedCandidates(output.candidates.map(\.text))
 
         if output.shouldCommit, !output.commitText.isEmpty {
             commitText(output.commitText)
@@ -305,7 +348,7 @@ final class PrivatePinyinInputController: IMKInputController {
         }
 
         if visible {
-            candidatePanel.setCandidateData(currentCandidates.map(\.text))
+            candidatePanel.setCandidateData(candidatePanelData())
             candidatePanel.update()
             candidatePanel.show(kIMKLocateCandidatesBelowHint)
         } else {
@@ -332,10 +375,68 @@ final class PrivatePinyinInputController: IMKInputController {
         _ = core?.resetSession()
         currentPreedit = ""
         currentCandidates = []
+        candidateSelectionState.clear()
         hasActiveInput = false
         pendingShiftToggle = false
         candidatePanel?.hide()
         clearMarkedText()
+    }
+
+    private func candidatePanelData() -> [NSAttributedString] {
+        currentCandidates.enumerated().map { index, candidate in
+            NSAttributedString(
+                string: candidate.text,
+                attributes: [
+                    privatePinyinCandidateGenerationAttribute:
+                        NSNumber(value: candidateSelectionState.generation),
+                    privatePinyinCandidateIndexAttribute: NSNumber(value: index),
+                ]
+            )
+        }
+    }
+
+    private func selectionToken(
+        from candidateString: NSAttributedString?
+    ) -> PrivatePinyinCandidateSelectionToken? {
+        guard let candidateString, candidateString.length > 0 else {
+            return nil
+        }
+        let attributes = candidateString.attributes(at: 0, effectiveRange: nil)
+        guard
+            let generation = attributes[privatePinyinCandidateGenerationAttribute] as? NSNumber,
+            let index = attributes[privatePinyinCandidateIndexAttribute] as? NSNumber
+        else {
+            return nil
+        }
+        return PrivatePinyinCandidateSelectionToken(
+            generation: generation.uint64Value,
+            index: index.intValue
+        )
+    }
+
+    private func selectedPanelToken(
+        for candidateString: NSAttributedString?
+    ) -> PrivatePinyinCandidateSelectionToken? {
+        guard let candidatePanel else {
+            return nil
+        }
+        let identifier: Int
+        if let candidateString, !candidateString.string.isEmpty {
+            identifier = candidatePanel.candidateStringIdentifier(candidateString)
+        } else {
+            identifier = candidatePanel.selectedCandidate()
+        }
+        guard identifier != NSNotFound else {
+            return nil
+        }
+        let index = candidatePanel.lineNumberForCandidate(withIdentifier: identifier)
+        guard index != NSNotFound else {
+            return nil
+        }
+        return PrivatePinyinCandidateSelectionToken(
+            generation: candidateSelectionState.generation,
+            index: index
+        )
     }
 
     @objc private func toggleStrictPrivacyMode(_ sender: Any?) {

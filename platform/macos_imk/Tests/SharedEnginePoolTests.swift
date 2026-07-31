@@ -26,6 +26,7 @@ enum SharedEnginePoolTests {
         )
 
         verifyReviewedLexiconLayersInvalidateSharedSnapshot()
+        verifyCandidatePanelSelectionCommitsTheBoundCandidate()
 
         print("macOS shared engine pool tests passed.")
     }
@@ -98,6 +99,58 @@ enum SharedEnginePoolTests {
             "the reloaded engine drops candidates from a cleared White Frost layer"
         )
         _ = bridge?.resetSession()
+    }
+
+    private static func verifyCandidatePanelSelectionCommitsTheBoundCandidate() {
+        let fileManager = FileManager.default
+        let temporaryDirectory = fileManager.temporaryDirectory.appendingPathComponent(
+            "PrivatePinyin-CandidateSelection-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try! fileManager.createDirectory(
+            at: temporaryDirectory,
+            withIntermediateDirectories: true
+        )
+        defer { try? fileManager.removeItem(at: temporaryDirectory) }
+
+        let settingsURL = temporaryDirectory.appendingPathComponent("settings.json")
+        let rimeFrostURL = temporaryDirectory.appendingPathComponent("rime_frost.tsv")
+        let settings: [String: Any] = [
+            "rime_frost_lexicon_path": rimeFrostURL.path,
+            "enable_rime_frost_lexicon": true,
+        ]
+        let settingsData = try! JSONSerialization.data(
+            withJSONObject: settings,
+            options: [.sortedKeys]
+        )
+        try! settingsData.write(to: settingsURL, options: .atomic)
+        try! Data("打包一个\tda bao yi ge\t999999\n".utf8)
+            .write(to: rimeFrostURL, options: .atomic)
+
+        let bridge = PinyinCoreBridge(settingsPathForTesting: settingsURL.path)
+        let candidates = candidateTexts(for: "dabaoyige", using: bridge)
+        guard let index = candidates.firstIndex(of: "打包一个") else {
+            fatalError("the configured phrase appears in the candidate page")
+        }
+
+        var selectionState = PrivatePinyinCandidateSelectionState()
+        selectionState.replaceDisplayedCandidates(candidates)
+        let token = PrivatePinyinCandidateSelectionToken(
+            generation: selectionState.generation,
+            index: index
+        )
+        selectionState.recordHighlight(text: "打包一个", token: token)
+        guard let resolved = selectionState.resolveFinalSelection(text: "", token: nil) else {
+            fatalError("an empty final callback resolves the current panel highlight")
+        }
+        require(resolved.token.index == index, "the panel preserves the bound candidate index")
+
+        let committed = bridge?.commitCandidate(index: resolved.token.index)
+        require(committed?.shouldCommit == true, "the bound candidate commits through the FFI")
+        require(
+            committed?.commitText == "打包一个",
+            "the bound candidate commits the exact multi-word phrase once"
+        )
     }
 
     private static func candidateTexts(
