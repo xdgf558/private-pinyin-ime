@@ -35,8 +35,17 @@ Current status: Apple processing completed and build 27 is ready to submit. It i
   and confirms the shared Rust session commits the exact phrase once.
 - The complete ad-hoc macOS InputMethodKit app build, macOS source gate, shared
   engine/FFI test, candidate-state test, and `git diff --check` pass locally.
-  Mouse selection in the installed signed bundle remains an explicit native
-  smoke check before release packaging.
+- The signed installed package
+  `dist/macos_imk/PrivatePinyin-0.1.29.65.pkg` passed a native TextEdit mouse
+  smoke. Per-key keyboard events produced the IMK preedit and native candidate
+  panel; direct desktop mouse clicks committed the selected current candidate
+  exactly once both before and after a complete panel refresh. Both callbacks
+  resolved through the verified `highlight` identity and emitted no
+  `candidate_selection_unresolved` event. A separate discrepancy remains open:
+  this installed runtime did not rank `打包一个` for `dabaoyige`, while the
+  current Rust CLI ranks it first. That candidate-content/configuration issue
+  does not invalidate the mouse callback result but must be investigated before
+  treating the complete phrase scenario as release-accepted.
 
 ## iOS 0.1.31 (27) TestFlight Upload (2026-07-31)
 
