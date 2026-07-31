@@ -47,6 +47,7 @@ final class PrivatePinyinInputController: IMKInputController {
     private var currentPreedit = ""
     private var currentCandidates: [PinyinCandidate] = []
     private var candidateSelectionState = PrivatePinyinCandidateSelectionState()
+    private var candidatePanelGeneration: UInt64?
     private var hasActiveInput = false
     private var pendingShiftToggle = false
 
@@ -188,41 +189,51 @@ final class PrivatePinyinInputController: IMKInputController {
     @objc(candidateSelected:)
     override func candidateSelected(_ candidateString: NSAttributedString!) {
         let reportedText = candidateString?.string ?? ""
-        let selected = reportedText.isEmpty
-            ? candidatePanel?.selectedCandidateString()?.string ?? ""
-            : reportedText
-        let token = selectionToken(from: candidateString)
-            ?? selectedPanelToken(for: candidateString)
+        let attributeToken = selectionToken(from: candidateString)
+        let panelSelection = selectedPanelSelection(for: candidateString)
         guard
             let resolved = candidateSelectionState.resolveFinalSelection(
-                text: selected,
-                token: token
+                text: reportedText,
+                attributeToken: attributeToken,
+                panelSelection: panelSelection
             ),
             currentCandidates.indices.contains(resolved.token.index),
             currentCandidates[resolved.token.index].text == resolved.text,
             let output = core?.commitCandidate(index: resolved.token.index)
         else {
             Self.logger.error(
-                "error code=candidate_selection_unresolved has_text=\(!selected.isEmpty)"
+                "error code=candidate_selection_unresolved has_text=\(!reportedText.isEmpty)"
             )
             // Retain IMK's direct-text fallback only when the final callback
-            // itself supplied text. A stale panel snapshot must fail closed.
-            commitText(reportedText)
+            // supplied text and no stronger identity failed validation.
+            if attributeToken == nil, panelSelection == nil {
+                commitText(reportedText)
+            }
             resetComposition()
             return
         }
+        Self.logger.debug(
+            "event=candidate_selection_resolved source=\(resolved.source.rawValue, privacy: .public)"
+        )
         apply(output)
     }
 
     @objc(candidateSelectionChanged:)
     override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
         let reportedText = candidateString?.string ?? ""
-        let selected = reportedText.isEmpty
-            ? candidatePanel?.selectedCandidateString()?.string ?? ""
-            : reportedText
-        let token = selectionToken(from: candidateString)
-            ?? selectedPanelToken(for: candidateString)
-        candidateSelectionState.recordHighlight(text: selected, token: token)
+        if let attributeToken = selectionToken(from: candidateString) {
+            candidateSelectionState.recordHighlight(
+                text: reportedText,
+                token: attributeToken
+            )
+        } else if let panelSelection = selectedPanelSelection(for: candidateString) {
+            candidateSelectionState.recordHighlight(
+                text: panelSelection.text,
+                token: panelSelection.token
+            )
+        } else {
+            candidateSelectionState.recordHighlight(text: reportedText, token: nil)
+        }
     }
 
     override func commitComposition(_ sender: Any!) {
@@ -348,7 +359,9 @@ final class PrivatePinyinInputController: IMKInputController {
         }
 
         if visible {
-            candidatePanel.setCandidateData(candidatePanelData())
+            let panelData = candidatePanelData()
+            candidatePanel.setCandidateData(panelData)
+            candidatePanelGeneration = candidateSelectionState.generation
             candidatePanel.update()
             candidatePanel.show(kIMKLocateCandidatesBelowHint)
         } else {
@@ -376,6 +389,7 @@ final class PrivatePinyinInputController: IMKInputController {
         currentPreedit = ""
         currentCandidates = []
         candidateSelectionState.clear()
+        candidatePanelGeneration = nil
         hasActiveInput = false
         pendingShiftToggle = false
         candidatePanel?.hide()
@@ -414,17 +428,17 @@ final class PrivatePinyinInputController: IMKInputController {
         )
     }
 
-    private func selectedPanelToken(
+    private func selectedPanelSelection(
         for candidateString: NSAttributedString?
-    ) -> PrivatePinyinCandidateSelectionToken? {
-        guard let candidatePanel else {
+    ) -> PrivatePinyinResolvedCandidateSelection? {
+        guard let candidatePanel, let candidatePanelGeneration else {
             return nil
         }
-        let identifier: Int
-        if let candidateString, !candidateString.string.isEmpty {
+        var identifier = candidatePanel.selectedCandidate()
+        if identifier == NSNotFound,
+           let candidateString,
+           !candidateString.string.isEmpty {
             identifier = candidatePanel.candidateStringIdentifier(candidateString)
-        } else {
-            identifier = candidatePanel.selectedCandidate()
         }
         guard identifier != NSNotFound else {
             return nil
@@ -433,9 +447,19 @@ final class PrivatePinyinInputController: IMKInputController {
         guard index != NSNotFound else {
             return nil
         }
-        return PrivatePinyinCandidateSelectionToken(
-            generation: candidateSelectionState.generation,
-            index: index
+        let panelText = candidatePanel.selectedCandidateString()?.string
+            ?? candidateString?.string
+            ?? ""
+        guard !panelText.isEmpty else {
+            return nil
+        }
+        return PrivatePinyinResolvedCandidateSelection(
+            token: PrivatePinyinCandidateSelectionToken(
+                generation: candidatePanelGeneration,
+                index: index
+            ),
+            text: panelText,
+            source: .panel
         )
     }
 

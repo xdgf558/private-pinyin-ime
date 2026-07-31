@@ -5,9 +5,17 @@ struct PrivatePinyinCandidateSelectionToken: Equatable {
     let index: Int
 }
 
+enum PrivatePinyinCandidateSelectionResolutionSource: String, Equatable {
+    case attribute
+    case highlight
+    case panel
+    case text
+}
+
 struct PrivatePinyinResolvedCandidateSelection: Equatable {
     let token: PrivatePinyinCandidateSelectionToken
     let text: String
+    let source: PrivatePinyinCandidateSelectionResolutionSource
 }
 
 struct PrivatePinyinCandidateSelectionState {
@@ -29,28 +37,56 @@ struct PrivatePinyinCandidateSelectionState {
         text: String,
         token: PrivatePinyinCandidateSelectionToken?
     ) {
-        highlightedSelection = resolve(text: text, token: token)
+        highlightedSelection = resolve(
+            text: text,
+            token: token,
+            source: .highlight
+        )
     }
 
     func resolveFinalSelection(
         text: String,
-        token: PrivatePinyinCandidateSelectionToken?
+        attributeToken: PrivatePinyinCandidateSelectionToken?,
+        panelSelection: PrivatePinyinResolvedCandidateSelection? = nil
     ) -> PrivatePinyinResolvedCandidateSelection? {
-        if let resolved = resolve(text: text, token: token) {
-            return resolved
+        if let attributeToken {
+            // A stale or inconsistent strong identity must fail closed.
+            return resolve(
+                text: text,
+                token: attributeToken,
+                source: .attribute
+            )
         }
 
-        guard let highlightedSelection,
-              highlightedSelection.token.generation == generation,
-              text.isEmpty || highlightedSelection.text == text else {
-            return nil
+        if let highlightedSelection,
+           highlightedSelection.token.generation == generation,
+           text.isEmpty || highlightedSelection.text == text {
+            return PrivatePinyinResolvedCandidateSelection(
+                token: highlightedSelection.token,
+                text: highlightedSelection.text,
+                source: .highlight
+            )
         }
-        return highlightedSelection
+
+        if let panelSelection {
+            guard text.isEmpty || panelSelection.text == text else {
+                return nil
+            }
+            // The controller captures the generation that populated IMK.
+            return resolve(
+                text: panelSelection.text,
+                token: panelSelection.token,
+                source: .panel
+            )
+        }
+
+        return resolve(text: text, token: nil, source: .text)
     }
 
     private func resolve(
         text: String,
-        token: PrivatePinyinCandidateSelectionToken?
+        token: PrivatePinyinCandidateSelectionToken?,
+        source: PrivatePinyinCandidateSelectionResolutionSource
     ) -> PrivatePinyinResolvedCandidateSelection? {
         if let token {
             guard token.generation == generation,
@@ -61,7 +97,11 @@ struct PrivatePinyinCandidateSelectionState {
             guard text.isEmpty || displayedText == text else {
                 return nil
             }
-            return PrivatePinyinResolvedCandidateSelection(token: token, text: displayedText)
+            return PrivatePinyinResolvedCandidateSelection(
+                token: token,
+                text: displayedText,
+                source: source
+            )
         }
 
         guard !text.isEmpty,
@@ -73,7 +113,8 @@ struct PrivatePinyinCandidateSelectionState {
                 generation: generation,
                 index: index
             ),
-            text: text
+            text: text,
+            source: source
         )
     }
 }

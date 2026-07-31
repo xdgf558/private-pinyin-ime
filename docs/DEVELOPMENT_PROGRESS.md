@@ -14,12 +14,20 @@ Current status: Apple processing completed and build 27 is ready to submit. It i
 - Bound every displayed candidate to a monotonically increasing panel
   generation plus its exact page index. `candidateSelectionChanged` now retains
   the current highlight, while final selection resolves from the attributed
-  marker, the native panel identifier/line, the current highlight, or a
-  text-only compatibility fallback in that order.
+  marker, the verified current highlight, a generation-bound native-panel
+  snapshot, or a text-only compatibility fallback in that order.
 - A candidate-list refresh invalidates the previous generation. Before
   committing, the controller verifies that the resolved index and text still
   match the current Rust candidate page; stale panel selections fail closed
-  and diagnostics record only a content-free error code.
+  and cannot fall through to a newer highlight. The native-panel fallback
+  retains the generation captured when its candidate data was installed and
+  requires the selected panel text to match the final callback when that
+  callback contains text.
+- Content-free diagnostics identify successful resolution only as
+  `attribute`, `highlight`, `panel`, or `text`, and unresolved selections emit
+  only a fixed error code. Repeated unresolved selections block the signed
+  installed-bundle mouse smoke; direct-text compatibility fallback does not
+  update Rust learning or context.
 - `scripts/test_macos_candidate_selection.sh` passes focused native Swift
   regressions for duplicate labels, empty final callbacks, and stale refreshes.
   The shared-engine FFI regression additionally loads `打包一个`, feeds

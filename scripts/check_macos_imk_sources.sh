@@ -99,11 +99,18 @@ grep -q "static var panel: IMKCandidates" platform/macos_imk/Sources/PrivatePiny
 grep -q "sharedPanel(for: server)" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "candidateSelectionChanged" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "resolveFinalSelection" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "candidatePanelGeneration" platform/macos_imk/Sources/PrivatePinyinInputController.swift
+grep -q "candidate_selection_resolved source=" \
+  platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "candidate_selection_unresolved" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "PrivatePinyinCandidateSelectionState.swift" scripts/build_macos_imk.sh
 grep -q "emptyFinalCallbackUsesTheCurrentHighlight" \
   platform/macos_imk/Tests/CandidateSelectionStateTests.swift
 grep -q "staleSelectionCannotCommitAfterCandidateRefresh" \
+  platform/macos_imk/Tests/CandidateSelectionStateTests.swift
+grep -q "strippedAttributesPreferTheExactHighlightedDuplicate" \
+  platform/macos_imk/Tests/CandidateSelectionStateTests.swift
+grep -q "stalePanelSnapshotCannotBorrowTheCurrentGeneration" \
   platform/macos_imk/Tests/CandidateSelectionStateTests.swift
 grep -q "macOSCandidatePageSize = 9" platform/macos_imk/Sources/SettingsStore.swift
 grep -q "repairRuntimeSettingsIfNeeded" platform/macos_imk/Sources/SettingsStore.swift

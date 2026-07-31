@@ -140,7 +140,10 @@ enum SharedEnginePoolTests {
             index: index
         )
         selectionState.recordHighlight(text: "打包一个", token: token)
-        guard let resolved = selectionState.resolveFinalSelection(text: "", token: nil) else {
+        guard let resolved = selectionState.resolveFinalSelection(
+            text: "",
+            attributeToken: nil
+        ) else {
             fatalError("an empty final callback resolves the current panel highlight")
         }
         require(resolved.token.index == index, "the panel preserves the bound candidate index")
