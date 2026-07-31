@@ -62,6 +62,7 @@ swiftc \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinAIHelperClient.swift" \
   "$repo_root/platform/macos_imk/Sources/CAbiBridge.swift" \
   "$repo_root/platform/macos_imk/Sources/MacKeyMapper.swift" \
+  "$repo_root/platform/macos_imk/Sources/PrivatePinyinCandidateSelectionState.swift" \
   "$repo_root/platform/macos_imk/Sources/PrivatePinyinInputController.swift" \
   "$repo_root/platform/macos_imk/Sources/main.swift"
 

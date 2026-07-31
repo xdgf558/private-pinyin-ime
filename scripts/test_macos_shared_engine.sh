@@ -38,6 +38,7 @@ swiftc \
   platform/macos_imk/Sources/SettingsStore.swift \
   platform/macos_imk/Sources/CAbiBridge.swift \
   platform/macos_imk/Sources/MacKeyMapper.swift \
+  platform/macos_imk/Sources/PrivatePinyinCandidateSelectionState.swift \
   platform/macos_imk/Tests/SharedEnginePoolTests.swift \
   -o "$temporary_dir/shared-engine-pool-tests"
 

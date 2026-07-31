@@ -4,6 +4,57 @@ Last updated: 2026-07-31
 Current stage: iOS 0.1.31 (27) uploaded to TestFlight
 Current status: Apple processing completed and build 27 is ready to submit. It is available to the existing internal group; external-group submission and exact physical-device X Publish/Send verification remain explicit Owner actions.
 
+## macOS Candidate Click Reliability (2026-07-31)
+
+- Traced intermittent native candidate-panel no-ops to the host's text-only
+  reverse lookup. InputMethodKit may close the panel before delivering
+  `candidateSelected`, and the final attributed string may be empty or lose
+  custom attributes; duplicate display text also made a first-match lookup
+  ambiguous.
+- Bound every displayed candidate to a monotonically increasing panel
+  generation plus its exact page index. `candidateSelectionChanged` now retains
+  the current highlight, while final selection resolves from the attributed
+  marker, the verified current highlight, a generation-bound native-panel
+  snapshot, or a text-only compatibility fallback in that order.
+- A candidate-list refresh invalidates the previous generation. Before
+  committing, the controller verifies that the resolved index and text still
+  match the current Rust candidate page; stale panel selections fail closed
+  and cannot fall through to a newer highlight. The native-panel fallback
+  retains the generation captured when its candidate data was installed and
+  requires the selected panel text to match the final callback when that
+  callback contains text.
+- An unresolved or stale final callback is now a content-free diagnostic no-op:
+  it cannot commit callback text and cannot reset a newer preedit. A late
+  invalid highlight likewise leaves the last verified current-generation
+  highlight intact instead of clearing it.
+- Content-free diagnostics identify successful resolution only as
+  `attribute`, `highlight`, `panel`, or `text`, and unresolved selections emit
+  only a fixed error code. Repeated unresolved selections block the signed
+  installed-bundle mouse smoke. The text compatibility path may resolve only a
+  candidate still present on the current page and commits it through the Rust
+  session; there is no direct document-text fallback for an unresolved callback.
+- `scripts/test_macos_candidate_selection.sh` passes focused native Swift
+  regressions for duplicate labels, empty final callbacks, stale refreshes,
+  and late invalid highlights. Its controller-level source contract also
+  rejects unresolved callback paths that call `commitText(reportedText)` or
+  `resetComposition()`.
+  The shared-engine FFI regression additionally loads `打包一个`, feeds
+  `dabaoyige`, simulates an empty final callback after highlighting that phrase,
+  and confirms the shared Rust session commits the exact phrase once.
+- The complete ad-hoc macOS InputMethodKit app build, macOS source gate, shared
+  engine/FFI test, candidate-state test, and `git diff --check` pass locally.
+- The signed installed package
+  `dist/macos_imk/PrivatePinyin-0.1.29.65.pkg` passed a native TextEdit mouse
+  smoke. Per-key keyboard events produced the IMK preedit and native candidate
+  panel; direct desktop mouse clicks committed the selected current candidate
+  exactly once both before and after a complete panel refresh. Both callbacks
+  resolved through the verified `highlight` identity and emitted no
+  `candidate_selection_unresolved` event. A separate discrepancy remains open:
+  this installed runtime did not rank `打包一个` for `dabaoyige`, while the
+  current Rust CLI ranks it first. That candidate-content/configuration issue
+  does not invalidate the mouse callback result but must be investigated before
+  treating the complete phrase scenario as release-accepted.
+
 ## iOS 0.1.31 (27) TestFlight Upload (2026-07-31)
 
 - Advanced both the container App and Keyboard Extension from `0.1.30 (26)` to
