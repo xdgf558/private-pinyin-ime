@@ -209,6 +209,9 @@ jobs:
       - name: Build iOS app and keyboard extension
         run: bash scripts/build_ios_keyboard.sh
 
+      - name: Check STORE-01 App Store release contract
+        run: bash scripts/check_store01_release.sh
+
       - name: Run UPDATE-03 Swift policy tests
         env:
           PRIVATE_PINYIN_REQUIRE_SWIFTC: "1"

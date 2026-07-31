@@ -3,10 +3,10 @@
 This directory records owner-provided App Store Connect metadata for the iOS
 container app and keyboard extension.
 
-Stage 14 includes signing configuration templates and release gates. Do not
-treat these files as final marketing copy or privacy declarations until the
-owner confirms product name, license, screenshots, support URL, privacy
-nutrition labels, and provisioning setup.
+STORE-01 adds the reviewed Simplified Chinese listing, privacy audit, screenshot
+matrix, review notes, and final submission checklist for the `1.0.0 (27)` App
+Store candidate. Owner-only contact, tax, banking, agreement, territory, and
+release-control fields remain in App Store Connect and must not be committed.
 
 ## Required Owner Inputs
 
@@ -15,9 +15,11 @@ nutrition labels, and provisioning setup.
 - Keyboard extension bundle ID: `com.privatepinyin.ios.keyboard`.
 - App Group identifier: `group.com.privatepinyin.ios`.
 - Provisioning profiles for the app and extension with the App Group capability.
-- Support URL and privacy policy URL.
-- App Store category, age rating, screenshots, subtitle, description, keywords,
-  and review notes.
+- Confirm the published support and privacy policy URLs.
+- Capture and approve the iPhone and iPad screenshots listed in
+  `screenshot_checklist.md`.
+- Complete the review contact, age rating, agreements, tax, banking, pricing,
+  territories, and release-control fields in App Store Connect.
 - Product decision for whether iOS learning may require Full Access.
 
 ## Local Signing Files

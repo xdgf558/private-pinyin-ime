@@ -2024,6 +2024,32 @@ Current status: Apple processing completed and build 27 is ready to submit. It i
 
 - Manual release gate: capture macOS and Windows RSS before White Frost import, at peak verification/import, immediately after the one shared-engine reload, and after five idle minutes, together with the shared-engine reload duration. The implementation prevents a second full engine during import, but release evidence must still prove the real signed desktop processes return to the normal single-engine retained-memory range.
 
+### STORE-01 App Store 1.0.0 Release Validation
+
+- Summary: The iOS container App and Keyboard Extension advance together to `1.0.0 (27)`. Each target carries its own privacy manifest, declares no tracking and no collected data, and keeps Keyboard Extension Full Access disabled. The container App now exposes the public privacy-policy and support pages used by App Store Connect.
+
+- Command: `bash scripts/check_store01_release.sh`, `bash scripts/check_ios_keyboard_sources.sh`, `bash scripts/check_stage14_ios_signing_sources.sh`, `bash scripts/test_ios_self_text_change_tracker.sh`, `cargo fmt --all -- --check`, `cargo test --workspace`, and `git diff --check`
+- Result: passed
+- Notes: The STORE-01 gate validates both target versions, both privacy manifests, required-reason API declarations, public store URLs, release metadata, and the unchanged `RequestsOpenAccess=false` boundary.
+
+- Command: Xcode 26.6 `bash scripts/run_ios_smoke_readiness.sh`
+- Result: passed (`BUILD SUCCEEDED`)
+- Notes: The built container App and Keyboard Extension both report `1.0.0 (27)`, contain valid `PrivacyInfo.xcprivacy` resources, retain the production bundle/App Group identifiers, and compile against the iOS 26.5 simulator SDK with the iOS 18 minimum deployment target.
+
+- Command: iPhone 17 Pro Max / iOS 26.5 interactive Simulator smoke using the installed software keyboard
+- Result: passed
+- Notes: The keyboard was added through Settings and selected through the globe key. Actual on-screen key taps produced `nihao -> 你好`, `jintian -> 今天`, next-word candidates, persistent nine-key selection, readable nine-key `64426` composition, and a functional expanded 3x3 candidate grid. Switching fields and the container's send-and-dismiss smoke cleared the old composition and allowed clean refocus.
+
+- Command: iPhone 6.9-inch and iPad 13-inch App Store screenshot capture
+- Result: passed
+- Notes: Candidate screenshots are JPEG without alpha. The iPhone set is `1320 x 2868`; the iPad overview is `2064 x 2752`. Screenshots show `1.0.0 (27)` and contain no TestFlight chrome, debug probes, account details, or private conversation content.
+
+- Public pages: `https://wwwstationcat.org/zh-hans/apps/privatepinyin/privacy/` and `https://wwwstationcat.org/zh-hans/apps/privatepinyin/support/`
+- Result: deployed and returned HTTP 200
+- Notes: English and Japanese equivalents are also live. The Simplified Chinese URLs are pinned in the release Info.plist and App Store metadata.
+
+- Physical-device gate: the registered iPhone 15 Pro was unavailable during this validation session. Notes/Safari/password/phone-field, X send/dismiss, hot keyboard switching, extension recreation, rotation, and memory-pressure checks remain explicit physical-device checks and are not inferred from Simulator success.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.

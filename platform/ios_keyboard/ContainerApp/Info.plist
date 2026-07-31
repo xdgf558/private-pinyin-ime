@@ -25,7 +25,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.31</string>
+	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>27</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -34,6 +34,10 @@
 	<false/>
 	<key>PrivatePinyinAppGroupIdentifier</key>
 	<string>$(PRIVATE_PINYIN_IOS_APP_GROUP_ID)</string>
+	<key>StorePrivacyPolicyURL</key>
+	<string>https://wwwstationcat.org/zh-hans/apps/privatepinyin/privacy/</string>
+	<key>StoreSupportURL</key>
+	<string>https://wwwstationcat.org/zh-hans/apps/privatepinyin/support/</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIUserInterfaceStyle</key>

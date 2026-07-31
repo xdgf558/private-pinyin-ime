@@ -2,6 +2,18 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+private func configuredStoreURL(_ key: String) -> URL {
+    guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
+          let url = URL(string: value)
+    else {
+        preconditionFailure("商店链接配置缺失")
+    }
+    return url
+}
+
+private let privatePinyinPrivacyURL = configuredStoreURL("StorePrivacyPolicyURL")
+private let privatePinyinSupportURL = configuredStoreURL("StoreSupportURL")
+
 private enum StationTheme {
     static let background = Color(red: 0x13 / 255, green: 0x1A / 255, blue: 0x26 / 255)
     static let card = Color(red: 0x1B / 255, green: 0x24 / 255, blue: 0x34 / 255)
@@ -390,6 +402,28 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
 
+                divider
+
+                Link(destination: privatePinyinPrivacyURL) {
+                    Label("隐私政策", systemImage: "hand.raised.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(StationTheme.lamp)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                }
+                .buttonStyle(.plain)
+
+                divider
+
+                Link(destination: privatePinyinSupportURL) {
+                    Label("支持与联系", systemImage: "questionmark.circle.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(StationTheme.lamp)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                }
+                .buttonStyle(.plain)
+
                 if !statusText.isEmpty {
                     divider
                     Text(statusText)
@@ -622,10 +656,10 @@ struct ContentView: View {
                     Text("本次更新")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(StationTheme.textPrimary)
-                    Label("改进发送、切换输入框和切换输入法时的状态同步，减少旧候选残留与重复高度变化", systemImage: "rectangle.compress.vertical")
-                    Label("全键、九宫格、符号页和展开候选统一使用稳定高度，保持按键触控区域不低于 44 点", systemImage: "rectangle.split.3x1")
-                    Label("安全识别当前输入文档，避免部分 App 返回空文档标识时导致键盘激活崩溃", systemImage: "doc.badge.gearshape")
-                    Label("延迟回调只在身份与非空上下文同时匹配时抑制，切换字段后的首次按键可恢复实时候选", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                    Label("首个 App Store 正式版：支持全键盘与九宫格拼音、简繁输出和展开候选", systemImage: "checkmark.seal.fill")
+                    Label("拼音转换、智能纠错、宽容拼音和用户学习均在本机完成", systemImage: "iphone.gen3")
+                    Label("键盘扩展不申请完全访问，不联网，不上传输入内容", systemImage: "lock.shield.fill")
+                    Label("新增隐私政策与支持入口，并完成 App Store 隐私清单审计", systemImage: "hand.raised.fill")
                 }
                 .font(.system(size: 13))
                 .foregroundStyle(StationTheme.textSecondary)

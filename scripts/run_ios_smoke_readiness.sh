@@ -48,6 +48,7 @@ require_command /usr/libexec/PlistBuddy
 
 bash scripts/check_ios_keyboard_sources.sh
 bash scripts/check_stage14_ios_signing_sources.sh
+bash scripts/check_store01_release.sh
 bash scripts/test_ios_self_text_change_tracker.sh
 bash scripts/build_ios_keyboard.sh
 
@@ -57,6 +58,10 @@ assert_exists "$app_path/Info.plist"
 assert_exists "$extension_path/Info.plist"
 assert_exists "$app_path/default_settings.json"
 assert_exists "$extension_path/default_settings.json"
+assert_exists "$app_path/PrivacyInfo.xcprivacy"
+assert_exists "$extension_path/PrivacyInfo.xcprivacy"
+plutil -lint "$app_path/PrivacyInfo.xcprivacy" >/dev/null
+plutil -lint "$extension_path/PrivacyInfo.xcprivacy" >/dev/null
 
 assert_equals "Container app bundle identifier" \
   "$app_bundle_id" \
@@ -73,6 +78,22 @@ assert_equals "Container app display name" \
 assert_equals "Keyboard extension display name" \
   "猫栈拼音" \
   "$(plist_value "$extension_path/Info.plist" "CFBundleDisplayName")"
+
+assert_equals "Container app marketing version" \
+  "1.0.0" \
+  "$(plist_value "$app_path/Info.plist" "CFBundleShortVersionString")"
+
+assert_equals "Keyboard extension marketing version" \
+  "1.0.0" \
+  "$(plist_value "$extension_path/Info.plist" "CFBundleShortVersionString")"
+
+assert_equals "Container app build version" \
+  "27" \
+  "$(plist_value "$app_path/Info.plist" "CFBundleVersion")"
+
+assert_equals "Keyboard extension build version" \
+  "27" \
+  "$(plist_value "$extension_path/Info.plist" "CFBundleVersion")"
 
 assert_equals "Container app App Group identifier" \
   "$app_group_id" \
