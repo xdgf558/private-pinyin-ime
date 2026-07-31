@@ -102,6 +102,11 @@ grep -q "resolveFinalSelection" platform/macos_imk/Sources/PrivatePinyinInputCon
 grep -q "candidatePanelGeneration" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "candidate_selection_resolved source=" \
   platform/macos_imk/Sources/PrivatePinyinInputController.swift
+if grep -q "recordHighlight(text: reportedText, token: nil)" \
+  platform/macos_imk/Sources/PrivatePinyinInputController.swift; then
+  echo "unverified candidate text must not be recorded as a highlighted identity" >&2
+  exit 1
+fi
 grep -q "candidate_selection_unresolved" platform/macos_imk/Sources/PrivatePinyinInputController.swift
 grep -q "PrivatePinyinCandidateSelectionState.swift" scripts/build_macos_imk.sh
 grep -q "emptyFinalCallbackUsesTheCurrentHighlight" \

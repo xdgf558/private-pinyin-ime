@@ -231,8 +231,6 @@ final class PrivatePinyinInputController: IMKInputController {
                 text: panelSelection.text,
                 token: panelSelection.token
             )
-        } else {
-            candidateSelectionState.recordHighlight(text: reportedText, token: nil)
         }
     }
 
