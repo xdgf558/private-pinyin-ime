@@ -8,16 +8,16 @@ from owner-side App Store Connect evidence.
 | Field | Value |
 |---|---|
 | Tester | Owner/Codex signed archive run |
-| Date | 2026-07-31 07:34 +08 |
-| Commit | Release metadata commit `95e3321` based on merged `main` |
-| Archive | `dist/ios/PrivatePinyin-0.1.31-build27-xcode26.xcarchive` |
+| Date | 2026-08-01 08:43 +08 |
+| Commit | STORE-01 commit `118c26b` on `main` |
+| Archive | `dist/ios/PrivatePinyin-1.0.0-build27-xcode26.xcarchive` |
 | Export path | Direct App Store Connect upload through `xcodebuild -exportArchive` |
 | Package summary | Xcode distribution logs, altool upload/status output, and App Store Connect TestFlight build table |
 | App bundle ID | `com.privatepinyin.ios` |
 | Keyboard bundle ID | `com.privatepinyin.ios.keyboard` |
 | App Group ID | `group.com.privatepinyin.ios` |
 | Export destination | `upload` |
-| Current candidate | `0.1.31 (27)` stable four-surface height, safe nullable document identity, bounded callback suppression, and retained 44-point touch targets |
+| Current candidate | `1.0.0 (27)` App Store release candidate with STORE-01 privacy manifests, public policy/support pages, store metadata, screenshots, and review notes |
 
 ## Archive And Export
 
@@ -32,19 +32,33 @@ bash scripts/package_ios_app_store.sh
 |---|---|---|---|
 | Owner signing env | Team ID, app bundle ID, keyboard bundle ID, App Group ID, ExportOptions plist, and profiles are configured | passed | Team `Y35K7AQ974`; App Group `group.com.privatepinyin.ios`; automatic signing created App Store profiles |
 | App Store Connect API key | Upload mode has key path, key ID, and issuer ID configured | not used | Upload used the signed-in Xcode account and Cloud Managed Apple Distribution certificate |
-| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-0.1.31-build27-xcode26.xcarchive` (21 MB); Xcode 26.6 (`17F109`) / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `0.1.31 (27)`, arm64, and iOS 18 minimum |
-| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded`; delivery UUID `dbda459c-52fa-466a-be10-9dc1d73b4f3a`; Apple accepted the package with no upload errors; `manageAppVersionAndBuildNumber=false` preserved build `27` |
+| Archive | `xcodebuild archive` produces the signed release archive | passed | `dist/ios/PrivatePinyin-1.0.0-build27-xcode26.xcarchive`; Xcode 26.6 / iPhoneOS 26.5; archive, container App, and Keyboard Extension metadata all report `1.0.0 (27)`, arm64, and iOS 18 minimum |
+| Export or upload | `xcodebuild -exportArchive` completes with ExportOptions `destination=upload` | passed | Xcode reported `Upload succeeded` and `** EXPORT SUCCEEDED **`; App Store Connect accepted build `27`; `manageAppVersionAndBuildNumber=false` preserved the repository build number |
 | Package summary | `dist/ios/package_summary.txt` records mode, bundle IDs, App Group, and paths | superseded | Manual automatic-signing run recorded here because the scripted manual-profile path was not used |
 
 ## App Store Connect
 
 | Check | Expected result | Result | Evidence / notes |
 |---|---|---|---|
-| Uploaded build | Build appears in App Store Connect | passed | App Store Connect app ID `6789098978`; version `0.1.31`; build `27`; delivery `dbda459c-52fa-466a-be10-9dc1d73b4f3a` |
-| Processing | Build processing completes | passed | App Store Connect reports upload status `完成` and build status `准备提交` |
+| Uploaded build | Build appears in App Store Connect | passed | App Store Connect app ID `6789098978`; version `1.0.0`; build `27` |
+| Processing | Build processing completes | passed | App Store Connect accepted build `27` for the `1.0` App Store version |
 | TestFlight availability | Processed build can be assigned to a TestFlight group | passed | Build `27` is present in the existing internal group `猫钱拼音内部测试组` |
 | External testing metadata | Beta description, privacy URL, feedback channel, review contact, and review notes are configured | passed | Filled in App Store Connect TestFlight test information; personal contact details stay out of the repository |
 | External testing build | Existing external group and review state are recorded separately from upload readiness | pending owner submission | Assigning build `27` to the external group and submitting Beta App Review remain explicit App Store Connect actions |
+
+## STORE-01 App Store Submission
+
+| Check | Result | Evidence / notes |
+|---|---|---|
+| Store metadata | passed | Simplified Chinese description, keywords, support URL, marketing URL, copyright, subtitle, categories, and reviewer notes were saved in App Store Connect |
+| Screenshots | passed | Four iPhone 6.5-inch screenshots and one iPad 13-inch screenshot were uploaded and accepted |
+| App Privacy | passed | Privacy policy URL saved; the `未收集数据` answer was published on 2026-08-01 |
+| Pricing and availability | passed | Price is free and availability covers 175 countries and regions |
+| Review configuration | passed | Build `1.0.0 (27)` selected; no review login required; existing review contact reused; release remains manual after approval |
+| App Review submission | passed | App Store Connect reported `已提交 1 个项目`; version status changed to `正在等待审核`; review submission ID `cf56e0b1-c758-4986-8418-c8a298fc44f9` |
+
+The physical-device validation items in the STORE-01 checklist remain open and
+are not inferred from App Store Connect submission success.
 
 ## Stage 17 External Testing Follow-up
 

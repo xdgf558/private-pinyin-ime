@@ -2050,6 +2050,16 @@ Current status: Apple processing completed and build 27 is ready to submit. It i
 
 - Physical-device gate: the registered iPhone 15 Pro was unavailable during this validation session. Notes/Safari/password/phone-field, X send/dismiss, hot keyboard switching, extension recreation, rotation, and memory-pressure checks remain explicit physical-device checks and are not inferred from Simulator success.
 
+- Command: Xcode 26.6 App Store upload from `dist/ios/PrivatePinyin-1.0.0-build27-xcode26.xcarchive`
+- Result: passed (`Upload succeeded`, `** EXPORT SUCCEEDED **`)
+- Notes: App Store Connect accepted build `1.0.0 (27)`. Repository build numbering was preserved.
+
+- Command: STORE-01 App Store Connect metadata and App Review submission
+- Result: passed; version status is `正在等待审核`
+- Notes: Four iPhone screenshots and one iPad screenshot were accepted. Simplified Chinese listing metadata, reviewer contact and notes, age rating, free pricing, 175-region availability, and manual release were saved. The `未收集数据` App Privacy answer was published. App Store Connect reported `已提交 1 个项目` for review submission `cf56e0b1-c758-4986-8418-c8a298fc44f9`.
+
+- Release boundary: App Review submission does not close the physical-device gate. The outstanding Notes, Safari/password/phone-field, X send/dismiss, hot-switch, process-recreation, rotation, and memory-pressure checks remain open and must not be reported as passed without a registered device run.
+
 ## Open Items
 
 - Select the final project license before external reuse or release.
