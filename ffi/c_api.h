@@ -132,6 +132,9 @@ ImeSession* ime_session_new(ImeEngine* engine);
 void ime_session_free(ImeSession* session);
 // Secure fields disable and cancel optional AI work. Base IME input remains active.
 int ime_session_set_secure_input(ImeSession* session, int secure_input);
+// Suspends optional AI for lifecycle or performance reasons without marking the
+// input as secure. Base IME input remains active.
+int ime_session_set_optional_ai_suspended(ImeSession* session, int suspended);
 // Overrides the candidate page size for this host session. Returns 1 on
 // success; valid values are 1 through the core candidate limit.
 int ime_session_set_candidate_page_size(ImeSession* session, int page_size);

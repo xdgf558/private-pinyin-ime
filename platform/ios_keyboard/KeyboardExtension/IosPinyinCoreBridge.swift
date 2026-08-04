@@ -57,7 +57,8 @@ final class IosPinyinCoreBridge: @unchecked Sendable {
         }
         let physicalMemoryMiB = ProcessInfo.processInfo.physicalMemory / Self.bytesPerMiB
         let availableMemoryBytes = private_pinyin_ios_available_memory_bytes()
-        if availableMemoryBytes >= Self.minimumAvailableMemoryBytes {
+        if IosSettingsStore.isAiLiteCandidateRerankEnabled(),
+           availableMemoryBytes >= Self.minimumAvailableMemoryBytes {
             isLocalAiEnabled = ime_engine_enable_local_ai(
                 engine,
                 Self.iosAiPlatform,
@@ -135,6 +136,13 @@ final class IosPinyinCoreBridge: @unchecked Sendable {
             return
         }
         _ = ime_session_set_secure_input(session, secureInput ? 1 : 0)
+    }
+
+    func setOptionalAiSuspended(_ suspended: Bool) {
+        guard let session else {
+            return
+        }
+        _ = ime_session_set_optional_ai_suspended(session, suspended ? 1 : 0)
     }
 
     private static func openEngine(settingsPath: String?) -> OpaquePointer? {

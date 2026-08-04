@@ -125,6 +125,14 @@ impl ImeEngine {
         &self.settings
     }
 
+    fn candidate_user_lexicon(&self) -> Option<&UserLexicon> {
+        if self.settings.enable_user_learning && !self.settings.strict_privacy_mode {
+            self.user_lexicon.as_deref()
+        } else {
+            None
+        }
+    }
+
     pub fn clear_user_lexicon(&self) -> ImeResult<()> {
         if let Some(user_lexicon) = &self.user_lexicon {
             user_lexicon.clear()?;
@@ -203,8 +211,7 @@ impl ImeEngine {
                     )
                 });
         let user_candidates = self
-            .user_lexicon
-            .as_ref()
+            .candidate_user_lexicon()
             .map(
                 |user_lexicon| match user_lexicon.lookup(raw_input, &parses) {
                     Ok(candidates) => candidates,
@@ -230,8 +237,7 @@ impl ImeEngine {
                 },
             );
             let corrected_user = self
-                .user_lexicon
-                .as_ref()
+                .candidate_user_lexicon()
                 .map(
                     |user_lexicon| match user_lexicon.lookup(corrected_input, corrected_parses) {
                         Ok(candidates) => candidates,
@@ -262,8 +268,7 @@ impl ImeEngine {
             |tolerant_input, tolerant_parses| {
                 let tolerant_base = self.lexicon.lookup_exact(tolerant_input, tolerant_parses);
                 let tolerant_user = self
-                    .user_lexicon
-                    .as_ref()
+                    .candidate_user_lexicon()
                     .map(|user_lexicon| {
                         match user_lexicon.lookup_exact(tolerant_input, tolerant_parses) {
                             Ok(candidates) => candidates,
@@ -291,8 +296,7 @@ impl ImeEngine {
                 .lookup_nine_key_with_context(digits, None, transition_score)
         };
         let user_candidates = self
-            .user_lexicon
-            .as_ref()
+            .candidate_user_lexicon()
             .map(|user_lexicon| match user_lexicon.lookup_nine_key(digits) {
                 Ok(candidates) => candidates,
                 Err(error) => {

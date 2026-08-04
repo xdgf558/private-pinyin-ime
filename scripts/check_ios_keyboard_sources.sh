@@ -84,6 +84,7 @@ grep -q "ime_session_toggle_mode" platform/ios_keyboard/KeyboardExtension/IosPin
 grep -q "ime_session_set_candidate_page_size" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_engine_enable_local_ai" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "ime_session_set_secure_input" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q "ime_session_set_optional_ai_suspended" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "static let preferredCandidatePageSize = 9" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "private static let fallbackCandidatePageSize = 5" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q "let candidatePageSize: Int" platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
@@ -518,19 +519,28 @@ core_operations = source.split("    func scheduleCoreOperation(", 1)[1].split(
 )[0]
 if "coreOperationQueue.async" not in core_operations:
     raise SystemExit("Every iOS Rust core operation must execute off the main thread.")
-if "core.setSecureInput" not in core_operations:
-    raise SystemExit("Every queued iOS core operation must refresh secure-input state.")
+if "core.setOptionalAiSuspended" not in core_operations:
+    raise SystemExit("Every queued iOS core operation must refresh optional-AI suspension state.")
 if "pendingOperation.revision == self.coreInteractionRevision" not in core_operations:
     raise SystemExit("Stale iOS core results must be rejected after context changes.")
 for required in (
     "pendingOperation.coalescesIntermediateOutput",
-    "pendingOperation.outputSequence != self.coreOutputSequence",
+    "latestSequence = self.coreOutputSequenceTracker.latest()",
+    "pendingOperation.outputSequence != latestSequence",
     "output?.shouldCommit != true",
     "finishPendingCompositionTracking(for: pendingOperation)",
     'name: "CoreOutputCoalesced"',
 ):
     if required not in core_operations:
         raise SystemExit(f"Missing iOS intermediate-output coalescing contract: {required}")
+for required in (
+    "suppressesOptionalAi",
+    "pendingOperation.optionalAiSuspended || suppressesOptionalAi",
+):
+    if required not in core_operations:
+        raise SystemExit(f"Missing superseded iOS AI-work suppression: {required}")
+if "core.setSecureInput" in core_operations:
+    raise SystemExit("iOS performance suppression must not impersonate secure-input state.")
 
 perform_core_output = function_body(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",

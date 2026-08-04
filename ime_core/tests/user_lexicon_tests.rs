@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Barrier};
+#[cfg(target_vendor = "apple")]
+use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ime_core::lexicon::Lexicon;
@@ -8,7 +10,8 @@ use ime_core::predictor::Predictor;
 use ime_core::session::MAX_CONTEXT_TOKENS;
 use ime_core::user_lexicon::{UserLearningLimits, UserLexicon};
 use ime_core::{
-    CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyEvent, PinyinParser,
+    CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyCode, KeyEvent,
+    PinyinParser,
 };
 use rusqlite::{params, Connection};
 
@@ -837,6 +840,208 @@ fn disabled_user_learning_does_not_write_user_lexicon() {
 }
 
 #[test]
+fn disabled_user_learning_does_not_read_existing_user_candidates() {
+    let temp_db = TempDb::new("learn_disabled_read");
+    let learned_phrase = "仅限本机学习候选";
+    {
+        let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+        for _ in 0..3 {
+            user_lexicon
+                .record_selection(learned_phrase, "ni hao")
+                .expect("selection records");
+        }
+    }
+
+    let enabled = ImeEngine::with_settings(settings_with_user_lexicon(temp_db.path.clone()))
+        .expect("enabled engine opens user lexicon");
+    assert!(enabled
+        .candidates_for_nine_key("64426")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+    drop(enabled);
+
+    let mut disabled_settings = settings_with_user_lexicon(temp_db.path.clone());
+    disabled_settings.enable_user_learning = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("disabled engine opens user lexicon");
+
+    assert!(!disabled
+        .candidates_for_raw("nihao")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+    assert!(!disabled
+        .candidates_for_nine_key("64426")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+
+    let mut session = disabled.create_session();
+    let mut output = ImeOutput::idle(session.mode());
+    for digit in [6, 4, 4, 2, 6] {
+        output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+    }
+    assert!(!output
+        .candidates
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn large_user_lexicon_nine_key_prefix_lookup_stays_interactive() {
+    const USER_ROW_COUNT: usize = 20_000;
+    const LOOKUP_BUDGET: Duration = Duration::from_millis(20);
+    let temp_db = TempDb::new("nine_key_prefix_pressure");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let mut connection = Connection::open(&temp_db.path).expect("raw database opens");
+    let transaction = connection.transaction().expect("transaction starts");
+    transaction
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                "跨分支学习词",
+                "nv",
+                "nv",
+                "68",
+                100_i64,
+                100.0_f64,
+                true,
+                current_time_ms()
+            ],
+        )
+        .expect("later branch row inserts");
+    {
+        let mut statement = transaction
+            .prepare(
+                "INSERT INTO user_phrases
+                   (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .expect("prefix insert prepares");
+        for index in 0..USER_ROW_COUNT {
+            statement
+                .execute(params![
+                    format!("压力前缀词{index:05}"),
+                    "nian",
+                    "nian",
+                    "6426",
+                    3_i64,
+                    3.0_f64,
+                    true,
+                    current_time_ms()
+                ])
+                .expect("prefix row inserts");
+        }
+    }
+    transaction
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                "同码尾插高权重词",
+                "nian",
+                "nian",
+                "6426",
+                100_i64,
+                100.0_f64,
+                true,
+                current_time_ms()
+            ],
+        )
+        .expect("late high-weight row inserts");
+    transaction
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params!["精确学习词", "mi", "mi", "64", 4_i64, 4.0_f64, true, current_time_ms()],
+        )
+        .expect("exact row inserts");
+    transaction.commit().expect("transaction commits");
+
+    for (label, sql) in [
+        (
+            "prefix",
+            "EXPLAIN QUERY PLAN
+             SELECT phrase, pinyin, weight, is_mature, updated_at_ms
+               FROM user_phrases
+              WHERE nine_key >= '64' AND nine_key < '65'
+              ORDER BY nine_key ASC, is_mature DESC, weight DESC,
+                       updated_at_ms DESC, phrase ASC, pinyin ASC
+              LIMIT 25",
+        ),
+        (
+            "exact",
+            "EXPLAIN QUERY PLAN
+             SELECT phrase, pinyin, weight, is_mature, updated_at_ms
+               FROM user_phrases
+              WHERE nine_key = '6426'
+              ORDER BY nine_key ASC, is_mature DESC, weight DESC,
+                       updated_at_ms DESC, phrase ASC, pinyin ASC
+              LIMIT 200",
+        ),
+    ] {
+        let mut statement = connection.prepare(sql).expect("query plan prepares");
+        let details = statement
+            .query_map([], |row| row.get::<_, String>(3))
+            .expect("query plan executes")
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .expect("query plan rows decode");
+        assert!(
+            details
+                .iter()
+                .any(|detail| detail.contains("idx_user_phrases_nine_key_rank")),
+            "{label} lookup must use the bounded ranking index: {details:?}"
+        );
+        assert!(
+            details.iter().all(|detail| !detail.contains("TEMP B-TREE")),
+            "{label} lookup must not sort matching rows: {details:?}"
+        );
+    }
+
+    for (digits, required_candidates) in [
+        ("6", &["跨分支学习词", "同码尾插高权重词"][..]),
+        ("6426", &["同码尾插高权重词"][..]),
+    ] {
+        let mut samples = Vec::with_capacity(5);
+        for _ in 0..5 {
+            let started = Instant::now();
+            let candidates = user_lexicon
+                .lookup_nine_key(digits)
+                .expect("nine-key lookup succeeds");
+            samples.push(started.elapsed());
+            for required in required_candidates {
+                assert!(
+                    candidates
+                        .iter()
+                        .any(|candidate| candidate.text == *required),
+                    "{digits} must retain {required} after bounded lookup"
+                );
+            }
+        }
+        samples.sort_unstable();
+        let median = samples[samples.len() / 2];
+        eprintln!("20k user nine-key {digits} median lookup: {median:?}");
+        assert!(
+            median < LOOKUP_BUDGET,
+            "20k user nine-key {digits} lookup took {median:?}, budget {LOOKUP_BUDGET:?}"
+        );
+    }
+
+    let exact_candidates = user_lexicon
+        .lookup_nine_key("64")
+        .expect("exact nine-key lookup succeeds");
+    assert_eq!(
+        exact_candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("精确学习词")
+    );
+}
+
+#[test]
 fn disabled_user_learning_does_not_write_user_bigram() {
     let temp_db = TempDb::new("bigram_disabled");
     let mut settings = settings_with_user_lexicon(temp_db.path.clone());
@@ -1115,6 +1320,41 @@ fn user_lexicon_schema_indexes_pinyin_for_exact_lookup() {
         .expect("query index");
 
     assert_eq!(index_count, 1);
+}
+
+#[test]
+fn user_lexicon_schema_indexes_nine_key_in_bounded_ranking_order() {
+    let temp_db = TempDb::new("nine_key_rank_index");
+    let _user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let connection = Connection::open(&temp_db.path).expect("open raw sqlite connection");
+    let mut statement = connection
+        .prepare("PRAGMA index_xinfo('idx_user_phrases_nine_key_rank')")
+        .expect("prepare index metadata query");
+    let columns = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, bool>(3)?,
+                row.get::<_, bool>(5)?,
+            ))
+        })
+        .expect("query index metadata")
+        .filter_map(Result::ok)
+        .filter(|(_, _, is_key)| *is_key)
+        .map(|(name, descending, _)| (name.expect("named index column"), descending))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        columns,
+        vec![
+            ("nine_key".to_owned(), false),
+            ("is_mature".to_owned(), true),
+            ("weight".to_owned(), true),
+            ("updated_at_ms".to_owned(), true),
+            ("phrase".to_owned(), false),
+            ("pinyin".to_owned(), false),
+        ]
+    );
 }
 
 #[test]
