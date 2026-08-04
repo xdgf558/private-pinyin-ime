@@ -524,13 +524,20 @@ if "pendingOperation.revision == self.coreInteractionRevision" not in core_opera
     raise SystemExit("Stale iOS core results must be rejected after context changes.")
 for required in (
     "pendingOperation.coalescesIntermediateOutput",
-    "pendingOperation.outputSequence != self.coreOutputSequence",
+    "latestSequence = self.coreOutputSequenceTracker.latest()",
+    "pendingOperation.outputSequence != latestSequence",
     "output?.shouldCommit != true",
     "finishPendingCompositionTracking(for: pendingOperation)",
     'name: "CoreOutputCoalesced"',
 ):
     if required not in core_operations:
         raise SystemExit(f"Missing iOS intermediate-output coalescing contract: {required}")
+for required in (
+    "suppressesOptionalAi",
+    "pendingOperation.secureInput || suppressesOptionalAi",
+):
+    if required not in core_operations:
+        raise SystemExit(f"Missing superseded iOS AI-work suppression: {required}")
 
 perform_core_output = function_body(
     "platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift",

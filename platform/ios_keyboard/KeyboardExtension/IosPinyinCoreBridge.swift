@@ -57,7 +57,8 @@ final class IosPinyinCoreBridge: @unchecked Sendable {
         }
         let physicalMemoryMiB = ProcessInfo.processInfo.physicalMemory / Self.bytesPerMiB
         let availableMemoryBytes = private_pinyin_ios_available_memory_bytes()
-        if availableMemoryBytes >= Self.minimumAvailableMemoryBytes {
+        if IosSettingsStore.isAiLiteCandidateRerankEnabled(),
+           availableMemoryBytes >= Self.minimumAvailableMemoryBytes {
             isLocalAiEnabled = ime_engine_enable_local_ai(
                 engine,
                 Self.iosAiPlatform,

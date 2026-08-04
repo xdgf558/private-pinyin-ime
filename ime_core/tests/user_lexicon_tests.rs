@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Barrier};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use ime_core::lexicon::Lexicon;
 use ime_core::pinyin_parser::compact_pinyin;
@@ -8,7 +8,8 @@ use ime_core::predictor::Predictor;
 use ime_core::session::MAX_CONTEXT_TOKENS;
 use ime_core::user_lexicon::{UserLearningLimits, UserLexicon};
 use ime_core::{
-    CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyEvent, PinyinParser,
+    CandidateSource, ImeEngine, ImeOutput, ImeSettings, InputSession, KeyCode, KeyEvent,
+    PinyinParser,
 };
 use rusqlite::{params, Connection};
 
@@ -834,6 +835,141 @@ fn disabled_user_learning_does_not_write_user_lexicon() {
 
     let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon reopens");
     assert_eq!(user_lexicon.entry_count().expect("entry count"), 0);
+}
+
+#[test]
+fn disabled_user_learning_does_not_read_existing_user_candidates() {
+    let temp_db = TempDb::new("learn_disabled_read");
+    let learned_phrase = "仅限本机学习候选";
+    {
+        let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+        for _ in 0..3 {
+            user_lexicon
+                .record_selection(learned_phrase, "ni hao")
+                .expect("selection records");
+        }
+    }
+
+    let enabled = ImeEngine::with_settings(settings_with_user_lexicon(temp_db.path.clone()))
+        .expect("enabled engine opens user lexicon");
+    assert!(enabled
+        .candidates_for_nine_key("64426")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+    drop(enabled);
+
+    let mut disabled_settings = settings_with_user_lexicon(temp_db.path.clone());
+    disabled_settings.enable_user_learning = false;
+    let disabled =
+        ImeEngine::with_settings(disabled_settings).expect("disabled engine opens user lexicon");
+
+    assert!(!disabled
+        .candidates_for_raw("nihao")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+    assert!(!disabled
+        .candidates_for_nine_key("64426")
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+
+    let mut session = disabled.create_session();
+    let mut output = ImeOutput::idle(session.mode());
+    for digit in [6, 4, 4, 2, 6] {
+        output = session.feed_key(KeyEvent::new(KeyCode::NineKeyDigit(digit)));
+    }
+    assert!(!output
+        .candidates
+        .iter()
+        .any(|candidate| candidate.text == learned_phrase));
+}
+
+#[cfg(target_vendor = "apple")]
+#[test]
+fn large_user_lexicon_nine_key_prefix_lookup_stays_interactive() {
+    const USER_ROW_COUNT: usize = 20_000;
+    const LOOKUP_BUDGET: Duration = Duration::from_millis(20);
+    let temp_db = TempDb::new("nine_key_prefix_pressure");
+    let user_lexicon = UserLexicon::open(&temp_db.path).expect("user lexicon opens");
+    let mut connection = Connection::open(&temp_db.path).expect("raw database opens");
+    let transaction = connection.transaction().expect("transaction starts");
+    transaction
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params!["精确学习词", "mi", "mi", "64", 4_i64, 4.0_f64, true, current_time_ms()],
+        )
+        .expect("exact row inserts");
+    transaction
+        .execute(
+            "INSERT INTO user_phrases
+               (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                "跨分支学习词",
+                "nv",
+                "nv",
+                "68",
+                100_i64,
+                100.0_f64,
+                true,
+                current_time_ms()
+            ],
+        )
+        .expect("later branch row inserts");
+    {
+        let mut statement = transaction
+            .prepare(
+                "INSERT INTO user_phrases
+                   (phrase, pinyin, compact_pinyin, nine_key, frequency, weight, is_mature, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .expect("prefix insert prepares");
+        for index in 0..USER_ROW_COUNT {
+            statement
+                .execute(params![
+                    format!("压力前缀词{index:05}"),
+                    "nian",
+                    "nian",
+                    "6426",
+                    3_i64,
+                    3.0_f64,
+                    true,
+                    current_time_ms()
+                ])
+                .expect("prefix row inserts");
+        }
+    }
+    transaction.commit().expect("transaction commits");
+
+    let mut samples = Vec::with_capacity(5);
+    for _ in 0..5 {
+        let started = Instant::now();
+        let candidates = user_lexicon
+            .lookup_nine_key("6")
+            .expect("nine-key lookup succeeds");
+        samples.push(started.elapsed());
+        assert!(candidates
+            .iter()
+            .any(|candidate| candidate.text == "跨分支学习词"));
+    }
+    samples.sort_unstable();
+    let median = samples[samples.len() / 2];
+    eprintln!("20k user nine-key prefix median lookup: {median:?}");
+    assert!(
+        median < LOOKUP_BUDGET,
+        "20k user nine-key lookup took {median:?}, budget {LOOKUP_BUDGET:?}"
+    );
+
+    let exact_candidates = user_lexicon
+        .lookup_nine_key("64")
+        .expect("exact nine-key lookup succeeds");
+    assert_eq!(
+        exact_candidates
+            .first()
+            .map(|candidate| candidate.text.as_str()),
+        Some("精确学习词")
+    );
 }
 
 #[test]

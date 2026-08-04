@@ -31,6 +31,11 @@ const USER_LEARNING_HALF_LIFE_MS: f64 = 30.0 * 24.0 * 60.0 * 60.0 * 1_000.0;
 const USER_LEARNING_THRESHOLD_EPSILON: f64 = 0.001;
 const SQLITE_BUSY_RETRY_LIMIT: usize = 4;
 const SQLITE_BUSY_RETRY_DELAY_MS: u64 = 10;
+// Candidate pages expose at most MAX_LOOKUP_CANDIDATES entries. Keep a wider
+// prefix pool for ranking and phrase de-duplication without materializing every
+// matching row in a full (20k-entry) user dictionary on each keypress.
+const MAX_NINE_KEY_QUERY_ROWS: usize = MAX_LOOKUP_CANDIDATES * 4;
+const MAX_NINE_KEY_PREFIX_ROWS_PER_BRANCH: usize = MAX_LOOKUP_CANDIDATES / 2;
 pub const MAX_USER_TRANSITION_SNAPSHOT: usize = 5_000;
 pub type UserTransitionSnapshot = HashMap<String, HashMap<String, UserLearningState>>;
 type UserLexiconWriteLocks = Mutex<HashMap<PathBuf, Weak<Mutex<()>>>>;
@@ -317,17 +322,18 @@ impl UserLexicon {
         let upper_bound = compact_prefix_upper_bound(digits);
         let reference_time_ms = now_ms();
         let connection = self.connection()?;
-        let rows = {
+        let exact_rows = {
             let mut statement = connection
                 .prepare(
                     "SELECT phrase, pinyin, weight, is_mature, updated_at_ms
                      FROM user_phrases
-                     WHERE nine_key >= ?1 AND nine_key < ?2
-                     ORDER BY updated_at_ms DESC, frequency DESC, phrase ASC",
+                     WHERE nine_key = ?1
+                     ORDER BY is_mature DESC, weight DESC, updated_at_ms DESC, phrase ASC
+                     LIMIT ?2",
                 )
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
             let mapped_rows = statement
-                .query_map(params![digits, upper_bound], |row| {
+                .query_map(params![digits, MAX_NINE_KEY_QUERY_ROWS as i64], |row| {
                     let phrase: String = row.get(0)?;
                     let pinyin: String = row.get(1)?;
                     let weight: f64 = row.get(2)?;
@@ -338,32 +344,77 @@ impl UserLexicon {
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
             collect_user_lookup_rows(mapped_rows)?
         };
+        let mut prefix_rows = Vec::new();
+        {
+            let mut statement = connection
+                .prepare(
+                    "SELECT phrase, pinyin, weight, is_mature, updated_at_ms
+                     FROM user_phrases
+                     WHERE nine_key >= ?1 AND nine_key < ?2
+                     ORDER BY nine_key ASC
+                     LIMIT ?3",
+                )
+                .map_err(|_| ImeError::UserLexiconDatabase)?;
+            // Sample every possible next keypad digit independently. A single
+            // lexicographic LIMIT would let a dense "2" branch hide learned
+            // candidates under later branches even though the total work was bounded.
+            for next_digit in b'2'..=b'9' {
+                let mut branch = String::with_capacity(digits.len() + 1);
+                branch.push_str(digits);
+                branch.push(char::from(next_digit));
+                if branch >= upper_bound {
+                    continue;
+                }
+                let branch_upper_bound = compact_prefix_upper_bound(&branch);
+                let mapped_rows = statement
+                    .query_map(
+                        params![
+                            branch,
+                            branch_upper_bound,
+                            MAX_NINE_KEY_PREFIX_ROWS_PER_BRANCH as i64
+                        ],
+                        |row| {
+                            let phrase: String = row.get(0)?;
+                            let pinyin: String = row.get(1)?;
+                            let weight: f64 = row.get(2)?;
+                            let mature: bool = row.get(3)?;
+                            let updated_at_ms: i64 = row.get(4)?;
+                            Ok((phrase, pinyin, weight, mature, updated_at_ms))
+                        },
+                    )
+                    .map_err(|_| ImeError::UserLexiconDatabase)?;
+                prefix_rows.extend(collect_user_lookup_rows(mapped_rows)?);
+            }
+        }
 
         let mut exact_candidates = Vec::new();
         let mut prefix_candidates = Vec::new();
         let mut seen_phrases = std::collections::HashSet::new();
-        for (phrase, pinyin, weight, mature, updated_at_ms) in rows {
+        for (phrase, pinyin, weight, mature, updated_at_ms) in exact_rows {
             if !seen_phrases.insert(phrase.clone()) {
                 continue;
             }
-            let match_kind = if pinyin_to_nine_key(&pinyin) == digits {
-                CandidateMatchKind::Exact
-            } else {
-                CandidateMatchKind::Prefix
-            };
-            let candidate = user_candidate(
+            exact_candidates.push(user_candidate(
                 phrase,
                 pinyin,
                 weight,
                 mature,
                 updated_at_ms,
                 reference_time_ms,
-                match_kind,
-            );
-            if match_kind == CandidateMatchKind::Exact {
-                exact_candidates.push(candidate);
-            } else {
-                prefix_candidates.push(candidate);
+                CandidateMatchKind::Exact,
+            ));
+        }
+        for (phrase, pinyin, weight, mature, updated_at_ms) in prefix_rows {
+            if seen_phrases.insert(phrase.clone()) {
+                prefix_candidates.push(user_candidate(
+                    phrase,
+                    pinyin,
+                    weight,
+                    mature,
+                    updated_at_ms,
+                    reference_time_ms,
+                    CandidateMatchKind::Prefix,
+                ));
             }
         }
 

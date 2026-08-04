@@ -2,6 +2,24 @@ import os
 import PrivatePinyinC
 import UIKit
 
+private final class CoreOutputSequenceTracker: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+
+    func advance() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        value &+= 1
+        return value
+    }
+
+    func latest() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+}
+
 private struct PendingCoreOperation {
     let identifier: Int
     let generation: Int
@@ -46,7 +64,7 @@ final class KeyboardViewController: UIInputViewController {
     private var core: IosPinyinCoreBridge?
     private var coreLoadGeneration = 0
     private var coreInteractionRevision = 0
-    private var coreOutputSequence = 0
+    private let coreOutputSequenceTracker = CoreOutputSequenceTracker()
     private var nextCoreOperationIdentifier = 0
     private var pendingCompositionOperationIdentifiers: Set<Int> = []
     private var coreLoadInProgress = false
@@ -1635,7 +1653,7 @@ private extension KeyboardViewController {
         }
         // Core work always stays serial. The sequence only lets rapid
         // nine-key input skip UIKit frames superseded before main-thread apply.
-        coreOutputSequence &+= 1
+        let outputSequence = coreOutputSequenceTracker.advance()
         nextCoreOperationIdentifier &+= 1
         let operationIdentifier = nextCoreOperationIdentifier
         if tracksPendingComposition {
@@ -1645,7 +1663,7 @@ private extension KeyboardViewController {
             identifier: operationIdentifier,
             generation: coreLoadGeneration,
             revision: coreInteractionRevision,
-            outputSequence: coreOutputSequence,
+            outputSequence: outputSequence,
             coalescesIntermediateOutput: coalescesIntermediateOutput,
             tracksPendingComposition: tracksPendingComposition,
             secureInput: localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext,
@@ -1670,8 +1688,16 @@ private extension KeyboardViewController {
         _ pendingOperation: PendingCoreOperation,
         on core: IosPinyinCoreBridge
     ) {
+        let outputSequenceTracker = coreOutputSequenceTracker
         Self.coreOperationQueue.async {
-            core.setSecureInput(pendingOperation.secureInput)
+            // Superseded nine-key operations still have to mutate the serial core
+            // state, but their candidate frames will never be shown. Suppress the
+            // optional AI request for those frames so a rapid burst only reranks the
+            // newest visible result.
+            let latestSequence = outputSequenceTracker.latest()
+            let suppressesOptionalAi = pendingOperation.coalescesIntermediateOutput
+                && pendingOperation.outputSequence != latestSequence
+            core.setSecureInput(pendingOperation.secureInput || suppressesOptionalAi)
             let output = pendingOperation.operation(core)
             DispatchQueue.main.async { [weak self] in
                 guard let self else {
@@ -1688,8 +1714,9 @@ private extension KeyboardViewController {
                 // A coalesced output may be skipped only when it cannot mutate
                 // the document. If a future caller mislabels a committing
                 // operation, deliver it and accept the extra UIKit frame.
+                let latestSequence = self.coreOutputSequenceTracker.latest()
                 if pendingOperation.coalescesIntermediateOutput,
-                   pendingOperation.outputSequence != self.coreOutputSequence,
+                   pendingOperation.outputSequence != latestSequence,
                    output?.shouldCommit != true {
                     os_signpost(
                         .event,
@@ -1697,7 +1724,7 @@ private extension KeyboardViewController {
                         name: "CoreOutputCoalesced",
                         "sequence=%{public}d latest=%{public}d",
                         pendingOperation.outputSequence,
-                        self.coreOutputSequence
+                        latestSequence
                     )
 #if DEBUG
                     self.diagnosticCoalescedCoreOutputs += 1

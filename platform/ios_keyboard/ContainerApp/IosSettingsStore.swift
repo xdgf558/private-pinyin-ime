@@ -175,6 +175,12 @@ enum IosSettingsStore {
         return ai["enable_pinyin_correction"] as? Bool ?? true
     }
 
+    static func isAiLiteCandidateRerankEnabled() -> Bool {
+        let ai = readSettings()["ai"] as? [String: Any] ?? [:]
+        return (ai["enable_ai_lite"] as? Bool ?? true)
+            && (ai["enable_candidate_rerank"] as? Bool ?? true)
+    }
+
     static func setPinyinCorrectionEnabled(_ enabled: Bool) -> Bool {
         updateSettings { settings in
             var ai = settings["ai"] as? [String: Any] ?? [:]

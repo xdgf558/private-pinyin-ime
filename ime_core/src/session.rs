@@ -49,6 +49,14 @@ impl InputSession {
         settings_snapshot: ImeSettings,
     ) -> Self {
         let privacy_mode = settings_snapshot.strict_privacy_mode;
+        // A configured database path is also used by maintenance operations such as
+        // export and clear. It must not make disabled learning part of the interactive
+        // candidate path, especially on memory- and latency-constrained keyboards.
+        let user_lexicon = if settings_snapshot.enable_user_learning && !privacy_mode {
+            user_lexicon
+        } else {
+            None
+        };
         let user_transitions = user_lexicon
             .as_ref()
             .map(|lexicon| match lexicon.transition_snapshot() {
