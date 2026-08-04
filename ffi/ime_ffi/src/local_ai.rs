@@ -49,6 +49,7 @@ pub(crate) struct LocalAiSession {
     revision: u64,
     next_request_id: u64,
     secure_input: bool,
+    optional_ai_suspended: bool,
     last_visible: Option<CompositionSnapshot>,
     inflight: Option<InflightRequest>,
     ready: Option<ReadyRanking>,
@@ -83,6 +84,7 @@ impl LocalAiSession {
             revision: 0,
             next_request_id: 1,
             secure_input: false,
+            optional_ai_suspended: false,
             last_visible: None,
             inflight: None,
             ready: None,
@@ -95,6 +97,17 @@ impl LocalAiSession {
         }
         self.secure_input = secure_input;
         if secure_input {
+            self.cancel_inflight();
+            self.ready = None;
+        }
+    }
+
+    pub(crate) fn set_optional_ai_suspended(&mut self, suspended: bool) {
+        if self.optional_ai_suspended == suspended {
+            return;
+        }
+        self.optional_ai_suspended = suspended;
+        if suspended {
             self.cancel_inflight();
             self.ready = None;
         }
@@ -130,6 +143,7 @@ impl LocalAiSession {
 
     fn should_submit(&self, session: &InputSession, output: &ImeOutput) -> bool {
         !self.secure_input
+            && !self.optional_ai_suspended
             && !output.candidates.is_empty()
             && (!session.raw_input.is_empty() || !session.nine_key_input.is_empty())
     }
@@ -533,6 +547,22 @@ mod tests {
             ]
         )
         .is_none());
+    }
+
+    #[test]
+    fn optional_ai_suspension_does_not_impersonate_secure_input() {
+        let runtime = LocalAiRuntime::new(ModelPlatform::Macos, 8 * 1024, false)
+            .expect("approved embedded ranker");
+        let mut ai_session = LocalAiSession::new(runtime);
+
+        ai_session.set_optional_ai_suspended(true);
+        assert!(ai_session.optional_ai_suspended);
+        assert!(!ai_session.secure_input);
+
+        ai_session.set_optional_ai_suspended(false);
+        ai_session.set_secure_input(true);
+        assert!(!ai_session.optional_ai_suspended);
+        assert!(ai_session.secure_input);
     }
 
     #[test]

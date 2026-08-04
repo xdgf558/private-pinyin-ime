@@ -328,7 +328,8 @@ impl UserLexicon {
                     "SELECT phrase, pinyin, weight, is_mature, updated_at_ms
                      FROM user_phrases
                      WHERE nine_key = ?1
-                     ORDER BY is_mature DESC, weight DESC, updated_at_ms DESC, phrase ASC
+                     ORDER BY nine_key ASC, is_mature DESC, weight DESC,
+                              updated_at_ms DESC, phrase ASC, pinyin ASC
                      LIMIT ?2",
                 )
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
@@ -351,7 +352,8 @@ impl UserLexicon {
                     "SELECT phrase, pinyin, weight, is_mature, updated_at_ms
                      FROM user_phrases
                      WHERE nine_key >= ?1 AND nine_key < ?2
-                     ORDER BY nine_key ASC
+                     ORDER BY nine_key ASC, is_mature DESC, weight DESC,
+                              updated_at_ms DESC, phrase ASC, pinyin ASC
                      LIMIT ?3",
                 )
                 .map_err(|_| ImeError::UserLexiconDatabase)?;
@@ -1178,8 +1180,16 @@ impl UserLexicon {
         ensure_nine_key_column(&connection)?;
         connection
             .execute_batch(
-                "CREATE INDEX IF NOT EXISTS idx_user_phrases_nine_key
-                   ON user_phrases(nine_key);",
+                "DROP INDEX IF EXISTS idx_user_phrases_nine_key;
+                 CREATE INDEX IF NOT EXISTS idx_user_phrases_nine_key_rank
+                   ON user_phrases(
+                     nine_key ASC,
+                     is_mature DESC,
+                     weight DESC,
+                     updated_at_ms DESC,
+                     phrase ASC,
+                     pinyin ASC
+                   );",
             )
             .map_err(|_| ImeError::UserLexiconDatabase)?;
         Ok(())

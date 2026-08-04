@@ -138,6 +138,13 @@ final class IosPinyinCoreBridge: @unchecked Sendable {
         _ = ime_session_set_secure_input(session, secureInput ? 1 : 0)
     }
 
+    func setOptionalAiSuspended(_ suspended: Bool) {
+        guard let session else {
+            return
+        }
+        _ = ime_session_set_optional_ai_suspended(session, suspended ? 1 : 0)
+    }
+
     private static func openEngine(settingsPath: String?) -> OpaquePointer? {
         let configuredEngine = settingsPath.flatMap { path in
             path.withCString { pathPointer in

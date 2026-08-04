@@ -12,7 +12,10 @@ use private_pinyin_ime::{
     ime_session_free, ime_session_new, ime_session_set_candidate_page_size, ImeKeyEvent,
 };
 #[cfg(feature = "local-ai")]
-use private_pinyin_ime::{ime_engine_enable_local_ai, ime_session_set_secure_input, ImeMode};
+use private_pinyin_ime::{
+    ime_engine_enable_local_ai, ime_session_set_optional_ai_suspended,
+    ime_session_set_secure_input, ImeMode,
+};
 
 #[test]
 fn c_api_can_create_engine_feed_nihao_and_commit_candidate() {
@@ -348,11 +351,19 @@ fn ios_ai_uses_the_approved_model_and_falls_back_below_the_memory_gate() {
         let session = ime_session_new(enabled_engine);
         assert!(!session.is_null());
 
-        assert_eq!(ime_session_set_secure_input(session, 1), 1);
+        assert_eq!(ime_session_set_optional_ai_suspended(session, 1), 1);
         let text = CString::new("n").unwrap();
         let output = ime_session_feed_key(session, key_event(text.as_ptr()));
         assert!(!output.is_null());
         assert_eq!(CStr::from_ptr((*output).preedit).to_str().unwrap(), "n");
+        ime_output_free(output);
+
+        assert_eq!(ime_session_set_optional_ai_suspended(session, 0), 1);
+        assert_eq!(ime_session_set_secure_input(session, 1), 1);
+        let text = CString::new("i").unwrap();
+        let output = ime_session_feed_key(session, key_event(text.as_ptr()));
+        assert!(!output.is_null());
+        assert_eq!(CStr::from_ptr((*output).preedit).to_str().unwrap(), "ni");
         ime_output_free(output);
         ime_session_free(session);
         ime_engine_free(enabled_engine);
@@ -451,6 +462,10 @@ fn c_api_null_handles_are_safe_noops() {
         -1
     );
     assert_eq!(ime_engine_clear_imported_lexicon(ptr::null_mut()), 0);
+    assert_eq!(
+        private_pinyin_ime::ime_session_set_optional_ai_suspended(ptr::null_mut(), 1),
+        0
+    );
     ime_output_free(ptr::null_mut());
     ime_session_free(ptr::null_mut());
     ime_engine_free(ptr::null_mut());

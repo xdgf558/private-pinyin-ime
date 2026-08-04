@@ -348,6 +348,23 @@ pub extern "C" fn ime_session_set_secure_input(
 }
 
 #[no_mangle]
+pub extern "C" fn ime_session_set_optional_ai_suspended(
+    session: *mut ImeSession,
+    suspended: c_int,
+) -> c_int {
+    catch_status(|| {
+        let session = unsafe { session.as_mut()? };
+        #[cfg(feature = "local-ai")]
+        if let Some(local_ai) = session.local_ai.as_mut() {
+            local_ai.set_optional_ai_suspended(suspended != 0);
+        }
+        #[cfg(not(feature = "local-ai"))]
+        let _ = (session, suspended);
+        Some(())
+    })
+}
+
+#[no_mangle]
 pub extern "C" fn ime_session_set_candidate_page_size(
     session: *mut ImeSession,
     page_size: c_int,

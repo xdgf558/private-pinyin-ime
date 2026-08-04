@@ -27,7 +27,7 @@ private struct PendingCoreOperation {
     let outputSequence: Int
     let coalescesIntermediateOutput: Bool
     let tracksPendingComposition: Bool
-    let secureInput: Bool
+    let optionalAiSuspended: Bool
     let operation: (IosPinyinCoreBridge) -> IosPinyinOutput?
     let completion: (IosPinyinOutput?) -> Void
 }
@@ -268,7 +268,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         enqueueCoreOperation(
             operation: { core in
-                core.setSecureInput(true)
+                core.setOptionalAiSuspended(true)
                 return nil
             },
             completion: { _ in }
@@ -1666,7 +1666,8 @@ private extension KeyboardViewController {
             outputSequence: outputSequence,
             coalescesIntermediateOutput: coalescesIntermediateOutput,
             tracksPendingComposition: tracksPendingComposition,
-            secureInput: localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext,
+            optionalAiSuspended: localAiSuspendedForMemoryPressure
+                || shouldDisableAiForCurrentInputContext,
             operation: operation,
             completion: completion
         )
@@ -1697,7 +1698,9 @@ private extension KeyboardViewController {
             let latestSequence = outputSequenceTracker.latest()
             let suppressesOptionalAi = pendingOperation.coalescesIntermediateOutput
                 && pendingOperation.outputSequence != latestSequence
-            core.setSecureInput(pendingOperation.secureInput || suppressesOptionalAi)
+            core.setOptionalAiSuspended(
+                pendingOperation.optionalAiSuspended || suppressesOptionalAi
+            )
             let output = pendingOperation.operation(core)
             DispatchQueue.main.async { [weak self] in
                 guard let self else {

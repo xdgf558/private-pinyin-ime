@@ -36,13 +36,20 @@ grep -q 'ime_engine_enable_local_ai' \
   platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q 'ime_session_set_secure_input' \
   platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
+grep -q 'ime_session_set_optional_ai_suspended' ffi/c_api.h
+grep -q 'ime_session_set_optional_ai_suspended' \
+  platform/ios_keyboard/KeyboardExtension/IosPinyinCoreBridge.swift
 grep -q 'shouldDisableAiForCurrentInputContext' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'didReceiveMemoryWarning' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'localAiSuspendedForMemoryPressure = true' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
-grep -q 'localAiSuspendedForMemoryPressure || shouldDisableAiForCurrentInputContext' \
+grep -q 'localAiSuspendedForMemoryPressure' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'shouldDisableAiForCurrentInputContext' \
+  platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
+grep -q 'pendingOperation.optionalAiSuspended || suppressesOptionalAi' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
 grep -q 'case .phonePad, .namePhonePad, .numberPad, .decimalPad, .asciiCapableNumberPad' \
   platform/ios_keyboard/KeyboardExtension/KeyboardViewController.swift
